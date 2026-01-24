@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -7,16 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield, GraduationCap, User } from 'lucide-react';
+
+const DEV_USERS = [
+  { email: 'admin@teste.com', password: 'teste123', label: 'Entrar como Admin', variant: 'admin' as const, icon: Shield },
+  { email: 'mentor@teste.com', password: 'teste123', label: 'Entrar como Mentor', variant: 'mentor' as const, icon: GraduationCap },
+  { email: 'aluno@teste.com', password: 'teste123', label: 'Entrar como Aluno', variant: 'student' as const, icon: User },
+];
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingUser, setLoadingUser] = useState<string | null>(null);
   
   const { login } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +45,6 @@ export default function Login() {
         title: "Bem-vindo!",
         description: "Login realizado com sucesso.",
       });
-      // Navigation will happen automatically via auth state change
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Email ou senha incorretos.";
       toast({
@@ -49,6 +54,26 @@ export default function Login() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async (email: string, password: string) => {
+    setLoadingUser(email);
+    try {
+      await login(email, password);
+      toast({
+        title: "Bem-vindo!",
+        description: "Login realizado com sucesso.",
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao fazer login. Verifique se os usuários de teste foram criados.";
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingUser(null);
     }
   };
   
@@ -66,7 +91,7 @@ export default function Login() {
             placeholder="seu@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || !!loadingUser}
           />
         </div>
         
@@ -86,7 +111,7 @@ export default function Login() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || !!loadingUser}
           />
         </div>
         
@@ -101,7 +126,7 @@ export default function Login() {
           </Label>
         </div>
         
-        <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+        <Button type="submit" className="w-full" size="lg" disabled={isLoading || !!loadingUser}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -119,6 +144,36 @@ export default function Login() {
           Cadastre-se
         </Link>
       </p>
+
+      {/* Acesso Rápido - Desenvolvimento */}
+      <div className="mt-8 pt-6 border-t border-border">
+        <p className="text-center text-sm text-muted-foreground mb-4">
+          Acesso Rápido (Desenvolvimento)
+        </p>
+        <div className="flex flex-col gap-2">
+          {DEV_USERS.map((user) => {
+            const Icon = user.icon;
+            const isLoadingThis = loadingUser === user.email;
+            return (
+              <Button
+                key={user.email}
+                type="button"
+                variant={user.variant}
+                className="w-full"
+                onClick={() => handleQuickLogin(user.email, user.password)}
+                disabled={isLoading || !!loadingUser}
+              >
+                {isLoadingThis ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Icon className="mr-2 h-4 w-4" />
+                )}
+                {isLoadingThis ? 'Entrando...' : user.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
     </AuthLayout>
   );
 }
