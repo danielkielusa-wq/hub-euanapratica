@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { GraduationCap, Users, Shield, Loader2 } from 'lucide-react';
-import { UserRole } from '@/types/auth';
+import { Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -17,7 +15,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login, loginAsRole } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -41,33 +39,17 @@ export default function Login() {
         title: "Bem-vindo!",
         description: "Login realizado com sucesso.",
       });
-      navigate('/dashboard');
-    } catch (error) {
+      // Navigation will happen automatically via auth state change
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Email ou senha incorretos.";
       toast({
         title: "Erro",
-        description: "Email ou senha incorretos.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
-  
-  const handleQuickLogin = (role: UserRole) => {
-    loginAsRole(role);
-    
-    const routes = {
-      student: '/dashboard',
-      mentor: '/mentor/dashboard',
-      admin: '/admin/dashboard',
-    };
-    
-    toast({
-      title: "Bem-vindo!",
-      description: `Logado como ${role === 'student' ? 'Aluno' : role === 'mentor' ? 'Mentor' : 'Administrador'}.`,
-    });
-    
-    navigate(routes[role]);
   };
   
   return (
@@ -130,50 +112,6 @@ export default function Login() {
           )}
         </Button>
       </form>
-      
-      <div className="mt-6">
-        <div className="relative">
-          <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-4 text-sm text-muted-foreground">
-            ou acesse como
-          </span>
-        </div>
-        
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          <Button
-            type="button"
-            variant="student"
-            size="lg"
-            className="flex flex-col h-auto py-4 gap-2"
-            onClick={() => handleQuickLogin('student')}
-          >
-            <GraduationCap className="h-6 w-6" />
-            <span className="text-xs font-medium">Aluno</span>
-          </Button>
-          
-          <Button
-            type="button"
-            variant="mentor"
-            size="lg"
-            className="flex flex-col h-auto py-4 gap-2"
-            onClick={() => handleQuickLogin('mentor')}
-          >
-            <Users className="h-6 w-6" />
-            <span className="text-xs font-medium">Mentor</span>
-          </Button>
-          
-          <Button
-            type="button"
-            variant="admin"
-            size="lg"
-            className="flex flex-col h-auto py-4 gap-2"
-            onClick={() => handleQuickLogin('admin')}
-          >
-            <Shield className="h-6 w-6" />
-            <span className="text-xs font-medium">Admin</span>
-          </Button>
-        </div>
-      </div>
       
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}

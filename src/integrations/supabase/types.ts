@@ -14,16 +14,337 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      espacos: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          mentor_id: string | null
+          name: string
+          start_date: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          mentor_id?: string | null
+          name: string
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          mentor_id?: string | null
+          name?: string
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          sent_at: string | null
+          session_id: string | null
+          status: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          sent_at?: string | null
+          session_id?: string | null
+          status?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          sent_at?: string | null
+          session_id?: string | null
+          status?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          profile_photo_url: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          profile_photo_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          profile_photo_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      session_attendance: {
+        Row: {
+          id: string
+          marked_at: string | null
+          marked_by: string | null
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_status"] | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          session_id: string
+          status?: Database["public"]["Enums"]["attendance_status"] | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["attendance_status"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_materials: {
+        Row: {
+          file_url: string
+          id: string
+          material_type: Database["public"]["Enums"]["material_type"] | null
+          session_id: string
+          title: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          file_url: string
+          id?: string
+          material_type?: Database["public"]["Enums"]["material_type"] | null
+          session_id: string
+          title: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          file_url?: string
+          id?: string
+          material_type?: Database["public"]["Enums"]["material_type"] | null
+          session_id?: string
+          title?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_materials_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          datetime: string
+          description: string | null
+          duration_minutes: number | null
+          espaco_id: string
+          id: string
+          is_recurring: boolean | null
+          meeting_link: string | null
+          recording_url: string | null
+          recurrence_pattern: Json | null
+          status: Database["public"]["Enums"]["session_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          datetime: string
+          description?: string | null
+          duration_minutes?: number | null
+          espaco_id: string
+          id?: string
+          is_recurring?: boolean | null
+          meeting_link?: string | null
+          recording_url?: string | null
+          recurrence_pattern?: Json | null
+          status?: Database["public"]["Enums"]["session_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          datetime?: string
+          description?: string | null
+          duration_minutes?: number | null
+          espaco_id?: string
+          id?: string
+          is_recurring?: boolean | null
+          meeting_link?: string | null
+          recording_url?: string | null
+          recurrence_pattern?: Json | null
+          status?: Database["public"]["Enums"]["session_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_espacos: {
+        Row: {
+          enrolled_at: string | null
+          espaco_id: string
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          enrolled_at?: string | null
+          espaco_id: string
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          enrolled_at?: string | null
+          espaco_id?: string
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_espacos_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_mentor: { Args: { _user_id: string }; Returns: boolean }
+      is_enrolled_in_espaco: {
+        Args: { _espaco_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_mentor_of_espaco: {
+        Args: { _espaco_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "mentor" | "student"
+      attendance_status: "present" | "absent" | "unmarked"
+      material_type: "pdf" | "link" | "video" | "other"
+      notification_type:
+        | "reminder_24h"
+        | "reminder_1h"
+        | "recording_available"
+        | "session_cancelled"
+        | "new_session"
+      session_status: "scheduled" | "live" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +471,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "mentor", "student"],
+      attendance_status: ["present", "absent", "unmarked"],
+      material_type: ["pdf", "link", "video", "other"],
+      notification_type: [
+        "reminder_24h",
+        "reminder_1h",
+        "recording_available",
+        "session_cancelled",
+        "new_session",
+      ],
+      session_status: ["scheduled", "live", "completed", "cancelled"],
+    },
   },
 } as const
