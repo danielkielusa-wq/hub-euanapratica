@@ -1,21 +1,22 @@
 export type UserRole = 'student' | 'mentor' | 'admin';
 
-export interface User {
+export interface Profile {
   id: string;
   email: string;
   full_name: string;
   phone?: string;
   profile_photo_url?: string;
-  timezone?: string;
-  role: UserRole;
-  email_verified: boolean;
+  timezone: string;
   created_at: string;
   updated_at: string;
-  last_login_at?: string;
+}
+
+export interface UserWithRole extends Profile {
+  role: UserRole;
 }
 
 export interface AuthState {
-  user: User | null;
+  user: UserWithRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
