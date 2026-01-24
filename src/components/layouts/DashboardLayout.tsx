@@ -12,7 +12,9 @@ import {
   X,
   GraduationCap,
   ClipboardList,
-  UserCog
+  UserCog,
+  Calendar,
+  MessageCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -23,10 +25,12 @@ interface DashboardLayoutProps {
 
 const roleNavItems = {
   student: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Minhas Turmas', href: '/dashboard/turmas', icon: BookOpen },
-    { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
-    { label: 'Perfil', href: '/dashboard/perfil', icon: Settings },
+    { label: 'Início', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Meus Espaços', href: '/dashboard/espacos', icon: Users },
+    { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+    { label: 'Conteúdo', href: '/dashboard/conteudo', icon: BookOpen },
+    { label: 'Atividades', href: '/dashboard/tarefas', icon: ClipboardList },
+    { label: 'Suporte', href: '/dashboard/suporte', icon: MessageCircle },
   ],
   mentor: [
     { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
