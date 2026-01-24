@@ -10,7 +10,12 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
+import StudentAgenda from "./pages/dashboards/StudentAgenda";
 import MentorDashboard from "./pages/dashboards/MentorDashboard";
+import MentorAgenda from "./pages/mentor/MentorAgenda";
+import CreateSession from "./pages/mentor/CreateSession";
+import EditSession from "./pages/mentor/EditSession";
+import SessionAttendance from "./pages/mentor/SessionAttendance";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -68,11 +73,36 @@ function AppRoutes() {
           <StudentDashboard />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/agenda" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentAgenda />
+        </ProtectedRoute>
+      } />
       
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={
         <ProtectedRoute allowedRoles={['mentor']}>
           <MentorDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/agenda" element={
+        <ProtectedRoute allowedRoles={['mentor']}>
+          <MentorAgenda />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/sessao/nova" element={
+        <ProtectedRoute allowedRoles={['mentor']}>
+          <CreateSession />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/sessao/:id" element={
+        <ProtectedRoute allowedRoles={['mentor']}>
+          <EditSession />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/sessao/:id/presenca" element={
+        <ProtectedRoute allowedRoles={['mentor']}>
+          <SessionAttendance />
         </ProtectedRoute>
       } />
       

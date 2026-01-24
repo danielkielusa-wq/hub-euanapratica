@@ -34,6 +34,7 @@ const roleNavItems = {
   ],
   mentor: [
     { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
+    { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
     { label: 'Turmas', href: '/mentor/turmas', icon: GraduationCap },
     { label: 'Alunos', href: '/mentor/alunos', icon: Users },
     { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
