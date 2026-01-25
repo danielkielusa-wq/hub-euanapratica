@@ -23,6 +23,12 @@ import CreateSession from "./pages/mentor/CreateSession";
 import EditSession from "./pages/mentor/EditSession";
 import SessionAttendance from "./pages/mentor/SessionAttendance";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import AdminEspacos from "./pages/admin/AdminEspacos";
+import AdminEspacoDetail from "./pages/admin/AdminEspacoDetail";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminEnrollments from "./pages/admin/AdminEnrollments";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminReports from "./pages/admin/AdminReports";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import NotFound from "./pages/NotFound";
@@ -160,6 +166,36 @@ function AppRoutes() {
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/turmas" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminEspacos />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/turmas/:id" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminEspacoDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/usuarios" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminUsers />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/matriculas" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminEnrollments />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/produtos" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminProducts />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/relatorios" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminReports />
         </ProtectedRoute>
       } />
       <Route path="/admin/biblioteca/upload" element={
