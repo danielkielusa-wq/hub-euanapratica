@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StudentAgenda from "./pages/dashboards/StudentAgenda";
 import StudentEspacos from "./pages/student/StudentEspacos";
@@ -107,6 +108,7 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/cadastro" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/esqueci-senha" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       
       {/* Student routes */}
       <Route path="/dashboard" element={
