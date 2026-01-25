@@ -317,6 +317,57 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_items: {
+        Row: {
+          admin_notes: string | null
+          attachment_name: string | null
+          attachment_url: string | null
+          created_at: string | null
+          description: string
+          id: string
+          page_url: string
+          priority: Database["public"]["Enums"]["feedback_priority"]
+          status: Database["public"]["Enums"]["feedback_status"]
+          title: string
+          type: Database["public"]["Enums"]["feedback_type"]
+          updated_at: string | null
+          user_id: string
+          user_role: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          attachment_name?: string | null
+          attachment_url?: string | null
+          created_at?: string | null
+          description: string
+          id?: string
+          page_url: string
+          priority?: Database["public"]["Enums"]["feedback_priority"]
+          status?: Database["public"]["Enums"]["feedback_status"]
+          title: string
+          type: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string | null
+          user_id: string
+          user_role: string
+        }
+        Update: {
+          admin_notes?: string | null
+          attachment_name?: string | null
+          attachment_url?: string | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          page_url?: string
+          priority?: Database["public"]["Enums"]["feedback_priority"]
+          status?: Database["public"]["Enums"]["feedback_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string | null
+          user_id?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       folders: {
         Row: {
           created_at: string | null
@@ -1041,6 +1092,14 @@ export type Database = {
         | "bootcamp"
         | "course"
       espaco_visibility: "public" | "private"
+      feedback_priority: "low" | "medium" | "high"
+      feedback_status:
+        | "new"
+        | "in_review"
+        | "resolved"
+        | "considered_no_action"
+        | "discarded"
+      feedback_type: "bug" | "enhancement"
       file_type:
         | "pdf"
         | "docx"
@@ -1202,6 +1261,15 @@ export const Constants = {
         "course",
       ],
       espaco_visibility: ["public", "private"],
+      feedback_priority: ["low", "medium", "high"],
+      feedback_status: [
+        "new",
+        "in_review",
+        "resolved",
+        "considered_no_action",
+        "discarded",
+      ],
+      feedback_type: ["bug", "enhancement"],
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [

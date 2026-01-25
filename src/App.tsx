@@ -38,6 +38,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminEnrollments from "./pages/admin/AdminEnrollments";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminFeedback from "./pages/admin/AdminFeedback";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
@@ -277,6 +278,11 @@ function AppRoutes() {
       <Route path="/admin/testes-e2e" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminE2ETests />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/feedback" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminFeedback />
         </ProtectedRoute>
       } />
       
