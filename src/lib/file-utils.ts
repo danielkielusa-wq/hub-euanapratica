@@ -90,6 +90,9 @@ export function getFileTypeFromExtension(filename: string): FileType {
   return extMap[ext || ''] || 'pdf';
 }
 
+// Alias for getFileTypeFromExtension
+export const getFileTypeFromName = getFileTypeFromExtension;
+
 export function isPreviewable(fileType: FileType): boolean {
   return ['pdf', 'png', 'jpg'].includes(fileType);
 }

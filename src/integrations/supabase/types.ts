@@ -457,10 +457,13 @@ export type Database = {
           filename: string
           folder_id: string
           id: string
+          owner_role: string | null
+          owner_user_id: string | null
           title: string | null
           updated_at: string | null
           uploaded_at: string | null
           uploaded_by: string | null
+          visibility_scope: Database["public"]["Enums"]["visibility_scope"]
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level"] | null
@@ -473,10 +476,13 @@ export type Database = {
           filename: string
           folder_id: string
           id?: string
+          owner_role?: string | null
+          owner_user_id?: string | null
           title?: string | null
           updated_at?: string | null
           uploaded_at?: string | null
           uploaded_by?: string | null
+          visibility_scope?: Database["public"]["Enums"]["visibility_scope"]
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level"] | null
@@ -489,10 +495,13 @@ export type Database = {
           filename?: string
           folder_id?: string
           id?: string
+          owner_role?: string | null
+          owner_user_id?: string | null
           title?: string | null
           updated_at?: string | null
           uploaded_at?: string | null
           uploaded_by?: string | null
+          visibility_scope?: Database["public"]["Enums"]["visibility_scope"]
         }
         Relationships: [
           {
@@ -1120,6 +1129,7 @@ export type Database = {
       session_status: "scheduled" | "live" | "completed" | "cancelled"
       submission_status: "draft" | "submitted" | "reviewed"
       submission_type: "file" | "text" | "both"
+      visibility_scope: "space_all" | "mentor_and_owner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1283,6 +1293,7 @@ export const Constants = {
       session_status: ["scheduled", "live", "completed", "cancelled"],
       submission_status: ["draft", "submitted", "reviewed"],
       submission_type: ["file", "text", "both"],
+      visibility_scope: ["space_all", "mentor_and_owner"],
     },
   },
 } as const

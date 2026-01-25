@@ -10,6 +10,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useFolders } from '@/hooks/useFolders';
 import { CATEGORY_LABELS } from '@/types/admin';
+import { EspacoLibrary } from '@/components/library/EspacoLibrary';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -18,7 +19,8 @@ import {
   Video,
   Clock,
   Users,
-  BookOpen
+  BookOpen,
+  Library
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -183,7 +185,10 @@ export default function StudentEspacoDetail() {
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="sessions">Sessões</TabsTrigger>
             <TabsTrigger value="assignments">Tarefas</TabsTrigger>
-            <TabsTrigger value="materials">Materiais</TabsTrigger>
+            <TabsTrigger value="library" className="gap-2">
+              <Library className="h-4 w-4" />
+              Biblioteca
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -371,47 +376,12 @@ export default function StudentEspacoDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="materials">
-            <Card>
-              <CardHeader>
-                <CardTitle>Materiais do Espaço</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!folders || folders.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FolderOpen className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">
-                      Nenhum material disponível ainda
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => navigate('/biblioteca')}
-                    >
-                      Ir para Biblioteca
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {folders.map(folder => (
-                      <div 
-                        key={folder.id} 
-                        className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => navigate(`/biblioteca?folder=${folder.id}`)}
-                      >
-                        <FolderOpen className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-medium">{folder.name}</p>
-                          {folder.description && (
-                            <p className="text-sm text-muted-foreground">{folder.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="library">
+            <EspacoLibrary
+              espacoId={id!}
+              espacoName={espaco.name}
+              userRole="student"
+            />
           </TabsContent>
         </Tabs>
       </div>
