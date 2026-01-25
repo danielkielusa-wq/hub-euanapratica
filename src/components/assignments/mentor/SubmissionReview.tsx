@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -60,32 +60,55 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      review_result: submission?.review_result || undefined,
-      feedback: submission?.feedback || '',
+      review_result: undefined,
+      feedback: '',
     },
   });
 
-  // Reset form when submission changes
-  if (submission && form.getValues('review_result') !== submission.review_result) {
-    form.reset({
-      review_result: submission.review_result || undefined,
-      feedback: submission.feedback || '',
-    });
-  }
+  // Reset form when submission changes - MUST be in useEffect
+  useEffect(() => {
+    if (submission && open) {
+      form.reset({
+        review_result: submission.review_result || undefined,
+        feedback: submission.feedback || '',
+      });
+    }
+  }, [submission?.id, open, form]);
 
   const onSubmit = async (data: FormData) => {
-    if (!submission) return;
+    if (!submission?.id) {
+      console.error('Submission not found');
+      return;
+    }
 
-    await submitFeedback.mutateAsync({
-      submission_id: submission.id,
-      review_result: data.review_result as ReviewResult,
-      feedback: data.feedback,
-    });
-
-    onClose();
+    try {
+      await submitFeedback.mutateAsync({
+        submission_id: submission.id,
+        review_result: data.review_result as ReviewResult,
+        feedback: data.feedback,
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    }
   };
 
-  if (!submission) return null;
+  // Show loading state instead of null when no submission
+  if (!submission) {
+    return (
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent className="w-full sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>Avaliar Entrega</SheetTitle>
+            <SheetDescription>Carregando dados...</SheetDescription>
+          </SheetHeader>
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   const resultOptions = [
     { 
