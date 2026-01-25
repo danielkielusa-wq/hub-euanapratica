@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Loader2, Save, User, Mail, Phone, Globe, Shield, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -36,31 +37,26 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
+    phone_country_code: '+55',
+    is_whatsapp: false,
     timezone: 'America/Sao_Paulo',
   });
   const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize form data when profile loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         full_name: profile.full_name || '',
         phone: profile.phone || '',
+        phone_country_code: profile.phone_country_code || '+55',
+        is_whatsapp: profile.is_whatsapp || false,
         timezone: profile.timezone || 'America/Sao_Paulo',
       });
     }
-  });
+  }, [profile]);
 
-  // Update form when profile data changes
-  if (profile && !hasChanges && formData.full_name !== profile.full_name) {
-    setFormData({
-      full_name: profile.full_name || '',
-      phone: profile.phone || '',
-      timezone: profile.timezone || 'America/Sao_Paulo',
-    });
-  }
-
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
@@ -72,6 +68,8 @@ export default function ProfilePage() {
       await updateProfile.mutateAsync({
         full_name: formData.full_name,
         phone: formData.phone || null,
+        phone_country_code: formData.phone_country_code,
+        is_whatsapp: formData.is_whatsapp,
         timezone: formData.timezone,
       });
       toast.success('Perfil atualizado com sucesso!');
@@ -179,20 +177,22 @@ export default function ProfilePage() {
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="flex items-center gap-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
                       Telefone
                     </Label>
-                    <Input
-                      id="phone"
+                    <PhoneInput
                       value={formData.phone}
-                      onChange={(e) => handleChange('phone', e.target.value)}
-                      placeholder="+55 (11) 99999-9999"
+                      countryCode={formData.phone_country_code}
+                      isWhatsApp={formData.is_whatsapp}
+                      onValueChange={(phone) => handleChange('phone', phone)}
+                      onCountryCodeChange={(code) => handleChange('phone_country_code', code)}
+                      onWhatsAppChange={(isWhatsApp) => handleChange('is_whatsapp', isWhatsApp)}
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="timezone" className="flex items-center gap-2">
                       <Globe className="h-4 w-4" />
                       Fuso Horário

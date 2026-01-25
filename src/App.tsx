@@ -22,6 +22,7 @@ import MentorDashboard from "./pages/dashboards/MentorDashboard";
 import MentorAgenda from "./pages/mentor/MentorAgenda";
 import MentorEspacos from "./pages/mentor/MentorEspacos";
 import MentorEspacoDetail from "./pages/mentor/MentorEspacoDetail";
+import MentorCreateEspaco from "./pages/mentor/MentorCreateEspaco";
 import MentorAssignments from "./pages/mentor/MentorAssignments";
 import CreateAssignment from "./pages/mentor/CreateAssignment";
 import EditAssignment from "./pages/mentor/EditAssignment";
@@ -177,6 +178,11 @@ function AppRoutes() {
       <Route path="/mentor/espacos" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorEspacos />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/espacos/novo" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorCreateEspaco />
         </ProtectedRoute>
       } />
       <Route path="/mentor/espacos/:id" element={

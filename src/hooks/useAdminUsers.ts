@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { UserFilters } from '@/types/admin';
+import { useAuth } from '@/contexts/AuthContext';
+import type { UserFilters, UserAuditLog } from '@/types/admin';
 import { toast } from 'sonner';
 
 export interface AdminUser {
@@ -10,6 +11,8 @@ export interface AdminUser {
   phone: string | null;
   profile_photo_url: string | null;
   created_at: string | null;
+  status: 'active' | 'inactive';
+  last_login_at: string | null;
   role: 'admin' | 'mentor' | 'student';
   enrollments_count?: number;
 }
@@ -26,6 +29,13 @@ export function useAdminUsers(filters?: UserFilters) {
 
       if (filters?.search) {
         query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+
+      // Filter by status - default to active
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      } else if (!filters?.includeInactive) {
+        query = query.eq('status', 'active');
       }
 
       const { data: profiles, error } = await query;
@@ -54,6 +64,8 @@ export function useAdminUsers(filters?: UserFilters) {
 
       let result = profiles.map(profile => ({
         ...profile,
+        status: profile.status || 'active',
+        last_login_at: profile.last_login_at || null,
         role: roleMap[profile.id] || 'student',
         enrollments_count: enrollmentCounts[profile.id] || 0
       })) as AdminUser[];
@@ -118,9 +130,17 @@ export function useAdminUser(id: string) {
 
 export function useUpdateUserRole() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'mentor' | 'student' }) => {
+      // Get current role for audit
+      const { data: currentRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+
       // First check if user already has a role entry
       const { data: existing } = await supabase
         .from('user_roles')
@@ -142,6 +162,15 @@ export function useUpdateUserRole() {
           .insert({ user_id: userId, role });
         if (error) throw error;
       }
+
+      // Log the change
+      await supabase.from('user_audit_logs').insert({
+        user_id: userId,
+        changed_by_user_id: user?.id,
+        action: 'role_changed',
+        old_values: { role: currentRole?.role },
+        new_values: { role }
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -154,6 +183,142 @@ export function useUpdateUserRole() {
   });
 }
 
+export function useUpdateUserStatus() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ userId, status }: { userId: string; status: 'active' | 'inactive' }) => {
+      // Get current status for audit
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', userId)
+        .single();
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Log the change
+      await supabase.from('user_audit_logs').insert({
+        user_id: userId,
+        changed_by_user_id: user?.id,
+        action: 'status_changed',
+        old_values: { status: profile?.status },
+        new_values: { status }
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user', variables.userId] });
+      toast.success(variables.status === 'active' ? 'Usuário reativado!' : 'Usuário desativado!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao alterar status: ' + error.message);
+    }
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  const { user: adminUser } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: { 
+      full_name: string; 
+      email: string; 
+      password: string; 
+      role: 'admin' | 'mentor' | 'student';
+      status: 'active' | 'inactive';
+    }) => {
+      // Use signUp to create user (auto-confirm is enabled)
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.full_name,
+          }
+        }
+      });
+
+      if (signUpError) throw signUpError;
+      if (!authData.user) throw new Error('Falha ao criar usuário');
+
+      const newUserId = authData.user.id;
+
+      // Wait a bit for the trigger to create profile
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Update profile with status
+      await supabase
+        .from('profiles')
+        .update({ status: data.status })
+        .eq('id', newUserId);
+
+      // Update role if not student (student is default)
+      if (data.role !== 'student') {
+        await supabase
+          .from('user_roles')
+          .update({ role: data.role })
+          .eq('user_id', newUserId);
+      }
+
+      // Log the creation
+      await supabase.from('user_audit_logs').insert({
+        user_id: newUserId,
+        changed_by_user_id: adminUser?.id,
+        action: 'created',
+        new_values: { email: data.email, full_name: data.full_name, role: data.role, status: data.status }
+      });
+
+      return newUserId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Usuário criado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao criar usuário: ' + error.message);
+    }
+  });
+}
+
+export function useUserAuditLogs(userId: string) {
+  return useQuery({
+    queryKey: ['user-audit-logs', userId],
+    queryFn: async (): Promise<UserAuditLog[]> => {
+      const { data: logs, error } = await supabase
+        .from('user_audit_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      // Get changed_by profiles
+      const changedByIds = logs?.filter(l => l.changed_by_user_id).map(l => l.changed_by_user_id) || [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', changedByIds);
+
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+
+      return (logs || []).map(log => ({
+        ...log,
+        changed_by: log.changed_by_user_id ? profileMap[log.changed_by_user_id] : undefined
+      })) as UserAuditLog[];
+    },
+    enabled: !!userId
+  });
+}
+
 export function useSearchUsers(search: string) {
   return useQuery({
     queryKey: ['search-users', search],
@@ -163,6 +328,7 @@ export function useSearchUsers(search: string) {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, email, profile_photo_url')
+        .eq('status', 'active')
         .or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
         .limit(10);
 

@@ -25,6 +25,13 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       return null;
     }
 
+    // Check if user is inactive
+    if (profile.status === 'inactive') {
+      console.error('User is inactive');
+      await supabase.auth.signOut();
+      return null;
+    }
+
     // Buscar role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
@@ -42,8 +49,12 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       email: profile.email,
       full_name: profile.full_name,
       phone: profile.phone ?? undefined,
+      phone_country_code: profile.phone_country_code ?? '+55',
+      is_whatsapp: profile.is_whatsapp ?? false,
       profile_photo_url: profile.profile_photo_url ?? undefined,
       timezone: profile.timezone ?? 'America/Sao_Paulo',
+      status: (profile.status as 'active' | 'inactive') ?? 'active',
+      last_login_at: profile.last_login_at ?? undefined,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
       role: roleData.role as UserRole,
@@ -51,6 +62,25 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
   } catch (error) {
     console.error('Error in fetchUserWithRole:', error);
     return null;
+  }
+}
+
+// Update last login timestamp
+async function updateLastLogin(userId: string): Promise<void> {
+  try {
+    await supabase
+      .from('profiles')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('id', userId);
+    
+    // Log the login
+    await supabase.from('user_audit_logs').insert({
+      user_id: userId,
+      action: 'login',
+      new_values: { timestamp: new Date().toISOString() }
+    });
+  } catch (error) {
+    console.error('Error updating last login:', error);
   }
 }
 
@@ -112,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -120,6 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       throw error;
+    }
+
+    // Update last login
+    if (data.user) {
+      await updateLastLogin(data.user.id);
     }
     // Auth state will be updated by the listener
   }, []);
