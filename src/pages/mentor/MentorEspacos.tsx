@@ -124,57 +124,58 @@ export default function MentorEspacos() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
             {filteredEspacos.map((espaco) => (
-              <Card 
-                key={espaco.id} 
-                className="group hover:shadow-md transition-all cursor-pointer"
-                onClick={() => navigate(`/mentor/espacos/${espaco.id}`)}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                        {espaco.name}
-                      </h3>
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {categoryLabels[espaco.category] || espaco.category}
+              <div key={espaco.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
+                <Card 
+                  className="group hover:shadow-md transition-all cursor-pointer h-full"
+                  onClick={() => navigate(`/mentor/espacos/${espaco.id}`)}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                          {espaco.name}
+                        </h3>
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          {categoryLabels[espaco.category] || espaco.category}
+                        </Badge>
+                      </div>
+                      <Badge className={`${statusColors[espaco.status]} shrink-0 ml-2`}>
+                        {statusLabels[espaco.status] || espaco.status}
                       </Badge>
                     </div>
-                    <Badge className={`${statusColors[espaco.status]} shrink-0 ml-2`}>
-                      {statusLabels[espaco.status] || espaco.status}
-                    </Badge>
-                  </div>
-                  
-                  {espaco.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                      {espaco.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4" />
-                      <span>{espaco.enrolled_count || 0} alunos</span>
-                    </div>
-                    {espaco.start_date && (
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {format(new Date(espaco.start_date), "dd MMM yyyy", { locale: ptBR })}
-                        </span>
-                      </div>
+                    
+                    {espaco.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                        {espaco.description}
+                      </p>
                     )}
-                  </div>
 
-                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Ver detalhes
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-4 w-4" />
+                        <span>{espaco.enrolled_count || 0} alunos</span>
+                      </div>
+                      {espaco.start_date && (
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {format(new Date(espaco.start_date), "dd MMM yyyy", { locale: ptBR })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Ver detalhes
+                      </span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         )}

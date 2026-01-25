@@ -124,19 +124,21 @@ export default function StudentLibrary() {
 
             {/* Materials Grid */}
             {materialsLoading ? (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="flex flex-col items-center gap-4 w-full sm:grid sm:grid-cols-2">
                 {[1, 2, 3, 4].map(i => (
-                  <Card key={i}>
-                    <CardContent className="p-4">
-                      <div className="flex gap-3">
-                        <Skeleton className="h-12 w-12 rounded-lg" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-3 w-1/2" />
+                  <div key={i} className="w-full max-w-[90%] sm:max-w-none mx-auto sm:mx-0">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex gap-3">
+                          <Skeleton className="h-12 w-12 rounded-lg" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </div>
                 ))}
               </div>
             ) : displayMaterials.length === 0 ? (
@@ -154,17 +156,18 @@ export default function StudentLibrary() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="flex flex-col items-center gap-4 w-full sm:grid sm:grid-cols-2">
                 {displayMaterials.map(material => (
-                  <MaterialCard
-                    key={material.id}
-                    material={material}
-                    isFavorite={favoriteIds.data?.includes(material.id) || false}
-                    onDownload={() => handleDownload(material)}
-                    onPreview={() => handlePreview(material)}
-                    onToggleFavorite={() => handleToggleFavorite(material)}
-                    showFolder={!folderId}
-                  />
+                  <div key={material.id} className="w-full max-w-[90%] sm:max-w-none mx-auto sm:mx-0">
+                    <MaterialCard
+                      material={material}
+                      isFavorite={favoriteIds.data?.includes(material.id) || false}
+                      onDownload={() => handleDownload(material)}
+                      onPreview={() => handlePreview(material)}
+                      onToggleFavorite={() => handleToggleFavorite(material)}
+                      showFolder={!folderId}
+                    />
+                  </div>
                 ))}
               </div>
             )}

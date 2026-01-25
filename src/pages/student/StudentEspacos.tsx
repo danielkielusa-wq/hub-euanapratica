@@ -61,58 +61,59 @@ export default function StudentEspacos() {
 
         {/* Espacos Grid */}
         {espacos && espacos.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
             {espacos.map((espaco) => (
-              <Card 
-                key={espaco.id} 
-                className="hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => navigate(`/dashboard/espacos/${espaco.id}`)}
-              >
-                {espaco.cover_image_url && (
-                  <div className="h-32 overflow-hidden rounded-t-lg">
-                    <img 
-                      src={espaco.cover_image_url} 
-                      alt={espaco.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                )}
-                <CardHeader className={!espaco.cover_image_url ? 'pt-6' : ''}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{espaco.name}</CardTitle>
-                      <CardDescription className="line-clamp-2 mt-1">
-                        {espaco.description || 'Sem descrição'}
-                      </CardDescription>
+              <div key={espaco.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
+                <Card 
+                  className="hover:shadow-md transition-shadow cursor-pointer group h-full"
+                  onClick={() => navigate(`/dashboard/espacos/${espaco.id}`)}
+                >
+                  {espaco.cover_image_url && (
+                    <div className="h-32 overflow-hidden rounded-t-lg">
+                      <img 
+                        src={espaco.cover_image_url} 
+                        alt={espaco.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
-                    <Badge className={statusColors[espaco.status || 'active']}>
-                      {statusLabels[espaco.status || 'active']}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <GraduationCap className="h-4 w-4" />
-                      <span>{categoryLabels[espaco.category || 'course'] || espaco.category}</span>
-                    </div>
-                    {espaco.start_date && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {format(new Date(espaco.start_date), "MMM yyyy", { locale: ptBR })}
-                        </span>
+                  )}
+                  <CardHeader className={!espaco.cover_image_url ? 'pt-6' : ''}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg truncate">{espaco.name}</CardTitle>
+                        <CardDescription className="line-clamp-2 mt-1">
+                          {espaco.description || 'Sem descrição'}
+                        </CardDescription>
                       </div>
-                    )}
-                  </div>
-                  <div className="mt-4 flex justify-end">
-                    <Button variant="ghost" size="sm" className="gap-1">
-                      Acessar
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Badge className={statusColors[espaco.status || 'active']}>
+                        {statusLabels[espaco.status || 'active']}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <GraduationCap className="h-4 w-4" />
+                        <span>{categoryLabels[espaco.category || 'course'] || espaco.category}</span>
+                      </div>
+                      {espaco.start_date && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {format(new Date(espaco.start_date), "MMM yyyy", { locale: ptBR })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        Acessar
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         ) : (
