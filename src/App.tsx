@@ -42,13 +42,15 @@ import AdminFeedback from "./pages/admin/AdminFeedback";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 // Protected route component
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
+function ProtectedRoute({ children, allowedRoles, skipOnboardingCheck }: { children: React.ReactNode; allowedRoles?: string[]; skipOnboardingCheck?: boolean }) {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const location = window.location.pathname;
   
   // Wait for auth state to be resolved before redirecting
   if (isLoading) {
@@ -61,6 +63,11 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  
+  // Check if user needs to complete onboarding (skip for onboarding route itself)
+  if (!skipOnboardingCheck && user && !user.has_completed_onboarding && location !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
   
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
@@ -110,6 +117,13 @@ function AppRoutes() {
       <Route path="/cadastro" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/esqueci-senha" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      
+      {/* Onboarding route */}
+      <Route path="/onboarding" element={
+        <ProtectedRoute skipOnboardingCheck>
+          <Onboarding />
+        </ProtectedRoute>
+      } />
       
       {/* Student routes */}
       <Route path="/dashboard" element={

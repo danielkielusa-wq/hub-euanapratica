@@ -7,6 +7,7 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: { full_name: string; email: string; password: string }) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,6 +59,7 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       created_at: profile.created_at,
       updated_at: profile.updated_at,
       role: roleData.role as UserRole,
+      has_completed_onboarding: profile.has_completed_onboarding ?? false,
     };
   } catch (error) {
     console.error('Error in fetchUserWithRole:', error);
@@ -189,8 +191,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Auth state will be updated by the listener (auto-confirm is enabled)
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const userWithRole = await fetchUserWithRole(session.user);
+      setAuthState({
+        user: userWithRole,
+        isAuthenticated: !!userWithRole,
+        isLoading: false,
+      });
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, register }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, register, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
