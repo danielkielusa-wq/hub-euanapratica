@@ -43,10 +43,35 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total de Usuários" value={stats?.totalUsers ?? 0} icon={Users} />
-          <StatCard title="Espaços Ativos" value={stats?.totalActiveEspacos ?? 0} icon={GraduationCap} />
-          <StatCard title="Matrículas Ativas" value={stats?.totalActiveEnrollments ?? 0} icon={BookOpen} />
-          <StatCard title="Acessos Expirando" value={stats?.expiringAccess30Days ?? 0} icon={AlertTriangle} variant={stats?.expiringAccess30Days ? 'warning' : 'default'} />
+          <StatCard 
+            title="Total de Usuários" 
+            value={stats?.totalUsers ?? 0} 
+            icon={Users}
+            onClick={() => navigate('/admin/usuarios')}
+            tooltip="Usuários cadastrados na plataforma"
+          />
+          <StatCard 
+            title="Espaços Ativos" 
+            value={stats?.totalActiveEspacos ?? 0} 
+            icon={GraduationCap}
+            onClick={() => navigate('/admin/espacos')}
+            tooltip="Turmas/espaços com status ativo"
+          />
+          <StatCard 
+            title="Matrículas Ativas" 
+            value={stats?.totalActiveEnrollments ?? 0} 
+            icon={BookOpen}
+            onClick={() => navigate('/admin/matriculas')}
+            tooltip="Vínculos ativos entre usuários e espaços"
+          />
+          <StatCard 
+            title="Acessos Expirando" 
+            value={stats?.expiringAccess30Days ?? 0} 
+            icon={AlertTriangle} 
+            variant={stats?.expiringAccess30Days ? 'warning' : 'default'}
+            onClick={() => navigate('/admin/matriculas?filter=expiring')}
+            tooltip="Matrículas que vencem nos próximos 30 dias"
+          />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">

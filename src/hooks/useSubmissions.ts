@@ -319,12 +319,15 @@ export function useUploadSubmissionFile() {
 
       if (error) throw error;
 
-      const { data: urlData } = supabase.storage
+      // Use signed URL since bucket is private
+      const { data: urlData, error: urlError } = await supabase.storage
         .from('submissions')
-        .getPublicUrl(data.path);
+        .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 days
+
+      if (urlError) throw urlError;
 
       return {
-        url: urlData.publicUrl,
+        url: urlData.signedUrl,
         path: data.path,
         name: file.name,
         size: file.size
@@ -333,6 +336,39 @@ export function useUploadSubmissionFile() {
     onError: (error) => {
       console.error('Error uploading file:', error);
       toast.error('Erro ao fazer upload do arquivo');
+    }
+  });
+}
+
+// Get signed URL for file download (since bucket is private)
+export function useDownloadSubmissionFile() {
+  return useMutation({
+    mutationFn: async (filePath: string) => {
+      // Extract the path from the full URL if needed
+      let path = filePath;
+      
+      // If it's a full URL, extract just the path part
+      if (filePath.includes('/storage/v1/object/')) {
+        const match = filePath.match(/\/storage\/v1\/object\/(?:public|sign)\/submissions\/(.+)/);
+        if (match) {
+          path = match[1];
+        }
+      }
+      
+      const { data, error } = await supabase.storage
+        .from('submissions')
+        .createSignedUrl(path, 60 * 60); // 1 hour
+
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        throw new Error('Não foi possível gerar o link de download');
+      }
+
+      return data.signedUrl;
+    },
+    onError: (error) => {
+      console.error('Error getting download URL:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao gerar link de download');
     }
   });
 }

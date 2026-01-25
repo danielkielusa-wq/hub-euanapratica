@@ -66,7 +66,7 @@ export default function StudentEspacos() {
               <Card 
                 key={espaco.id} 
                 className="hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => navigate(`/biblioteca`)}
+                onClick={() => navigate(`/dashboard/espacos/${espaco.id}`)}
               >
                 {espaco.cover_image_url && (
                   <div className="h-32 overflow-hidden rounded-t-lg">

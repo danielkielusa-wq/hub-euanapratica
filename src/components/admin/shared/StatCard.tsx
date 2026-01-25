@@ -1,60 +1,68 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
   value: string | number;
+  icon: LucideIcon;
   description?: string;
-  icon?: LucideIcon;
   trend?: {
     value: number;
-    label: string;
+    isPositive: boolean;
   };
-  variant?: 'default' | 'success' | 'warning' | 'destructive';
+  onClick?: () => void;
+  tooltip?: string;
+  variant?: 'default' | 'warning';
 }
 
-export function StatCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-  trend,
+export function StatCard({ 
+  title, 
+  value, 
+  icon: Icon, 
+  description, 
+  trend, 
+  onClick, 
+  tooltip,
   variant = 'default'
 }: StatCardProps) {
-  const variantStyles = {
-    default: '',
-    success: 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20',
-    warning: 'border-yellow-200 bg-yellow-50/50 dark:border-yellow-900 dark:bg-yellow-950/20',
-    destructive: 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20'
-  };
-
-  const iconStyles = {
-    default: 'text-muted-foreground',
-    success: 'text-green-600 dark:text-green-400',
-    warning: 'text-yellow-600 dark:text-yellow-400',
-    destructive: 'text-red-600 dark:text-red-400'
-  };
-
   return (
-    <Card className={cn(variantStyles[variant])}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {Icon && <Icon className={cn('h-4 w-4', iconStyles[variant])} />}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {trend && (
-          <p className={cn(
-            "text-xs mt-1",
-            trend.value > 0 ? "text-primary" : trend.value < 0 ? "text-destructive" : "text-muted-foreground"
+    <Card 
+      className={cn(
+        "transition-all",
+        onClick && "cursor-pointer hover:shadow-md hover:border-primary/30",
+        variant === 'warning' && "border-orange-500/30 bg-orange-500/5"
+      )}
+      onClick={onClick}
+      title={tooltip}
+    >
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold text-foreground">{value}</p>
+            {description && (
+              <p className="text-xs text-muted-foreground">{description}</p>
+            )}
+            {trend && (
+              <p className={cn(
+                "text-xs font-medium",
+                trend.isPositive ? "text-primary" : "text-destructive"
+              )}>
+                {trend.isPositive ? '+' : ''}{trend.value}% em relação ao mês anterior
+              </p>
+            )}
+          </div>
+          <div className={cn(
+            "p-3 rounded-lg",
+            variant === 'warning' ? "bg-orange-500/10" : "bg-primary/10"
           )}>
-            {trend.value > 0 ? '+' : ''}{trend.value}% {trend.label}
-          </p>
-        )}
+            <Icon className={cn(
+              "h-6 w-6",
+              variant === 'warning' ? "text-orange-500" : "text-primary"
+            )} />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
