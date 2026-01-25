@@ -5,7 +5,6 @@ import { StudentHeader } from '@/components/dashboard/StudentHeader';
 import { UpcomingSessions } from '@/components/dashboard/UpcomingSessions';
 import { PendingTasks } from '@/components/dashboard/PendingTasks';
 import { ProgressOverview } from '@/components/dashboard/ProgressOverview';
-import { QuickActions } from '@/components/dashboard/QuickActions';
 import { useStudentUpcomingSessions, useStudentProgress } from '@/hooks/useStudentSessions';
 
 export default function StudentDashboard() {
@@ -26,12 +25,12 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <StudentHeader />
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-8 lg:grid-cols-3">
           {/* Main content - left 2 columns */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
             <UpcomingSessions 
               sessions={upcomingSessions || []}
               isLoading={sessionsLoading}
@@ -42,12 +41,13 @@ export default function StudentDashboard() {
           </div>
 
           {/* Sidebar - right column */}
-          <div className="space-y-6">
-            <QuickActions />
-            <ProgressOverview 
-              cohorts={cohortProgress || []}
-              isLoading={progressLoading}
-            />
+          <div className="order-1 lg:order-2 flex flex-col items-center lg:items-stretch">
+            <div className="w-full max-w-[90%] lg:max-w-none mx-auto lg:mx-0">
+              <ProgressOverview 
+                cohorts={cohortProgress || []}
+                isLoading={progressLoading}
+              />
+            </div>
           </div>
         </div>
       </div>
