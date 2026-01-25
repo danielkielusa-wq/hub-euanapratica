@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Clock, FileCheck } from 'lucide-react';
+import { FileText, Download, Clock, FileCheck, Loader2, AlertCircle } from 'lucide-react';
 import { formatFileSize } from '@/lib/file-utils';
+import { useDownloadSubmissionFile } from '@/hooks/useSubmissions';
+import { toast } from 'sonner';
 import type { Submission } from '@/types/assignments';
 
 interface SubmissionViewProps {
@@ -11,9 +14,30 @@ interface SubmissionViewProps {
 }
 
 export function SubmissionView({ submission }: SubmissionViewProps) {
-  const handleDownload = () => {
-    if (submission.file_url) {
-      window.open(submission.file_url, '_blank');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const downloadMutation = useDownloadSubmissionFile();
+
+  const handleDownload = async () => {
+    if (!submission.file_url) return;
+
+    setIsDownloading(true);
+    try {
+      // Try to get a signed URL for download
+      const signedUrl = await downloadMutation.mutateAsync(submission.file_url);
+      
+      // Open in new tab or trigger download
+      const link = document.createElement('a');
+      link.href = signedUrl;
+      link.target = '_blank';
+      link.download = submission.file_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Erro ao baixar arquivo. Tente novamente.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -50,8 +74,17 @@ export function SubmissionView({ submission }: SubmissionViewProps) {
                 )}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDownload}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
               Baixar
             </Button>
           </div>

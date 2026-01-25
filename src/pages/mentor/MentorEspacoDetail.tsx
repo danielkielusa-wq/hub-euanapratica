@@ -65,9 +65,9 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  active: 'bg-green-500/10 text-green-600',
-  inactive: 'bg-muted text-muted-foreground',
-  completed: 'bg-blue-500/10 text-blue-600',
+  active: 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary',
+  inactive: 'bg-muted text-muted-foreground hover:bg-muted/80',
+  completed: 'bg-secondary/80 text-secondary-foreground hover:bg-secondary',
 };
 
 export default function MentorEspacoDetail() {
@@ -386,27 +386,56 @@ export default function MentorEspacoDetail() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem className="gap-2">
+                              <DropdownMenuItem 
+                                className="gap-2 cursor-pointer"
+                                onClick={() => navigate(`/perfil?user=${student.id}`)}
+                              >
                                 <Eye className="h-4 w-4" />
                                 Ver Perfil
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2">
+                              <DropdownMenuItem 
+                                className="gap-2 cursor-pointer"
+                                onClick={() => {
+                                  // Placeholder - open email client
+                                  window.location.href = `mailto:${student.email}?subject=Mensagem do Espaço ${espaco.name}`;
+                                }}
+                              >
                                 <Mail className="h-4 w-4" />
                                 Enviar Mensagem
                               </DropdownMenuItem>
                               {isAdmin && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="gap-2">
+                                  <DropdownMenuItem 
+                                    className="gap-2 cursor-pointer"
+                                    onClick={() => {
+                                      // TODO: Implement transfer modal
+                                      alert(`Funcionalidade de transferir ${student.fullName} em desenvolvimento.`);
+                                    }}
+                                  >
                                     <ArrowRightLeft className="h-4 w-4" />
                                     Transferir de Turma
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="gap-2">
+                                  <DropdownMenuItem 
+                                    className="gap-2 cursor-pointer"
+                                    onClick={() => {
+                                      // TODO: Implement history modal
+                                      alert(`Histórico de ${student.fullName} em desenvolvimento.`);
+                                    }}
+                                  >
                                     <HistoryIcon className="h-4 w-4" />
                                     Ver Histórico
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                                  <DropdownMenuItem 
+                                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                                    onClick={() => {
+                                      if (confirm(`Tem certeza que deseja remover ${student.fullName} deste espaço?`)) {
+                                        // TODO: Implement removal
+                                        alert(`Remoção de ${student.fullName} em desenvolvimento.`);
+                                      }
+                                    }}
+                                  >
                                     <UserMinus className="h-4 w-4" />
                                     Remover Aluno
                                   </DropdownMenuItem>
@@ -499,7 +528,7 @@ export default function MentorEspacoDetail() {
           <TabsContent value="assignments" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Tarefas do Espaço</h2>
-              <Button onClick={() => navigate('/mentor/tarefas/nova')}>
+              <Button onClick={() => navigate(`/mentor/tarefas/nova?espaco_id=${id}`)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Tarefa
               </Button>
@@ -539,7 +568,7 @@ export default function MentorEspacoDetail() {
                   <p className="text-muted-foreground mt-1">
                     Crie sua primeira tarefa para este espaço.
                   </p>
-                  <Button className="mt-4" onClick={() => navigate('/mentor/tarefas/nova')}>
+                  <Button className="mt-4" onClick={() => navigate(`/mentor/tarefas/nova?espaco_id=${id}`)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Criar Primeira Tarefa
                   </Button>

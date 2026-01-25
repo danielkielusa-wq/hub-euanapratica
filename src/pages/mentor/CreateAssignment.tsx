@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { AssignmentForm } from '@/components/assignments/mentor/AssignmentForm';
@@ -6,6 +6,17 @@ import { ArrowLeft, FileEdit } from 'lucide-react';
 
 export default function CreateAssignment() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const espacoIdFromUrl = searchParams.get('espaco_id');
+
+  const handleSuccess = () => {
+    // If we came from a specific espaco, go back there
+    if (espacoIdFromUrl) {
+      navigate(`/mentor/espacos/${espacoIdFromUrl}?tab=assignments`);
+    } else {
+      navigate('/mentor/tarefas');
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -28,8 +39,11 @@ export default function CreateAssignment() {
           </div>
         </div>
 
-        {/* Form */}
-        <AssignmentForm onSuccess={() => navigate('/mentor/tarefas')} />
+        {/* Form - pass the espaco_id if available */}
+        <AssignmentForm 
+          onSuccess={handleSuccess} 
+          defaultEspacoId={espacoIdFromUrl || undefined}
+        />
       </div>
     </DashboardLayout>
   );

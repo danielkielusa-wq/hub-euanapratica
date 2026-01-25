@@ -36,7 +36,7 @@ const formSchema = z.object({
   instructions: z.string().optional(),
   espaco_id: z.string().min(1, 'Selecione uma turma'),
   due_date: z.date({ required_error: 'Prazo é obrigatório' }),
-  due_time: z.string().default('23:59'),
+  due_time: z.string().default('12:00'),
   submission_type: z.enum(['file', 'text', 'both']),
   max_file_size: z.number().default(10485760),
   allowed_file_types: z.array(z.string()).default(['pdf', 'docx', 'xlsx', 'zip']),
@@ -48,9 +48,10 @@ type FormData = z.infer<typeof formSchema>;
 interface AssignmentFormProps {
   assignment?: Assignment;
   onSuccess?: () => void;
+  defaultEspacoId?: string;
 }
 
-export function AssignmentForm({ assignment, onSuccess }: AssignmentFormProps) {
+export function AssignmentForm({ assignment, onSuccess, defaultEspacoId }: AssignmentFormProps) {
   const { data: espacos, isLoading: espacosLoading } = useEspacos();
   const createAssignment = useCreateAssignment();
   const updateAssignment = useUpdateAssignment();
@@ -59,9 +60,10 @@ export function AssignmentForm({ assignment, onSuccess }: AssignmentFormProps) {
 
   // Parse existing due date if editing
   const existingDueDate = assignment?.due_date ? new Date(assignment.due_date) : undefined;
+  // Default time to 12:00 PM (noon) instead of 23:59 for better UX
   const existingDueTime = existingDueDate 
     ? format(existingDueDate, 'HH:mm')
-    : '23:59';
+    : '12:00';
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -69,7 +71,7 @@ export function AssignmentForm({ assignment, onSuccess }: AssignmentFormProps) {
       title: assignment?.title || '',
       description: assignment?.description || '',
       instructions: assignment?.instructions || '',
-      espaco_id: assignment?.espaco_id || '',
+      espaco_id: assignment?.espaco_id || defaultEspacoId || '',
       due_date: existingDueDate,
       due_time: existingDueTime,
       submission_type: assignment?.submission_type || 'both',

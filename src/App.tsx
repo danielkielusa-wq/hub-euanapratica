@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StudentAgenda from "./pages/dashboards/StudentAgenda";
 import StudentEspacos from "./pages/student/StudentEspacos";
+import StudentEspacoDetail from "./pages/student/StudentEspacoDetail";
 import StudentSuporte from "./pages/student/StudentSuporte";
 import StudentAssignments from "./pages/assignments/StudentAssignments";
 import AssignmentDetailPage from "./pages/assignments/AssignmentDetailPage";
@@ -114,6 +115,11 @@ function AppRoutes() {
       <Route path="/dashboard/espacos" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentEspacos />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/espacos/:id" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentEspacoDetail />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/agenda" element={
