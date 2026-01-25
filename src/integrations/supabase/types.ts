@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_materials: {
+        Row: {
+          assignment_id: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          title: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          title: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          title?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_materials_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          allow_late_submission: boolean | null
+          allowed_file_types: string[] | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string
+          espaco_id: string
+          id: string
+          instructions: string | null
+          max_file_size: number | null
+          published_at: string | null
+          status: Database["public"]["Enums"]["assignment_status"] | null
+          submission_type: Database["public"]["Enums"]["submission_type"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_late_submission?: boolean | null
+          allowed_file_types?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          espaco_id: string
+          id?: string
+          instructions?: string | null
+          max_file_size?: number | null
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"] | null
+          submission_type?:
+            | Database["public"]["Enums"]["submission_type"]
+            | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_late_submission?: boolean | null
+          allowed_file_types?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          espaco_id?: string
+          id?: string
+          instructions?: string | null
+          max_file_size?: number | null
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"] | null
+          submission_type?:
+            | Database["public"]["Enums"]["submission_type"]
+            | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       espacos: {
         Row: {
           created_at: string | null
@@ -395,6 +499,71 @@ export type Database = {
           },
         ]
       }
+      submissions: {
+        Row: {
+          assignment_id: string
+          created_at: string | null
+          draft_saved_at: string | null
+          feedback: string | null
+          file_name: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          review_result: Database["public"]["Enums"]["review_result"] | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at: string | null
+          text_content: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string | null
+          draft_saved_at?: string | null
+          feedback?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          review_result?: Database["public"]["Enums"]["review_result"] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at?: string | null
+          text_content?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string | null
+          draft_saved_at?: string | null
+          feedback?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          review_result?: Database["public"]["Enums"]["review_result"] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["submission_status"] | null
+          submitted_at?: string | null
+          text_content?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_espacos: {
         Row: {
           enrolled_at: string | null
@@ -502,6 +671,7 @@ export type Database = {
     Enums: {
       access_level: "public" | "restricted"
       app_role: "admin" | "mentor" | "student"
+      assignment_status: "draft" | "published" | "closed"
       attendance_status: "present" | "absent" | "unmarked"
       file_type:
         | "pdf"
@@ -519,7 +689,10 @@ export type Database = {
         | "recording_available"
         | "session_cancelled"
         | "new_session"
+      review_result: "approved" | "revision" | "rejected"
       session_status: "scheduled" | "live" | "completed" | "cancelled"
+      submission_status: "draft" | "submitted" | "reviewed"
+      submission_type: "file" | "text" | "both"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -649,6 +822,7 @@ export const Constants = {
     Enums: {
       access_level: ["public", "restricted"],
       app_role: ["admin", "mentor", "student"],
+      assignment_status: ["draft", "published", "closed"],
       attendance_status: ["present", "absent", "unmarked"],
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       material_type: ["pdf", "link", "video", "other"],
@@ -659,7 +833,10 @@ export const Constants = {
         "session_cancelled",
         "new_session",
       ],
+      review_result: ["approved", "revision", "rejected"],
       session_status: ["scheduled", "live", "completed", "cancelled"],
+      submission_status: ["draft", "submitted", "reviewed"],
+      submission_type: ["file", "text", "both"],
     },
   },
 } as const
