@@ -15,6 +15,8 @@ import StudentAssignments from "./pages/assignments/StudentAssignments";
 import AssignmentDetailPage from "./pages/assignments/AssignmentDetailPage";
 import MentorDashboard from "./pages/dashboards/MentorDashboard";
 import MentorAgenda from "./pages/mentor/MentorAgenda";
+import MentorEspacos from "./pages/mentor/MentorEspacos";
+import MentorEspacoDetail from "./pages/mentor/MentorEspacoDetail";
 import MentorAssignments from "./pages/mentor/MentorAssignments";
 import CreateAssignment from "./pages/mentor/CreateAssignment";
 import EditAssignment from "./pages/mentor/EditAssignment";
@@ -117,33 +119,58 @@ function AppRoutes() {
       
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={
-        <ProtectedRoute allowedRoles={['mentor']}>
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorDashboard />
         </ProtectedRoute>
       } />
+      <Route path="/mentor/espacos" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorEspacos />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/espacos/:id" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorEspacoDetail />
+        </ProtectedRoute>
+      } />
       <Route path="/mentor/agenda" element={
-        <ProtectedRoute allowedRoles={['mentor']}>
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorAgenda />
         </ProtectedRoute>
       } />
       <Route path="/mentor/sessao/nova" element={
-        <ProtectedRoute allowedRoles={['mentor']}>
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <CreateSession />
         </ProtectedRoute>
       } />
       <Route path="/mentor/sessao/:id" element={
-        <ProtectedRoute allowedRoles={['mentor']}>
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <EditSession />
         </ProtectedRoute>
       } />
       <Route path="/mentor/sessao/:id/presenca" element={
-        <ProtectedRoute allowedRoles={['mentor']}>
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <SessionAttendance />
         </ProtectedRoute>
       } />
       <Route path="/mentor/tarefas" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorAssignments />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/nova" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <CreateAssignment />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/:id" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <EditAssignment />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/:id/entregas" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <ReviewSubmissions />
         </ProtectedRoute>
       } />
       <Route path="/mentor/tarefas/nova" element={
@@ -168,12 +195,12 @@ function AppRoutes() {
           <AdminDashboard />
         </ProtectedRoute>
       } />
-      <Route path="/admin/turmas" element={
+      <Route path="/admin/espacos" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminEspacos />
         </ProtectedRoute>
       } />
-      <Route path="/admin/turmas/:id" element={
+      <Route path="/admin/espacos/:id" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminEspacoDetail />
         </ProtectedRoute>

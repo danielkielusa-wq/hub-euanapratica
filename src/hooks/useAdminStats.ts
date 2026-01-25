@@ -49,16 +49,14 @@ export function useExpiringAccess() {
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-      const { data, error } = await supabase
+      const { data: enrollments, error } = await supabase
         .from('user_espacos')
         .select(`
           id,
           user_id,
           espaco_id,
           access_expires_at,
-          status,
-          profiles:user_id (full_name, email),
-          espacos:espaco_id (name)
+          status
         `)
         .eq('status', 'active')
         .not('access_expires_at', 'is', null)
@@ -68,7 +66,25 @@ export function useExpiringAccess() {
         .limit(10);
 
       if (error) throw error;
-      return data;
+      if (!enrollments || enrollments.length === 0) return [];
+
+      // Get profiles separately
+      const userIds = enrollments.map(e => e.user_id);
+      const espacoIds = enrollments.map(e => e.espaco_id);
+      
+      const [profilesResult, espacosResult] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, email').in('id', userIds),
+        supabase.from('espacos').select('id, name').in('id', espacoIds)
+      ]);
+
+      const profileMap = new Map(profilesResult.data?.map(p => [p.id, p]) || []);
+      const espacoMap = new Map(espacosResult.data?.map(e => [e.id, e]) || []);
+
+      return enrollments.map(e => ({
+        ...e,
+        profiles: profileMap.get(e.user_id),
+        espacos: espacoMap.get(e.espaco_id)
+      }));
     }
   });
 }
@@ -77,20 +93,38 @@ export function useRecentEnrollments(limit = 5) {
   return useQuery({
     queryKey: ['recent-enrollments', limit],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: enrollments, error } = await supabase
         .from('user_espacos')
         .select(`
           id,
           enrolled_at,
           status,
-          profiles:user_id (full_name, email, profile_photo_url),
-          espacos:espaco_id (name)
+          user_id,
+          espaco_id
         `)
         .order('enrolled_at', { ascending: false })
         .limit(limit);
 
       if (error) throw error;
-      return data;
+      if (!enrollments || enrollments.length === 0) return [];
+
+      // Get profiles and espacos separately
+      const userIds = enrollments.map(e => e.user_id);
+      const espacoIds = enrollments.map(e => e.espaco_id);
+      
+      const [profilesResult, espacosResult] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, email, profile_photo_url').in('id', userIds),
+        supabase.from('espacos').select('id, name').in('id', espacoIds)
+      ]);
+
+      const profileMap = new Map(profilesResult.data?.map(p => [p.id, p]) || []);
+      const espacoMap = new Map(espacosResult.data?.map(e => [e.id, e]) || []);
+
+      return enrollments.map(e => ({
+        ...e,
+        profiles: profileMap.get(e.user_id),
+        espacos: espacoMap.get(e.espaco_id)
+      }));
     }
   });
 }

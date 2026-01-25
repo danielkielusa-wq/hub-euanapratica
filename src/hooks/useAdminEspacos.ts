@@ -257,16 +257,25 @@ export function useMentors() {
   return useQuery({
     queryKey: ['mentors'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Get user_ids with mentor or admin role
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          profiles:user_id (id, full_name, email)
-        `)
+        .select('user_id')
         .in('role', ['mentor', 'admin']);
 
-      if (error) throw error;
-      return data?.map(r => r.profiles).filter(Boolean) ?? [];
+      if (rolesError) throw rolesError;
+      if (!roles || roles.length === 0) return [];
+
+      const userIds = roles.map(r => r.user_id);
+      
+      // Get profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+      return profiles ?? [];
     }
   });
 }

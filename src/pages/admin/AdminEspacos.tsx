@@ -76,14 +76,14 @@ export default function AdminEspacos() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Turmas</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Gestão de Espaços</h1>
             <p className="text-muted-foreground">
-              Gerencie turmas, imersões e programas educacionais
+              Gerencie espaços, imersões e programas educacionais
             </p>
           </div>
           <Button onClick={() => setFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Nova Turma
+            Novo Espaço
           </Button>
         </div>
 
@@ -99,7 +99,7 @@ export default function AdminEspacos() {
               <EspacoCard
                 key={espaco.id}
                 espaco={espaco}
-                onView={(id) => navigate(`/admin/turmas/${id}`)}
+                onView={(id) => navigate(`/admin/espacos/${id}`)}
                 onEdit={handleEdit}
                 onDuplicate={(id) => duplicateMutation.mutate(id)}
                 onDelete={(id) => setDeleteId(id)}
@@ -108,9 +108,9 @@ export default function AdminEspacos() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhuma turma encontrada.</p>
+            <p className="text-muted-foreground">Nenhum espaço encontrado.</p>
             <Button variant="outline" className="mt-4" onClick={() => setFormOpen(true)}>
-              Criar primeira turma
+              Criar primeiro espaço
             </Button>
           </div>
         )}
@@ -138,10 +138,10 @@ export default function AdminEspacos() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Turma</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Espaço</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta turma? Esta ação não pode ser desfeita.
-              Turmas com alunos matriculados não podem ser excluídas.
+              Tem certeza que deseja excluir este espaço? Esta ação não pode ser desfeita.
+              Espaços com alunos matriculados não podem ser excluídos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
