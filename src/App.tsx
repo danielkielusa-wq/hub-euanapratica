@@ -17,6 +17,8 @@ import CreateSession from "./pages/mentor/CreateSession";
 import EditSession from "./pages/mentor/EditSession";
 import SessionAttendance from "./pages/mentor/SessionAttendance";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import StudentLibrary from "./pages/library/StudentLibrary";
+import UploadMaterials from "./pages/admin/UploadMaterials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,6 +81,18 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
+      {/* Library routes - accessible by all authenticated users */}
+      <Route path="/biblioteca" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <StudentLibrary />
+        </ProtectedRoute>
+      } />
+      <Route path="/biblioteca/pasta/:folderId" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <StudentLibrary />
+        </ProtectedRoute>
+      } />
+      
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={
         <ProtectedRoute allowedRoles={['mentor']}>
@@ -110,6 +124,11 @@ function AppRoutes() {
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/biblioteca/upload" element={
+        <ProtectedRoute allowedRoles={['admin', 'mentor']}>
+          <UploadMaterials />
         </ProtectedRoute>
       } />
       

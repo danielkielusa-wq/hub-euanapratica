@@ -50,6 +50,142 @@ export type Database = {
         }
         Relationships: []
       }
+      folders: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          espaco_id: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          espaco_id: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          espaco_id?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_downloads: {
+        Row: {
+          downloaded_at: string | null
+          id: string
+          material_id: string
+          user_id: string
+        }
+        Insert: {
+          downloaded_at?: string | null
+          id?: string
+          material_id: string
+          user_id: string
+        }
+        Update: {
+          downloaded_at?: string | null
+          id?: string
+          material_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_downloads_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          access_level: Database["public"]["Enums"]["access_level"] | null
+          available_at: string | null
+          description: string | null
+          display_order: number | null
+          file_size: number | null
+          file_type: Database["public"]["Enums"]["file_type"]
+          file_url: string
+          filename: string
+          folder_id: string
+          id: string
+          title: string | null
+          updated_at: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["access_level"] | null
+          available_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          file_size?: number | null
+          file_type: Database["public"]["Enums"]["file_type"]
+          file_url: string
+          filename: string
+          folder_id: string
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["access_level"] | null
+          available_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          file_size?: number | null
+          file_type?: Database["public"]["Enums"]["file_type"]
+          file_url?: string
+          filename?: string
+          folder_id?: string
+          id?: string
+          title?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -291,6 +427,35 @@ export type Database = {
           },
         ]
       }
+      user_favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          material_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          material_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          material_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -335,8 +500,18 @@ export type Database = {
       }
     }
     Enums: {
+      access_level: "public" | "restricted"
       app_role: "admin" | "mentor" | "student"
       attendance_status: "present" | "absent" | "unmarked"
+      file_type:
+        | "pdf"
+        | "docx"
+        | "xlsx"
+        | "pptx"
+        | "zip"
+        | "png"
+        | "jpg"
+        | "link"
       material_type: "pdf" | "link" | "video" | "other"
       notification_type:
         | "reminder_24h"
@@ -472,8 +647,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_level: ["public", "restricted"],
       app_role: ["admin", "mentor", "student"],
       attendance_status: ["present", "absent", "unmarked"],
+      file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [
         "reminder_24h",
