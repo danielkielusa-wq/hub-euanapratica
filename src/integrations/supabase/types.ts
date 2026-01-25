@@ -572,8 +572,12 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_whatsapp: boolean | null
+          last_login_at: string | null
           phone: string | null
+          phone_country_code: string | null
           profile_photo_url: string | null
+          status: string | null
           timezone: string | null
           updated_at: string | null
         }
@@ -582,8 +586,12 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_whatsapp?: boolean | null
+          last_login_at?: string | null
           phone?: string | null
+          phone_country_code?: string | null
           profile_photo_url?: string | null
+          status?: string | null
           timezone?: string | null
           updated_at?: string | null
         }
@@ -592,8 +600,12 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_whatsapp?: boolean | null
+          last_login_at?: string | null
           phone?: string | null
+          phone_country_code?: string | null
           profile_photo_url?: string | null
+          status?: string | null
           timezone?: string | null
           updated_at?: string | null
         }
@@ -795,6 +807,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_audit_logs: {
+        Row: {
+          action: string
+          changed_by_user_id: string | null
+          created_at: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changed_by_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_by_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_espacos: {
         Row: {

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMentorEspacos } from '@/hooks/useMentorEspacos';
-import { Loader2, Search, Users, Calendar, GraduationCap, ArrowRight } from 'lucide-react';
+import { Loader2, Search, Users, Calendar, GraduationCap, ArrowRight, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -50,11 +50,17 @@ export default function MentorEspacos() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Espaços</h1>
-          <p className="text-muted-foreground">
-            Gerencie suas mentorias, imersões e programas
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Espaços</h1>
+            <p className="text-muted-foreground">
+              Gerencie suas mentorias, imersões e programas
+            </p>
+          </div>
+          <Button onClick={() => navigate('/mentor/espacos/novo')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Criar Espaço
+          </Button>
         </div>
 
         {/* Filters */}
@@ -107,8 +113,14 @@ export default function MentorEspacos() {
               <p className="text-muted-foreground mt-1 max-w-sm">
                 {search || statusFilter !== 'all' || categoryFilter !== 'all' 
                   ? 'Tente ajustar os filtros de busca.'
-                  : 'Você ainda não possui espaços. Entre em contato com o administrador.'}
+                  : 'Você ainda não possui espaços. Clique em "Criar Espaço" para começar.'}
               </p>
+              {!search && statusFilter === 'all' && categoryFilter === 'all' && (
+                <Button className="mt-4" onClick={() => navigate('/mentor/espacos/novo')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Espaço
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (

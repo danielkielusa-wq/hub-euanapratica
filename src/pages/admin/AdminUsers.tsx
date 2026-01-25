@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,12 +23,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAdminUsers, useUpdateUserRole } from '@/hooks/useAdminUsers';
+import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus } from '@/hooks/useAdminUsers';
 import type { UserFilters } from '@/types/admin';
-import { Search, MoreVertical, UserCog, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Dialog,
@@ -39,6 +40,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CreateUserDialog } from '@/components/admin/users/CreateUserDialog';
+import { UserAuditLogModal } from '@/components/admin/users/UserAuditLogModal';
 
 const ROLE_LABELS = {
   admin: 'Administrador',
@@ -52,14 +56,22 @@ const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
   student: 'outline'
 };
 
+const STATUS_LABELS = {
+  active: 'Ativo',
+  inactive: 'Inativo'
+};
+
 export default function AdminUsers() {
-  const [filters, setFilters] = useState<UserFilters>({});
+  const [filters, setFilters] = useState<UserFilters>({ includeInactive: false });
   const [search, setSearch] = useState('');
   const [editRoleUser, setEditRoleUser] = useState<{ id: string; name: string; role: string } | null>(null);
   const [newRole, setNewRole] = useState<'admin' | 'mentor' | 'student'>('student');
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [auditLogUser, setAuditLogUser] = useState<{ id: string; name: string } | null>(null);
 
   const { data: users, isLoading } = useAdminUsers(filters);
   const updateRoleMutation = useUpdateUserRole();
+  const updateStatusMutation = useUpdateUserStatus();
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -84,14 +96,29 @@ export default function AdminUsers() {
     });
   };
 
+  const handleToggleStatus = (user: { id: string; status: string }) => {
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+    updateStatusMutation.mutate({ userId: user.id, status: newStatus });
+  };
+
+  const handleViewHistory = (user: { id: string; full_name: string }) => {
+    setAuditLogUser({ id: user.id, name: user.full_name });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h1>
-          <p className="text-muted-foreground">
-            Visualize e gerencie todos os usuários da plataforma
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h1>
+            <p className="text-muted-foreground">
+              Visualize e gerencie todos os usuários da plataforma
+            </p>
+          </div>
+          <Button onClick={() => setCreateUserOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Usuário
+          </Button>
         </div>
 
         {/* Filters */}
@@ -123,6 +150,20 @@ export default function AdminUsers() {
               <SelectItem value="student">Aluno</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show-inactive"
+              checked={filters.includeInactive}
+              onCheckedChange={(checked) => setFilters(prev => ({ 
+                ...prev, 
+                includeInactive: checked === true 
+              }))}
+            />
+            <Label htmlFor="show-inactive" className="text-sm cursor-pointer">
+              Mostrar inativos
+            </Label>
+          </div>
         </div>
 
         {/* Table */}
@@ -137,14 +178,16 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Papel</TableHead>
-                  <TableHead>Turmas Ativas</TableHead>
-                  <TableHead>Data de Cadastro</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Último Login</TableHead>
+                  <TableHead>Espaços</TableHead>
+                  <TableHead>Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className={user.status === 'inactive' ? 'opacity-60' : ''}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -164,6 +207,20 @@ export default function AdminUsers() {
                         {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
+                        {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.last_login_at ? (
+                        <span className="text-sm" title={format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm")}>
+                          {formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true, locale: ptBR })}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Nunca</span>
+                      )}
+                    </TableCell>
                     <TableCell>{user.enrollments_count || 0}</TableCell>
                     <TableCell>
                       {user.created_at
@@ -181,6 +238,27 @@ export default function AdminUsers() {
                           <DropdownMenuItem onClick={() => handleEditRole(user)}>
                             <UserCog className="mr-2 h-4 w-4" />
                             Alterar Papel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewHistory(user)}>
+                            <History className="mr-2 h-4 w-4" />
+                            Ver Histórico
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleToggleStatus(user)}
+                            className={user.status === 'active' ? 'text-destructive' : 'text-primary'}
+                          >
+                            {user.status === 'active' ? (
+                              <>
+                                <UserX className="mr-2 h-4 w-4" />
+                                Desativar Usuário
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                Reativar Usuário
+                              </>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -237,6 +315,19 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create User Dialog */}
+      <CreateUserDialog open={createUserOpen} onOpenChange={setCreateUserOpen} />
+
+      {/* Audit Log Modal */}
+      {auditLogUser && (
+        <UserAuditLogModal
+          open={!!auditLogUser}
+          onOpenChange={(open) => !open && setAuditLogUser(null)}
+          userId={auditLogUser.id}
+          userName={auditLogUser.name}
+        />
+      )}
     </DashboardLayout>
   );
 }

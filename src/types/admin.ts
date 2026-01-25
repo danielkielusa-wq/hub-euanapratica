@@ -127,6 +127,8 @@ export interface EspacoFilters {
 
 export interface UserFilters {
   role?: 'admin' | 'mentor' | 'student';
+  status?: 'active' | 'inactive';
+  includeInactive?: boolean;
   search?: string;
 }
 
@@ -135,4 +137,21 @@ export interface EnrollmentFilters {
   status?: string;
   expiring_soon?: boolean;
   search?: string;
+}
+
+// Audit log types
+export type AuditAction = 'created' | 'updated' | 'status_changed' | 'role_changed' | 'profile_updated' | 'login';
+
+export interface UserAuditLog {
+  id: string;
+  user_id: string;
+  changed_by_user_id: string | null;
+  action: AuditAction;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  created_at: string;
+  changed_by?: {
+    full_name: string;
+    email: string;
+  };
 }
