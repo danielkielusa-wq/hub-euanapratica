@@ -169,11 +169,11 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         name: 'Agenda do Aluno',
         objective: 'Verificar exibição correta das sessões',
         expectedResult: 'Agenda mostra sessões dos espaços matriculados',
-        relatedUrl: '/agenda',
+        relatedUrl: '/dashboard/agenda',
         testType: 'positive',
         successCondition: 'Agenda carrega e exibe sessões no calendário',
         steps: [
-          'Acessar /agenda',
+          'Acessar /dashboard/agenda',
           'Verificar sessões do calendário',
           'Clicar em uma sessão',
           'Verificar detalhes exibidos'
@@ -184,11 +184,11 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         name: 'Meus Espaços (Aluno)',
         objective: 'Verificar listagem de espaços matriculados',
         expectedResult: 'Lista espaços com status de matrícula ativa',
-        relatedUrl: '/meus-espacos',
+        relatedUrl: '/dashboard/espacos',
         testType: 'positive',
         successCondition: 'Lista de espaços é exibida com status correto',
         steps: [
-          'Acessar /meus-espacos',
+          'Acessar /dashboard/espacos',
           'Verificar cards de espaços',
           'Clicar em um espaço',
           'Verificar redirecionamento para detalhes do espaço'
@@ -199,7 +199,7 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         name: 'Tarefas do Aluno (Upload/Download)',
         objective: 'Verificar fluxo completo de upload e download de tarefas',
         expectedResult: 'Upload funciona e download retorna arquivo correto',
-        relatedUrl: '/tarefas',
+        relatedUrl: '/dashboard/tarefas',
         testType: 'positive',
         successCondition: 'Upload é bem sucedido e download funciona sem erro 404',
         steps: [
