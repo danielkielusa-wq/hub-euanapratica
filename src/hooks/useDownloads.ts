@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Material } from '@/types/library';
+import { toast } from 'sonner';
 
 export function useRecordDownload() {
   const queryClient = useQueryClient();
@@ -19,6 +21,45 @@ export function useRecordDownload() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['material-analytics'] });
+    },
+  });
+}
+
+export function useDownloadFile() {
+  const recordDownload = useRecordDownload();
+
+  return useMutation({
+    mutationFn: async (material: Material) => {
+      // Record download
+      await recordDownload.mutateAsync(material.id);
+
+      // Get signed URL if it's a storage URL
+      let downloadUrl = material.file_url;
+      
+      if (!material.file_url.startsWith('http://') && !material.file_url.startsWith('https://')) {
+        const { data } = await supabase.storage
+          .from('materials')
+          .createSignedUrl(material.file_url, 60);
+        
+        if (data?.signedUrl) {
+          downloadUrl = data.signedUrl;
+        }
+      }
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = material.filename || material.title || 'download';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    onSuccess: () => {
+      toast.success('Download iniciado');
+    },
+    onError: () => {
+      toast.error('Erro ao baixar arquivo');
     },
   });
 }

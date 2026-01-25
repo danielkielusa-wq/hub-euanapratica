@@ -1,5 +1,6 @@
 export type FileType = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'zip' | 'png' | 'jpg' | 'link';
 export type AccessLevel = 'public' | 'restricted';
+export type VisibilityScope = 'space_all' | 'mentor_and_owner';
 
 export interface Folder {
   id: string;
@@ -34,12 +35,22 @@ export interface Material {
   updated_at: string;
   is_favorite?: boolean;
   download_count?: number;
+  // Novos campos para Biblioteca por Espaço
+  owner_user_id: string | null;
+  owner_role: string | null;
+  visibility_scope: VisibilityScope;
   folders?: {
     name: string;
     espaco_id: string;
     espacos?: {
       name: string;
     };
+  };
+  // Joined data para exibir nome do autor
+  owner_profile?: {
+    full_name: string;
+    email: string;
+    profile_photo_url: string | null;
   };
 }
 
@@ -71,4 +82,5 @@ export interface MaterialFilters {
   sortBy?: 'uploaded_at' | 'filename' | 'file_size';
   sortOrder?: 'asc' | 'desc';
   favoritesOnly?: boolean;
+  ownerType?: 'mentor' | 'student' | 'all';
 }

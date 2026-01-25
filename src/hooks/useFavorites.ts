@@ -34,7 +34,7 @@ export function useFavorites() {
 
 export function useFavoriteIds() {
   const { data: favorites } = useFavorites();
-  return new Set(favorites?.map(f => f.material_id) || []);
+  return { data: favorites?.map(f => f.material_id) || [] };
 }
 
 export function useToggleFavorite() {

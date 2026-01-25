@@ -37,10 +37,10 @@ export default function StudentLibrary() {
   const displayMaterials = useMemo(() => {
     if (!materials) return [];
     if (filters.favoritesOnly) {
-      return materials.filter(m => favoriteIds.has(m.id));
+      return materials.filter(m => favoriteIds.data?.includes(m.id));
     }
     return materials;
-  }, [materials, filters.favoritesOnly, favoriteIds]);
+  }, [materials, filters.favoritesOnly, favoriteIds.data]);
 
   const handleDownload = async (material: Material) => {
     await recordDownload.mutateAsync(material.id);
@@ -59,7 +59,7 @@ export default function StudentLibrary() {
   const handleToggleFavorite = (material: Material) => {
     toggleFavorite.mutate({
       materialId: material.id,
-      isFavorite: favoriteIds.has(material.id),
+      isFavorite: favoriteIds.data?.includes(material.id) || false,
     });
   };
 
@@ -159,7 +159,7 @@ export default function StudentLibrary() {
                   <MaterialCard
                     key={material.id}
                     material={material}
-                    isFavorite={favoriteIds.has(material.id)}
+                    isFavorite={favoriteIds.data?.includes(material.id) || false}
                     onDownload={() => handleDownload(material)}
                     onPreview={() => handlePreview(material)}
                     onToggleFavorite={() => handleToggleFavorite(material)}
