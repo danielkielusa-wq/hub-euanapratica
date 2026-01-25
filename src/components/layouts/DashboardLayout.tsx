@@ -27,7 +27,7 @@ interface DashboardLayoutProps {
 const roleNavItems = {
   student: [
     { label: 'Início', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Meus Espaços', href: '/dashboard/espacos', icon: Users },
+    { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
     { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
     { label: 'Biblioteca', href: '/biblioteca', icon: Library },
     { label: 'Conteúdo', href: '/dashboard/conteudo', icon: BookOpen },
@@ -36,21 +36,20 @@ const roleNavItems = {
   ],
   mentor: [
     { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
+    { label: 'Meus Espaços', href: '/mentor/espacos', icon: GraduationCap },
     { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
     { label: 'Biblioteca', href: '/biblioteca', icon: Library },
-    { label: 'Turmas', href: '/mentor/turmas', icon: GraduationCap },
-    { label: 'Alunos', href: '/mentor/alunos', icon: Users },
     { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
     { label: 'Perfil', href: '/mentor/perfil', icon: Settings },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'Espaços', href: '/admin/espacos', icon: GraduationCap },
     { label: 'Biblioteca', href: '/biblioteca', icon: Library },
     { label: 'Usuários', href: '/admin/usuarios', icon: Users },
-    { label: 'Turmas', href: '/admin/turmas', icon: GraduationCap },
     { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
     { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
-    { label: 'Configurações', href: '/admin/configuracoes', icon: UserCog },
+    { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
   ],
 };
 

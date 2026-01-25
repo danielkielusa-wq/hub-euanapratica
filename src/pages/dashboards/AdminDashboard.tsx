@@ -36,15 +36,15 @@ export default function AdminDashboard() {
             <Button variant="outline" onClick={() => navigate('/admin/relatorios')}>
               <BarChart3 className="mr-2 h-4 w-4" /> Relatórios
             </Button>
-            <Button onClick={() => navigate('/admin/turmas')}>
-              <Plus className="mr-2 h-4 w-4" /> Nova Turma
+            <Button onClick={() => navigate('/admin/espacos')}>
+              <Plus className="mr-2 h-4 w-4" /> Novo Espaço
             </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="Total de Usuários" value={stats?.totalUsers ?? 0} icon={Users} />
-          <StatCard title="Turmas Ativas" value={stats?.totalActiveEspacos ?? 0} icon={GraduationCap} />
+          <StatCard title="Espaços Ativos" value={stats?.totalActiveEspacos ?? 0} icon={GraduationCap} />
           <StatCard title="Matrículas Ativas" value={stats?.totalActiveEnrollments ?? 0} icon={BookOpen} />
           <StatCard title="Acessos Expirando" value={stats?.expiringAccess30Days ?? 0} icon={AlertTriangle} variant={stats?.expiringAccess30Days ? 'warning' : 'default'} />
         </div>
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader><CardTitle>Ações Rápidas</CardTitle><CardDescription>Acesso rápido às funcionalidades</CardDescription></CardHeader>
             <CardContent className="grid gap-2">
-              <Button variant="outline" className="justify-start" onClick={() => navigate('/admin/turmas')}><GraduationCap className="mr-2 h-4 w-4" /> Gerenciar Turmas</Button>
+              <Button variant="outline" className="justify-start" onClick={() => navigate('/admin/espacos')}><GraduationCap className="mr-2 h-4 w-4" /> Gerenciar Espaços</Button>
               <Button variant="outline" className="justify-start" onClick={() => navigate('/admin/usuarios')}><Users className="mr-2 h-4 w-4" /> Gerenciar Usuários</Button>
               <Button variant="outline" className="justify-start" onClick={() => navigate('/admin/matriculas')}><BookOpen className="mr-2 h-4 w-4" /> Gerenciar Matrículas</Button>
               <Button variant="outline" className="justify-start" onClick={() => navigate('/admin/produtos')}><AlertTriangle className="mr-2 h-4 w-4" /> Gerenciar Produtos</Button>
