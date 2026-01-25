@@ -38,11 +38,34 @@ All colors MUST be HSL.
     --ring: 221 83% 53%;
 
     --radius: 0.5rem;
+    --radius-xl: 1.5rem;
+    --radius-2xl: 2rem;
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
+
+    /* Glass Effect */
+    --glass-bg: 0 0% 100% / 0.8;
+    --glass-border: 0 0% 100% / 0.6;
+    --glass-blur: 12px;
+
+    /* Premium Shadows */
+    --shadow-glass: 0 4px 24px -1px hsl(0 0% 0% / 0.05), 0 2px 8px -1px hsl(0 0% 0% / 0.03);
+    --shadow-glass-hover: 0 8px 32px -1px hsl(0 0% 0% / 0.08), 0 4px 12px -1px hsl(0 0% 0% / 0.04);
+
+    /* Pastel Badge Colors */
+    --badge-purple: 262 90% 96%;
+    --badge-purple-text: 262 83% 45%;
+    --badge-rose: 350 90% 96%;
+    --badge-rose-text: 350 83% 45%;
+    --badge-emerald: 160 90% 96%;
+    --badge-emerald-text: 160 84% 35%;
+    --badge-amber: 45 90% 96%;
+    --badge-amber-text: 45 92% 40%;
+    --badge-slate: 210 17% 95%;
+    --badge-slate-text: 220 9% 40%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -127,6 +150,23 @@ All colors MUST be HSL.
     --border: 0 0% 100% / 10%;
     --input: 0 0% 100% / 15%;
     --ring: 264 2.7% 55.1%;
+
+    /* Glass Effect - Dark Mode */
+    --glass-bg: 0 0% 15% / 0.8;
+    --glass-border: 0 0% 100% / 0.1;
+
+    /* Pastel Badge Colors - Dark Mode */
+    --badge-purple: 262 50% 20%;
+    --badge-purple-text: 262 83% 75%;
+    --badge-rose: 350 50% 20%;
+    --badge-rose-text: 350 83% 75%;
+    --badge-emerald: 160 50% 15%;
+    --badge-emerald-text: 160 84% 65%;
+    --badge-amber: 45 50% 18%;
+    --badge-amber-text: 45 92% 70%;
+    --badge-slate: 220 10% 25%;
+    --badge-slate-text: 220 9% 70%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 248 0.3% 98.4%;
     --sidebar-primary: 264 24.3% 48.8%;

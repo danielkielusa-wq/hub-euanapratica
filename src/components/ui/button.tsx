@@ -18,6 +18,23 @@ const buttonVariants = cva(
         student: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg hover:scale-[1.02]",
         mentor: "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md hover:shadow-lg hover:scale-[1.02]",
         admin: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg hover:scale-[1.02]",
+        // Premium gradient variants
+        gradient: [
+          "bg-gradient-to-r from-indigo-600 to-purple-600",
+          "text-white font-medium",
+          "hover:from-indigo-500 hover:to-purple-500",
+          "shadow-md hover:shadow-lg",
+          "border-0",
+          "rounded-xl",
+        ].join(" "),
+        gradientOutline: [
+          "bg-transparent",
+          "border-2 border-indigo-600/30",
+          "text-indigo-600 dark:text-indigo-400",
+          "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50",
+          "dark:hover:from-indigo-950/50 dark:hover:to-purple-950/50",
+          "rounded-xl",
+        ].join(" "),
       },
       size: {
         default: "h-10 px-4 py-2",

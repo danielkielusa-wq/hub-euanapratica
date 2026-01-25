@@ -23,10 +23,10 @@ interface EspacoCardProps {
 
 export function EspacoCard({ espaco, onView, onEdit, onDuplicate, onDelete }: EspacoCardProps) {
   const statusVariant = {
-    active: 'default',
-    inactive: 'secondary',
-    completed: 'outline'
-  }[espaco.status || 'active'] as 'default' | 'secondary' | 'outline';
+    active: 'pastelEmerald',
+    inactive: 'pastelSlate',
+    completed: 'pastelPurple'
+  }[espaco.status || 'active'] as 'pastelEmerald' | 'pastelSlate' | 'pastelPurple';
 
   const statusLabel = {
     active: 'Ativa',
@@ -35,16 +35,16 @@ export function EspacoCard({ espaco, onView, onEdit, onDuplicate, onDelete }: Es
   }[espaco.status || 'active'];
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card variant="glass" className="hover:scale-[1.01]">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1">
+          <div className="space-y-1.5 flex-1">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">{espaco.name}</CardTitle>
+              <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">{espaco.name}</CardTitle>
               <Badge variant={statusVariant}>{statusLabel}</Badge>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline" className="text-xs">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <Badge variant="pastelSlate" className="text-xs">
                 {CATEGORY_LABELS[espaco.category] || espaco.category}
               </Badge>
               {espaco.mentor && (
@@ -55,7 +55,7 @@ export function EspacoCard({ espaco, onView, onEdit, onDuplicate, onDelete }: Es
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="shrink-0">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -86,19 +86,19 @@ export function EspacoCard({ espaco, onView, onEdit, onDuplicate, onDelete }: Es
       </CardHeader>
       <CardContent>
         {espaco.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">
             {espaco.description}
           </p>
         )}
         
         <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-1 text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
             <Users className="h-4 w-4" />
             <span>{espaco.enrolled_count ?? 0} / {espaco.max_students}</span>
           </div>
           
           {espaco.start_date && (
-            <div className="flex items-center gap-1 text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
               <Calendar className="h-4 w-4" />
               <span>
                 {format(new Date(espaco.start_date), "dd MMM yyyy", { locale: ptBR })}

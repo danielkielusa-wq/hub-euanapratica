@@ -27,7 +27,7 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
   const getActionButton = () => {
     if (isReviewed && hasFeedback) {
       return (
-        <Button asChild size="sm">
+        <Button asChild variant="gradient" size="sm">
           <Link to={`/dashboard/tarefas/${assignment.id}`}>
             <MessageSquare className="h-4 w-4 mr-2" />
             Ver Feedback
@@ -38,7 +38,7 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
     
     if (isSubmitted) {
       return (
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="gradientOutline" size="sm">
           <Link to={`/dashboard/tarefas/${assignment.id}`}>
             <CheckCircle2 className="h-4 w-4 mr-2" />
             Ver Entrega
@@ -48,7 +48,7 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
     }
     
     return (
-      <Button asChild size="sm">
+      <Button asChild variant="gradient" size="sm">
         <Link to={`/dashboard/tarefas/${assignment.id}`}>
           Entregar
           <ArrowRight className="h-4 w-4 ml-2" />
@@ -60,10 +60,10 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
   // Status badge
   const getStatusBadge = () => {
     if (isReviewed) {
-      const resultColors = {
-        approved: 'bg-green-500/10 text-green-600 border-green-500/20',
-        revision: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-        rejected: 'bg-destructive/10 text-destructive border-destructive/20'
+      const resultVariants = {
+        approved: 'pastelEmerald' as const,
+        revision: 'pastelAmber' as const,
+        rejected: 'pastelRose' as const
       };
       const resultTexts = {
         approved: 'Aprovada',
@@ -72,7 +72,7 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
       };
       const result = submission?.review_result;
       return (
-        <Badge variant="outline" className={result ? resultColors[result] : ''}>
+        <Badge variant={result ? resultVariants[result] : 'pastelSlate'}>
           {result ? resultTexts[result] : 'Avaliada'}
         </Badge>
       );
@@ -80,39 +80,39 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
     
     if (isSubmitted) {
       return (
-        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+        <Badge variant="pastelPurple">
           Entregue
         </Badge>
       );
     }
     
     return (
-      <Badge variant="outline" className="bg-muted text-muted-foreground">
+      <Badge variant="pastelSlate">
         Pendente
       </Badge>
     );
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card variant="glass">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-              <FileText className="h-5 w-5 text-primary" />
+            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 shrink-0">
+              <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-base leading-tight truncate">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight truncate">
                 {assignment.title}
               </h3>
               {assignment.espaco && (
-                <Badge variant="secondary" className="mt-1 text-xs">
+                <Badge variant="pastelSlate" className="mt-1 text-xs">
                   {assignment.espaco.name}
                 </Badge>
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
             <DueDateBadge 
               dueDate={assignment.due_date} 
               submitted={isSubmitted} 
@@ -124,7 +124,7 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
       
       {truncatedDescription && (
         <CardContent className="py-2">
-          <p className="text-sm text-muted-foreground line-clamp-2">
+          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
             {truncatedDescription}
           </p>
         </CardContent>

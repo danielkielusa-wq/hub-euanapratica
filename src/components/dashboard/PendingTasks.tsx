@@ -30,34 +30,34 @@ function TaskItem({ assignment }: { assignment: AssignmentWithSubmission }) {
   const urgency = getUrgencyStatus(new Date(assignment.due_date));
 
   return (
-    <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+    <div className={`flex items-center justify-between p-5 rounded-2xl backdrop-blur border transition-all duration-200 hover:shadow-lg ${
       urgency.isPastDue 
-        ? 'bg-destructive/5 border-destructive/20' 
+        ? 'bg-rose-50/80 dark:bg-rose-900/20 border-rose-200/60 dark:border-rose-800/40' 
         : urgency.isUrgent 
-          ? 'bg-accent/50 border-accent'
-          : 'bg-muted/30 border-border'
+          ? 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-200/60 dark:border-amber-800/40'
+          : 'bg-white/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60'
     }`}>
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex items-center gap-2 mb-1">
-          <h4 className="font-medium text-foreground truncate">{assignment.title}</h4>
+          <h4 className="font-bold text-slate-900 dark:text-slate-100 truncate">{assignment.title}</h4>
           {urgency.isUrgent && (
-            <Badge variant="destructive" className="shrink-0 gap-1">
+            <Badge variant="pastelRose" className="shrink-0 gap-1">
               <AlertTriangle className="w-3 h-3" />
               {urgency.text}
             </Badge>
           )}
         </div>
-        <p className="text-sm text-muted-foreground truncate">
+        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
           {assignment.espaco?.name || 'Sem turma'}
         </p>
-        <div className="flex items-center gap-1.5 mt-1.5 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-400 dark:text-slate-500">
           <Clock className="w-3.5 h-3.5" />
           <span>Prazo: {format(new Date(assignment.due_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
         </div>
       </div>
       <Button 
         size="sm" 
-        variant={urgency.isUrgent ? "default" : "outline"}
+        variant={urgency.isUrgent ? "gradient" : "gradientOutline"}
         onClick={() => navigate(`/dashboard/tarefas/${assignment.id}`)}
       >
         Entregar
@@ -68,14 +68,14 @@ function TaskItem({ assignment }: { assignment: AssignmentWithSubmission }) {
 
 function TaskSkeleton() {
   return (
-    <div className="p-4 rounded-lg border bg-muted/30">
+    <div className="p-5 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur border border-slate-200/60 dark:border-slate-700/60">
       <div className="flex items-center justify-between">
         <div className="space-y-2 flex-1">
           <Skeleton className="h-5 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-4 w-1/3" />
         </div>
-        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-9 w-20 rounded-xl" />
       </div>
     </div>
   );
@@ -107,18 +107,20 @@ export function PendingTasks({ onViewAll }: PendingTasksProps) {
   };
 
   return (
-    <Card>
+    <Card variant="glass">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-primary" />
+          <CardTitle className="text-lg flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40">
+              <ClipboardList className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
             Tarefas Pendentes
             {pendingTasks.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{pendingTasks.length}</Badge>
+              <Badge variant="pastelPurple" className="ml-1">{pendingTasks.length}</Badge>
             )}
           </CardTitle>
           {(pendingTasks.length > 3 || pendingTasks.length > 0) && (
-            <Button variant="ghost" size="sm" onClick={handleViewAll} className="gap-1 text-primary">
+            <Button variant="ghost" size="sm" onClick={handleViewAll} className="gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
               Ver todas
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -133,7 +135,7 @@ export function PendingTasks({ onViewAll }: PendingTasksProps) {
             <TaskSkeleton />
           </>
         ) : sortedTasks.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
             <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>Você não tem tarefas pendentes 🎉</p>
           </div>
