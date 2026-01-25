@@ -15,7 +15,8 @@ import {
   UserCog,
   Calendar,
   MessageCircle,
-  Library
+  Library,
+  FlaskConical
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,7 @@ const roleNavItems = {
     { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
     { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
     { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
+    { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
   ],
 };
 
