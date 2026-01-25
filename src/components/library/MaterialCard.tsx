@@ -8,7 +8,6 @@ import { FavoriteButton } from './FavoriteButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 interface MaterialCardProps {
   material: Material;
@@ -32,31 +31,31 @@ export function MaterialCard({
   const canPreview = isPreviewable(material.file_type);
 
   return (
-    <Card className="group hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
+    <Card variant="glass">
+      <CardContent className="p-5">
+        <div className="flex items-start gap-4">
           {/* Icon */}
-          <div className="shrink-0 p-2 bg-muted rounded-lg">
-            <FileIcon fileType={material.file_type} size={24} />
+          <div className="shrink-0 p-3 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40">
+            <FileIcon fileType={material.file_type} size={24} className="text-indigo-600 dark:text-indigo-400" />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <h4 className="font-medium truncate">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 truncate">
                   {material.title || material.filename}
                 </h4>
                 {material.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
                     {material.description}
                   </p>
                 )}
               </div>
               
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {isNew && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="pastelPurple" className="text-xs">
                     Novo
                   </Badge>
                 )}
@@ -69,7 +68,7 @@ export function MaterialCard({
             </div>
 
             {/* Meta info */}
-            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 dark:text-slate-500">
               {!isLink && material.file_size && (
                 <span>{formatFileSize(material.file_size)}</span>
               )}
@@ -84,13 +83,13 @@ export function MaterialCard({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-4">
               {isLink ? (
                 <Button
-                  variant="outline"
+                  variant="gradient"
                   size="sm"
                   onClick={onDownload}
-                  className="gap-1"
+                  className="gap-1.5"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Abrir Link
@@ -98,20 +97,20 @@ export function MaterialCard({
               ) : (
                 <>
                   <Button
-                    variant="outline"
+                    variant="gradient"
                     size="sm"
                     onClick={onDownload}
-                    className="gap-1"
+                    className="gap-1.5"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Baixar
                   </Button>
                   {canPreview && (
                     <Button
-                      variant="ghost"
+                      variant="gradientOutline"
                       size="sm"
                       onClick={onPreview}
-                      className="gap-1"
+                      className="gap-1.5"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       Visualizar

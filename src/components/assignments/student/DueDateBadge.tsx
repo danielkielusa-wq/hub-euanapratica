@@ -20,7 +20,7 @@ export function DueDateBadge({ dueDate, submitted, className }: DueDateBadgeProp
   // If already submitted, show submitted badge
   if (submitted) {
     return (
-      <Badge variant="outline" className={cn("bg-primary/10 text-primary border-primary/20", className)}>
+      <Badge variant="pastelPurple" className={className}>
         <CheckCircle className="h-3 w-3 mr-1" />
         Entregue
       </Badge>
@@ -30,7 +30,7 @@ export function DueDateBadge({ dueDate, submitted, className }: DueDateBadgeProp
   // Late
   if (isLate) {
     return (
-      <Badge variant="outline" className={cn("bg-muted text-muted-foreground border-muted", className)}>
+      <Badge variant="pastelSlate" className={className}>
         <AlertTriangle className="h-3 w-3 mr-1" />
         Atrasada
       </Badge>
@@ -44,7 +44,7 @@ export function DueDateBadge({ dueDate, submitted, className }: DueDateBadgeProp
       : `${daysLeft} dias`;
     
     return (
-      <Badge variant="outline" className={cn("bg-destructive/10 text-destructive border-destructive/20", className)}>
+      <Badge variant="pastelRose" className={className}>
         <Clock className="h-3 w-3 mr-1" />
         {timeText}
       </Badge>
@@ -54,7 +54,7 @@ export function DueDateBadge({ dueDate, submitted, className }: DueDateBadgeProp
   // 3-7 days - Warning
   if (daysLeft <= 7) {
     return (
-      <Badge variant="outline" className={cn("bg-accent/50 text-accent-foreground border-accent", className)}>
+      <Badge variant="pastelAmber" className={className}>
         <Clock className="h-3 w-3 mr-1" />
         {daysLeft} dias
       </Badge>
@@ -63,7 +63,7 @@ export function DueDateBadge({ dueDate, submitted, className }: DueDateBadgeProp
 
   // More than 7 days - Safe
   return (
-    <Badge variant="outline" className={cn("bg-secondary text-secondary-foreground border-border", className)}>
+    <Badge variant="pastelSlate" className={className}>
       <Clock className="h-3 w-3 mr-1" />
       {format(due, "dd/MM", { locale: ptBR })}
     </Badge>
