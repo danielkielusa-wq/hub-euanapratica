@@ -37,9 +37,11 @@ import {
   User
 } from 'lucide-react';
 import { formatFileSize } from '@/lib/file-utils';
-import { useSubmitFeedback } from '@/hooks/useSubmissions';
+import { useSubmitFeedback, useSubmissionMessages, useSendSubmissionMessage } from '@/hooks/useSubmissions';
 import type { Submission, ReviewResult } from '@/types/assignments';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
   review_result: z.enum(['approved', 'revision', 'rejected']),
@@ -56,6 +58,11 @@ interface SubmissionReviewProps {
 
 export function SubmissionReview({ submission, open, onClose }: SubmissionReviewProps) {
   const submitFeedback = useSubmitFeedback();
+  const sendMessage = useSendSubmissionMessage();
+  
+  // Only fetch messages if we have a real submission ID
+  const isValidSubmissionId = submission?.id && !submission.id.startsWith('placeholder-');
+  const { data: messages } = useSubmissionMessages(isValidSubmissionId ? submission.id : '');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -76,7 +83,7 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
   }, [submission?.id, open, form]);
 
   const onSubmit = async (data: FormData) => {
-    if (!submission?.id) {
+    if (!submission?.id || submission.id.startsWith('placeholder-')) {
       console.error('Submission not found');
       return;
     }
@@ -87,6 +94,15 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
         review_result: data.review_result as ReviewResult,
         feedback: data.feedback,
       });
+
+      // Also save feedback as a message in the conversation history
+      if (data.feedback && data.feedback.trim()) {
+        await sendMessage.mutateAsync({
+          submission_id: submission.id,
+          message: `[Feedback do Mentor - ${data.review_result === 'approved' ? 'Aprovada' : data.review_result === 'revision' ? 'Revisão Necessária' : 'Não Aprovada'}]\n\n${data.feedback}`
+        });
+      }
+
       onClose();
     } catch (error) {
       console.error('Error submitting feedback:', error);
@@ -205,6 +221,56 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
               )}
             </CardContent>
           </Card>
+
+          {/* Messages history */}
+          {messages && messages.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Histórico de Mensagens</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-64 pr-4">
+                  <div className="space-y-3">
+                    {messages.map((msg) => {
+                      const isStudent = msg.sender_id === submission.user_id;
+                      const initials = msg.sender?.full_name
+                        ?.split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2) || 'U';
+
+                      return (
+                        <div key={msg.id} className="flex gap-2">
+                          <Avatar className="h-6 w-6 flex-shrink-0">
+                            <AvatarFallback className={cn(
+                              "text-xs",
+                              isStudent ? "bg-muted" : "bg-primary text-primary-foreground"
+                            )}>
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-medium truncate">
+                                {msg.sender?.full_name || 'Usuário'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(msg.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                              {msg.message}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
 
           <Separator />
 

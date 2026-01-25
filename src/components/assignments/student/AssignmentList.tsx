@@ -25,12 +25,23 @@ export function AssignmentList({ espacoId }: AssignmentListProps) {
       case 'pending':
         return assignments.filter(a => {
           const submission = a.my_submission;
-          return !submission || submission.status === 'draft';
+          // Include: no submission, draft, or rejected/revision (needs resubmission)
+          if (!submission || submission.status === 'draft') return true;
+          // If reviewed but not approved, show as pending (needs resubmission)
+          if (submission.status === 'reviewed' && 
+              (submission.review_result === 'rejected' || submission.review_result === 'revision')) {
+            return true;
+          }
+          return false;
         });
       case 'submitted':
         return assignments.filter(a => {
           const submission = a.my_submission;
-          return submission && (submission.status === 'submitted' || submission.status === 'reviewed');
+          // Only show as submitted if actually submitted or approved
+          if (!submission) return false;
+          if (submission.status === 'submitted') return true;
+          if (submission.status === 'reviewed' && submission.review_result === 'approved') return true;
+          return false;
         });
       default:
         return assignments;

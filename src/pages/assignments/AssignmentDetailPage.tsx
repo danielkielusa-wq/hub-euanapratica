@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -10,6 +11,7 @@ import { DueDateBadge } from '@/components/assignments/student/DueDateBadge';
 import { SubmissionForm } from '@/components/assignments/student/SubmissionForm';
 import { SubmissionView } from '@/components/assignments/student/SubmissionView';
 import { FeedbackDisplay } from '@/components/assignments/student/FeedbackDisplay';
+import { SubmissionMessages } from '@/components/assignments/student/SubmissionMessages';
 import { useAssignment } from '@/hooks/useAssignments';
 import { 
   ArrowLeft, 
@@ -19,7 +21,8 @@ import {
   Upload, 
   CheckCircle2,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { formatFileSize } from '@/lib/file-utils';
 import type { AssignmentMaterial } from '@/types/assignments';
@@ -27,6 +30,7 @@ import type { AssignmentMaterial } from '@/types/assignments';
 export default function AssignmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showResubmitForm, setShowResubmitForm] = useState(false);
   
   const { data: assignment, isLoading, refetch } = useAssignment(id || '');
 
@@ -57,14 +61,24 @@ export default function AssignmentDetailPage() {
   const submission = assignment.my_submission;
   const isSubmitted = submission?.status === 'submitted' || submission?.status === 'reviewed';
   const isReviewed = submission?.status === 'reviewed';
+  const isApproved = isReviewed && submission?.review_result === 'approved';
+  const needsRevision = isReviewed && (submission?.review_result === 'rejected' || submission?.review_result === 'revision');
   const isLate = isPast(new Date(assignment.due_date));
   const canSubmit = !isLate || assignment.allow_late_submission;
+  
+  // Can resubmit if needs revision OR allow_late_submission is true
+  const canResubmit = needsRevision && (canSubmit || assignment.allow_late_submission);
 
   // Submission type labels
   const submissionTypeLabels = {
     file: 'Arquivo',
     text: 'Texto',
     both: 'Arquivo ou Texto'
+  };
+
+  const handleResubmitSuccess = () => {
+    setShowResubmitForm(false);
+    refetch();
   };
 
   return (
@@ -89,7 +103,7 @@ export default function AssignmentDetailPage() {
             </div>
             <DueDateBadge 
               dueDate={assignment.due_date} 
-              submitted={isSubmitted}
+              submitted={isApproved}
             />
           </div>
         </CardHeader>
@@ -101,7 +115,7 @@ export default function AssignmentDetailPage() {
             <span className="font-medium">
               {format(new Date(assignment.due_date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
             </span>
-            {isLate && !isSubmitted && (
+            {isLate && !isApproved && (
               <Badge variant="destructive" className="ml-2">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Atrasada
@@ -223,6 +237,61 @@ export default function AssignmentDetailPage() {
         <SubmissionView submission={submission} />
       )}
 
+      {/* Messages history (if has submission) */}
+      {submission && submission.id && !submission.id.startsWith('placeholder-') && (
+        <SubmissionMessages 
+          submissionId={submission.id} 
+          canReply={needsRevision}
+        />
+      )}
+
+      {/* Resubmit notice and button (if needs revision) */}
+      {needsRevision && canResubmit && !showResubmitForm && (
+        <Card className="border-warning/30 bg-warning/5">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-warning-foreground">
+                <RefreshCw className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Revisão Necessária</p>
+                  <p className="text-sm opacity-80">
+                    O mentor solicitou correções. Envie uma nova versão da sua tarefa.
+                  </p>
+                </div>
+              </div>
+              <Button onClick={() => setShowResubmitForm(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reenviar Tarefa
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Resubmit form */}
+      {needsRevision && showResubmitForm && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <RefreshCw className="h-5 w-5" />
+                Reenviar Tarefa
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowResubmitForm(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <SubmissionForm 
+              assignment={assignment}
+              existingSubmission={null} // Start fresh for resubmission
+              onSubmitSuccess={handleResubmitSuccess}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Submission form (if not submitted or can resubmit) */}
       {(!isSubmitted && canSubmit) && (
         <Card>
@@ -269,6 +338,23 @@ export default function AssignmentDetailPage() {
                 <p className="font-medium">Tarefa entregue</p>
                 <p className="text-sm opacity-80">
                   Aguardando avaliação do mentor.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Approved message */}
+      {isApproved && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-6">
+            <div className="flex items-center gap-3 text-primary">
+              <CheckCircle2 className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Tarefa Aprovada!</p>
+                <p className="text-sm opacity-80">
+                  Parabéns! Sua tarefa foi aprovada pelo mentor.
                 </p>
               </div>
             </div>
