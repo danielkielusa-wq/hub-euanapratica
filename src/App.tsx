@@ -230,21 +230,6 @@ function AppRoutes() {
           <ReviewSubmissions />
         </ProtectedRoute>
       } />
-      <Route path="/mentor/tarefas/nova" element={
-        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
-          <CreateAssignment />
-        </ProtectedRoute>
-      } />
-      <Route path="/mentor/tarefas/:id" element={
-        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
-          <EditAssignment />
-        </ProtectedRoute>
-      } />
-      <Route path="/mentor/tarefas/:id/entregas" element={
-        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
-          <ReviewSubmissions />
-        </ProtectedRoute>
-      } />
       
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={
