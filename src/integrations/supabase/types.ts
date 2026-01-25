@@ -118,39 +118,98 @@ export type Database = {
           },
         ]
       }
+      enrollment_history: {
+        Row: {
+          action: string
+          created_at: string | null
+          espaco_id: string
+          id: string
+          new_status: string | null
+          notes: string | null
+          old_status: string | null
+          performed_by: string | null
+          user_espaco_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          espaco_id: string
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by?: string | null
+          user_espaco_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          espaco_id?: string
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by?: string | null
+          user_espaco_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_history_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       espacos: {
         Row: {
+          category: Database["public"]["Enums"]["espaco_category"] | null
+          cover_image_url: string | null
           created_at: string | null
           description: string | null
           end_date: string | null
           id: string
+          max_students: number | null
           mentor_id: string | null
           name: string
           start_date: string | null
           status: string | null
           updated_at: string | null
+          visibility: Database["public"]["Enums"]["espaco_visibility"] | null
         }
         Insert: {
+          category?: Database["public"]["Enums"]["espaco_category"] | null
+          cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
+          max_students?: number | null
           mentor_id?: string | null
           name: string
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
+          visibility?: Database["public"]["Enums"]["espaco_visibility"] | null
         }
         Update: {
+          category?: Database["public"]["Enums"]["espaco_category"] | null
+          cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
+          max_students?: number | null
           mentor_id?: string | null
           name?: string
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
+          visibility?: Database["public"]["Enums"]["espaco_visibility"] | null
         }
         Relationships: []
       }
@@ -333,6 +392,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_espacos: {
+        Row: {
+          created_at: string | null
+          espaco_id: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          espaco_id: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string | null
+          espaco_id?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_espacos_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_espacos_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          access_duration_days: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_duration_days?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_duration_days?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -566,23 +694,35 @@ export type Database = {
       }
       user_espacos: {
         Row: {
+          access_expires_at: string | null
           enrolled_at: string | null
+          enrolled_by: string | null
           espaco_id: string
           id: string
+          last_access_at: string | null
+          notes: string | null
           status: string | null
           user_id: string
         }
         Insert: {
+          access_expires_at?: string | null
           enrolled_at?: string | null
+          enrolled_by?: string | null
           espaco_id: string
           id?: string
+          last_access_at?: string | null
+          notes?: string | null
           status?: string | null
           user_id: string
         }
         Update: {
+          access_expires_at?: string | null
           enrolled_at?: string | null
+          enrolled_by?: string | null
           espaco_id?: string
           id?: string
+          last_access_at?: string | null
+          notes?: string | null
           status?: string | null
           user_id?: string
         }
@@ -621,6 +761,44 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_products: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          product_id: string
+          purchased_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          product_id: string
+          purchased_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          product_id?: string
+          purchased_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -673,6 +851,13 @@ export type Database = {
       app_role: "admin" | "mentor" | "student"
       assignment_status: "draft" | "published" | "closed"
       attendance_status: "present" | "absent" | "unmarked"
+      espaco_category:
+        | "immersion"
+        | "group_mentoring"
+        | "workshop"
+        | "bootcamp"
+        | "course"
+      espaco_visibility: "public" | "private"
       file_type:
         | "pdf"
         | "docx"
@@ -824,6 +1009,14 @@ export const Constants = {
       app_role: ["admin", "mentor", "student"],
       assignment_status: ["draft", "published", "closed"],
       attendance_status: ["present", "absent", "unmarked"],
+      espaco_category: [
+        "immersion",
+        "group_mentoring",
+        "workshop",
+        "bootcamp",
+        "course",
+      ],
+      espaco_visibility: ["public", "private"],
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [
