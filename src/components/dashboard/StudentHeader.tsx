@@ -87,7 +87,7 @@ export function StudentHeader() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
           <DropdownMenuItem asChild>
-            <Link to="/dashboard/perfil" className="flex items-center gap-2 cursor-pointer">
+            <Link to="/perfil" className="flex items-center gap-2 cursor-pointer">
               <User className="w-4 h-4" />
               Perfil
             </Link>

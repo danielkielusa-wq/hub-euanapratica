@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,13 +31,24 @@ import {
   CheckCircle2,
   AlertCircle,
   Mail,
-  ChevronRight
+  ChevronRight,
+  MoreHorizontal,
+  ArrowRightLeft,
+  History as HistoryIcon,
+  UserMinus
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const categoryLabels: Record<string, string> = {
   immersion: 'Imersão',
@@ -61,8 +73,9 @@ const statusColors: Record<string, string> = {
 export default function MentorEspacoDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  
+  const isAdmin = user?.role === 'admin';
   const { data: espaco, isLoading: loadingEspaco } = useMentorEspaco(id || '');
   const { data: stats } = useEspacoStats(id || '');
   const { data: students } = useEspacoStudents(id || '');
@@ -366,9 +379,41 @@ export default function MentorEspacoDetail() {
                           }
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem className="gap-2">
+                                <Eye className="h-4 w-4" />
+                                Ver Perfil
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2">
+                                <Mail className="h-4 w-4" />
+                                Enviar Mensagem
+                              </DropdownMenuItem>
+                              {isAdmin && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="gap-2">
+                                    <ArrowRightLeft className="h-4 w-4" />
+                                    Transferir de Turma
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="gap-2">
+                                    <HistoryIcon className="h-4 w-4" />
+                                    Ver Histórico
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+                                    <UserMinus className="h-4 w-4" />
+                                    Remover Aluno
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
