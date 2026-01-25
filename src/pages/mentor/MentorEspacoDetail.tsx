@@ -35,7 +35,8 @@ import {
   MoreHorizontal,
   ArrowRightLeft,
   History as HistoryIcon,
-  UserMinus
+  UserMinus,
+  UserPlus
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -49,6 +50,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { InviteStudentModal } from '@/components/mentor/InviteStudentModal';
 
 const categoryLabels: Record<string, string> = {
   immersion: 'Imersão',
@@ -75,6 +77,7 @@ export default function MentorEspacoDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
   const { data: espaco, isLoading: loadingEspaco } = useMentorEspaco(id || '');
   const { data: stats } = useEspacoStats(id || '');
@@ -141,7 +144,25 @@ export default function MentorEspacoDetail() {
               </div>
             </div>
           </div>
+          
+          {/* Invite Student Button */}
+          <Button 
+            variant="ghost" 
+            onClick={() => setInviteModalOpen(true)}
+            className="gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Convidar Aluno
+          </Button>
         </div>
+
+        {/* Invite Student Modal */}
+        <InviteStudentModal
+          open={inviteModalOpen}
+          onOpenChange={setInviteModalOpen}
+          espacoId={id || ''}
+          espacoName={espaco.name}
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>

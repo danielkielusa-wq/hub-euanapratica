@@ -1,1 +1,7 @@
 project_id = "buslxdknzogtgdnietow"
+
+[functions.send-espaco-invitation]
+verify_jwt = false
+
+[functions.process-invitation]
+verify_jwt = false
