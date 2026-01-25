@@ -1,6 +1,9 @@
 export type E2ERunStatus = 'started' | 'running' | 'passed' | 'failed' | 'cancelled';
 export type E2ETestStatus = 'passed' | 'failed' | 'skipped' | 'pending';
 
+// Tipo do teste para ponderação de resultados
+export type E2ETestType = 'positive' | 'negative' | 'security';
+
 export interface E2ETestRun {
   id: string;
   started_at: string;
@@ -31,6 +34,7 @@ export interface E2ETestResult {
   log_summary: string | null;
   log_raw: string | null;
   related_url: string | null;
+  test_type: E2ETestType;
   created_at: string;
 }
 
@@ -43,10 +47,23 @@ export interface E2ETestCase {
   expectedResult: string;
   relatedUrl?: string;
   steps: string[];
+  testType: E2ETestType;
+  successCondition: string;
+}
+
+export interface E2ETestSuiteDefinition {
+  code: string;
+  name: string;
+  objective: string;
+  expectedResult: string;
+  relatedUrl?: string;
+  steps: string[];
+  testType: E2ETestType;
+  successCondition: string;
 }
 
 export interface E2ETestSuite {
   number: number;
   name: string;
-  tests: Omit<E2ETestCase, 'suite' | 'suiteNumber'>[];
+  tests: E2ETestSuiteDefinition[];
 }

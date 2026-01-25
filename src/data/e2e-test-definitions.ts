@@ -11,6 +11,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar login do aluno com email/senha corretos',
         expectedResult: 'Redireciona para /dashboard com menu de student',
         relatedUrl: '/login',
+        testType: 'positive',
+        successCondition: 'Usuário consegue logar e é redirecionado para /dashboard',
         steps: [
           'Acessar /login',
           'Inserir email: aluno@teste.com, senha: teste123',
@@ -24,6 +26,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar login do mentor com email/senha corretos',
         expectedResult: 'Redireciona para /mentor/dashboard com menu de mentor',
         relatedUrl: '/login',
+        testType: 'positive',
+        successCondition: 'Usuário consegue logar e é redirecionado para /mentor/dashboard',
         steps: [
           'Acessar /login',
           'Inserir email: mentor@teste.com, senha: teste123',
@@ -37,6 +41,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar login do admin com email/senha corretos',
         expectedResult: 'Redireciona para /admin/dashboard com menu de admin',
         relatedUrl: '/login',
+        testType: 'positive',
+        successCondition: 'Usuário consegue logar e é redirecionado para /admin/dashboard',
         steps: [
           'Acessar /login',
           'Inserir email: admin@teste.com, senha: teste123',
@@ -50,6 +56,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar comportamento com credenciais incorretas',
         expectedResult: 'Mensagem de erro amigável exibida',
         relatedUrl: '/login',
+        testType: 'negative',
+        successCondition: 'Sistema exibe mensagem de erro e não permite login',
         steps: [
           'Acessar /login',
           'Inserir email e senha incorretos',
@@ -63,6 +71,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar logout funciona corretamente',
         expectedResult: 'Redireciona para /login após logout',
         relatedUrl: '/dashboard',
+        testType: 'positive',
+        successCondition: 'Usuário é deslogado e redirecionado para /login',
         steps: [
           'Fazer login como qualquer role',
           'Clicar no menu de usuário',
@@ -76,6 +86,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar que student não acessa rotas de admin',
         expectedResult: 'Redireciona para dashboard próprio',
         relatedUrl: '/admin/dashboard',
+        testType: 'security',
+        successCondition: 'Student é bloqueado e redirecionado para /dashboard ao tentar acessar /admin/*',
         steps: [
           'Fazer login como student',
           'Tentar acessar /admin/dashboard diretamente',
@@ -88,6 +100,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar que student não acessa rotas de mentor',
         expectedResult: 'Redireciona para dashboard próprio',
         relatedUrl: '/mentor/dashboard',
+        testType: 'security',
+        successCondition: 'Student é bloqueado e redirecionado para /dashboard ao tentar acessar /mentor/*',
         steps: [
           'Fazer login como student',
           'Tentar acessar /mentor/dashboard diretamente',
@@ -106,6 +120,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar exibição correta dos dados do perfil',
         expectedResult: 'Dados do usuário exibidos corretamente',
         relatedUrl: '/perfil',
+        testType: 'positive',
+        successCondition: 'Página de perfil carrega e exibe dados do usuário',
         steps: [
           'Fazer login',
           'Acessar /perfil',
@@ -118,6 +134,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar edição e salvamento dos dados do perfil',
         expectedResult: 'Alterações salvas com sucesso',
         relatedUrl: '/perfil',
+        testType: 'positive',
+        successCondition: 'Alterações são salvas e mensagem de sucesso é exibida',
         steps: [
           'Acessar /perfil',
           'Alterar nome ou telefone',
@@ -137,6 +155,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar exibição do dashboard com dados reais',
         expectedResult: 'Dashboard exibe sessões e progresso do aluno',
         relatedUrl: '/dashboard',
+        testType: 'positive',
+        successCondition: 'Dashboard carrega com cards de sessões e progresso',
         steps: [
           'Fazer login como aluno',
           'Verificar cards de próximas sessões',
@@ -150,6 +170,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar exibição correta das sessões',
         expectedResult: 'Agenda mostra sessões dos espaços matriculados',
         relatedUrl: '/agenda',
+        testType: 'positive',
+        successCondition: 'Agenda carrega e exibe sessões no calendário',
         steps: [
           'Acessar /agenda',
           'Verificar sessões do calendário',
@@ -163,6 +185,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar listagem de espaços matriculados',
         expectedResult: 'Lista espaços com status de matrícula ativa',
         relatedUrl: '/meus-espacos',
+        testType: 'positive',
+        successCondition: 'Lista de espaços é exibida com status correto',
         steps: [
           'Acessar /meus-espacos',
           'Verificar cards de espaços',
@@ -176,6 +200,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar fluxo completo de upload e download de tarefas',
         expectedResult: 'Upload funciona e download retorna arquivo correto',
         relatedUrl: '/tarefas',
+        testType: 'positive',
+        successCondition: 'Upload é bem sucedido e download funciona sem erro 404',
         steps: [
           'Acessar tarefa publicada',
           'Fazer upload de arquivo',
@@ -190,6 +216,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar acesso aos materiais',
         expectedResult: 'Lista materiais disponíveis para download',
         relatedUrl: '/biblioteca',
+        testType: 'positive',
+        successCondition: 'Materiais são listados e download funciona',
         steps: [
           'Acessar /biblioteca',
           'Navegar por pastas',
@@ -209,6 +237,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar exibição do dashboard do mentor',
         expectedResult: 'Dashboard mostra espaços e sessões do mentor',
         relatedUrl: '/mentor/dashboard',
+        testType: 'positive',
+        successCondition: 'Dashboard carrega com resumo de espaços e sessões',
         steps: [
           'Fazer login como mentor',
           'Verificar cards de resumo',
@@ -221,6 +251,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar se mentor pode criar espaço',
         expectedResult: 'Botão de criar espaço disponível e funcional',
         relatedUrl: '/mentor/espacos',
+        testType: 'positive',
+        successCondition: 'Formulário de criação funciona e espaço é criado',
         steps: [
           'Acessar /mentor/espacos',
           'Clicar em Criar Espaço',
@@ -234,6 +266,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar estilo visual do badge',
         expectedResult: 'Badge com contraste adequado (texto branco em fundo roxo)',
         relatedUrl: '/mentor/espacos/:id',
+        testType: 'positive',
+        successCondition: 'Badge é visível e possui contraste adequado',
         steps: [
           'Acessar detalhe de um espaço',
           'Verificar badge de status',
@@ -247,6 +281,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar que ações do menu de alunos funcionam',
         expectedResult: 'Todas as ações executam corretamente',
         relatedUrl: '/mentor/espacos/:id',
+        testType: 'positive',
+        successCondition: 'Menu de ações funciona para todas as opções',
         steps: [
           'Acessar aba Alunos',
           'Clicar no menu de ações de um aluno',
@@ -263,6 +299,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar opções de tipo de sessão',
         expectedResult: 'Campos para tipo (única/série) e formato (individual/grupo)',
         relatedUrl: '/mentor/espacos/:id/sessoes/nova',
+        testType: 'positive',
+        successCondition: 'Formulário exibe campos de tipo e formato',
         steps: [
           'Criar nova sessão',
           'Verificar campo de tipo de sessão',
@@ -276,6 +314,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar preenchimento automático do espaço',
         expectedResult: 'Campo espaço vem preenchido quando vindo de um espaço',
         relatedUrl: '/mentor/tarefas/nova',
+        testType: 'positive',
+        successCondition: 'Campo espaço é preenchido automaticamente',
         steps: [
           'Acessar espaço > aba Tarefas',
           'Clicar em Criar Tarefa',
@@ -290,6 +330,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar exibição da agenda',
         expectedResult: 'Agenda mostra sessões dos espaços do mentor',
         relatedUrl: '/mentor/agenda',
+        testType: 'positive',
+        successCondition: 'Agenda carrega e exibe sessões corretamente',
         steps: [
           'Acessar /mentor/agenda',
           'Verificar sessões no calendário',
@@ -303,6 +345,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar listagem e gestão de tarefas',
         expectedResult: 'Lista tarefas criadas pelo mentor',
         relatedUrl: '/mentor/tarefas',
+        testType: 'positive',
+        successCondition: 'Lista de tarefas é exibida com filtros funcionais',
         steps: [
           'Acessar /mentor/tarefas',
           'Verificar lista de tarefas',
@@ -316,6 +360,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar funcionalidade do botão Materiais',
         expectedResult: 'Abre materiais do espaço ou mensagem de vazio',
         relatedUrl: '/mentor/agenda',
+        testType: 'positive',
+        successCondition: 'Botão materiais funciona corretamente',
         steps: [
           'Acessar agenda',
           'Selecionar sessão',
@@ -335,6 +381,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar que cards são clicáveis e navegam corretamente',
         expectedResult: 'Cards redirecionam para páginas correspondentes',
         relatedUrl: '/admin/dashboard',
+        testType: 'positive',
+        successCondition: 'Cards navegam para as páginas corretas',
         steps: [
           'Acessar /admin/dashboard',
           'Clicar em card Total de Usuários',
@@ -348,6 +396,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar criação e edição de espaços',
         expectedResult: 'Formulários funcionais sem página em branco',
         relatedUrl: '/admin/espacos',
+        testType: 'positive',
+        successCondition: 'Formulários de criação e edição funcionam',
         steps: [
           'Acessar /admin/espacos',
           'Clicar em Novo',
@@ -362,6 +412,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar página de detalhes do espaço',
         expectedResult: 'Todas as abas funcionais',
         relatedUrl: '/admin/espacos/:id',
+        testType: 'positive',
+        successCondition: 'Todas as abas carregam e funcionam',
         steps: [
           'Acessar detalhes de espaço',
           'Verificar aba Visão Geral',
@@ -376,6 +428,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar funcionalidades de matrícula',
         expectedResult: 'Pode matricular, transferir, pausar alunos',
         relatedUrl: '/admin/matriculas',
+        testType: 'positive',
+        successCondition: 'Ações de matrícula funcionam corretamente',
         steps: [
           'Acessar /admin/matriculas',
           'Verificar lista',
@@ -389,6 +443,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar CRUD completo de usuários',
         expectedResult: 'Pode criar, editar, pausar, ver histórico',
         relatedUrl: '/admin/usuarios',
+        testType: 'positive',
+        successCondition: 'CRUD de usuários funciona completamente',
         steps: [
           'Acessar /admin/usuarios',
           'Criar novo usuário',
@@ -403,6 +459,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar CRUD de produtos',
         expectedResult: 'Pode criar, editar, vincular produtos',
         relatedUrl: '/admin/produtos',
+        testType: 'positive',
+        successCondition: 'CRUD de produtos funciona corretamente',
         steps: [
           'Acessar /admin/produtos',
           'Criar novo produto',
@@ -416,6 +474,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar acesso a logs',
         expectedResult: 'Exibe logs de login e erros',
         relatedUrl: '/admin/relatorios',
+        testType: 'positive',
+        successCondition: 'Logs são exibidos corretamente',
         steps: [
           'Acessar /admin/relatorios',
           'Verificar logs de login',
@@ -434,6 +494,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar landing page',
         expectedResult: 'Exibe página inicial com links para login/cadastro',
         relatedUrl: '/',
+        testType: 'positive',
+        successCondition: 'Página inicial carrega com links funcionais',
         steps: [
           'Acessar /',
           'Verificar conteúdo',
@@ -446,6 +508,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar fluxo de cadastro',
         expectedResult: 'Usuário criado e logado com dados corretos',
         relatedUrl: '/cadastro',
+        testType: 'positive',
+        successCondition: 'Usuário é criado e redirecionado corretamente',
         steps: [
           'Acessar /cadastro',
           'Preencher formulário',
@@ -459,6 +523,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar envio de email de recuperação',
         expectedResult: 'Email enviado com sucesso',
         relatedUrl: '/esqueci-senha',
+        testType: 'positive',
+        successCondition: 'Email de recuperação é enviado',
         steps: [
           'Acessar /esqueci-senha',
           'Inserir email válido',
@@ -472,6 +538,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Verificar página de erro amigável',
         expectedResult: 'Página 404 com redirect automático',
         relatedUrl: '/pagina-inexistente',
+        testType: 'negative',
+        successCondition: 'Sistema exibe página 404 amigável com opção de retorno',
         steps: [
           'Acessar rota inexistente',
           'Verificar mensagem amigável',
@@ -491,6 +559,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Testar fluxo completo de tarefas',
         expectedResult: 'Tarefa criada, entregue e avaliada com sucesso',
         relatedUrl: '/mentor/tarefas',
+        testType: 'positive',
+        successCondition: 'Fluxo completo funciona sem erros',
         steps: [
           'Login como mentor',
           'Criar tarefa publicada',
@@ -507,6 +577,8 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
         objective: 'Testar fluxo completo de matrícula',
         expectedResult: 'Aluno matriculado e com acesso ao espaço',
         relatedUrl: '/admin/matriculas',
+        testType: 'positive',
+        successCondition: 'Aluno é matriculado e consegue acessar o espaço',
         steps: [
           'Login como admin',
           'Acessar gestão de matrículas',
