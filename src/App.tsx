@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 import Index from "./pages/Index";
@@ -39,7 +40,16 @@ const queryClient = new QueryClient();
 
 // Protected route component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  
+  // Wait for auth state to be resolved before redirecting
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -47,7 +57,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
-    const routes = {
+    const routes: Record<string, string> = {
       student: '/dashboard',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
@@ -60,10 +70,19 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 
 // Public route - redirect to dashboard if already authenticated
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  
+  // Wait for auth state to be resolved before redirecting
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   if (isAuthenticated && user) {
-    const routes = {
+    const routes: Record<string, string> = {
       student: '/dashboard',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
