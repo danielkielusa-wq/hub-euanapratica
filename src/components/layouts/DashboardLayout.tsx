@@ -16,10 +16,12 @@ import {
   Calendar,
   MessageCircle,
   Library,
-  FlaskConical
+  FlaskConical,
+  MessageSquarePlus
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -50,6 +52,7 @@ const roleNavItems = {
     { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
     { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
     { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
+    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
     { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
   ],
 };
@@ -175,6 +178,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </div>
       </main>
+
+      {/* Botão flutuante de feedback */}
+      <FeedbackFloatingButton />
     </div>
   );
 }
