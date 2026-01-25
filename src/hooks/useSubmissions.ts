@@ -9,7 +9,8 @@ import type {
   ReviewSubmissionData,
   AssignmentStats,
   SubmissionStatus,
-  ReviewResult
+  ReviewResult,
+  SubmissionMessage
 } from '@/types/assignments';
 
 // Get my submission for an assignment
@@ -369,6 +370,71 @@ export function useDownloadSubmissionFile() {
     onError: (error) => {
       console.error('Error getting download URL:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar link de download');
+    }
+  });
+}
+
+// Get messages for a submission
+export function useSubmissionMessages(submissionId: string) {
+  return useQuery({
+    queryKey: ['submission-messages', submissionId],
+    queryFn: async (): Promise<SubmissionMessage[]> => {
+      const { data: messages, error } = await supabase
+        .from('submission_messages')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Get sender profiles
+      const senderIds = [...new Set(messages?.map(m => m.sender_id) || [])];
+      
+      if (senderIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', senderIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      return (messages || []).map(msg => ({
+        ...msg,
+        sender: profileMap.get(msg.sender_id)
+      })) as SubmissionMessage[];
+    },
+    enabled: !!submissionId && !submissionId.startsWith('placeholder-')
+  });
+}
+
+// Send a message for a submission
+export function useSendSubmissionMessage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ submission_id, message }: { submission_id: string; message: string }) => {
+      const { data, error } = await supabase
+        .from('submission_messages')
+        .insert({
+          submission_id,
+          sender_id: user!.id,
+          message
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['submission-messages', data.submission_id] });
+      toast.success('Mensagem enviada!');
+    },
+    onError: (error) => {
+      console.error('Error sending message:', error);
+      toast.error('Erro ao enviar mensagem');
     }
   });
 }

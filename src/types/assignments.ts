@@ -57,6 +57,17 @@ export interface Submission {
   assignment?: Assignment;
 }
 
+export interface SubmissionMessage {
+  id: string;
+  submission_id: string;
+  sender_id: string;
+  message: string;
+  created_at: string;
+  read_at: string | null;
+  // Joined data
+  sender?: { full_name: string };
+}
+
 export interface AssignmentWithSubmission extends Assignment {
   my_submission?: Submission | null;
 }
