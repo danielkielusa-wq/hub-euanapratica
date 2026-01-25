@@ -40,7 +40,7 @@ const roleNavItems = {
     { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
     { label: 'Biblioteca', href: '/biblioteca', icon: Library },
     { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
-    { label: 'Perfil', href: '/mentor/perfil', icon: Settings },
+    { label: 'Perfil', href: '/perfil', icon: Settings },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },

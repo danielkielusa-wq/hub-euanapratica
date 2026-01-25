@@ -12,6 +12,10 @@ export interface Espaco {
   end_date: string | null;
   created_at: string;
   updated_at: string;
+  category: 'immersion' | 'group_mentoring' | 'workshop' | 'bootcamp' | 'course' | null;
+  visibility: 'public' | 'private' | null;
+  max_students: number | null;
+  cover_image_url: string | null;
 }
 
 export interface UserEspaco {

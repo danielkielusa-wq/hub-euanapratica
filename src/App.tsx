@@ -12,8 +12,11 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StudentAgenda from "./pages/dashboards/StudentAgenda";
+import StudentEspacos from "./pages/student/StudentEspacos";
+import StudentSuporte from "./pages/student/StudentSuporte";
 import StudentAssignments from "./pages/assignments/StudentAssignments";
 import AssignmentDetailPage from "./pages/assignments/AssignmentDetailPage";
+import ProfilePage from "./pages/account/ProfilePage";
 import MentorDashboard from "./pages/dashboards/MentorDashboard";
 import MentorAgenda from "./pages/mentor/MentorAgenda";
 import MentorEspacos from "./pages/mentor/MentorEspacos";
@@ -108,9 +111,19 @@ function AppRoutes() {
           <StudentDashboard />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/espacos" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentEspacos />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/agenda" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentAgenda />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/conteudo" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <Navigate to="/biblioteca" replace />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/tarefas" element={
@@ -121,6 +134,18 @@ function AppRoutes() {
       <Route path="/dashboard/tarefas/:id" element={
         <ProtectedRoute allowedRoles={['student']}>
           <AssignmentDetailPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/suporte" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentSuporte />
+        </ProtectedRoute>
+      } />
+      
+      {/* Profile route - accessible by all authenticated users */}
+      <Route path="/perfil" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ProfilePage />
         </ProtectedRoute>
       } />
       
