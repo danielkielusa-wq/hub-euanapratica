@@ -1,4 +1,4 @@
-import { Task } from '@/types/dashboard';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ClipboardList, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { format, differenceInHours, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAssignments } from '@/hooks/useAssignments';
+import type { AssignmentWithSubmission } from '@/types/assignments';
 
 interface PendingTasksProps {
-  tasks: Task[];
-  isLoading?: boolean;
   onViewAll?: () => void;
-  onSubmit?: (taskId: string) => void;
 }
 
 function getUrgencyStatus(dueDate: Date): { isUrgent: boolean; isPastDue: boolean; text: string } {
@@ -26,20 +25,21 @@ function getUrgencyStatus(dueDate: Date): { isUrgent: boolean; isPastDue: boolea
   return { isUrgent: false, isPastDue: false, text: '' };
 }
 
-function TaskItem({ task, onSubmit }: { task: Task; onSubmit?: (id: string) => void }) {
-  const urgency = getUrgencyStatus(task.dueDate);
+function TaskItem({ assignment }: { assignment: AssignmentWithSubmission }) {
+  const navigate = useNavigate();
+  const urgency = getUrgencyStatus(new Date(assignment.due_date));
 
   return (
     <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
       urgency.isPastDue 
         ? 'bg-destructive/5 border-destructive/20' 
         : urgency.isUrgent 
-          ? 'bg-chart-1/5 border-chart-1/20'
+          ? 'bg-accent/50 border-accent'
           : 'bg-muted/30 border-border'
     }`}>
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex items-center gap-2 mb-1">
-          <h4 className="font-medium text-foreground truncate">{task.title}</h4>
+          <h4 className="font-medium text-foreground truncate">{assignment.title}</h4>
           {urgency.isUrgent && (
             <Badge variant="destructive" className="shrink-0 gap-1">
               <AlertTriangle className="w-3 h-3" />
@@ -47,16 +47,18 @@ function TaskItem({ task, onSubmit }: { task: Task; onSubmit?: (id: string) => v
             </Badge>
           )}
         </div>
-        <p className="text-sm text-muted-foreground truncate">{task.cohortName}</p>
+        <p className="text-sm text-muted-foreground truncate">
+          {assignment.espaco?.name || 'Sem turma'}
+        </p>
         <div className="flex items-center gap-1.5 mt-1.5 text-sm text-muted-foreground">
           <Clock className="w-3.5 h-3.5" />
-          <span>Prazo: {format(task.dueDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+          <span>Prazo: {format(new Date(assignment.due_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
         </div>
       </div>
       <Button 
         size="sm" 
         variant={urgency.isUrgent ? "default" : "outline"}
-        onClick={() => onSubmit?.(task.id)}
+        onClick={() => navigate(`/dashboard/tarefas/${assignment.id}`)}
       >
         Entregar
       </Button>
@@ -79,11 +81,30 @@ function TaskSkeleton() {
   );
 }
 
-export function PendingTasks({ tasks, isLoading, onViewAll, onSubmit }: PendingTasksProps) {
+export function PendingTasks({ onViewAll }: PendingTasksProps) {
+  const navigate = useNavigate();
+  
+  // Fetch published assignments
+  const { data: assignments, isLoading } = useAssignments({ status: 'published' });
+
+  // Filter to only pending (not submitted) assignments
+  const pendingTasks = assignments?.filter(a => {
+    const submission = a.my_submission;
+    return !submission || submission.status === 'draft';
+  }) || [];
+
   // Sort by due date (most urgent first)
-  const sortedTasks = [...tasks].sort((a, b) => 
-    new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+  const sortedTasks = [...pendingTasks].sort((a, b) => 
+    new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
   );
+
+  const handleViewAll = () => {
+    if (onViewAll) {
+      onViewAll();
+    } else {
+      navigate('/dashboard/tarefas');
+    }
+  };
 
   return (
     <Card>
@@ -92,12 +113,12 @@ export function PendingTasks({ tasks, isLoading, onViewAll, onSubmit }: PendingT
           <CardTitle className="text-lg flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-primary" />
             Tarefas Pendentes
-            {tasks.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{tasks.length}</Badge>
+            {pendingTasks.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{pendingTasks.length}</Badge>
             )}
           </CardTitle>
-          {tasks.length > 5 && onViewAll && (
-            <Button variant="ghost" size="sm" onClick={onViewAll} className="gap-1 text-primary">
+          {(pendingTasks.length > 3 || pendingTasks.length > 0) && (
+            <Button variant="ghost" size="sm" onClick={handleViewAll} className="gap-1 text-primary">
               Ver todas
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -117,8 +138,8 @@ export function PendingTasks({ tasks, isLoading, onViewAll, onSubmit }: PendingT
             <p>Você não tem tarefas pendentes 🎉</p>
           </div>
         ) : (
-          sortedTasks.slice(0, 5).map((task) => (
-            <TaskItem key={task.id} task={task} onSubmit={onSubmit} />
+          sortedTasks.slice(0, 5).map((assignment) => (
+            <TaskItem key={assignment.id} assignment={assignment} />
           ))
         )}
       </CardContent>

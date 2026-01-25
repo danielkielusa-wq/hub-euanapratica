@@ -11,8 +11,14 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StudentAgenda from "./pages/dashboards/StudentAgenda";
+import StudentAssignments from "./pages/assignments/StudentAssignments";
+import AssignmentDetailPage from "./pages/assignments/AssignmentDetailPage";
 import MentorDashboard from "./pages/dashboards/MentorDashboard";
 import MentorAgenda from "./pages/mentor/MentorAgenda";
+import MentorAssignments from "./pages/mentor/MentorAssignments";
+import CreateAssignment from "./pages/mentor/CreateAssignment";
+import EditAssignment from "./pages/mentor/EditAssignment";
+import ReviewSubmissions from "./pages/mentor/ReviewSubmissions";
 import CreateSession from "./pages/mentor/CreateSession";
 import EditSession from "./pages/mentor/EditSession";
 import SessionAttendance from "./pages/mentor/SessionAttendance";
@@ -80,6 +86,16 @@ function AppRoutes() {
           <StudentAgenda />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/tarefas" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentAssignments />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/tarefas/:id" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <AssignmentDetailPage />
+        </ProtectedRoute>
+      } />
       
       {/* Library routes - accessible by all authenticated users */}
       <Route path="/biblioteca" element={
@@ -117,6 +133,26 @@ function AppRoutes() {
       <Route path="/mentor/sessao/:id/presenca" element={
         <ProtectedRoute allowedRoles={['mentor']}>
           <SessionAttendance />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorAssignments />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/nova" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <CreateAssignment />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/:id" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <EditAssignment />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/tarefas/:id/entregas" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <ReviewSubmissions />
         </ProtectedRoute>
       } />
       
