@@ -75,9 +75,11 @@ export function AssignmentList({ espacoId }: AssignmentListProps) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full max-w-md" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-48" />
+            <div key={i} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
+              <Skeleton className="h-48 rounded-[24px]" />
+            </div>
           ))}
         </div>
       </div>
@@ -135,9 +137,11 @@ export function AssignmentList({ espacoId }: AssignmentListProps) {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
             {displayAssignments.map(assignment => (
-              <AssignmentCard key={assignment.id} assignment={assignment} />
+              <div key={assignment.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
+                <AssignmentCard assignment={assignment} />
+              </div>
             ))}
           </div>
         )}
