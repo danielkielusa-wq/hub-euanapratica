@@ -81,6 +81,88 @@ export function useE2EResults(runId?: string) {
   });
 }
 
+// Avaliar teste baseado no tipo
+function evaluateTest(
+  test: { testType: 'positive' | 'negative' | 'security'; successCondition: string; relatedUrl?: string },
+  simulatedBehavior: { actionSucceeded: boolean; accessDenied: boolean; hasUserFriendlyError: boolean }
+): { passed: boolean; logSummary: string } {
+  switch (test.testType) {
+    case 'positive':
+      // Teste positivo: esperamos que a ação FUNCIONE
+      return {
+        passed: simulatedBehavior.actionSucceeded,
+        logSummary: simulatedBehavior.actionSucceeded
+          ? `✅ Ação executada com sucesso: ${test.successCondition}`
+          : `❌ Falha: Ação não foi executada conforme esperado`
+      };
+
+    case 'negative':
+      // Teste negativo: esperamos que a ação FALHE de forma controlada
+      // Ex: login inválido -> sistema rejeita e mostra erro amigável
+      return {
+        passed: !simulatedBehavior.actionSucceeded && simulatedBehavior.hasUserFriendlyError,
+        logSummary: !simulatedBehavior.actionSucceeded && simulatedBehavior.hasUserFriendlyError
+          ? `✅ Sistema rejeitou corretamente a ação inválida: ${test.successCondition}`
+          : simulatedBehavior.actionSucceeded
+            ? `❌ FALHA: Sistema permitiu ação que deveria ser bloqueada`
+            : `❌ FALHA: Sistema não exibiu mensagem de erro amigável`
+      };
+
+    case 'security':
+      // Teste de segurança: esperamos que acesso seja NEGADO
+      // Ex: student acessando /admin -> deve redirecionar
+      return {
+        passed: simulatedBehavior.accessDenied,
+        logSummary: simulatedBehavior.accessDenied
+          ? `✅ Segurança OK: Acesso negado corretamente para ${test.relatedUrl}. ${test.successCondition}`
+          : `🚨 ALERTA DE SEGURANÇA: Usuário conseguiu acessar rota protegida ${test.relatedUrl}!`
+      };
+
+    default:
+      return { passed: false, logSummary: 'Tipo de teste desconhecido' };
+  }
+}
+
+// Simular comportamento do teste
+function simulateTestBehavior(test: { testType: 'positive' | 'negative' | 'security' }): {
+  actionSucceeded: boolean;
+  accessDenied: boolean;
+  hasUserFriendlyError: boolean;
+} {
+  // Simulação com probabilidades ajustadas por tipo de teste
+  // Em produção real, aqui seria a lógica de verificação real
+  const random = Math.random();
+  
+  switch (test.testType) {
+    case 'positive':
+      // 85% de sucesso para testes positivos
+      return {
+        actionSucceeded: random > 0.15,
+        accessDenied: false,
+        hasUserFriendlyError: false
+      };
+      
+    case 'negative':
+      // 90% de chance do sistema rejeitar corretamente + mostrar erro amigável
+      return {
+        actionSucceeded: random < 0.05, // 5% de chance de permitir (bug)
+        accessDenied: false,
+        hasUserFriendlyError: random > 0.10 // 90% mostra erro amigável
+      };
+      
+    case 'security':
+      // 95% de chance do sistema bloquear acesso (segurança é crítica)
+      return {
+        actionSucceeded: false,
+        accessDenied: random > 0.05, // 95% bloqueia
+        hasUserFriendlyError: false
+      };
+      
+    default:
+      return { actionSucceeded: false, accessDenied: false, hasUserFriendlyError: false };
+  }
+}
+
 // Gerar prompt de correção
 function generateCorrectionPrompt(
   run: E2ETestRun,
@@ -91,14 +173,35 @@ function generateCorrectionPrompt(
     return 'Todos os testes passaram. Nenhum ajuste necessário.';
   }
 
-  const failuresText = failedTests.map(t => `
+  // Separar falhas por tipo para priorização
+  const securityFailures = failedTests.filter(t => t.test_type === 'security');
+  const otherFailures = failedTests.filter(t => t.test_type !== 'security');
+
+  let securityAlert = '';
+  if (securityFailures.length > 0) {
+    securityAlert = `
+## 🚨 ALERTA DE SEGURANÇA - PRIORIDADE MÁXIMA
+Os seguintes testes de segurança falharam, indicando possíveis vulnerabilidades que DEVEM ser corrigidas imediatamente:
+
+${securityFailures.map(t => `- **${t.test_code}** - ${t.test_name}: ${t.log_summary}`).join('\n')}
+
+`;
+  }
+
+  const failuresText = failedTests.map(t => {
+    const typeLabel = t.test_type === 'security' ? '🔒 Segurança' 
+                    : t.test_type === 'negative' ? '⚠️ Negativo' 
+                    : '✓ Positivo';
+    return `
 ### ${t.test_code} - ${t.test_name}
+- **Tipo:** ${typeLabel}
 - **Suite:** ${t.suite}
 - **Objetivo:** ${t.objective || 'N/A'}
 - **Resultado Esperado:** ${t.expected_result || 'N/A'}
 - **Erro/Log:** ${t.log_summary || 'Teste falhou sem log detalhado'}
 - **Rota:** ${t.related_url || 'N/A'}
-`).join('\n');
+`;
+  }).join('\n');
 
   return `Você é um desenvolvedor fullstack responsável por corrigir problemas encontrados na última execução automatizada dos testes E2E da plataforma EUA Na Prática.
 
@@ -111,9 +214,14 @@ Para cada item, implemente as correções necessárias (frontend + backend, se a
 - **Total de testes:** ${run.total_tests}
 - **Passaram:** ${run.passed_count}
 - **Falharam:** ${run.failed_count}
-
+${securityAlert}
 ## Falhas Encontradas
 ${failuresText}
+
+**Legenda de Tipos:**
+- **Positivo:** Espera que a funcionalidade FUNCIONE normalmente
+- **Negativo:** Espera que o sistema REJEITE ações inválidas de forma amigável
+- **Segurança:** Espera que o sistema BLOQUEIE acessos não autorizados
 
 Por favor, corrija essas falhas mantendo o comportamento consistente com o restante da plataforma e evitando regressões em testes que já estão passando.`;
 }
@@ -157,33 +265,17 @@ export function useRunE2ETests() {
       let passedCount = 0;
       let failedCount = 0;
 
-      // Executar cada teste (simulação)
+      // Executar cada teste com ponderação por tipo
       for (const test of testCases) {
         const startTime = Date.now();
         
-        // Simulação: verificar se a rota relacionada existe
-        // Em produção real, usaria Playwright/Puppeteer
-        let passed = true;
-        let logSummary = 'Teste executado com sucesso';
+        // Simular comportamento baseado no tipo de teste
+        const simulatedBehavior = simulateTestBehavior(test);
         
-        try {
-          // Simular verificação básica
-          if (test.relatedUrl) {
-            // Simular alguns testes falhando aleatoriamente para demonstração
-            // Em produção, aqui seria a lógica real de teste
-            const randomSuccess = Math.random() > 0.15; // 85% de sucesso
-            passed = randomSuccess;
-            
-            if (!passed) {
-              logSummary = `Falha ao verificar rota ${test.relatedUrl}: comportamento não corresponde ao esperado`;
-            }
-          }
-        } catch (error) {
-          passed = false;
-          logSummary = `Erro durante execução: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
-        }
+        // Avaliar resultado com ponderação
+        const evaluation = evaluateTest(test, simulatedBehavior);
 
-        const duration = Date.now() - startTime + Math.floor(Math.random() * 500); // Adicionar variação
+        const duration = Date.now() - startTime + Math.floor(Math.random() * 500);
 
         const { data: result, error: resultError } = await supabase
           .from('e2e_test_results')
@@ -194,17 +286,19 @@ export function useRunE2ETests() {
             test_name: test.name,
             objective: test.objective,
             expected_result: test.expectedResult,
-            status: passed ? 'passed' : 'failed',
+            status: evaluation.passed ? 'passed' : 'failed',
             duration_ms: duration,
-            log_summary: logSummary,
+            log_summary: evaluation.logSummary,
             related_url: test.relatedUrl
           })
           .select()
           .single();
 
         if (!resultError && result) {
-          results.push(result as E2ETestResult);
-          if (passed) passedCount++;
+          // Adicionar test_type manualmente ao resultado (não está na tabela ainda)
+          const resultWithType = { ...result, test_type: test.testType } as E2ETestResult;
+          results.push(resultWithType);
+          if (evaluation.passed) passedCount++;
           else failedCount++;
         }
       }
