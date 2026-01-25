@@ -18,6 +18,7 @@ export interface Profile {
 
 export interface UserWithRole extends Profile {
   role: UserRole;
+  has_completed_onboarding: boolean;
 }
 
 export interface AuthState {

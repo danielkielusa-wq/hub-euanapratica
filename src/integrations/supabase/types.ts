@@ -628,44 +628,74 @@ export type Database = {
       }
       profiles: {
         Row: {
+          alternative_email: string | null
+          birth_date: string | null
           created_at: string | null
+          current_city: string | null
+          current_country: string | null
+          current_state: string | null
           email: string
           full_name: string
+          has_completed_onboarding: boolean | null
           id: string
           is_whatsapp: boolean | null
           last_login_at: string | null
+          linkedin_url: string | null
           phone: string | null
           phone_country_code: string | null
+          preferred_name: string | null
           profile_photo_url: string | null
+          resume_url: string | null
           status: string | null
+          target_country: string | null
           timezone: string | null
           updated_at: string | null
         }
         Insert: {
+          alternative_email?: string | null
+          birth_date?: string | null
           created_at?: string | null
+          current_city?: string | null
+          current_country?: string | null
+          current_state?: string | null
           email: string
           full_name: string
+          has_completed_onboarding?: boolean | null
           id: string
           is_whatsapp?: boolean | null
           last_login_at?: string | null
+          linkedin_url?: string | null
           phone?: string | null
           phone_country_code?: string | null
+          preferred_name?: string | null
           profile_photo_url?: string | null
+          resume_url?: string | null
           status?: string | null
+          target_country?: string | null
           timezone?: string | null
           updated_at?: string | null
         }
         Update: {
+          alternative_email?: string | null
+          birth_date?: string | null
           created_at?: string | null
+          current_city?: string | null
+          current_country?: string | null
+          current_state?: string | null
           email?: string
           full_name?: string
+          has_completed_onboarding?: boolean | null
           id?: string
           is_whatsapp?: boolean | null
           last_login_at?: string | null
+          linkedin_url?: string | null
           phone?: string | null
           phone_country_code?: string | null
+          preferred_name?: string | null
           profile_photo_url?: string | null
+          resume_url?: string | null
           status?: string | null
+          target_country?: string | null
           timezone?: string | null
           updated_at?: string | null
         }
