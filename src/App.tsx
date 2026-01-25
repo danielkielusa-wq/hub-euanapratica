@@ -38,6 +38,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminReports from "./pages/admin/AdminReports";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
+import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -278,6 +279,11 @@ function AppRoutes() {
       <Route path="/admin/biblioteca/upload" element={
         <ProtectedRoute allowedRoles={['admin', 'mentor']}>
           <UploadMaterials />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/testes-e2e" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminE2ETests />
         </ProtectedRoute>
       } />
       

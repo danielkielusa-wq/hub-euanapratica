@@ -118,6 +118,110 @@ export type Database = {
           },
         ]
       }
+      e2e_test_results: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          expected_result: string | null
+          id: string
+          log_raw: string | null
+          log_summary: string | null
+          objective: string | null
+          related_url: string | null
+          run_id: string
+          status: Database["public"]["Enums"]["e2e_test_status"] | null
+          suite: string
+          test_code: string
+          test_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          expected_result?: string | null
+          id?: string
+          log_raw?: string | null
+          log_summary?: string | null
+          objective?: string | null
+          related_url?: string | null
+          run_id: string
+          status?: Database["public"]["Enums"]["e2e_test_status"] | null
+          suite: string
+          test_code: string
+          test_name: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          expected_result?: string | null
+          id?: string
+          log_raw?: string | null
+          log_summary?: string | null
+          objective?: string | null
+          related_url?: string | null
+          run_id?: string
+          status?: Database["public"]["Enums"]["e2e_test_status"] | null
+          suite?: string
+          test_code?: string
+          test_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e2e_test_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "e2e_test_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      e2e_test_runs: {
+        Row: {
+          correction_prompt: string | null
+          created_at: string | null
+          error_message: string | null
+          failed_count: number | null
+          finished_at: string | null
+          id: string
+          passed_count: number | null
+          skipped_count: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["e2e_run_status"] | null
+          suites_executed: Json | null
+          total_tests: number | null
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          correction_prompt?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          passed_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["e2e_run_status"] | null
+          suites_executed?: Json | null
+          total_tests?: number | null
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          correction_prompt?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          passed_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["e2e_run_status"] | null
+          suites_executed?: Json | null
+          total_tests?: number | null
+          triggered_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       enrollment_history: {
         Row: {
           action: string
@@ -851,6 +955,8 @@ export type Database = {
       app_role: "admin" | "mentor" | "student"
       assignment_status: "draft" | "published" | "closed"
       attendance_status: "present" | "absent" | "unmarked"
+      e2e_run_status: "started" | "running" | "passed" | "failed" | "cancelled"
+      e2e_test_status: "passed" | "failed" | "skipped" | "pending"
       espaco_category:
         | "immersion"
         | "group_mentoring"
@@ -1009,6 +1115,8 @@ export const Constants = {
       app_role: ["admin", "mentor", "student"],
       assignment_status: ["draft", "published", "closed"],
       attendance_status: ["present", "absent", "unmarked"],
+      e2e_run_status: ["started", "running", "passed", "failed", "cancelled"],
+      e2e_test_status: ["passed", "failed", "skipped", "pending"],
       espaco_category: [
         "immersion",
         "group_mentoring",
