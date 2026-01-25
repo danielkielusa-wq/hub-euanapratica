@@ -269,6 +269,63 @@ export type Database = {
           },
         ]
       }
+      espaco_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string | null
+          email: string
+          espaco_id: string
+          expires_at: string
+          id: string
+          invited_by: string
+          invited_name: string | null
+          status: Database["public"]["Enums"]["invitation_status"] | null
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string | null
+          email: string
+          espaco_id: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          invited_name?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string | null
+          email?: string
+          espaco_id?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          invited_name?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"] | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "espaco_invitations_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "espaco_invitations_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       espacos: {
         Row: {
           category: Database["public"]["Enums"]["espaco_category"] | null
@@ -1148,6 +1205,7 @@ export type Database = {
         | "png"
         | "jpg"
         | "link"
+      invitation_status: "pending" | "accepted" | "expired" | "cancelled"
       material_type: "pdf" | "link" | "video" | "other"
       notification_type:
         | "reminder_24h"
@@ -1311,6 +1369,7 @@ export const Constants = {
       ],
       feedback_type: ["bug", "enhancement"],
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
+      invitation_status: ["pending", "accepted", "expired", "cancelled"],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [
         "reminder_24h",
