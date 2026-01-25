@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +21,7 @@ import {
 import { CATEGORY_LABELS, VISIBILITY_LABELS, type EspacoCategory, type EspacoVisibility } from '@/types/admin';
 import { useMentors } from '@/hooks/useAdminEspacos';
 import { Loader2 } from 'lucide-react';
+import { CoverImageUpload } from './CoverImageUpload';
 
 interface EspacoFormData {
   name: string;
@@ -33,6 +33,7 @@ interface EspacoFormData {
   start_date?: string;
   end_date?: string;
   status: string;
+  cover_image_url?: string;
 }
 
 interface EspacoFormProps {
@@ -40,7 +41,7 @@ interface EspacoFormProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: EspacoFormData) => void;
   isLoading?: boolean;
-  initialData?: Partial<EspacoFormData>;
+  initialData?: Partial<EspacoFormData> & { id?: string };
   mode?: 'create' | 'edit';
 }
 
@@ -64,7 +65,8 @@ export function EspacoForm({
       mentor_id: initialData?.mentor_id || '',
       start_date: initialData?.start_date || '',
       end_date: initialData?.end_date || '',
-      status: initialData?.status || 'active'
+      status: initialData?.status || 'active',
+      cover_image_url: initialData?.cover_image_url || '',
     }
   });
 
@@ -72,28 +74,40 @@ export function EspacoForm({
   const visibility = watch('visibility');
   const status = watch('status');
   const mentorId = watch('mentor_id');
+  const coverImageUrl = watch('cover_image_url');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'create' ? 'Nova Turma' : 'Editar Turma'}
+            {mode === 'create' ? 'Novo Espaço' : 'Editar Espaço'}
           </DialogTitle>
           <DialogDescription>
             {mode === 'create'
-              ? 'Preencha os dados para criar uma nova turma.'
-              : 'Atualize os dados da turma.'}
+              ? 'Preencha os dados para criar um novo espaço.'
+              : 'Atualize os dados do espaço.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Cover Image Upload */}
           <div className="space-y-2">
-            <Label htmlFor="name">Nome da Turma *</Label>
+            <Label>Imagem de Capa</Label>
+            <CoverImageUpload
+              currentImage={coverImageUrl || undefined}
+              onUpload={(url) => setValue('cover_image_url', url)}
+              onRemove={() => setValue('cover_image_url', '')}
+              espacoId={initialData?.id}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome do Espaço *</Label>
             <Input
               id="name"
               {...register('name', { required: 'Nome é obrigatório' })}
-              placeholder="Ex: Imersão em Python 2024"
+              placeholder="Ex: Imersão EUA 2025"
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -229,7 +243,7 @@ export function EspacoForm({
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === 'create' ? 'Criar Turma' : 'Salvar Alterações'}
+              {mode === 'create' ? 'Criar Espaço' : 'Salvar Alterações'}
             </Button>
           </DialogFooter>
         </form>

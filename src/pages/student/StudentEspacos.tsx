@@ -1,42 +1,11 @@
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useEspacos } from '@/hooks/useEspacos';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { 
-  GraduationCap, 
-  Calendar, 
-  Users, 
-  ChevronRight,
-  Loader2 
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
-
-const categoryLabels: Record<string, string> = {
-  immersion: 'Imersão',
-  group_mentoring: 'Mentoria em Grupo',
-  workshop: 'Workshop',
-  bootcamp: 'Bootcamp',
-  course: 'Curso',
-};
-
-const statusColors: Record<string, string> = {
-  active: 'bg-green-500/10 text-green-600',
-  inactive: 'bg-muted text-muted-foreground',
-  completed: 'bg-blue-500/10 text-blue-600',
-};
-
-const statusLabels: Record<string, string> = {
-  active: 'Em Andamento',
-  inactive: 'Inativo',
-  completed: 'Concluído',
-};
+import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
+import { NetflixEspacoCard } from '@/components/espacos/NetflixEspacoCard';
+import { Card, CardContent } from '@/components/ui/card';
+import { GraduationCap, Loader2 } from 'lucide-react';
 
 export default function StudentEspacos() {
-  const { data: espacos, isLoading } = useEspacos();
-  const navigate = useNavigate();
+  const { data: espacos, isLoading } = useStudentEspacosWithStats();
 
   if (isLoading) {
     return (
@@ -50,7 +19,7 @@ export default function StudentEspacos() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">Meus Espaços</h1>
@@ -59,60 +28,14 @@ export default function StudentEspacos() {
           </p>
         </div>
 
-        {/* Espacos Grid */}
+        {/* Netflix-style Grid */}
         {espacos && espacos.length > 0 ? (
-          <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {espacos.map((espaco) => (
-              <div key={espaco.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
-                <Card 
-                  className="hover:shadow-md transition-shadow cursor-pointer group h-full"
-                  onClick={() => navigate(`/dashboard/espacos/${espaco.id}`)}
-                >
-                  {espaco.cover_image_url && (
-                    <div className="h-32 overflow-hidden rounded-t-lg">
-                      <img 
-                        src={espaco.cover_image_url} 
-                        alt={espaco.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className={!espaco.cover_image_url ? 'pt-6' : ''}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg truncate">{espaco.name}</CardTitle>
-                        <CardDescription className="line-clamp-2 mt-1">
-                          {espaco.description || 'Sem descrição'}
-                        </CardDescription>
-                      </div>
-                      <Badge className={statusColors[espaco.status || 'active']}>
-                        {statusLabels[espaco.status || 'active']}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <GraduationCap className="h-4 w-4" />
-                        <span>{categoryLabels[espaco.category || 'course'] || espaco.category}</span>
-                      </div>
-                      {espaco.start_date && (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {format(new Date(espaco.start_date), "MMM yyyy", { locale: ptBR })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <Button variant="ghost" size="sm" className="gap-1">
-                        Acessar
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div key={espaco.id} className="flex justify-center sm:justify-start">
+                <div className="w-full max-w-[280px]">
+                  <NetflixEspacoCard espaco={espaco} />
+                </div>
               </div>
             ))}
           </div>
