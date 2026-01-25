@@ -122,6 +122,7 @@ export default function AdminEspacos() {
         onSubmit={editingEspaco ? handleUpdate : handleCreate}
         isLoading={createMutation.isPending || updateMutation.isPending}
         initialData={editingEspaco ? {
+          id: editingEspaco.id,
           name: editingEspaco.name,
           description: editingEspaco.description || '',
           category: editingEspaco.category,
@@ -130,7 +131,8 @@ export default function AdminEspacos() {
           mentor_id: editingEspaco.mentor_id || '',
           start_date: editingEspaco.start_date || '',
           end_date: editingEspaco.end_date || '',
-          status: editingEspaco.status || 'active'
+          status: editingEspaco.status || 'active',
+          cover_image_url: editingEspaco.cover_image_url || '',
         } : undefined}
         mode={editingEspaco ? 'edit' : 'create'}
       />
