@@ -172,24 +172,26 @@ export default function MentorDashboard() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex flex-col items-center gap-4 w-full sm:grid sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
-                      <p className={`text-xs mt-1 ${stat.urgent ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {stat.change}
-                      </p>
+              <div key={stat.label} className="w-full max-w-[90%] sm:max-w-none mx-auto sm:mx-0">
+                <Card className="h-full">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                        <p className="text-sm text-muted-foreground">{stat.label}</p>
+                        <p className={`text-xs mt-1 ${stat.urgent ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {stat.change}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <stat.icon className="w-5 h-5 text-primary" />
+                      </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <stat.icon className="w-5 h-5 text-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         )}
@@ -302,23 +304,24 @@ export default function MentorDashboard() {
               <CardDescription>Acesso rápido aos seus espaços</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
                 {espacos.slice(0, 3).map((espaco) => (
-                  <div 
-                    key={espaco.id} 
-                    className="p-4 rounded-lg border border-border hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer"
-                    onClick={() => navigate(`/mentor/espacos/${espaco.id}`)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">{espaco.name}</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {espaco.enrolled_count || 0} alunos
-                        </p>
+                  <div key={espaco.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
+                    <div 
+                      className="p-4 rounded-lg border border-border hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer h-full"
+                      onClick={() => navigate(`/mentor/espacos/${espaco.id}`)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{espaco.name}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {espaco.enrolled_count || 0} alunos
+                          </p>
+                        </div>
+                        <Badge variant={espaco.status === 'active' ? 'default' : 'secondary'}>
+                          {espaco.status === 'active' ? 'Ativo' : espaco.status}
+                        </Badge>
                       </div>
-                      <Badge variant={espaco.status === 'active' ? 'default' : 'secondary'}>
-                        {espaco.status === 'active' ? 'Ativo' : espaco.status}
-                      </Badge>
                     </div>
                   </div>
                 ))}

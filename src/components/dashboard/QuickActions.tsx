@@ -32,9 +32,9 @@ const quickActions: QuickAction[] = [
 
 export function QuickActions() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="flex flex-col items-center gap-4 w-full sm:grid sm:grid-cols-3">
       {quickActions.map((action) => (
-        <Link key={action.title} to={action.href}>
+        <Link key={action.title} to={action.href} className="w-full max-w-[90%] sm:max-w-none mx-auto sm:mx-0">
           <Card 
             variant="glass" 
             className="hover:scale-[1.02] cursor-pointer h-full"
