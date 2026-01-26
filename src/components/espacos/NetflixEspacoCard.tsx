@@ -4,7 +4,7 @@ import { Calendar, ClipboardList, ChevronRight, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { getEspacoGradient } from '@/lib/gradients';
+import { resolveGradient } from '@/lib/gradients';
 import { cn } from '@/lib/utils';
 import type { EspacoWithStats } from '@/hooks/useStudentEspacosWithStats';
 import type { MentorEspacoWithStats } from '@/hooks/useMentorEspacosWithStats';
@@ -34,9 +34,16 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
   const [isHovered, setIsHovered] = useState(false);
 
   const status = statusConfig[espaco.status || 'active'] || statusConfig.active;
-  const fallbackGradient = getEspacoGradient(espaco.id);
   const hasImage = !!espaco.cover_image_url;
   const isMentor = role === 'mentor';
+
+  // Resolve gradient with preset support
+  const backgroundGradient = resolveGradient(
+    (espaco as any).gradient_preset,
+    (espaco as any).gradient_start,
+    (espaco as any).gradient_end,
+    espaco.id
+  );
 
   // Get mentor-specific stats if available
   const mentorEspaco = espaco as MentorEspacoWithStats;
@@ -53,7 +60,7 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
   return (
     <div
       className={cn(
-        'relative aspect-[3/4] rounded-[24px] overflow-hidden cursor-pointer group',
+        'relative aspect-[3/4] rounded-[24px] overflow-hidden cursor-pointer group w-full',
         'transition-all duration-300 ease-out',
         'hover:scale-105 hover:shadow-2xl hover:z-10'
       )}
@@ -70,8 +77,8 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
         />
       ) : (
         <div
-          className="absolute inset-0"
-          style={{ background: fallbackGradient }}
+          className="absolute inset-0 transition-all duration-300"
+          style={{ background: backgroundGradient }}
         />
       )}
 

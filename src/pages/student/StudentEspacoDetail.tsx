@@ -20,12 +20,10 @@ import {
 import { DiscussionSessionsList } from '@/components/espacos/detail/DiscussionSessionsList';
 import { BookOpen, Video } from 'lucide-react';
 
-type TabValue = 'overview' | 'sessions' | 'assignments' | 'library' | 'discussao';
-
 export default function StudentEspacoDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabValue>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   const { data: espaco, isLoading: espacoLoading } = useEspaco(id!);
   const { data: sessions, isLoading: sessionsLoading } = useSessions(id);
@@ -118,7 +116,7 @@ export default function StudentEspacoDetail() {
 
         {/* Tab Content */}
         <div className="px-4 py-6 pb-28 md:pb-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {activeTab === 'overview' && (
               <OverviewContent
                 upcomingSessions={upcomingSessions}

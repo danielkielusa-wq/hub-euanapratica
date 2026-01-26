@@ -28,15 +28,11 @@ export default function StudentEspacos() {
           </p>
         </div>
 
-        {/* Netflix-style Grid */}
+        {/* Netflix-style Grid - Full Width */}
         {espacos && espacos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 w-full">
             {espacos.map((espaco) => (
-              <div key={espaco.id} className="flex justify-center sm:justify-start">
-                <div className="w-full max-w-[280px]">
-                  <NetflixEspacoCard espaco={espaco} />
-                </div>
-              </div>
+              <NetflixEspacoCard key={espaco.id} espaco={espaco} />
             ))}
           </div>
         ) : (

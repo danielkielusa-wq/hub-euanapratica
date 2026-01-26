@@ -1,50 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useAuth } from '@/contexts/AuthContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  useMentorEspaco, 
-  useEspacoStats, 
-  useEspacoStudents, 
-  useEspacoTimeline,
-  useEspacoUpcomingSessions,
-  useArchiveEspaco
-} from '@/hooks/useMentorEspacos';
-import { useSessions } from '@/hooks/useSessions';
-import { useAssignments } from '@/hooks/useAssignments';
-import { useFolders } from '@/hooks/useFolders';
-import { 
-  ArrowLeft, 
-  Users, 
-  Calendar, 
-  ClipboardList, 
-  FileText, 
-  Settings,
-  Eye,
-  Loader2,
-  Plus,
-  Video,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Mail,
-  ChevronRight,
-  MoreHorizontal,
-  ArrowRightLeft,
-  History as HistoryIcon,
-  UserMinus,
-  UserPlus,
-  Archive,
-  RefreshCw
-} from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
@@ -53,52 +15,94 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  useMentorEspaco, 
+  useEspacoStats, 
+  useEspacoStudents,
+  useArchiveEspaco
+} from '@/hooks/useMentorEspacos';
+import { useSessions } from '@/hooks/useSessions';
+import { useAssignments } from '@/hooks/useAssignments';
+import { useFolders } from '@/hooks/useFolders';
+import { useEspacoDiscussionCount } from '@/hooks/useSessionPosts';
+import { EspacoLibrary } from '@/components/library/EspacoLibrary';
+import {
+  EspacoHeroHeader,
+  EspacoMetricsRow,
+  EspacoStickyTabs,
+  SessionTimeline,
+  TaskListGrouped,
+  OverviewContent,
+  DiscussionSessionsList,
+} from '@/components/espacos/detail';
 import { InviteStudentModal } from '@/components/mentor/InviteStudentModal';
-
-const categoryLabels: Record<string, string> = {
-  immersion: 'Imersão',
-  group_mentoring: 'Mentoria em Grupo',
-  workshop: 'Workshop',
-  bootcamp: 'Bootcamp',
-  course: 'Curso',
-};
-
-const statusLabels: Record<string, string> = {
-  active: 'Em Andamento',
-  inactive: 'Inativo',
-  completed: 'Concluído',
-  arquivado: 'Arquivado',
-};
-
-const statusColors: Record<string, string> = {
-  active: 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary',
-  inactive: 'bg-muted text-muted-foreground hover:bg-muted/80',
-  completed: 'bg-secondary/80 text-secondary-foreground hover:bg-secondary',
-  arquivado: 'bg-gray-500/10 text-gray-600 border-gray-500/20 hover:bg-gray-500/20',
-};
+import { 
+  Plus, 
+  Eye, 
+  MoreHorizontal, 
+  UserMinus,
+  Archive,
+  RefreshCw,
+  Settings,
+  AlertCircle,
+  BookOpen,
+  UserPlus
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function MentorEspacoDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const isAdmin = user?.role === 'admin';
+  
   const archiveMutation = useArchiveEspaco();
-  const { data: espaco, isLoading: loadingEspaco } = useMentorEspaco(id || '');
+  const { data: espaco, isLoading: espacoLoading } = useMentorEspaco(id || '');
   const { data: stats } = useEspacoStats(id || '');
   const { data: students } = useEspacoStudents(id || '');
-  const { data: timeline } = useEspacoTimeline(id || '');
-  const { data: upcomingSessions } = useEspacoUpcomingSessions(id || '');
-  const { data: sessions } = useSessions(id);
-  const { data: assignments } = useAssignments(id ? { espaco_id: id } : undefined);
+  const { data: sessions, isLoading: sessionsLoading } = useSessions(id);
+  const { data: assignments, isLoading: assignmentsLoading } = useAssignments({ espaco_id: id });
   const { data: folders } = useFolders(id || '');
+  const { data: discussionCount = 0 } = useEspacoDiscussionCount(id);
 
-  if (loadingEspaco) {
+  // Filter upcoming sessions
+  const upcomingSessions = sessions?.filter(s => 
+    new Date(s.datetime) >= new Date() && 
+    (s.status === 'scheduled' || s.status === 'live')
+  ) || [];
+
+  // Get pending submissions for mentor (assignments needing review)
+  const pendingSubmissions = stats?.pendingReviews || 0;
+
+  // Get next session with meeting link
+  const nextSessionWithLink = upcomingSessions.find(s => s.meeting_link);
+
+  const handleArchive = async () => {
+    if (!id) return;
+    const isArchived = espaco?.status === 'arquivado';
+    archiveMutation.mutate({ 
+      espacoId: id, 
+      archive: !isArchived 
+    });
+  };
+
+  if (espacoLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="min-h-screen bg-muted/30">
+          <div className="space-y-4 p-4">
+            <Skeleton className="h-48 rounded-2xl" />
+            <div className="flex gap-3 overflow-hidden">
+              <Skeleton className="h-20 w-36 rounded-2xl shrink-0" />
+              <Skeleton className="h-20 w-36 rounded-2xl shrink-0" />
+              <Skeleton className="h-20 w-36 rounded-2xl shrink-0" />
+            </div>
+            <Skeleton className="h-12 rounded-xl" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -107,12 +111,22 @@ export default function MentorEspacoDetail() {
   if (!espaco) {
     return (
       <DashboardLayout>
-        <div className="text-center py-16">
-          <h2 className="text-xl font-semibold text-foreground">Espaço não encontrado</h2>
-          <p className="text-muted-foreground mt-2">Este espaço não existe ou você não tem acesso.</p>
-          <Button onClick={() => navigate('/mentor/espacos')} className="mt-4">
-            Voltar para Meus Espaços
-          </Button>
+        <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+          <div className="text-center py-12 px-6 max-w-sm mx-auto rounded-3xl bg-card/70 backdrop-blur-sm border border-border/40">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <BookOpen className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2 text-foreground">Espaço não encontrado</h2>
+            <p className="text-muted-foreground mb-6">
+              Este espaço não existe ou você não tem acesso a ele.
+            </p>
+            <Button 
+              onClick={() => navigate('/mentor/espacos')}
+              className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl"
+            >
+              Voltar para Meus Espaços
+            </Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -120,49 +134,17 @@ export default function MentorEspacoDetail() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/mentor/espacos')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">{espaco.name}</h1>
-                <Badge className={statusColors[espaco.status || 'active']}>
-                  {statusLabels[espaco.status || 'active']}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                <span>{categoryLabels[espaco.category] || espaco.category}</span>
-                {espaco.start_date && (
-                  <>
-                    <span>•</span>
-                    <span>
-                      {format(new Date(espaco.start_date), "dd MMM yyyy", { locale: ptBR })}
-                      {espaco.end_date && ` - ${format(new Date(espaco.end_date), "dd MMM yyyy", { locale: ptBR })}`}
-                    </span>
-                  </>
-                )}
-                <span>•</span>
-                <span>{stats?.enrolledCount || 0} alunos</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Invite Student Button */}
-          <Button 
-            variant="ghost" 
-            onClick={() => setInviteModalOpen(true)}
-            className="gap-2"
-          >
-            <UserPlus className="h-4 w-4" />
-            Convidar Aluno
-          </Button>
-        </div>
+      <div className="min-h-screen bg-muted/30">
+        {/* Hero Header - Role aware */}
+        <EspacoHeroHeader 
+          espaco={espaco}
+          nextSession={nextSessionWithLink}
+          role="mentor"
+          onSettingsClick={() => setActiveTab('settings')}
+          onInviteClick={() => setInviteModalOpen(true)}
+        />
 
-        {/* Invite Student Modal */}
+        {/* Invite Modal */}
         <InviteStudentModal
           open={inviteModalOpen}
           onOpenChange={setInviteModalOpen}
@@ -170,571 +152,250 @@ export default function MentorEspacoDetail() {
           espacoName={espaco.name}
         />
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="overview" className="gap-2">
-              <Eye className="h-4 w-4" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="students" className="gap-2">
-              <Users className="h-4 w-4" />
-              Alunos
-            </TabsTrigger>
-            <TabsTrigger value="sessions" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Sessões
-            </TabsTrigger>
-            <TabsTrigger value="assignments" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Tarefas
-            </TabsTrigger>
-            <TabsTrigger value="materials" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Materiais
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Configurações
-            </TabsTrigger>
-          </TabsList>
+        {/* Metrics Row - Mentor specific */}
+        <EspacoMetricsRow
+          sessionsCount={upcomingSessions.length}
+          tasksCount={pendingSubmissions}
+          materialsCount={folders?.length || 0}
+          maxStudents={stats?.enrolledCount ?? espaco.max_students}
+          isMentor
+        />
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.enrolledCount || 0}</p>
-                      <p className="text-sm text-muted-foreground">Alunos</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      <Calendar className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.upcomingSessions || 0}</p>
-                      <p className="text-sm text-muted-foreground">Próximas Sessões</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-orange-500/10">
-                      <ClipboardList className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.pendingReviews || 0}</p>
-                      <p className="text-sm text-muted-foreground">Correções Pendentes</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500/10">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats?.completedSessions || 0}</p>
-                      <p className="text-sm text-muted-foreground">Sessões Concluídas</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        {/* Sticky Tabs - Extended for mentor */}
+        <EspacoStickyTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          pendingTasks={pendingSubmissions}
+          upcomingSessions={upcomingSessions.length}
+          discussionCount={discussionCount}
+          showMentorTabs
+          studentsCount={stats?.enrolledCount}
+        />
 
-            {/* Quick Actions */}
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => navigate('/mentor/sessao/nova')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Sessão
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/mentor/tarefas/nova')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Tarefa
-              </Button>
-              <Button variant="outline">
-                <Mail className="h-4 w-4 mr-2" />
-                Enviar Mensagem
-              </Button>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Upcoming Sessions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Próximas Sessões</CardTitle>
-                  <CardDescription>As próximas 3 sessões agendadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {upcomingSessions && upcomingSessions.length > 0 ? (
-                    <div className="space-y-3">
-                      {upcomingSessions.map((session) => (
-                        <div key={session.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Video className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{session.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(session.datetime), "dd MMM, HH:mm", { locale: ptBR })}
-                            </p>
-                          </div>
-                          <Badge variant="outline">
-                            {session.duration_minutes || 60}min
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma sessão agendada</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Timeline */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Próximos 14 Dias</CardTitle>
-                  <CardDescription>Sessões e prazos de tarefas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {timeline && timeline.length > 0 ? (
-                    <div className="space-y-2">
-                      {timeline.slice(0, 5).map((item) => (
-                        <div key={item.id} className="flex items-center gap-3 p-2">
-                          <div className={`w-2 h-2 rounded-full ${item.type === 'session' ? 'bg-blue-500' : 'bg-orange-500'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(item.datetime), "dd/MM HH:mm", { locale: ptBR })}
-                            </p>
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {item.type === 'session' ? 'Sessão' : 'Tarefa'}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Nenhum evento nos próximos 14 dias</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Students Tab */}
-          <TabsContent value="students" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Alunos Matriculados</h2>
-              <Button variant="outline" size="sm">
-                Exportar CSV
-              </Button>
-            </div>
-            
-            {students && students.length > 0 ? (
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Aluno</TableHead>
-                      <TableHead>Matrícula</TableHead>
-                      <TableHead>Progresso</TableHead>
-                      <TableHead>Último Acesso</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={student.profilePhotoUrl || undefined} />
-                              <AvatarFallback>
-                                {student.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{student.fullName}</p>
-                              <p className="text-sm text-muted-foreground">{student.email}</p>
-                            </div>
-                            {student.needsAttention && (
-                              <AlertCircle className="h-4 w-4 text-orange-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(student.enrolledAt), "dd/MM/yyyy", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress 
-                              value={student.totalSessions > 0 ? (student.sessionsAttended / student.totalSessions) * 100 : 0} 
-                              className="w-16 h-2"
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {student.sessionsAttended}/{student.totalSessions}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {student.lastAccessAt 
-                            ? formatDistanceToNow(new Date(student.lastAccessAt), { addSuffix: true, locale: ptBR })
-                            : 'Nunca'
-                          }
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                className="gap-2 cursor-pointer"
-                                onClick={() => navigate(`/perfil?user=${student.id}`)}
-                              >
-                                <Eye className="h-4 w-4" />
-                                Ver Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="gap-2 cursor-pointer"
-                                onClick={() => {
-                                  // Placeholder - open email client
-                                  window.location.href = `mailto:${student.email}?subject=Mensagem do Espaço ${espaco.name}`;
-                                }}
-                              >
-                                <Mail className="h-4 w-4" />
-                                Enviar Mensagem
-                              </DropdownMenuItem>
-                              {isAdmin && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="gap-2 cursor-pointer"
-                                    onClick={() => {
-                                      // TODO: Implement transfer modal
-                                      alert(`Funcionalidade de transferir ${student.fullName} em desenvolvimento.`);
-                                    }}
-                                  >
-                                    <ArrowRightLeft className="h-4 w-4" />
-                                    Transferir de Turma
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="gap-2 cursor-pointer"
-                                    onClick={() => {
-                                      // TODO: Implement history modal
-                                      alert(`Histórico de ${student.fullName} em desenvolvimento.`);
-                                    }}
-                                  >
-                                    <HistoryIcon className="h-4 w-4" />
-                                    Ver Histórico
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
-                                    onClick={() => {
-                                      if (confirm(`Tem certeza que deseja remover ${student.fullName} deste espaço?`)) {
-                                        // TODO: Implement removal
-                                        alert(`Remoção de ${student.fullName} em desenvolvimento.`);
-                                      }
-                                    }}
-                                  >
-                                    <UserMinus className="h-4 w-4" />
-                                    Remover Aluno
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">Nenhum aluno matriculado</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Entre em contato com o administrador para adicionar alunos.
-                  </p>
-                </CardContent>
-              </Card>
+        {/* Tab Content */}
+        <div className="px-4 py-6 pb-28 md:pb-8">
+          <div className="max-w-6xl mx-auto">
+            {activeTab === 'overview' && (
+              <OverviewContent
+                upcomingSessions={upcomingSessions}
+                pendingAssignments={assignments?.filter(a => a.status === 'published') || []}
+                sessionsLoading={sessionsLoading}
+                assignmentsLoading={assignmentsLoading}
+                onViewAllSessions={() => setActiveTab('sessions')}
+                onViewAllAssignments={() => setActiveTab('assignments')}
+                isMentor
+                espacoId={id}
+              />
             )}
-          </TabsContent>
 
-          {/* Sessions Tab */}
-          <TabsContent value="sessions" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Sessões do Espaço</h2>
-              <Button onClick={() => navigate('/mentor/sessao/nova')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Sessão
-              </Button>
-            </div>
-            
-            {sessions && sessions.length > 0 ? (
-              <div className="grid gap-4">
-                {sessions.map((session) => (
-                  <Card key={session.id} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="flex items-center gap-4 py-4">
-                      <div className={`p-3 rounded-lg ${
-                        session.status === 'completed' ? 'bg-green-500/10' :
-                        session.status === 'live' ? 'bg-red-500/10' :
-                        'bg-blue-500/10'
-                      }`}>
-                        <Video className={`h-5 w-5 ${
-                          session.status === 'completed' ? 'text-green-500' :
-                          session.status === 'live' ? 'text-red-500' :
-                          'text-blue-500'
-                        }`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{session.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(session.datetime), "dd MMM yyyy, HH:mm", { locale: ptBR })}
-                        </p>
-                      </div>
-                      <Badge variant={session.status === 'completed' ? 'secondary' : 'default'}>
-                        {session.status === 'scheduled' && 'Agendada'}
-                        {session.status === 'live' && 'Ao Vivo'}
-                        {session.status === 'completed' && 'Concluída'}
-                        {session.status === 'cancelled' && 'Cancelada'}
-                      </Badge>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/mentor/sessao/${session.id}`)}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">Nenhuma sessão criada</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Crie sua primeira sessão para este espaço.
-                  </p>
-                  <Button className="mt-4" onClick={() => navigate('/mentor/sessao/nova')}>
+            {activeTab === 'sessions' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Sessões</h2>
+                  <Button 
+                    onClick={() => navigate(`/mentor/sessao/nova?espaco=${id}`)}
+                    className="rounded-xl"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
-                    Criar Primeira Sessão
+                    Nova Sessão
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Assignments Tab */}
-          <TabsContent value="assignments" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Tarefas do Espaço</h2>
-              <Button onClick={() => navigate(`/mentor/tarefas/nova?espaco_id=${id}`)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Tarefa
-              </Button>
-            </div>
-            
-            {assignments && assignments.length > 0 ? (
-              <div className="grid gap-4">
-                {assignments.map((assignment) => (
-                  <Card key={assignment.id} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="flex items-center gap-4 py-4">
-                      <div className="p-3 rounded-lg bg-orange-500/10">
-                        <ClipboardList className="h-5 w-5 text-orange-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{assignment.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Prazo: {format(new Date(assignment.due_date), "dd MMM yyyy, HH:mm", { locale: ptBR })}
-                        </p>
-                      </div>
-                      <Badge variant={assignment.status === 'published' ? 'default' : 'secondary'}>
-                        {assignment.status === 'draft' && 'Rascunho'}
-                        {assignment.status === 'published' && 'Publicada'}
-                        {assignment.status === 'closed' && 'Encerrada'}
-                      </Badge>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/mentor/tarefas/${assignment.id}/entregas`)}>
-                        Ver Entregas
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">Nenhuma tarefa criada</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Crie sua primeira tarefa para este espaço.
-                  </p>
-                  <Button className="mt-4" onClick={() => navigate(`/mentor/tarefas/nova?espaco_id=${id}`)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar Primeira Tarefa
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Materials Tab */}
-          <TabsContent value="materials" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Materiais do Espaço</h2>
-              <Button onClick={() => navigate('/admin/biblioteca/upload')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Upload de Material
-              </Button>
-            </div>
-            
-            {folders && folders.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {folders.map((folder) => (
-                  <Card key={folder.id} className="hover:shadow-sm transition-shadow cursor-pointer">
-                    <CardContent className="flex items-center gap-4 py-4">
-                      <div className="p-3 rounded-lg bg-blue-500/10">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{folder.name}</p>
-                        <p className="text-sm text-muted-foreground">Pasta</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">Nenhum material disponível</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Faça upload de materiais para este espaço.
-                  </p>
-                  <Button className="mt-4" onClick={() => navigate('/admin/biblioteca/upload')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Upload de Material
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações do Espaço</CardTitle>
-                <CardDescription>Gerencie as informações e preferências do espaço</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Nome</label>
-                    <p className="text-foreground">{espaco.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-                    <p className="text-foreground">{categoryLabels[espaco.category] || espaco.category}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Status</label>
-                    <p className="text-foreground">{statusLabels[espaco.status || 'active']}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Capacidade</label>
-                    <p className="text-foreground">{espaco.max_students || 30} alunos</p>
-                  </div>
-                  {espaco.start_date && (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Data de Início</label>
-                      <p className="text-foreground">
-                        {format(new Date(espaco.start_date), "dd/MM/yyyy", { locale: ptBR })}
-                      </p>
-                    </div>
-                  )}
-                  {espaco.end_date && (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Data de Término</label>
-                      <p className="text-foreground">
-                        {format(new Date(espaco.end_date), "dd/MM/yyyy", { locale: ptBR })}
-                      </p>
-                    </div>
-                  )}
                 </div>
-                {espaco.description && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Descrição</label>
-                    <p className="text-foreground mt-1">{espaco.description}</p>
-                  </div>
-                )}
+                <SessionTimeline 
+                  sessions={sessions} 
+                  isLoading={sessionsLoading}
+                />
+              </div>
+            )}
+
+            {activeTab === 'assignments' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Tarefas</h2>
+                  <Button 
+                    onClick={() => navigate(`/mentor/tarefas/nova?espaco=${id}`)}
+                    className="rounded-xl"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Tarefa
+                  </Button>
+                </div>
+                <TaskListGrouped 
+                  assignments={assignments} 
+                  isLoading={assignmentsLoading}
+                />
+              </div>
+            )}
+
+            {activeTab === 'library' && (
+              <EspacoLibrary
+                espacoId={id!}
+                espacoName={espaco.name}
+                userRole="mentor"
+              />
+            )}
+
+            {activeTab === 'discussao' && (
+              <DiscussionSessionsList
+                sessions={sessions}
+                isLoading={sessionsLoading}
+              />
+            )}
+
+            {activeTab === 'students' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Alunos Matriculados</h2>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setInviteModalOpen(true)}
+                    className="rounded-xl gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Convidar
+                  </Button>
+                </div>
                 
-                {/* Archive/Restore Actions */}
-                <div className="pt-4 border-t flex flex-wrap gap-3">
-                  {espaco.status !== 'arquivado' ? (
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => archiveMutation.mutate({ espacoId: id!, archive: true })}
-                      disabled={archiveMutation.isPending}
+                {students && students.length > 0 ? (
+                  <Card className="rounded-[24px] overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Aluno</TableHead>
+                          <TableHead>Matrícula</TableHead>
+                          <TableHead>Progresso</TableHead>
+                          <TableHead>Último Acesso</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {students.map((student) => (
+                          <TableRow key={student.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={student.profilePhotoUrl || undefined} />
+                                  <AvatarFallback>
+                                    {student.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium">{student.fullName}</p>
+                                  <p className="text-sm text-muted-foreground">{student.email}</p>
+                                </div>
+                                {student.needsAttention && (
+                                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(student.enrolledAt), "dd/MM/yyyy", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Progress 
+                                  value={student.totalSessions > 0 ? (student.sessionsAttended / student.totalSessions) * 100 : 0} 
+                                  className="w-16 h-2"
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  {student.sessionsAttended}/{student.totalSessions}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {student.lastAccessAt 
+                                ? formatDistanceToNow(new Date(student.lastAccessAt), { addSuffix: true, locale: ptBR })
+                                : 'Nunca'
+                              }
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem className="gap-2 cursor-pointer">
+                                    <Eye className="h-4 w-4" />
+                                    Ver Perfil
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="gap-2 cursor-pointer text-destructive">
+                                    <UserMinus className="h-4 w-4" />
+                                    Remover
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                ) : (
+                  <Card className="rounded-[24px]">
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                      <UserPlus className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold">Nenhum aluno matriculado</h3>
+                      <p className="text-muted-foreground mt-1">
+                        Convide alunos para começar sua turma.
+                      </p>
+                      <Button 
+                        className="mt-4 rounded-xl"
+                        onClick={() => setInviteModalOpen(true)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Convidar Aluno
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <h2 className="text-lg font-semibold text-foreground">Configurações</h2>
+                
+                <Card className="rounded-[24px]">
+                  <CardHeader>
+                    <CardTitle>Ações do Espaço</CardTitle>
+                    <CardDescription>Gerencie o status e configurações do espaço</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(`/mentor/espacos/${id}/editar`)}
+                      className="w-full justify-start gap-2 rounded-xl"
                     >
-                      {archiveMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Archive className="h-4 w-4 mr-2" />
-                      )}
-                      Arquivar Espaço
+                      <Settings className="h-4 w-4" />
+                      Editar Informações
                     </Button>
-                  ) : (
-                    <Button 
-                      variant="default"
-                      onClick={() => archiveMutation.mutate({ espacoId: id!, archive: false })}
+                    
+                    <Button
+                      variant={espaco.status === 'arquivado' ? 'default' : 'outline'}
+                      onClick={handleArchive}
                       disabled={archiveMutation.isPending}
+                      className="w-full justify-start gap-2 rounded-xl"
                     >
-                      {archiveMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {espaco.status === 'arquivado' ? (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          Restaurar Espaço
+                        </>
                       ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
+                        <>
+                          <Archive className="h-4 w-4" />
+                          Arquivar Espaço
+                        </>
                       )}
-                      Restaurar Espaço
                     </Button>
-                  )}
-                  <p className="w-full text-xs text-muted-foreground mt-2">
-                    {espaco.status === 'arquivado' 
-                      ? 'Este espaço está arquivado e oculto para os alunos.'
-                      : 'Arquivar oculta o espaço da galeria de alunos, mas mantém todos os dados.'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

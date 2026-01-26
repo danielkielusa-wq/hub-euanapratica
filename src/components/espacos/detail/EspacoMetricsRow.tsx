@@ -1,4 +1,4 @@
-import { Calendar, FileText, FolderOpen, Users } from 'lucide-react';
+import { Calendar, FileText, FolderOpen, Users, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
@@ -41,15 +41,42 @@ interface EspacoMetricsRowProps {
   tasksCount: number;
   materialsCount: number;
   maxStudents?: number | null;
+  isMentor?: boolean;
 }
 
 export function EspacoMetricsRow({ 
   sessionsCount, 
   tasksCount, 
   materialsCount, 
-  maxStudents 
+  maxStudents,
+  isMentor = false
 }: EspacoMetricsRowProps) {
-  const metrics = [
+  const metrics = isMentor ? [
+    {
+      icon: <Users className="h-5 w-5 text-primary" />,
+      label: "Alunos",
+      value: maxStudents ?? 0,
+      iconBg: "bg-primary/10",
+    },
+    {
+      icon: <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+      label: "Próximas Sessões",
+      value: sessionsCount,
+      iconBg: "bg-blue-500/10",
+    },
+    {
+      icon: <ClipboardCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />,
+      label: "Correções",
+      value: tasksCount,
+      iconBg: "bg-amber-500/10",
+    },
+    {
+      icon: <FolderOpen className="h-5 w-5 text-secondary" />,
+      label: "Materiais",
+      value: materialsCount,
+      iconBg: "bg-secondary/10",
+    },
+  ] : [
     {
       icon: <Calendar className="h-5 w-5 text-primary" />,
       label: "Próximas Sessões",
@@ -85,8 +112,8 @@ export function EspacoMetricsRow({
         ))}
       </div>
       
-      {/* Desktop: Grid */}
-      <div className="hidden md:grid md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+      {/* Desktop: Grid - Expanded for ultra-wide */}
+      <div className="hidden md:grid md:grid-cols-4 gap-4 max-w-6xl mx-auto">
         {metrics.map((metric, idx) => (
           <MetricCard key={metric.label} {...metric} delay={idx * 50} />
         ))}
