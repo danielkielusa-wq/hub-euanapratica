@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
 import { SessionFilters } from '@/components/sessions/SessionFilters';
 import { Button } from '@/components/ui/button';
@@ -60,49 +61,52 @@ export default function MentorAgenda() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-              Agenda
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie suas sessões e encontros
-            </p>
+      <DashboardTopHeader />
+      
+      <div className="flex-1 p-6 bg-gray-50/50">
+        {/* Header Row */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+          <div className="flex items-start gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
+              <p className="text-gray-500">Gerencie suas sessões e encontros</p>
+            </div>
+            <Button 
+              onClick={() => navigate('/mentor/sessao/nova')} 
+              className="bg-indigo-600 hover:bg-indigo-700 rounded-full gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Sessão
+            </Button>
           </div>
-          <Button onClick={() => navigate('/mentor/sessao/nova')} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Sessão
-          </Button>
+          
+          {/* Filters */}
+          {isLoading ? (
+            <div className="flex gap-3">
+              <Skeleton className="h-10 w-[180px]" />
+              <Skeleton className="h-10 w-[160px]" />
+            </div>
+          ) : (
+            <SessionFilters
+              espacos={espacos || []}
+              selectedEspacoId={selectedEspacoId}
+              selectedStatus={selectedStatus}
+              onEspacoChange={setSelectedEspacoId}
+              onStatusChange={setSelectedStatus}
+            />
+          )}
         </div>
-
-        {/* Filters */}
-        {isLoading ? (
-          <div className="flex gap-3">
-            <Skeleton className="h-10 w-[200px]" />
-            <Skeleton className="h-10 w-[180px]" />
-          </div>
-        ) : (
-          <SessionFilters
-            espacos={espacos || []}
-            selectedEspacoId={selectedEspacoId}
-            selectedStatus={selectedStatus}
-            onEspacoChange={setSelectedEspacoId}
-            onStatusChange={setSelectedStatus}
-          />
-        )}
 
         {/* Calendar */}
         {isLoading ? (
-          <div className="bg-card rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
               <Skeleton className="h-10 w-[150px]" />
               <Skeleton className="h-6 w-[120px]" />
             </div>
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: 35 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 lg:h-24" />
+                <Skeleton key={i} className="h-[100px] lg:h-[120px] rounded-lg" />
               ))}
             </div>
           </div>
@@ -114,26 +118,6 @@ export default function MentorAgenda() {
             onViewRecording={handleViewRecording}
           />
         )}
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-            Agendada
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
-            Ao Vivo
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground" />
-            Concluída
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-destructive" />
-            Cancelada
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

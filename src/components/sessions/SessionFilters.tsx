@@ -1,6 +1,4 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
 
 interface Espaco {
   id: string;
@@ -22,23 +20,16 @@ export function SessionFilters({
   onEspacoChange,
   onStatusChange,
 }: SessionFiltersProps) {
-  const hasFilters = selectedEspacoId || selectedStatus;
-
-  const clearFilters = () => {
-    onEspacoChange(null);
-    onStatusChange(null);
-  };
-
   return (
-    <div className="flex flex-wrap gap-3 items-center">
+    <div className="flex items-center gap-3 justify-end">
       <Select
         value={selectedEspacoId || 'all'}
         onValueChange={(value) => onEspacoChange(value === 'all' ? null : value)}
       >
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="w-[180px] rounded-lg border-gray-200 bg-white">
           <SelectValue placeholder="Todos os espaços" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border-gray-200">
           <SelectItem value="all">Todos os espaços</SelectItem>
           {espacos.map((espaco) => (
             <SelectItem key={espaco.id} value={espaco.id}>
@@ -52,10 +43,10 @@ export function SessionFilters({
         value={selectedStatus || 'all'}
         onValueChange={(value) => onStatusChange(value === 'all' ? null : value)}
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[160px] rounded-lg border-gray-200 bg-white">
           <SelectValue placeholder="Todos os status" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border-gray-200">
           <SelectItem value="all">Todos os status</SelectItem>
           <SelectItem value="scheduled">Agendada</SelectItem>
           <SelectItem value="live">Ao Vivo</SelectItem>
@@ -63,13 +54,6 @@ export function SessionFilters({
           <SelectItem value="cancelled">Cancelada</SelectItem>
         </SelectContent>
       </Select>
-
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-          <X className="h-4 w-4" />
-          Limpar
-        </Button>
-      )}
     </div>
   );
 }
