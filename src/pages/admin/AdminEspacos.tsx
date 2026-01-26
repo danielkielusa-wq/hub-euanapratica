@@ -81,7 +81,7 @@ export default function AdminEspacos() {
               Gerencie espaços, imersões e programas educacionais
             </p>
           </div>
-          <Button onClick={() => setFormOpen(true)}>
+          <Button variant="gradient" onClick={() => setFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Espaço
           </Button>

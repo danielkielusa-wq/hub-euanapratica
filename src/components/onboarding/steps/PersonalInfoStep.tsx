@@ -61,15 +61,18 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
         {/* Birth Date */}
         <div className="space-y-2">
           <Label htmlFor="birth_date" className="text-sm font-medium">
-            Data de nascimento
+            Data de nascimento <span className="text-destructive">*</span>
           </Label>
           <Input
             id="birth_date"
             type="date"
             value={data.birth_date || ''}
             onChange={(e) => onChange('birth_date', e.target.value)}
-            className="w-full"
+            className={errors.birth_date ? 'border-destructive' : ''}
           />
+          {errors.birth_date && (
+            <p className="text-xs text-destructive">{errors.birth_date}</p>
+          )}
         </div>
       </div>
     </div>

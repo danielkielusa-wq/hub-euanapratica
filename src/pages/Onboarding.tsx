@@ -85,12 +85,18 @@ export default function Onboarding() {
     const newErrors: Record<string, string> = {};
 
     if (step === 2) {
-      if (!formData.full_name?.trim()) {
-        newErrors.full_name = 'Nome completo é obrigatório';
+      if (!formData.full_name?.trim() || formData.full_name.trim().length < 3) {
+        newErrors.full_name = 'Nome completo é obrigatório (mínimo 3 caracteres)';
+      }
+      if (!formData.birth_date) {
+        newErrors.birth_date = 'Data de nascimento é obrigatória';
       }
     }
 
     if (step === 3) {
+      if (!formData.phone?.trim() || formData.phone.trim().length < 8) {
+        newErrors.phone = 'Telefone é obrigatório (mínimo 8 dígitos)';
+      }
       if (formData.alternative_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.alternative_email)) {
         newErrors.alternative_email = 'Email inválido';
       }
@@ -104,10 +110,10 @@ export default function Onboarding() {
 
     if (step === 5) {
       if (!formData.current_country) {
-        newErrors.current_country = 'Selecione um país';
+        newErrors.current_country = 'Selecione o país atual';
       }
       if (!formData.target_country) {
-        newErrors.target_country = 'Selecione um país de destino';
+        newErrors.target_country = 'Selecione o país de destino';
       }
     }
 
