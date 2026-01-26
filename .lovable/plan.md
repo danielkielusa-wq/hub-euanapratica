@@ -1,375 +1,249 @@
 
-# Plan: Unificacao de Interface, Expansao de Layout e Customizacao Pro
+
+# Plan: Redesign Login Interface
 
 ## Overview
-This mega-refactor unifies the Mentor and Student experience across the entire "Espacos" ecosystem, adds ultra-wide desktop support, and implements a professional gradient theme customization system with real-time preview.
+Recreate the login interface to match the reference image exactly, featuring a modern card-based profile selector with role switching, icon-prefixed inputs, and a clean modal-style layout.
 
 ---
 
-## Phase 1: Database Schema Update
+## Analysis of Target Design
 
-### 1.1 Add Visual Customization Columns to `espacos` Table
+From the reference image, the new login interface includes:
 
-```sql
--- Add gradient theme columns to espacos
-ALTER TABLE public.espacos 
-ADD COLUMN IF NOT EXISTS gradient_preset TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS gradient_start TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS gradient_end TEXT DEFAULT NULL;
+1. **Modal-style Card Layout**
+   - Clean white card with rounded corners
+   - Close button (X) in top-right corner
+   - Centered on screen with subtle shadow
 
--- Add gradient theme columns to sessions for session-specific styling
-ALTER TABLE public.sessions
-ADD COLUMN IF NOT EXISTS gradient_preset TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS gradient_start TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS gradient_end TEXT DEFAULT NULL;
-```
+2. **Profile Selector (Role Switcher)**
+   - Title: "Escolha seu perfil"
+   - Subtitle: "Selecione como deseja acessar a plataforma"
+   - Three clickable cards: Aluno, Mentor, Admin
+   - Each card has an icon and label
+   - Selected card has blue border and background tint
+   - Icons: GraduationCap for Aluno, Building/Landmark for Mentor, Shield/CheckCircle for Admin
 
-### 1.2 Update RLS Policies
-No new RLS policies needed - existing policies for UPDATE on `espacos` and `sessions` cover these new columns.
+3. **Dynamic Section Divider**
+   - Horizontal line with text "LOGIN DE STUDENT" (changes based on selected role)
 
----
+4. **Form Inputs with Icons**
+   - Email field with envelope icon prefix
+   - Password field with lock icon prefix
+   - "Esqueceu?" link aligned right on password label
 
-## Phase 2: Premium Gradient Presets System
+5. **Submit Button**
+   - Full-width blue/indigo button
+   - Text "Entrar" with arrow icon
+   - Rounded corners
 
-### 2.1 Create Gradient Presets Library
-
-**File:** `src/lib/gradients.ts` (extend existing)
-
-Add 6 premium gradient presets as shown in the reference image:
-
-```typescript
-export const GRADIENT_PRESETS = {
-  sunrise: {
-    name: 'Sunrise Serenity',
-    colors: ['#FF9A8B', '#FF6A88', '#D4A5FF'],
-    css: 'linear-gradient(135deg, #FF9A8B 0%, #FF6A88 50%, #D4A5FF 100%)'
-  },
-  ocean: {
-    name: 'Ocean Whisper', 
-    colors: ['#2193b0', '#6dd5ed'],
-    css: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)'
-  },
-  mystic: {
-    name: 'Mystic Dusk',
-    colors: ['#4b6cb7', '#182848'],
-    css: 'linear-gradient(135deg, #4b6cb7 0%, #182848 100%)'
-  },
-  emerald: {
-    name: 'Emerald Grove',
-    colors: ['#11998e', '#38ef7d'],
-    css: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
-  },
-  volcanic: {
-    name: 'Volcanic Ember',
-    colors: ['#e65c00', '#F9D423'],
-    css: 'linear-gradient(135deg, #e65c00 0%, #F9D423 100%)'
-  },
-  slate: {
-    name: 'Slate Monochrome',
-    colors: ['#0F172A', '#334155', '#0F172A'],
-    css: 'linear-gradient(135deg, #0F172A 0%, #334155 50%, #0F172A 100%)'
-  }
-};
-
-// Helper to resolve gradient (preset, custom, or fallback)
-export function resolveGradient(
-  preset?: string | null,
-  gradientStart?: string | null,
-  gradientEnd?: string | null,
-  fallbackId?: string
-): string;
-```
-
-### 2.2 Create GradientThemePicker Component
-
-**File:** `src/components/shared/GradientThemePicker.tsx`
-
-Features:
-- Grid of 6 preset gradient cards with names
-- "Custom" option with two color hex inputs
-- Real-time preview of selected gradient
-- Responsive: 3x2 grid on desktop, 2x3 on mobile
-- Each preset card shows a mini 3:4 aspect preview
-
-```
-Visual Structure:
-+---------+---------+---------+
-| Sunrise | Ocean   | Mystic  |
-+---------+---------+---------+
-| Emerald | Volcanic| Slate   |
-+---------+---------+---------+
-| [Custom] Start: [____] End: [____] |
-+-----------------------------------+
-```
+6. **Footer**
+   - "Não tem uma conta? Cadastre-se grátis" link
 
 ---
 
-## Phase 3: Visual Parity - Mentor EspacoDetail Refactor
+## Implementation Approach
 
-### 3.1 Complete Refactor of MentorEspacoDetail
-
-**File:** `src/pages/mentor/MentorEspacoDetail.tsx`
-
-Transform from current basic layout to use the same premium components as Student:
-
-**Import and use:**
-- `EspacoHeroHeader` (with role-aware back button navigation)
-- `EspacoMetricsRow` (show Alunos, Sessoes, Correcoes, Vagas)
-- `EspacoStickyTabs` (add Discussao tab)
-- `SessionTimeline` (same component, shared)
-- `TaskListGrouped` (shared)
-- `DiscussionSessionsList` (shared)
-
-**Mentor-specific additions:**
-- Settings gear icon in hero header top-right
-- "Convidar Aluno" ghost button in sticky header
-- Archive/Restore actions in Settings tab
-- Students management tab with table
-
-### 3.2 Update EspacoHeroHeader for Role Awareness
-
-**File:** `src/components/espacos/detail/EspacoHeroHeader.tsx`
-
-Add props:
-- `role?: 'student' | 'mentor'`
-- `onSettingsClick?: () => void`
-- `gradientPreset?: string`
-- `gradientStart?: string`
-- `gradientEnd?: string`
-
-Changes:
-- Back button navigates to role-appropriate list
-- Show settings gear icon when `role="mentor"`
-- Use `resolveGradient()` for background
-
----
-
-## Phase 4: Desktop Layout Optimization (Ultra-Wide Support)
-
-### 4.1 Fix Netflix Card Grid Layout
-
-**Files to update:**
-- `src/pages/student/StudentEspacos.tsx`
-- `src/pages/mentor/MentorEspacos.tsx`
-
-**Current (constrained):**
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-  {espacos.map((espaco) => (
-    <div className="flex justify-center sm:justify-start">
-      <div className="w-full max-w-[280px]">
-        <NetflixEspacoCard />
-      </div>
-    </div>
-  ))}
-</div>
-```
-
-**Updated (full-width):**
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 w-full">
-  {espacos.map((espaco) => (
-    <NetflixEspacoCard key={espaco.id} espaco={espaco} />
-  ))}
-</div>
-```
-
-### 4.2 Update NetflixEspacoCard to be Responsive
-
-**File:** `src/components/espacos/NetflixEspacoCard.tsx`
-
-- Remove fixed `max-w-[280px]` constraint from parent
-- Make card width responsive: `w-full` with grid control
-- Card maintains 3:4 aspect ratio internally
-- Use `resolveGradient()` for gradient support
-
-### 4.3 Update EspacoMetricsRow for Full Width
-
-**File:** `src/components/espacos/detail/EspacoMetricsRow.tsx`
-
-- Remove `max-w-4xl mx-auto` constraint on desktop
-- Use `max-w-6xl` or full-width distribution
-- Maintain horizontal scroll on mobile
-
-### 4.4 Update Tab Content Container
-
-**File:** `src/pages/student/StudentEspacoDetail.tsx` & `src/pages/mentor/MentorEspacoDetail.tsx`
-
-- Change `max-w-4xl mx-auto` to `max-w-6xl mx-auto` for wider content
-- Or use full-width for certain tabs (Sessions timeline)
-
----
-
-## Phase 5: Visual Setup Menu (Mentor Form Integration)
-
-### 5.1 Update CreateEspacoForm with Visual Setup Section
-
-**File:** `src/components/admin/espacos/CreateEspacoForm.tsx`
-
-Add new collapsible section "Visual Setup":
-
-```tsx
-<Collapsible>
-  <CollapsibleTrigger className="flex items-center gap-2">
-    <Palette className="h-4 w-4" />
-    Configuracao Visual (Opcional)
-  </CollapsibleTrigger>
-  <CollapsibleContent>
-    <div className="space-y-4">
-      {/* Cover Image Upload - existing */}
-      <CoverImageUpload />
-      
-      {/* NEW: Gradient Theme Picker */}
-      <GradientThemePicker 
-        selectedPreset={gradientPreset}
-        customStart={gradientStart}
-        customEnd={gradientEnd}
-        onChange={(preset, start, end) => {
-          setValue('gradient_preset', preset);
-          setValue('gradient_start', start);
-          setValue('gradient_end', end);
-        }}
-      />
-      
-      {/* Live Preview */}
-      <div className="aspect-[3/4] max-w-[200px] rounded-[24px] overflow-hidden">
-        <NetflixEspacoCardPreview gradient={...} />
-      </div>
-    </div>
-  </CollapsibleContent>
-</Collapsible>
-```
-
-### 5.2 Update Form Schema
-
-Add fields: `gradient_preset`, `gradient_start`, `gradient_end`
-
-### 5.3 Update EspacoForm (Admin Modal)
-
-**File:** `src/components/admin/espacos/EspacoForm.tsx`
-
-Add same Visual Setup section with GradientThemePicker
-
----
-
-## Phase 6: Unified Forum Integration
-
-### 6.1 Ensure Discussao Tab Works Identically for Both Roles
-
-**Already implemented in StudentEspacoDetail.tsx**
-
-Add same implementation to MentorEspacoDetail.tsx:
-- Import `DiscussionSessionsList`
-- Add to tabs: `{ value: 'discussao', label: 'Discussao', icon: MessageCircle }`
-- Render `<DiscussionSessionsList sessions={sessions} />` when tab active
-
-### 6.2 Apply Slate Monochrome Theme to Forum Drawer
-
-**File:** `src/components/sessions/SessionDiscussionDrawer.tsx`
-
-Update SheetContent/DrawerContent:
-```tsx
-className="bg-gradient-to-b from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl"
-```
-
-This creates a professional, text-focused environment for discussions.
-
----
-
-## Phase 7: Animation & Transition Polish
-
-### 7.1 Add New Animations to tailwind.config.ts
-
-```typescript
-keyframes: {
-  // ... existing
-  'theme-switch': {
-    '0%': { opacity: '0.7', transform: 'scale(0.98)' },
-    '100%': { opacity: '1', transform: 'scale(1)' }
-  }
-},
-animation: {
-  // ... existing
-  'theme-switch': 'theme-switch 0.3s ease-out'
-}
-```
-
-### 7.2 Apply Transitions to Theme Changes
-
-When gradient selection changes:
-- Add `transition-all duration-300` to preview containers
-- Use `animate-theme-switch` on gradient change
-
----
-
-## File Changes Summary
+### File Changes
 
 | File | Action | Description |
 |------|--------|-------------|
-| `supabase/migrations/xxx.sql` | Create | Add gradient columns to espacos and sessions |
-| `src/lib/gradients.ts` | Extend | Add GRADIENT_PRESETS and resolveGradient() |
-| `src/components/shared/GradientThemePicker.tsx` | Create | Preset picker with custom color inputs |
-| `src/pages/mentor/MentorEspacoDetail.tsx` | Major Rewrite | Use premium components like Student view |
-| `src/components/espacos/detail/EspacoHeroHeader.tsx` | Update | Add role awareness, gradient support |
-| `src/pages/student/StudentEspacos.tsx` | Update | Remove max-w constraint, add 2xl:grid-cols-5 |
-| `src/pages/mentor/MentorEspacos.tsx` | Update | Remove max-w constraint, add 2xl:grid-cols-5 |
-| `src/components/espacos/NetflixEspacoCard.tsx` | Update | Add gradient props, use resolveGradient() |
-| `src/components/espacos/detail/EspacoMetricsRow.tsx` | Update | Expand max-width for ultra-wide |
-| `src/components/admin/espacos/CreateEspacoForm.tsx` | Update | Add Visual Setup section |
-| `src/components/admin/espacos/EspacoForm.tsx` | Update | Add Visual Setup section |
-| `src/components/sessions/SessionDiscussionDrawer.tsx` | Update | Apply Slate Monochrome theme |
-| `tailwind.config.ts` | Update | Add theme-switch animation |
+| `src/pages/Login.tsx` | Rewrite | Complete UI overhaul with new design |
+| `src/components/layouts/AuthLayout.tsx` | Update | Simplify to centered modal layout |
 
 ---
 
-## Visual Design Specifications
+## Detailed Changes
 
-### Premium Gradient Presets (from reference image)
-1. **Sunrise Serenity**: #FF9A8B -> #FF6A88 -> #D4A5FF
-2. **Ocean Whisper**: #2193b0 -> #6dd5ed  
-3. **Mystic Dusk**: #4b6cb7 -> #182848
-4. **Emerald Grove**: #11998e -> #38ef7d
-5. **Volcanic Ember**: #e65c00 -> #F9D423
-6. **Slate Monochrome**: #0F172A -> #334155 -> #0F172A
+### 1. Update AuthLayout.tsx
 
-### Layout Breakpoints
-- Mobile: 1 column
-- sm (640px): 2 columns
-- lg (1024px): 3 columns
-- xl (1280px): 4 columns
-- 2xl (1536px): 5 columns
+Transform from split-screen layout to centered modal:
 
-### Consistent Styling
-- All cards: `rounded-[24px]`
-- Soft shadows: `shadow-xl` at 5% opacity
-- Transitions: `duration-300`
-- Forum drawer: Slate Monochrome gradient background
+```
+New Structure:
+- Full-screen gray/light background
+- Centered white card with max-width ~420px
+- Rounded corners (24px)
+- Soft shadow
+- Close button (X) in top-right
+```
+
+**Visual Specifications:**
+- Background: `bg-slate-50` or `bg-gray-100`
+- Card: `bg-white rounded-[24px] shadow-xl max-w-md w-full mx-auto p-8`
+- Close button: Ghost button with X icon, positioned absolute top-right
+
+### 2. Rewrite Login.tsx
+
+**New State Management:**
+- Add `selectedRole` state to track which profile is selected (default: 'student')
+- Pre-fill email/password based on selected role for dev convenience
+
+**Profile Selector Component:**
+```tsx
+// Three cards in a row
+<div className="grid grid-cols-3 gap-3">
+  {/* Aluno Card */}
+  <ProfileCard 
+    icon={GraduationCap}
+    label="Aluno"
+    selected={selectedRole === 'student'}
+    onClick={() => setSelectedRole('student')}
+  />
+  {/* Mentor Card */}
+  <ProfileCard 
+    icon={Building2}
+    label="Mentor"
+    selected={selectedRole === 'mentor'}
+    onClick={() => setSelectedRole('mentor')}
+  />
+  {/* Admin Card */}
+  <ProfileCard 
+    icon={ShieldCheck}
+    label="Admin"
+    selected={selectedRole === 'admin'}
+    onClick={() => setSelectedRole('admin')}
+  />
+</div>
+```
+
+**Profile Card Styling:**
+- Default: `border border-gray-200 bg-white hover:border-gray-300`
+- Selected: `border-2 border-blue-500 bg-blue-50`
+- Icon container: Circular, light blue when selected
+- Rounded corners: `rounded-xl`
+
+**Section Divider:**
+```tsx
+<div className="relative my-6">
+  <div className="absolute inset-0 flex items-center">
+    <div className="w-full border-t border-gray-200" />
+  </div>
+  <div className="relative flex justify-center">
+    <span className="bg-white px-4 text-sm text-gray-500 uppercase tracking-wider">
+      Login de {roleLabel}
+    </span>
+  </div>
+</div>
+```
+
+**Input Fields with Icons:**
+```tsx
+<div className="relative">
+  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+  <Input 
+    className="pl-10 rounded-xl border-gray-200 h-12"
+    placeholder="aluno@teste.com"
+  />
+</div>
+```
+
+**Submit Button:**
+```tsx
+<Button 
+  className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white"
+>
+  Entrar
+  <ArrowRight className="ml-2 h-4 w-4" />
+</Button>
+```
 
 ---
 
-## Technical Implementation Order
+## Component Structure
 
-1. **Database Migration** - Add gradient columns
-2. **Extend gradients.ts** - Add presets and resolver
-3. **Create GradientThemePicker** - Reusable picker component  
-4. **Update NetflixEspacoCard** - Accept gradient props
-5. **Update EspacoHeroHeader** - Role + gradient awareness
-6. **Fix Grid Layouts** - Remove constraints, add 2xl breakpoint
-7. **Rewrite MentorEspacoDetail** - Full premium component adoption
-8. **Update Forms** - Add Visual Setup section
-9. **Style Forum Drawer** - Apply Slate Monochrome
-10. **Final Polish** - Animations and transitions
+```
+Login Page
+├── Background (slate-50)
+└── Card Container (white, rounded-24px)
+    ├── Close Button (X, absolute top-right)
+    ├── Header
+    │   ├── Title: "Escolha seu perfil"
+    │   └── Subtitle: "Selecione como deseja acessar a plataforma"
+    ├── Profile Selector (3 cards in grid)
+    │   ├── Aluno (GraduationCap icon)
+    │   ├── Mentor (Building2 icon)
+    │   └── Admin (ShieldCheck icon)
+    ├── Section Divider ("LOGIN DE {ROLE}")
+    ├── Form
+    │   ├── Email Input (with Mail icon)
+    │   ├── Password Input (with Lock icon + "Esqueceu?" link)
+    │   └── Submit Button ("Entrar →")
+    └── Footer Link ("Cadastre-se grátis")
+```
 
 ---
 
-## Expected Results
+## Visual Specifications
+
+### Colors
+- Background: `#f8fafc` (slate-50)
+- Card: `#ffffff`
+- Primary/Selected: `#4f46e5` (indigo-600)
+- Selected background: `#eef2ff` (indigo-50)
+- Text primary: `#1f2937` (gray-800)
+- Text secondary: `#6b7280` (gray-500)
+- Border default: `#e5e7eb` (gray-200)
+
+### Typography
+- Title: `text-xl font-semibold text-center`
+- Subtitle: `text-sm text-gray-500 text-center`
+- Divider text: `text-xs uppercase tracking-wider text-gray-400`
+- Input labels: `text-sm font-medium text-gray-700`
+- Profile label: `text-sm font-medium`
+
+### Spacing
+- Card padding: `p-8`
+- Gap between profile cards: `gap-3`
+- Section margins: `my-6`
+- Form fields gap: `space-y-4`
+
+### Border Radius
+- Card: `rounded-[24px]`
+- Profile cards: `rounded-xl` (12px)
+- Inputs: `rounded-xl`
+- Button: `rounded-xl`
+
+---
+
+## Behavior
+
+1. **Role Selection:**
+   - Clicking a profile card updates `selectedRole` state
+   - Email field auto-fills with test credentials (dev convenience)
+   - Divider text updates to show selected role name
+
+2. **Form Submission:**
+   - Uses existing `login()` function from AuthContext
+   - Shows loading state with spinner
+   - Displays toast on success/error
+
+3. **Close Button:**
+   - On homepage, navigates to `/`
+   - Could be hidden or redirect to landing
+
+---
+
+## Icons Used
+- `GraduationCap` - Student profile
+- `Building2` or `Landmark` - Mentor profile  
+- `ShieldCheck` or `CheckCircle` - Admin profile
+- `Mail` - Email input prefix
+- `Lock` - Password input prefix
+- `X` - Close button
+- `ArrowRight` - Submit button suffix
+
+All icons from `lucide-react` (already installed).
+
+---
+
+## Expected Result
 
 After implementation:
-1. Mentor and Student "Meus Espacos" are visually identical with full-width grids
-2. MentorEspacoDetail uses same premium glassmorphism UI as Student
-3. Mentors can select from 6 premium gradient themes or define custom colors
-4. Theme changes persist to database and sync to all enrolled students
-5. Ultra-wide monitors display 5 columns of cards
-6. Discussion tab active for both roles in Espaco details
-7. Forum drawer has professional Slate Monochrome theme
-8. All transitions are smooth 300ms with fade effects
+1. Clean, modern login interface matching the reference image exactly
+2. Interactive profile selector with visual feedback
+3. Icon-prefixed inputs for better UX
+4. Auto-fill credentials based on selected role (dev convenience)
+5. Responsive design that works on mobile and desktop
+6. Consistent 24px border-radius premium aesthetic
+
