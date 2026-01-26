@@ -333,6 +333,9 @@ export type Database = {
           created_at: string | null
           description: string | null
           end_date: string | null
+          gradient_end: string | null
+          gradient_preset: string | null
+          gradient_start: string | null
           id: string
           max_students: number | null
           mentor_id: string | null
@@ -348,6 +351,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
+          gradient_end?: string | null
+          gradient_preset?: string | null
+          gradient_start?: string | null
           id?: string
           max_students?: number | null
           mentor_id?: string | null
@@ -363,6 +369,9 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           end_date?: string | null
+          gradient_end?: string | null
+          gradient_preset?: string | null
+          gradient_start?: string | null
           id?: string
           max_students?: number | null
           mentor_id?: string | null
@@ -906,6 +915,9 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           espaco_id: string
+          gradient_end: string | null
+          gradient_preset: string | null
+          gradient_start: string | null
           id: string
           is_recurring: boolean | null
           meeting_link: string | null
@@ -922,6 +934,9 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           espaco_id: string
+          gradient_end?: string | null
+          gradient_preset?: string | null
+          gradient_start?: string | null
           id?: string
           is_recurring?: boolean | null
           meeting_link?: string | null
@@ -938,6 +953,9 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           espaco_id?: string
+          gradient_end?: string | null
+          gradient_preset?: string | null
+          gradient_start?: string | null
           id?: string
           is_recurring?: boolean | null
           meeting_link?: string | null

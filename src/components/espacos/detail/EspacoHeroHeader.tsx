@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Video, Calendar } from 'lucide-react';
-import { getEspacoGradient } from '@/lib/gradients';
+import { ArrowLeft, Video, Calendar, Settings, UserPlus } from 'lucide-react';
+import { resolveGradient } from '@/lib/gradients';
 import { CATEGORY_LABELS } from '@/types/admin';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -24,11 +24,17 @@ interface Espaco {
   cover_image_url?: string | null;
   status?: string | null;
   category?: string | null;
+  gradient_preset?: string | null;
+  gradient_start?: string | null;
+  gradient_end?: string | null;
 }
 
 interface EspacoHeroHeaderProps {
   espaco: Espaco;
   nextSession?: Session | null;
+  role?: 'student' | 'mentor';
+  onSettingsClick?: () => void;
+  onInviteClick?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -45,7 +51,13 @@ const statusLabels: Record<string, string> = {
   arquivado: 'Arquivado',
 };
 
-export function EspacoHeroHeader({ espaco, nextSession }: EspacoHeroHeaderProps) {
+export function EspacoHeroHeader({ 
+  espaco, 
+  nextSession, 
+  role = 'student',
+  onSettingsClick,
+  onInviteClick
+}: EspacoHeroHeaderProps) {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -57,9 +69,17 @@ export function EspacoHeroHeader({ espaco, nextSession }: EspacoHeroHeaderProps)
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const backPath = role === 'mentor' ? '/mentor/espacos' : '/dashboard/espacos';
+
+  // Resolve background: image with overlay, or gradient
   const backgroundStyle = espaco.cover_image_url
     ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url(${espaco.cover_image_url})` }
-    : { background: getEspacoGradient(espaco.id) };
+    : { background: resolveGradient(
+        espaco.gradient_preset,
+        espaco.gradient_start,
+        espaco.gradient_end,
+        espaco.id
+      )};
 
   return (
     <>
@@ -79,15 +99,44 @@ export function EspacoHeroHeader({ espaco, nextSession }: EspacoHeroHeaderProps)
           
           {/* Content */}
           <div className="relative z-10 p-6 pb-8">
-            {/* Back Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate('/dashboard/espacos')}
-              className="mb-4 h-10 w-10 rounded-full bg-background/20 backdrop-blur-sm text-foreground hover:bg-background/40 border border-border/20"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            {/* Top Row: Back + Actions */}
+            <div className="flex items-start justify-between mb-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate(backPath)}
+                className="h-10 w-10 rounded-full bg-background/20 backdrop-blur-sm text-foreground hover:bg-background/40 border border-border/20"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+
+              {/* Mentor Actions */}
+              {role === 'mentor' && (
+                <div className="flex items-center gap-2">
+                  {onInviteClick && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={onInviteClick}
+                      className="rounded-full bg-background/20 backdrop-blur-sm text-foreground hover:bg-background/40 border border-border/20 gap-2"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      <span className="hidden sm:inline">Convidar</span>
+                    </Button>
+                  )}
+                  {onSettingsClick && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={onSettingsClick}
+                      className="h-10 w-10 rounded-full bg-background/20 backdrop-blur-sm text-foreground hover:bg-background/40 border border-border/20"
+                    >
+                      <Settings className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Title & Badges */}
             <div className="space-y-3">
@@ -145,12 +194,12 @@ export function EspacoHeroHeader({ espaco, nextSession }: EspacoHeroHeaderProps)
         )}
       >
         <div className="bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 py-3">
-          <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
+          <div className="flex items-center justify-between gap-4 max-w-6xl mx-auto">
             <div className="flex items-center gap-3 min-w-0">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => navigate('/dashboard/espacos')}
+                onClick={() => navigate(backPath)}
                 className="h-9 w-9 rounded-full shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -158,14 +207,26 @@ export function EspacoHeroHeader({ espaco, nextSession }: EspacoHeroHeaderProps)
               <h2 className="font-semibold text-foreground truncate">{espaco.name}</h2>
             </div>
             
-            {nextSession && nextSession.meeting_link && (
-              <Button size="sm" className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl shrink-0" asChild>
-                <a href={nextSession.meeting_link} target="_blank" rel="noopener noreferrer">
-                  <Video className="h-4 w-4 mr-1.5" />
-                  Acessar
-                </a>
-              </Button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {role === 'mentor' && onSettingsClick && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={onSettingsClick}
+                  className="h-9 w-9 rounded-full"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              )}
+              {nextSession && nextSession.meeting_link && (
+                <Button size="sm" className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl" asChild>
+                  <a href={nextSession.meeting_link} target="_blank" rel="noopener noreferrer">
+                    <Video className="h-4 w-4 mr-1.5" />
+                    Acessar
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
