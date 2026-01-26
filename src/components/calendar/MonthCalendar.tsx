@@ -21,7 +21,7 @@ interface MonthCalendarProps {
   onViewRecording: (session: Session) => void;
 }
 
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 export function MonthCalendar({
   sessions,
@@ -79,7 +79,7 @@ export function MonthCalendar({
   }, [selectedDate, sessionsByDay]);
 
   return (
-    <div className="bg-card rounded-lg border border-border p-4">
+    <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6">
       <CalendarHeader
         currentMonth={currentMonth}
         onPreviousMonth={handlePreviousMonth}
@@ -92,7 +92,7 @@ export function MonthCalendar({
         {WEEKDAYS.map((day) => (
           <div
             key={day}
-            className="text-center text-xs font-medium text-muted-foreground py-2"
+            className="text-center text-xs font-semibold text-gray-400 py-3 uppercase tracking-wide"
           >
             {day}
           </div>
@@ -108,7 +108,12 @@ export function MonthCalendar({
               key={date.toISOString()}
               date={date}
               currentMonth={currentMonth}
-              sessions={daySessions.map((s) => ({ id: s.id, status: s.status }))}
+              sessions={daySessions.map((s) => ({ 
+                id: s.id, 
+                title: s.title,
+                datetime: s.datetime,
+                status: s.status 
+              }))}
               isSelected={selectedDate ? isSameDay(date, selectedDate) : false}
               onClick={() => handleDayClick(date)}
             />

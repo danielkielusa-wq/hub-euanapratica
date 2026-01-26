@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { Button } from '@/components/ui/button';
 import { 
   MessageCircle, 
@@ -13,81 +13,92 @@ const supportOptions = [
   {
     icon: MessageCircle,
     title: 'Chat de Suporte',
-    description: 'Converse com nossa equipe em tempo real',
+    description: 'Converse com nossa equipe em tempo real para tirar dúvidas ou reportar problemas.',
     action: 'Iniciar Chat',
     disabled: true,
     comingSoon: true,
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
   },
   {
     icon: Mail,
     title: 'E-mail',
-    description: 'Envie um e-mail para nossa equipe de suporte',
+    description: 'Envie um e-mail para nossa equipe de suporte e receba uma resposta em até 24h.',
     action: 'Enviar E-mail',
     href: 'mailto:suporte@euanapratica.com',
     disabled: false,
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
   },
   {
     icon: HelpCircle,
     title: 'Central de Ajuda',
-    description: 'Encontre respostas para as perguntas frequentes',
+    description: 'Encontre respostas para as perguntas mais frequentes sobre a plataforma.',
     action: 'Ver FAQ',
     disabled: true,
     comingSoon: true,
+    iconBg: 'bg-cyan-100',
+    iconColor: 'text-cyan-600',
   },
   {
     icon: FileText,
     title: 'Documentação',
-    description: 'Guias e tutoriais sobre a plataforma',
+    description: 'Guias passo a passo e tutoriais para aproveitar ao máximo sua experiência.',
     action: 'Ver Docs',
     disabled: true,
     comingSoon: true,
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
   },
 ];
 
 export default function StudentSuporte() {
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Suporte</h1>
-          <p className="text-muted-foreground">
-            Como podemos ajudar você hoje?
-          </p>
-        </div>
+      <DashboardTopHeader />
+      
+      <div className="flex-1 p-6 bg-gray-50/50">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Suporte</h1>
+            <p className="text-gray-500">
+              Como podemos ajudar você hoje?
+            </p>
+          </div>
 
-        {/* Support Options Grid */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {supportOptions.map((option) => (
-            <Card 
-              key={option.title}
-              className={option.disabled ? 'opacity-60' : 'hover:shadow-md transition-shadow'}
-            >
-              <CardHeader>
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10">
-                    <option.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {option.title}
-                      {option.comingSoon && (
-                        <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                          Em breve
-                        </span>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {option.description}
-                    </CardDescription>
-                  </div>
+          {/* Support Options Grid */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {supportOptions.map((option) => (
+              <div 
+                key={option.title}
+                className="relative bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm"
+              >
+                {/* Coming Soon Badge */}
+                {option.comingSoon && (
+                  <span className="absolute top-4 right-4 bg-gray-100 text-gray-500 text-xs font-medium px-2.5 py-1 rounded-full">
+                    EM BREVE
+                  </span>
+                )}
+                
+                {/* Icon */}
+                <div className={`w-12 h-12 rounded-2xl ${option.iconBg} flex items-center justify-center mb-4`}>
+                  <option.icon className={`h-6 w-6 ${option.iconColor}`} />
                 </div>
-              </CardHeader>
-              <CardContent>
+                
+                {/* Content */}
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {option.title}
+                </h3>
+                <p className="text-gray-500 text-sm mb-6 min-h-[40px]">
+                  {option.description}
+                </p>
+                
+                {/* Action Button */}
                 {option.href ? (
                   <Button 
                     variant="outline" 
-                    className="w-full gap-2"
+                    className="w-full rounded-xl border-gray-200 hover:bg-gray-50 gap-2"
                     asChild
                   >
                     <a href={option.href}>
@@ -98,32 +109,34 @@ export default function StudentSuporte() {
                 ) : (
                   <Button 
                     variant="outline" 
-                    className="w-full"
+                    className={`w-full rounded-xl border-gray-200 ${
+                      option.disabled 
+                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed hover:bg-gray-50' 
+                        : 'hover:bg-gray-50'
+                    }`}
                     disabled={option.disabled}
                   >
                     {option.action}
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
 
-        {/* Contact Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Outras Formas de Contato</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <span className="text-foreground">suporte@euanapratica.com</span>
+          {/* Contact Info */}
+          <div className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Outras Formas de Contato
+            </h3>
+            <div className="flex items-center gap-3 mb-3">
+              <Mail className="h-5 w-5 text-gray-400" />
+              <span className="text-gray-900">suporte@euanapratica.com</span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Nosso horário de atendimento é de segunda a sexta, das 9h às 18h (horário de Brasília).
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

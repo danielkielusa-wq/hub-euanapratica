@@ -1,9 +1,9 @@
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DueDateBadge } from './DueDateBadge';
-import { FileText, ArrowRight, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Upload, Link as LinkIcon, FileText, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { AssignmentWithSubmission } from '@/types/assignments';
 
 interface AssignmentCardProps {
@@ -14,127 +14,99 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
   const submission = assignment.my_submission;
   const isSubmitted = submission?.status === 'submitted' || submission?.status === 'reviewed';
   const isReviewed = submission?.status === 'reviewed';
-  const hasFeedback = isReviewed && submission?.feedback;
+  const isApproved = isReviewed && submission?.review_result === 'approved';
+  const isPending = !isSubmitted || (isReviewed && submission?.review_result !== 'approved');
 
-  // Truncate description to 2 lines (approximately 150 characters)
-  const truncatedDescription = assignment.description 
-    ? assignment.description.length > 150 
-      ? assignment.description.substring(0, 150) + '...'
-      : assignment.description
-    : null;
-
-  // Determine action button
-  const getActionButton = () => {
-    if (isReviewed && hasFeedback) {
-      return (
-        <Button asChild variant="gradient" size="sm">
-          <Link to={`/dashboard/tarefas/${assignment.id}`}>
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Ver Feedback
-          </Link>
-        </Button>
-      );
+  // Determine icon based on submission type
+  const getIcon = () => {
+    switch (assignment.submission_type) {
+      case 'file':
+        return Upload;
+      case 'text':
+        return FileText;
+      default:
+        return FileText;
     }
-    
-    if (isSubmitted) {
-      return (
-        <Button asChild variant="gradientOutline" size="sm">
-          <Link to={`/dashboard/tarefas/${assignment.id}`}>
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Ver Entrega
-          </Link>
-        </Button>
-      );
-    }
-    
-    return (
-      <Button asChild variant="gradient" size="sm">
-        <Link to={`/dashboard/tarefas/${assignment.id}`}>
-          Entregar
-          <ArrowRight className="h-4 w-4 ml-2" />
-        </Link>
-      </Button>
-    );
   };
+  
+  const Icon = getIcon();
 
-  // Status badge
+  // Format due date
+  const dueDate = format(new Date(assignment.due_date), "dd MMM yyyy", { locale: ptBR });
+  const formattedDueDate = dueDate.split(' ').map((word, i) => 
+    i === 1 ? word.charAt(0).toUpperCase() + word.slice(1) : word
+  ).join(' ');
+
+  // Status display
   const getStatusBadge = () => {
-    if (isReviewed) {
-      const resultVariants = {
-        approved: 'pastelEmerald' as const,
-        revision: 'pastelAmber' as const,
-        rejected: 'pastelRose' as const
-      };
-      const resultTexts = {
-        approved: 'Aprovada',
-        revision: 'Revisar',
-        rejected: 'Não Aprovada'
-      };
-      const result = submission?.review_result;
+    if (isApproved) {
       return (
-        <Badge variant={result ? resultVariants[result] : 'pastelSlate'}>
-          {result ? resultTexts[result] : 'Avaliada'}
-        </Badge>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-200 text-emerald-600 bg-emerald-50">
+          <CheckCircle2 className="h-4 w-4" />
+          <span className="text-sm font-medium">Concluída</span>
+        </div>
       );
     }
     
-    if (isSubmitted) {
+    if (isSubmitted && !isReviewed) {
       return (
-        <Badge variant="pastelPurple">
-          Entregue
-        </Badge>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-200 text-amber-600 bg-amber-50">
+          <Clock className="h-4 w-4" />
+          <span className="text-sm font-medium">Aguardando</span>
+        </div>
       );
     }
     
     return (
-      <Badge variant="pastelSlate">
-        Pendente
-      </Badge>
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-200 text-red-600 bg-red-50">
+        <Clock className="h-4 w-4" />
+        <span className="text-sm font-medium">Pendente</span>
+      </div>
     );
   };
 
   return (
-    <Card variant="glass">
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 shrink-0">
-              <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight truncate">
-                {assignment.title}
-              </h3>
-              {assignment.espaco && (
-                <Badge variant="pastelSlate" className="mt-1 text-xs">
-                  {assignment.espaco.name}
-                </Badge>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <DueDateBadge 
-              dueDate={assignment.due_date} 
-              submitted={isSubmitted} 
-            />
-            {getStatusBadge()}
+    <Link 
+      to={`/dashboard/tarefas/${assignment.id}`}
+      className="block"
+    >
+      <div className="flex items-center gap-4 p-4 bg-white rounded-[20px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        {/* Icon */}
+        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+          <Icon className="h-5 w-5 text-indigo-600" />
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">
+            {assignment.title}
+          </h3>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            {assignment.espaco && (
+              <Badge variant="secondary" className="bg-gray-100 text-gray-600 rounded-full px-2.5 py-0.5 text-xs font-medium">
+                {assignment.espaco.name}
+              </Badge>
+            )}
+            <span className="text-sm text-gray-500">
+              Prazo: {formattedDueDate}
+            </span>
           </div>
         </div>
-      </CardHeader>
-      
-      {truncatedDescription && (
-        <CardContent className="py-2">
-          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
-            {truncatedDescription}
-          </p>
-        </CardContent>
-      )}
-      
-      <CardFooter className="pt-2">
-        <div className="flex items-center justify-end w-full">
-          {getActionButton()}
+        
+        {/* Status Badge */}
+        <div className="flex-shrink-0 hidden sm:block">
+          {getStatusBadge()}
         </div>
-      </CardFooter>
-    </Card>
+        
+        {/* Arrow */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="flex-shrink-0 rounded-full hover:bg-gray-100"
+        >
+          <ChevronRight className="h-5 w-5 text-gray-400" />
+        </Button>
+      </div>
+    </Link>
   );
 }

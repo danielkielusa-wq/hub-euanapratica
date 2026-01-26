@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AssignmentCard } from './AssignmentCard';
 import { useAssignments } from '@/hooks/useAssignments';
@@ -9,9 +8,10 @@ import type { AssignmentWithSubmission } from '@/types/assignments';
 
 interface AssignmentListProps {
   espacoId?: string;
+  showHeader?: boolean;
 }
 
-export function AssignmentList({ espacoId }: AssignmentListProps) {
+export function AssignmentList({ espacoId, showHeader = false }: AssignmentListProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'submitted' | 'all'>('pending');
   
   const { data: assignments, isLoading } = useAssignments({
@@ -74,12 +74,22 @@ export function AssignmentList({ espacoId }: AssignmentListProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-10 w-full max-w-md" />
-        <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
-              <Skeleton className="h-48 rounded-[24px]" />
+        {showHeader && (
+          <div className="flex items-start justify-between">
+            <div>
+              <Skeleton className="h-8 w-40 mb-2" />
+              <Skeleton className="h-5 w-64" />
             </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-24 rounded-full" />
+              <Skeleton className="h-10 w-24 rounded-full" />
+              <Skeleton className="h-10 w-24 rounded-full" />
+            </div>
+          </div>
+        )}
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} className="h-20 rounded-[20px]" />
           ))}
         </div>
       </div>
@@ -89,63 +99,135 @@ export function AssignmentList({ espacoId }: AssignmentListProps) {
   const displayAssignments = getDisplayAssignments();
 
   return (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-      <TabsList className="mb-6">
-        <TabsTrigger value="pending" className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4" />
-          Pendentes
-          {pendingAssignments.length > 0 && (
-            <Badge variant="secondary" className="ml-1">
-              {pendingAssignments.length}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="submitted" className="flex items-center gap-2">
-          <FileCheck className="h-4 w-4" />
-          Entregues
-        </TabsTrigger>
-        <TabsTrigger value="all" className="flex items-center gap-2">
-          <Files className="h-4 w-4" />
-          Todas
-          <Badge variant="outline" className="ml-1">
-            {allAssignments.length}
-          </Badge>
-        </TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      {/* Header with Filters */}
+      {showHeader && (
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Atividades</h1>
+            <p className="text-gray-500">Gerencie suas entregas e feedbacks</p>
+          </div>
+          
+          {/* Pill Filter Tabs */}
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setActiveTab('pending')}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'pending' 
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                  : 'bg-transparent text-gray-600 hover:bg-gray-100'
+              }`}
+              variant={activeTab === 'pending' ? 'default' : 'ghost'}
+            >
+              Pendentes
+              {pendingAssignments.length > 0 && (
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                  activeTab === 'pending' ? 'bg-white/20' : 'bg-gray-100'
+                }`}>
+                  {pendingAssignments.length}
+                </span>
+              )}
+            </Button>
+            <Button 
+              onClick={() => setActiveTab('submitted')}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'submitted' 
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                  : 'bg-transparent text-gray-600 hover:bg-gray-100'
+              }`}
+              variant={activeTab === 'submitted' ? 'default' : 'ghost'}
+            >
+              Concluídas
+            </Button>
+            <Button 
+              onClick={() => setActiveTab('all')}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'all' 
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                  : 'bg-transparent text-gray-600 hover:bg-gray-100'
+              }`}
+              variant={activeTab === 'all' ? 'default' : 'ghost'}
+            >
+              Todas
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                activeTab === 'all' ? 'bg-white/20' : 'bg-gray-100'
+              }`}>
+                {allAssignments.length}
+              </span>
+            </Button>
+          </div>
+        </div>
+      )}
 
-      <TabsContent value={activeTab} className="mt-0">
-        {displayAssignments.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {activeTab === 'pending' && (
-              <>
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma tarefa pendente</p>
-                <p className="text-sm">Você está em dia com suas entregas!</p>
-              </>
-            )}
-            {activeTab === 'submitted' && (
-              <>
-                <FileCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma tarefa entregue ainda</p>
-              </>
-            )}
-            {activeTab === 'all' && (
-              <>
-                <Files className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma tarefa disponível</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
-            {displayAssignments.map(assignment => (
-              <div key={assignment.id} className="w-full max-w-[90%] md:max-w-none mx-auto md:mx-0">
-                <AssignmentCard assignment={assignment} />
-              </div>
-            ))}
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
+      {/* If no header, show simple filter tabs */}
+      {!showHeader && (
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setActiveTab('pending')}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'pending' 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-transparent text-gray-600 hover:bg-gray-100'
+            }`}
+            variant={activeTab === 'pending' ? 'default' : 'ghost'}
+          >
+            Pendentes
+          </Button>
+          <Button 
+            onClick={() => setActiveTab('submitted')}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'submitted' 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-transparent text-gray-600 hover:bg-gray-100'
+            }`}
+            variant={activeTab === 'submitted' ? 'default' : 'ghost'}
+          >
+            Concluídas
+          </Button>
+          <Button 
+            onClick={() => setActiveTab('all')}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'all' 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-transparent text-gray-600 hover:bg-gray-100'
+            }`}
+            variant={activeTab === 'all' ? 'default' : 'ghost'}
+          >
+            Todas
+          </Button>
+        </div>
+      )}
+
+      {/* Vertical Stack of Cards */}
+      {displayAssignments.length === 0 ? (
+        <div className="text-center py-12 text-gray-500 bg-white rounded-[20px] border border-gray-100">
+          {activeTab === 'pending' && (
+            <>
+              <ClipboardList className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="font-medium">Nenhuma tarefa pendente</p>
+              <p className="text-sm">Você está em dia com suas entregas!</p>
+            </>
+          )}
+          {activeTab === 'submitted' && (
+            <>
+              <FileCheck className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="font-medium">Nenhuma tarefa entregue ainda</p>
+            </>
+          )}
+          {activeTab === 'all' && (
+            <>
+              <Files className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="font-medium">Nenhuma tarefa disponível</p>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {displayAssignments.map(assignment => (
+            <AssignmentCard key={assignment.id} assignment={assignment} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
