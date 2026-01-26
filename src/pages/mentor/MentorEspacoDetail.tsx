@@ -11,7 +11,8 @@ import {
   useEspacoStats, 
   useEspacoStudents, 
   useEspacoTimeline,
-  useEspacoUpcomingSessions
+  useEspacoUpcomingSessions,
+  useArchiveEspaco
 } from '@/hooks/useMentorEspacos';
 import { useSessions } from '@/hooks/useSessions';
 import { useAssignments } from '@/hooks/useAssignments';
@@ -36,7 +37,9 @@ import {
   ArrowRightLeft,
   History as HistoryIcon,
   UserMinus,
-  UserPlus
+  UserPlus,
+  Archive,
+  RefreshCw
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -64,12 +67,14 @@ const statusLabels: Record<string, string> = {
   active: 'Em Andamento',
   inactive: 'Inativo',
   completed: 'Concluído',
+  arquivado: 'Arquivado',
 };
 
 const statusColors: Record<string, string> = {
   active: 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:text-primary',
   inactive: 'bg-muted text-muted-foreground hover:bg-muted/80',
   completed: 'bg-secondary/80 text-secondary-foreground hover:bg-secondary',
+  arquivado: 'bg-gray-500/10 text-gray-600 border-gray-500/20 hover:bg-gray-500/20',
 };
 
 export default function MentorEspacoDetail() {
@@ -79,6 +84,7 @@ export default function MentorEspacoDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
+  const archiveMutation = useArchiveEspaco();
   const { data: espaco, isLoading: loadingEspaco } = useMentorEspaco(id || '');
   const { data: stats } = useEspacoStats(id || '');
   const { data: students } = useEspacoStudents(id || '');
@@ -689,9 +695,40 @@ export default function MentorEspacoDetail() {
                     <p className="text-foreground mt-1">{espaco.description}</p>
                   </div>
                 )}
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Para editar as configurações do espaço, entre em contato com o administrador.
+                
+                {/* Archive/Restore Actions */}
+                <div className="pt-4 border-t flex flex-wrap gap-3">
+                  {espaco.status !== 'arquivado' ? (
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => archiveMutation.mutate({ espacoId: id!, archive: true })}
+                      disabled={archiveMutation.isPending}
+                    >
+                      {archiveMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Archive className="h-4 w-4 mr-2" />
+                      )}
+                      Arquivar Espaço
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="default"
+                      onClick={() => archiveMutation.mutate({ espacoId: id!, archive: false })}
+                      disabled={archiveMutation.isPending}
+                    >
+                      {archiveMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Restaurar Espaço
+                    </Button>
+                  )}
+                  <p className="w-full text-xs text-muted-foreground mt-2">
+                    {espaco.status === 'arquivado' 
+                      ? 'Este espaço está arquivado e oculto para os alunos.'
+                      : 'Arquivar oculta o espaço da galeria de alunos, mas mantém todos os dados.'}
                   </p>
                 </div>
               </CardContent>

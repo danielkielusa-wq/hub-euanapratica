@@ -23,12 +23,14 @@ const statusLabels: Record<string, string> = {
   active: 'Em Andamento',
   inactive: 'Inativo',
   completed: 'Concluído',
+  arquivado: 'Arquivado',
 };
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-500/10 text-green-600 border-green-500/20',
   inactive: 'bg-muted text-muted-foreground border-border',
   completed: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  arquivado: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
 };
 
 export default function MentorEspacos() {
@@ -57,7 +59,7 @@ export default function MentorEspacos() {
               Gerencie suas mentorias, imersões e programas
             </p>
           </div>
-          <Button onClick={() => navigate('/mentor/espacos/novo')}>
+          <Button variant="gradient" onClick={() => navigate('/mentor/espacos/novo')}>
             <Plus className="h-4 w-4 mr-2" />
             Criar Espaço
           </Button>
@@ -83,6 +85,7 @@ export default function MentorEspacos() {
               <SelectItem value="active">Em Andamento</SelectItem>
               <SelectItem value="inactive">Inativo</SelectItem>
               <SelectItem value="completed">Concluído</SelectItem>
+              <SelectItem value="arquivado">Arquivados</SelectItem>
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>

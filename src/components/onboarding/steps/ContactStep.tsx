@@ -64,7 +64,7 @@ export function ContactStep({ data, onChange, errors }: ContactStepProps) {
         {/* Phone */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">
-            Telefone
+            Telefone <span className="text-destructive">*</span>
           </Label>
           <PhoneInput
             value={data.phone || ''}
@@ -74,6 +74,9 @@ export function ContactStep({ data, onChange, errors }: ContactStepProps) {
             onCountryCodeChange={(code) => onChange('phone_country_code', code)}
             onWhatsAppChange={(isWhatsApp) => onChange('is_whatsapp', isWhatsApp)}
           />
+          {errors.phone && (
+            <p className="text-xs text-destructive">{errors.phone}</p>
+          )}
         </div>
       </div>
     </div>
