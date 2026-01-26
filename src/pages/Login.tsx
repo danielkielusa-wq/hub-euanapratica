@@ -1,30 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Shield, GraduationCap, User } from 'lucide-react';
+import { 
+  Loader2, 
+  GraduationCap, 
+  Building2, 
+  ShieldCheck, 
+  Mail, 
+  Lock, 
+  ArrowRight 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const DEV_USERS = [
-  { email: 'admin@teste.com', password: 'teste123', label: 'Entrar como Admin', variant: 'admin' as const, icon: Shield },
-  { email: 'mentor@teste.com', password: 'teste123', label: 'Entrar como Mentor', variant: 'mentor' as const, icon: GraduationCap },
-  { email: 'aluno@teste.com', password: 'teste123', label: 'Entrar como Aluno', variant: 'student' as const, icon: User },
-];
+type RoleType = 'student' | 'mentor' | 'admin';
+
+const ROLE_CONFIG = {
+  student: {
+    label: 'Aluno',
+    icon: GraduationCap,
+    email: 'aluno@teste.com',
+    password: 'teste123',
+  },
+  mentor: {
+    label: 'Mentor',
+    icon: Building2,
+    email: 'mentor@teste.com',
+    password: 'teste123',
+  },
+  admin: {
+    label: 'Admin',
+    icon: ShieldCheck,
+    email: 'admin@teste.com',
+    password: 'teste123',
+  },
+};
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleType>('student');
+  const [email, setEmail] = useState(ROLE_CONFIG.student.email);
+  const [password, setPassword] = useState(ROLE_CONFIG.student.password);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingUser, setLoadingUser] = useState<string | null>(null);
   
   const { login } = useAuth();
   const { toast } = useToast();
-  
+
+  // Auto-fill credentials when role changes
+  useEffect(() => {
+    const config = ROLE_CONFIG[selectedRole];
+    setEmail(config.email);
+    setPassword(config.password);
+  }, [selectedRole]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -57,123 +87,137 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = async (email: string, password: string) => {
-    setLoadingUser(email);
-    try {
-      await login(email, password);
-      toast({
-        title: "Bem-vindo!",
-        description: "Login realizado com sucesso.",
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erro ao fazer login. Verifique se os usuários de teste foram criados.";
-      toast({
-        title: "Erro",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingUser(null);
-    }
-  };
-  
   return (
     <AuthLayout 
-      title="Bem-vindo de volta" 
-      subtitle="Faça login para acessar sua conta"
+      title="Escolha seu perfil" 
+      subtitle="Selecione como deseja acessar a plataforma"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isLoading || !!loadingUser}
-          />
+      {/* Profile Selector */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {(Object.keys(ROLE_CONFIG) as RoleType[]).map((role) => {
+          const config = ROLE_CONFIG[role];
+          const Icon = config.icon;
+          const isSelected = selectedRole === role;
+          
+          return (
+            <button
+              key={role}
+              type="button"
+              onClick={() => setSelectedRole(role)}
+              className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
+                isSelected
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              )}
+            >
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
+                  isSelected ? "bg-indigo-100" : "bg-gray-100"
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "h-6 w-6",
+                    isSelected ? "text-indigo-600" : "text-gray-500"
+                  )}
+                />
+              </div>
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  isSelected ? "text-indigo-600" : "text-gray-700"
+                )}
+              >
+                {config.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Section Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
         </div>
-        
+        <div className="relative flex justify-center">
+          <span className="bg-white px-4 text-xs text-gray-400 uppercase tracking-wider">
+            Login de {ROLE_CONFIG[selectedRole].label}
+          </span>
+        </div>
+      </div>
+
+      {/* Login Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Email Field */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Email</label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input
+              type="email"
+              placeholder={ROLE_CONFIG[selectedRole].email}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+              className="pl-10 h-12 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Password Field */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Senha</Label>
+            <label className="text-sm font-medium text-gray-700">Senha</label>
             <Link 
               to="/esqueci-senha" 
-              className="text-sm text-primary hover:underline"
+              className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
             >
-              Esqueceu a senha?
+              Esqueceu?
             </Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading || !!loadingUser}
-          />
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              className="pl-10 h-12 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="remember"
-            checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-          />
-          <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-            Lembrar de mim
-          </Label>
-        </div>
-        
-        <Button type="submit" className="w-full" size="lg" disabled={isLoading || !!loadingUser}>
+
+        {/* Submit Button */}
+        <Button 
+          type="submit" 
+          className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+          disabled={isLoading}
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Entrando...
             </>
           ) : (
-            'Entrar'
+            <>
+              Entrar
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
           )}
         </Button>
       </form>
-      
-      <p className="mt-8 text-center text-sm text-muted-foreground">
+
+      {/* Footer */}
+      <p className="mt-6 text-center text-sm text-gray-500">
         Não tem uma conta?{' '}
-        <Link to="/cadastro" className="text-primary font-medium hover:underline">
-          Cadastre-se
+        <Link to="/cadastro" className="text-indigo-600 font-medium hover:underline">
+          Cadastre-se grátis
         </Link>
       </p>
-
-      {/* Acesso Rápido - Desenvolvimento */}
-      <div className="mt-8 pt-6 border-t border-border">
-        <p className="text-center text-sm text-muted-foreground mb-4">
-          Acesso Rápido (Desenvolvimento)
-        </p>
-        <div className="flex flex-col gap-2">
-          {DEV_USERS.map((user) => {
-            const Icon = user.icon;
-            const isLoadingThis = loadingUser === user.email;
-            return (
-              <Button
-                key={user.email}
-                type="button"
-                variant={user.variant}
-                className="w-full"
-                onClick={() => handleQuickLogin(user.email, user.password)}
-                disabled={isLoading || !!loadingUser}
-              >
-                {isLoadingThis ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Icon className="mr-2 h-4 w-4" />
-                )}
-                {isLoadingThis ? 'Entrando...' : user.label}
-              </Button>
-            );
-          })}
-        </div>
-      </div>
     </AuthLayout>
   );
 }
