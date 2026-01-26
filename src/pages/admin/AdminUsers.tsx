@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,9 +26,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus } from '@/hooks/useAdminUsers';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus, useDeleteUser } from '@/hooks/useAdminUsers';
 import type { UserFilters } from '@/types/admin';
-import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck } from 'lucide-react';
+import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck, Trash2, AlertTriangle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -68,10 +78,13 @@ export default function AdminUsers() {
   const [newRole, setNewRole] = useState<'admin' | 'mentor' | 'student'>('student');
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [auditLogUser, setAuditLogUser] = useState<{ id: string; name: string } | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserName, setDeleteUserName] = useState<string>('');
 
   const { data: users, isLoading } = useAdminUsers(filters);
   const updateRoleMutation = useUpdateUserRole();
   const updateStatusMutation = useUpdateUserStatus();
+  const deleteUserMutation = useDeleteUser();
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -105,6 +118,21 @@ export default function AdminUsers() {
     setAuditLogUser({ id: user.id, name: user.full_name });
   };
 
+  const handleDeleteClick = (user: { id: string; full_name: string }) => {
+    setDeleteUserId(user.id);
+    setDeleteUserName(user.full_name);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteUserId) return;
+    deleteUserMutation.mutate(deleteUserId, {
+      onSuccess: () => {
+        setDeleteUserId(null);
+        setDeleteUserName('');
+      }
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -115,7 +143,7 @@ export default function AdminUsers() {
               Visualize e gerencie todos os usuários da plataforma
             </p>
           </div>
-          <Button onClick={() => setCreateUserOpen(true)}>
+          <Button onClick={() => setCreateUserOpen(true)} variant="gradient">
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
@@ -172,7 +200,7 @@ export default function AdminUsers() {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : users && users.length > 0 ? (
-          <div className="border rounded-lg">
+          <div className="border rounded-[24px] overflow-hidden bg-card/80 backdrop-blur-md">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -260,6 +288,14 @@ export default function AdminUsers() {
                               </>
                             )}
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(user)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir Usuário
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -308,6 +344,7 @@ export default function AdminUsers() {
             <Button 
               onClick={handleSaveRole}
               disabled={updateRoleMutation.isPending}
+              variant="gradient"
             >
               {updateRoleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
@@ -315,6 +352,50 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Exclusão Permanente
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Você está prestes a excluir permanentemente o usuário <strong>{deleteUserName}</strong>.
+              </p>
+              <p>
+                Esta ação irá remover <strong>TODOS</strong> os dados do usuário, incluindo:
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>Perfil e informações pessoais</li>
+                <li>Matrículas em espaços</li>
+                <li>Submissões de tarefas</li>
+                <li>Histórico de acessos</li>
+              </ul>
+              <p className="font-semibold text-destructive">
+                Se este usuário quiser retornar, precisará criar uma nova conta do zero.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Excluir Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create User Dialog */}
       <CreateUserDialog open={createUserOpen} onOpenChange={setCreateUserOpen} />

@@ -1,7 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import type { EspacoExtended } from '@/types/admin';
+
+export interface MentorEspaco {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  visibility: string | null;
+  status: string | null;
+  mentor_id: string | null;
+  max_students: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  cover_image_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  student_count?: number;
+  enrolled_count?: number;
+}
 
 export interface EspacoStats {
   espacoId: string;
@@ -36,7 +55,6 @@ export interface TimelineItem {
   status: string;
 }
 
-// List all espacos where user is mentor
 export function useMentorEspacos() {
   const { user } = useAuth();
 
@@ -45,7 +63,7 @@ export function useMentorEspacos() {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data: espacos, error } = await supabase
+      const { data, error } = await supabase
         .from('espacos')
         .select(`
           *,
@@ -56,27 +74,41 @@ export function useMentorEspacos() {
 
       if (error) throw error;
 
-      // Transform to EspacoExtended with counts
-      const result: EspacoExtended[] = (espacos || []).map(e => ({
-        id: e.id,
-        name: e.name,
-        description: e.description,
-        category: e.category || 'immersion',
-        visibility: e.visibility || 'private',
-        max_students: e.max_students || 30,
-        mentor_id: e.mentor_id,
-        status: e.status || 'active',
-        start_date: e.start_date,
-        end_date: e.end_date,
-        cover_image_url: e.cover_image_url,
-        created_at: e.created_at || '',
-        updated_at: e.updated_at || null,
-        enrolled_count: (e.user_espacos as any)?.[0]?.count || 0
-      }));
-
-      return result;
+      // Transform and add student count
+      return (data || []).map((espaco: any) => ({
+        ...espaco,
+        student_count: espaco.user_espacos?.[0]?.count || 0,
+        enrolled_count: espaco.user_espacos?.[0]?.count || 0
+      })) as MentorEspaco[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id
+  });
+}
+
+export function useArchiveEspaco() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ espacoId, archive }: { espacoId: string; archive: boolean }) => {
+      const newStatus = archive ? 'arquivado' : 'active';
+      const { error } = await supabase
+        .from('espacos')
+        .update({ status: newStatus })
+        .eq('id', espacoId);
+      
+      if (error) throw error;
+      return { espacoId, newStatus };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-espacos'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-espaco'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-espacos'] });
+      toast.success(data.newStatus === 'arquivado' ? 'Espaço arquivado com sucesso!' : 'Espaço restaurado com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Error archiving espaco:', error);
+      toast.error('Erro ao atualizar status do espaço');
+    }
   });
 }
 
