@@ -1,52 +1,46 @@
 
-# Plan: Redesign Sidebar & Student Dashboard
+# Plan: Redesign Student "Meus Espacos" and Detail Pages
 
 ## Overview
-Recreate the Student Dashboard interface to exactly match the reference image, featuring a structured sidebar with section headers, a top header bar with search, and a comprehensive main content area with hero card, metrics, activities, and upcoming sessions.
+This plan recreates the Student Spaces interface (list and detail pages) to exactly match the reference images, featuring horizontal course cards with gradient backgrounds, pill-style filters, and a modern detail page with full-width gradient hero header and reorganized tab content.
 
 ---
 
-## Analysis of Reference Design
+## Analysis of Reference Images
 
-### 1. Sidebar (Left Panel)
-- **Logo**: Replace with the official "EUA NA PRÁTICA" horizontal logo (uploaded)
-- **Section Headers**: "OVERVIEW" and "SOCIAL" labels in uppercase gray text
-- **Navigation Items**:
-  - OVERVIEW: Dashboard (active/blue pill), Meus Espaços, Agenda, Tarefas
-  - SOCIAL: Suporte
-- **Bottom Section**: Configurações and Sair (red text with icon)
-- **Style**: Clean white background, no user info card in sidebar
+### Image 1: "Meus Espacos" List Page
+- **Top Header**: Already implemented (search bar, mail/notification icons, user profile)
+- **Page Title**: "Meus Espaços" with subtitle "Seus cursos e mentorias ativos"
+- **Filter Tabs**: "Todos", "Em andamento", "Concluídos" (dark pill style for active)
+- **Card Grid**: Horizontal cards (NOT Netflix vertical 3:4) with:
+  - Gradient background (blue-purple, pink-purple, teal variants)
+  - Category badge in top-left (MENTORIA, CURSO, WORKSHOP)
+  - More options menu (⋮) in top-right
+  - Title BELOW the gradient area (outside the colored section)
+  - Stats: "X Módulos • Y Atividades" with icons
+  - Progress bar with percentage label
+- **"Explorar Cursos" Card**: Special card with arrow icon at bottom-left
 
-### 2. Top Header Bar (Desktop)
-- **Left**: Search bar with placeholder "Pesquise por cursos, mentores..."
-- **Right**: Mail icon, Notification bell icon, User profile (Avatar + "Aluno Exemplo" + "Aluno" role label)
-- **Style**: White background, border-bottom
+### Images 2-6: Espaço Detail Page
+- **Full-width Gradient Hero Header**:
+  - "← Voltar" pill button (not icon-only)
+  - "MENTORIA ELITE" badge in top-right
+  - Large white title on gradient
+  - Stats: "32 Alunos • 12 Sessões"
+  - Right-side floating card: "PRÓXIMO ENCONTRO" with date and "Acessar Sala ao Vivo" button
 
-### 3. Main Content Area
-**Hero Section:**
-- Large blue/purple gradient card
-- "ONLINE COURSE" label (uppercase, small)
-- Title: "Domine sua carreira internacional com mentorias práticas"
-- Button: "Acessar Mentoria →"
+- **Sticky Tabs** (pill style, dark active):
+  - Visão Geral, Sessões (2), Tarefas (4), Materiais (6), Meus Arquivos (2)
 
-**Metrics Row (3 cards):**
-- Card 1: Video icon, "Mentoria Elite", "2/8 Aulas"
-- Card 2: Clipboard icon, "Atividades", "3 Pendentes"
-- Card 3: Clock icon, "Tempo Total", "12h Estudadas"
-
-**Activities Section:**
-- Title: "Atividades Recentes" with "Ver todas" link
-- Activity cards with:
-  - Icon (different per type: Upload, Networking, Aula)
-  - Title and category
-  - Status badge (Pendente/Em andamento/Concluído)
-  - Arrow button
-
-### 4. Right Sidebar (Sessions)
-- **Title**: "Próximas Sessões" with more options (...)
-- **Live Session Card**: Green gradient with "AO VIVO • EM 20 MIN" badge, title, time, video icon
-- **Other Sessions**: Date badge (29, 31), title, subtitle, time
-- **Button**: "Ver Calendário Completo"
+- **Tab Contents**:
+  - **Visão Geral**: 2-column layout
+    - Left: "Na sua agenda" (sessions with day badge, AO VIVO, Participar button)
+    - Left: "Para entregar" (assignments with icon, due date, Entregar button)
+    - Right: "Seu Progresso" (circular progress), "Grupo do Telegram" card
+  - **Sessões**: "Cronograma Completo" with "Baixar PDF" button, vertical session cards
+  - **Tarefas**: "Suas Atividades" with status-colored icons, type badges
+  - **Materiais**: Folder-grouped cards with colored file icons
+  - **Meus Arquivos**: Upload zone (dashed, cloud icon), file list with view/delete
 
 ---
 
@@ -54,349 +48,282 @@ Recreate the Student Dashboard interface to exactly match the reference image, f
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/assets/logo-horizontal.png` | Copy | Copy uploaded logo to assets |
-| `src/components/layouts/DashboardLayout.tsx` | Major Rewrite | New sidebar structure with sections |
-| `src/pages/dashboards/StudentDashboard.tsx` | Major Rewrite | New layout with all components |
-| `src/components/dashboard/DashboardTopHeader.tsx` | Create | Top bar with search and user menu |
-| `src/components/dashboard/HeroCard.tsx` | Create | Blue gradient hero section |
-| `src/components/dashboard/MetricsRow.tsx` | Create | 3-card metrics strip |
-| `src/components/dashboard/RecentActivities.tsx` | Create | Activities list with status badges |
-| `src/components/dashboard/SessionsSidebar.tsx` | Create | Right panel with upcoming sessions |
+| `src/pages/student/StudentEspacos.tsx` | Major Rewrite | New horizontal card layout with filters |
+| `src/components/espacos/StudentEspacoCard.tsx` | Create | New horizontal card component |
+| `src/pages/student/StudentEspacoDetail.tsx` | Major Rewrite | New hero header and content layout |
+| `src/components/espacos/detail/EspacoHeroHeader.tsx` | Major Rewrite | Match reference gradient hero |
+| `src/components/espacos/detail/EspacoStickyTabs.tsx` | Update | Pill-style tabs with badges |
+| `src/components/espacos/detail/OverviewContent.tsx` | Major Rewrite | 3-column layout with progress card |
+| `src/components/espacos/detail/SessionTimeline.tsx` | Update | New card design matching reference |
+| `src/components/espacos/detail/TaskListGrouped.tsx` | Update | New card design with colored icons |
+| `src/components/library/EspacoLibrary.tsx` | Update | Split into Materiais and Meus Arquivos tabs |
+| `src/components/espacos/detail/MyFilesTab.tsx` | Create | New upload zone component |
 
 ---
 
 ## Detailed Implementation
 
-### Phase 1: Asset Setup
+### Phase 1: Create New Horizontal Card Component
 
-**Copy Logo to Project:**
-```
-lov-copy user-uploads://Logo_EUA_na_prática_horizontal_1.png src/assets/logo-horizontal.png
-```
-
-### Phase 2: Update DashboardLayout.tsx
-
-**New Sidebar Structure:**
+**File:** `src/components/espacos/StudentEspacoCard.tsx`
 
 ```
-Sidebar Layout:
-├── Logo Area (h-16)
-│   └── <img src={logo} /> - Official horizontal logo
-├── Navigation (flex-1)
-│   ├── Section: "OVERVIEW" (uppercase label)
-│   │   ├── Dashboard (active pill style)
-│   │   ├── Meus Espaços
-│   │   ├── Agenda
-│   │   └── Tarefas
-│   └── Section: "SOCIAL" (uppercase label)
-│       └── Suporte
-└── Bottom Actions (border-t)
-    ├── Configurações
-    └── Sair (red text)
+Card Structure:
+┌──────────────────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ [CATEGORY BADGE]                            [⋮]          │ │
+│ │                                                          │ │
+│ │            GRADIENT BACKGROUND AREA                      │ │
+│ │              (aspect-[16/9])                             │ │
+│ │                                                          │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│ Title of the Course                                          │
+│ 🔲 X Módulos  📋 Y Atividades                                │
+│                                                              │
+│ Progresso ──────────────────────────────────── XX%          │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Key Styling Changes:**
-- Remove user info card from sidebar (move to header)
-- Add section header labels: "OVERVIEW", "SOCIAL"
-- Active nav item: `bg-indigo-500 text-white rounded-lg`
-- Default nav item: `text-gray-600 hover:bg-gray-100`
-- Bottom items: `text-gray-600` and `text-red-500` for Sair
-- Icons from lucide-react: LayoutDashboard, Grid2X2, Calendar, ClipboardList, MessageCircle, Settings, LogOut
+**Key Styling:**
+- Card: `rounded-[20px] bg-white border border-gray-100 overflow-hidden hover:shadow-lg`
+- Gradient area: `aspect-[16/9] relative` with gradient background
+- Category badge: `absolute top-4 left-4 bg-indigo-600/90 text-white rounded-full px-3 py-1`
+- Menu button: `absolute top-4 right-4 text-white/70 hover:text-white`
+- Title section: `p-4 pt-3`
+- Stats row: `flex gap-4 text-sm text-gray-500`
+- Progress: Label "Progresso" left, percentage right, bar below
 
-### Phase 3: Create DashboardTopHeader.tsx
+**Category Colors:**
+- MENTORIA: indigo-600/purple gradient
+- CURSO: pink-500/purple gradient
+- WORKSHOP: teal-400/emerald gradient
 
-**Structure:**
-```tsx
-<header className="h-16 flex items-center justify-between px-6 bg-white border-b">
-  {/* Search Bar */}
-  <div className="relative w-96">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-    <Input 
-      placeholder="Pesquise por cursos, mentores..."
-      className="pl-10 bg-gray-50 border-none rounded-xl"
-    />
-  </div>
+### Phase 2: Redesign StudentEspacos.tsx
 
-  {/* Right Section */}
-  <div className="flex items-center gap-4">
-    <Button variant="ghost" size="icon">
-      <Mail className="h-5 w-5 text-gray-500" />
-    </Button>
-    <Button variant="ghost" size="icon" className="relative">
-      <Bell className="h-5 w-5 text-gray-500" />
-      {/* Notification dot */}
-      <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-    </Button>
-    <div className="flex items-center gap-3">
-      <div className="text-right">
-        <p className="text-sm font-medium">{user.full_name}</p>
-        <p className="text-xs text-gray-500">Aluno</p>
-      </div>
-      <Avatar className="h-9 w-9">
-        <AvatarImage src={user.profile_photo_url} />
-        <AvatarFallback className="bg-indigo-100 text-indigo-600">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-    </div>
-  </div>
-</header>
-```
-
-### Phase 4: Create HeroCard.tsx
-
-**Structure:**
-```tsx
-<div className="p-8 rounded-[24px] bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-white">
-  <span className="text-xs font-semibold tracking-widest uppercase opacity-80">
-    ONLINE COURSE
-  </span>
-  <h1 className="text-2xl md:text-3xl font-bold mt-2 max-w-md">
-    Domine sua carreira internacional com mentorias práticas
-  </h1>
-  <Button 
-    className="mt-6 bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-6 py-2.5"
-  >
-    Acessar Mentoria
-    <ArrowRight className="ml-2 h-4 w-4" />
-  </Button>
-</div>
-```
-
-### Phase 5: Create MetricsRow.tsx
-
-**Structure:**
-```tsx
-<div className="grid grid-cols-3 gap-4">
-  {/* Card 1 - Mentoria Elite */}
-  <Card className="p-4 rounded-[20px] border border-gray-100">
-    <div className="flex items-center gap-3">
-      <div className="p-2.5 rounded-xl bg-indigo-50">
-        <Video className="h-5 w-5 text-indigo-500" />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500">Mentoria Elite</p>
-        <p className="text-lg font-bold">2/8 Aulas</p>
-      </div>
-    </div>
-  </Card>
-  
-  {/* Card 2 - Atividades */}
-  <Card className="p-4 rounded-[20px] border border-gray-100">
-    <div className="flex items-center gap-3">
-      <div className="p-2.5 rounded-xl bg-amber-50">
-        <ClipboardList className="h-5 w-5 text-amber-500" />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500">Atividades</p>
-        <p className="text-lg font-bold">3 Pendentes</p>
-      </div>
-    </div>
-  </Card>
-  
-  {/* Card 3 - Tempo Total */}
-  <Card className="p-4 rounded-[20px] border border-gray-100">
-    <div className="flex items-center gap-3">
-      <div className="p-2.5 rounded-xl bg-emerald-50">
-        <Clock className="h-5 w-5 text-emerald-500" />
-      </div>
-      <div>
-        <p className="text-sm text-gray-500">Tempo Total</p>
-        <p className="text-lg font-bold">12h Estudadas</p>
-      </div>
-    </div>
-  </Card>
-</div>
-```
-
-### Phase 6: Create RecentActivities.tsx
-
-**Structure:**
-```tsx
-<div className="space-y-4">
-  <div className="flex items-center justify-between">
-    <h2 className="text-lg font-semibold">Atividades Recentes</h2>
-    <Button variant="link" className="text-indigo-600">Ver todas</Button>
-  </div>
-  
-  <div className="space-y-3">
-    {/* Activity Card */}
-    <Card className="p-4 rounded-[20px] border border-gray-100 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-50">
-            <FileText className="h-5 w-5 text-amber-500" />
-          </div>
-          <div>
-            <p className="font-medium">Atualizar Currículo em Inglês</p>
-            <p className="text-sm text-gray-500">Upload</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge className="bg-amber-100 text-amber-700 border-0">Pendente</Badge>
-          <Button variant="ghost" size="icon">
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Card>
-    {/* More activity cards... */}
-  </div>
-</div>
-```
-
-**Activity Types and Colors:**
-- Upload (FileText): amber-50/amber-500
-- Networking (Users): indigo-50/indigo-500
-- Aula (Video): emerald-50/emerald-500
-
-**Status Badges:**
-- Pendente: `bg-amber-100 text-amber-700`
-- Em andamento: `bg-blue-100 text-blue-700`
-- Concluído: `bg-emerald-100 text-emerald-700` with checkmark
-
-### Phase 7: Create SessionsSidebar.tsx
-
-**Structure:**
-```tsx
-<Card className="p-4 rounded-[24px]">
-  <div className="flex items-center justify-between mb-4">
-    <h2 className="font-semibold">Próximas Sessões</h2>
-    <Button variant="ghost" size="icon">
-      <MoreVertical className="h-4 w-4" />
-    </Button>
-  </div>
-  
-  {/* Live Session (highlighted) */}
-  <div className="p-4 rounded-[16px] bg-gradient-to-br from-indigo-500 to-purple-600 text-white mb-3">
-    <div className="flex items-center gap-2 mb-2">
-      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-      <span className="text-xs font-medium">AO VIVO • EM 20 MIN</span>
-    </div>
-    <h3 className="font-semibold">Onboarding Elite Track</h3>
-    <div className="flex items-center justify-between mt-2 text-sm opacity-90">
-      <span className="flex items-center gap-1">
-        <Clock className="h-3 w-3" />
-        10:00 - 11:30
-      </span>
-      <Video className="h-5 w-5" />
-    </div>
-  </div>
-  
-  {/* Other Sessions */}
-  <div className="space-y-3">
-    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50">
-      <span className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-        29
-      </span>
-      <div>
-        <p className="font-medium text-sm">Mock Interview Prática</p>
-        <p className="text-xs text-gray-500">Mentoria Elite • 19:00</p>
-      </div>
-    </div>
-    {/* More sessions... */}
-  </div>
-  
-  <Button variant="outline" className="w-full mt-4 rounded-xl">
-    Ver Calendário Completo
-  </Button>
-</Card>
-```
-
-### Phase 8: Update StudentDashboard.tsx
-
-**New Layout Structure:**
+**New Layout:**
 ```tsx
 <DashboardLayout>
-  <div className="flex flex-col h-full">
-    {/* Top Header - Only visible on desktop */}
-    <DashboardTopHeader />
-    
-    {/* Main Content Area */}
-    <div className="flex-1 p-6 lg:p-8 bg-gray-50/50">
-      <div className="grid lg:grid-cols-3 gap-6 xl:gap-8">
-        {/* Left Column - 2/3 width */}
-        <div className="lg:col-span-2 space-y-6">
-          <HeroCard />
-          <MetricsRow />
-          <RecentActivities />
-        </div>
-        
-        {/* Right Column - 1/3 width */}
-        <div>
-          <SessionsSidebar />
-        </div>
+  <DashboardTopHeader />
+  
+  <div className="p-6 bg-gray-50/50">
+    {/* Page Header */}
+    <div className="flex items-start justify-between mb-6">
+      <div>
+        <h1 className="text-2xl font-bold">Meus Espaços</h1>
+        <p className="text-gray-500">Seus cursos e mentorias ativos</p>
       </div>
+      
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        <Button 
+          variant={filter === 'all' ? 'default' : 'outline'}
+          className="rounded-full"
+        >
+          Todos
+        </Button>
+        <Button variant="outline" className="rounded-full">Em andamento</Button>
+        <Button variant="outline" className="rounded-full">Concluídos</Button>
+      </div>
+    </div>
+    
+    {/* Card Grid */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {espacos.map(espaco => (
+        <StudentEspacoCard key={espaco.id} espaco={espaco} />
+      ))}
+      
+      {/* Explore Card */}
+      <ExploreCoursesCard />
     </div>
   </div>
 </DashboardLayout>
 ```
+
+**Filter State:**
+- `useState<'all' | 'in_progress' | 'completed'>('all')`
+- Filter espacos based on status and progress percentage
+
+### Phase 3: Redesign EspacoHeroHeader.tsx
+
+**New Structure:**
+```
+Full-width gradient header (no rounded corners, bleeds to edges)
+┌────────────────────────────────────────────────────────────────────────┐
+│ [← Voltar]                                        [MENTORIA ELITE]     │
+│                                                                        │
+│ Mentoria Elite Track                    ┌────────────────────────────┐ │
+│ Turma Março 2026                        │ 📅 PRÓXIMO ENCONTRO        │ │
+│                                         │    27 Jan, 10:00           │ │
+│ 👥 32 Alunos  •  🎥 12 Sessões          │ [Acessar Sala ao Vivo]     │ │
+│                                         └────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Changes:**
+- Full-width gradient (from-indigo-500 via-indigo-600 to-purple-700)
+- "← Voltar" as pill button with text, not just icon
+- Category badge "MENTORIA ELITE" in top-right as dark pill
+- Large white title text
+- Stats row with icons in white text
+- Floating white card for "Próximo Encontro" on right side
+- Remove the collapsing scroll behavior (always visible)
+
+### Phase 4: Redesign EspacoStickyTabs.tsx
+
+**New Tab Style:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ [✓ Visão Geral] [🎥 Sessões 2] [📋 Tarefas 4] [📁 Materiais 6] ... │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Changes:**
+- Tabs as pill buttons, not underlined text
+- Active tab: `bg-indigo-600 text-white rounded-full`
+- Inactive tab: `text-gray-600 hover:bg-gray-100 rounded-full`
+- Badge: `bg-gray-100 text-gray-600 rounded-full` (inactive) or `bg-white/20` (active)
+- Icons inside tabs
+- Rename "Biblioteca" to "Materiais" and add "Meus Arquivos" tab
+
+### Phase 5: Redesign OverviewContent.tsx
+
+**New 3-Column Layout:**
+```
+┌───────────────────────────────────────┬─────────────────────────┐
+│ Na sua agenda            [Ver todas]  │ Seu Progresso           │
+│ ┌─────────────────────────────────┐   │ ┌─────────────────────┐ │
+│ │ [TER] AO VIVO 10:00             │   │ │     ◐ 20%           │ │
+│ │ de   Teste Titulo da Sessao     │   │ │ 2 de 12 Módulos     │ │
+│ │      [Participar]               │   │ └─────────────────────┘ │
+│ └─────────────────────────────────┘   │                         │
+│ ┌─────────────────────────────────┐   │ Grupo do Telegram       │
+│ │ [QUI] AO VIVO 10:00             │   │ ┌─────────────────────┐ │
+│ │ de   01 Onboarding              │   │ │ Conecte-se com 32   │ │
+│ │      [Participar]               │   │ │ alunos da turma     │ │
+│ └─────────────────────────────────┘   │ │ [Acessar Grupo]     │ │
+│                                       │ └─────────────────────┘ │
+│ Para entregar            [Ver todas]  │                         │
+│ ┌──────────────────┐┌────────────────┐│                         │
+│ │ 📄              ││ 📄             ││                         │
+│ │ Atualizar       ││ Quiz: Cultura  ││                         │
+│ │ LinkedIn        ││ Americana      ││                         │
+│ │ Vence: 05/02    ││ Vence: 12/02   ││                         │
+│ │[Entregar]       ││[Entregar]      ││                         │
+│ └──────────────────┘└────────────────┘│                         │
+└───────────────────────────────────────┴─────────────────────────┘
+```
+
+**Key Changes:**
+- 2/3 + 1/3 grid layout
+- Session cards with day badge (TER, QUI, etc.) on left
+- "AO VIVO" badge with time
+- "Participar" button on right
+- Assignment cards in 2-column grid
+- Progress card with circular chart (using SVG or chart library)
+- Telegram group card at bottom-right
+
+### Phase 6: Redesign SessionTimeline.tsx (Sessions Tab)
+
+**New Design:**
+- Header: "Cronograma Completo" with "↓ Baixar PDF" button on right
+- Each session as a full card:
+  - Video icon in circle on left
+  - Title, date/time, description
+  - "Ao Vivo" badge on right for live sessions
+  - "Participar da Sessão" button (indigo, rounded)
+
+### Phase 7: Redesign TaskListGrouped.tsx (Tarefas Tab)
+
+**New Design:**
+- Title: "Suas Atividades"
+- Each task as a horizontal card:
+  - Left: Colored icon circle (blue for normal, pink for overdue, green for completed)
+  - Title and type badge (Arquivo, Link, Video, Quiz)
+  - Due date (red if overdue)
+  - Right: Status indicator or "Enviar Entrega" button
+
+**Type Badges:**
+- Arquivo, Link, Video, Quiz as small gray pills
+
+**Status Colors:**
+- Normal: Blue icon
+- Atrasada: Pink/red icon + red text
+- Entregue: Green checkmark
+
+### Phase 8: Split Library into Materiais and Meus Arquivos
+
+**Materiais Tab:**
+- Group by folder (e.g., "Módulo 01: Fundamentos", "Templates & Recursos")
+- Grid of material cards:
+  - File type icon (colored: red for PDF, blue for DOC, gray for TXT, yellow for ZIP)
+  - Filename
+  - File type + size label
+  - More options menu (⋮)
+
+**Meus Arquivos Tab (New Component):**
+- Title: "Seus Arquivos" with subtitle
+- Upload zone:
+  - Dashed orange/amber border
+  - Cloud upload icon
+  - "Clique para enviar ou arraste"
+  - Supported formats text
+- File list:
+  - Icon, filename
+  - Size, upload date
+  - View (👁) and Delete (🗑) buttons
 
 ---
 
 ## Visual Specifications
 
 ### Colors
-- **Primary Blue**: `#4F46E5` (indigo-600) for active states and gradient
-- **Background**: `#F9FAFB` (gray-50) for main content area
-- **Cards**: White with subtle gray-100 border
-- **Text Primary**: `#1F2937` (gray-800)
-- **Text Secondary**: `#6B7280` (gray-500)
+- **Primary Gradient**: `from-indigo-500 via-indigo-600 to-purple-700`
+- **Card Backgrounds**: White with subtle gray-100 border
+- **Active Tab/Button**: `bg-indigo-600 text-white`
+- **Inactive Tab/Button**: `text-gray-600 bg-transparent`
+- **Progress Bar**: Indigo for in-progress, Emerald for complete
+- **Overdue**: Pink/red accents
 
 ### Typography
-- **Section Headers**: `text-xs uppercase tracking-wider text-gray-400 font-medium`
-- **Card Titles**: `text-lg font-semibold text-gray-900`
-- **Body Text**: `text-sm text-gray-600`
+- **Page Title**: `text-2xl font-bold text-gray-900`
+- **Section Headers**: `text-lg font-semibold text-gray-900`
+- **Card Titles**: `text-base font-semibold`
+- **Stats/Meta**: `text-sm text-gray-500`
+- **Badges**: `text-xs font-medium uppercase tracking-wide`
 
 ### Spacing & Borders
-- **Cards**: `rounded-[20px]` or `rounded-[24px]`
-- **Icon Containers**: `rounded-xl` (12px)
-- **Content Gaps**: `gap-6` between major sections
-
-### Navigation
-- **Active Item**: `bg-indigo-500 text-white rounded-lg px-4 py-2.5`
-- **Default Item**: `text-gray-600 hover:bg-gray-100 rounded-lg px-4 py-2.5`
-- **Icons**: 20x20px aligned with text
+- **Cards**: `rounded-[20px]` for main cards, `rounded-[16px]` for inner cards
+- **Buttons**: `rounded-full` for pills, `rounded-xl` for action buttons
+- **Gaps**: `gap-6` between cards, `gap-4` within cards
 
 ---
 
-## Responsive Behavior
+## Data Requirements
 
-**Desktop (lg+):**
-- Sidebar fixed left (w-64)
-- Top header visible
-- 3-column grid (2+1)
+The existing hooks provide sufficient data:
+- `useStudentEspacosWithStats()`: Provides espacos with progress, sessions, assignments counts
+- `useSessions()`: Session list with dates, links, status
+- `useAssignments()`: Assignment list with due dates, submissions
+- `useMaterials()` / `useFolders()`: Library data
 
-**Tablet/Mobile:**
-- Sidebar in hamburger menu
-- Top header hidden (user menu moves to mobile header)
-- Single column stack
-- Sessions sidebar moves below main content
-
----
-
-## Data Integration
-
-The dashboard will continue to use existing hooks:
-- `useStudentUpcomingSessions()` for sessions
-- `useStudentProgress()` for progress metrics
-- `useAssignments()` for pending tasks
-
-New data needs:
-- Study time tracking (can be placeholder for now)
-- Recent activities (can derive from assignments)
+**New Fields Needed in UI (derived):**
+- Module count: Count of unique sessions or folder count
+- Activity count: Assignment count
+- Day abbreviation from session date (TER, QUI, SEX, etc.)
+- Circular progress visualization
 
 ---
 
 ## Expected Results
 
 After implementation:
-1. Sidebar matches reference with section headers and clean navigation
-2. Official "EUA NA PRÁTICA" logo displayed in sidebar
-3. Top header with search, notifications, and user profile
-4. Hero card with gradient matching the design
-5. Three metric cards in a row
-6. Recent activities with status badges
-7. Right sidebar with live session highlight
-8. Responsive design for mobile/tablet
-9. All data integrated from existing Supabase hooks
+1. "Meus Espaços" page shows horizontal cards matching the reference exactly
+2. Filter tabs work to show All, In Progress, or Completed spaces
+3. Detail page has full-width gradient hero with floating "Próximo Encontro" card
+4. Sticky tabs use pill style with badges
+5. Overview tab has 3-column layout with progress circle and Telegram card
+6. Sessions tab shows timeline with "Baixar PDF" option
+7. Tarefas tab shows tasks with colored status icons
+8. Materiais tab shows folder-grouped files
+9. Meus Arquivos tab has upload zone and file management
+10. All styling matches the premium, modern aesthetic from references
