@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SessionStatusBadge } from '@/components/sessions/SessionStatusBadge';
+import { SessionDiscussionButton } from '@/components/sessions/SessionDiscussionButton';
 import { Video, Clock, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -144,6 +145,10 @@ export function SessionTimeline({ sessions, isLoading }: SessionTimelineProps) {
                     </a>
                   </Button>
                 )}
+                <SessionDiscussionButton 
+                  sessionId={session.id}
+                  sessionTitle={session.title}
+                />
               </div>
             </div>
           </div>
