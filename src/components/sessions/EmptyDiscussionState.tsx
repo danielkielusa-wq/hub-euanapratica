@@ -7,10 +7,10 @@ export function EmptyDiscussionState() {
         <MessageCircle className="h-8 w-8 text-muted-foreground" />
       </div>
       <p className="text-muted-foreground font-medium">
-        Nenhuma dúvida por aqui ainda.
+        Ainda não há discussões aqui.
       </p>
       <p className="text-sm text-muted-foreground mt-1">
-        Que tal começar a conversa?
+        Comece o tópico!
       </p>
     </div>
   );

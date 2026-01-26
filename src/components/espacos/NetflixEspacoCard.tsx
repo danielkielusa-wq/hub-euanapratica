@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ClipboardList, ChevronRight } from 'lucide-react';
+import { Calendar, ClipboardList, ChevronRight, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { getEspacoGradient } from '@/lib/gradients';
 import { cn } from '@/lib/utils';
 import type { EspacoWithStats } from '@/hooks/useStudentEspacosWithStats';
+import type { MentorEspacoWithStats } from '@/hooks/useMentorEspacosWithStats';
 
 interface NetflixEspacoCardProps {
-  espaco: EspacoWithStats;
+  espaco: EspacoWithStats | MentorEspacoWithStats;
+  role?: 'student' | 'mentor';
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active: { label: 'Em Andamento', className: 'bg-green-100 text-green-700' },
   inactive: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
   completed: { label: 'Concluído', className: 'bg-blue-100 text-blue-700' },
+  arquivado: { label: 'Arquivado', className: 'bg-gray-100 text-gray-600' },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -26,16 +29,25 @@ const categoryLabels: Record<string, string> = {
   course: 'Curso',
 };
 
-export function NetflixEspacoCard({ espaco }: NetflixEspacoCardProps) {
+export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCardProps) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
 
   const status = statusConfig[espaco.status || 'active'] || statusConfig.active;
   const fallbackGradient = getEspacoGradient(espaco.id);
   const hasImage = !!espaco.cover_image_url;
+  const isMentor = role === 'mentor';
+
+  // Get mentor-specific stats if available
+  const mentorEspaco = espaco as MentorEspacoWithStats;
+  const enrolledCount = mentorEspaco.enrolled_count;
 
   const handleClick = () => {
-    navigate(`/dashboard/espacos/${espaco.id}`);
+    if (isMentor) {
+      navigate(`/mentor/espacos/${espaco.id}`);
+    } else {
+      navigate(`/dashboard/espacos/${espaco.id}`);
+    }
   };
 
   return (
@@ -95,14 +107,29 @@ export function NetflixEspacoCard({ espaco }: NetflixEspacoCardProps) {
 
         {/* Stats */}
         <div className="flex items-center gap-4 text-white/80 text-sm mb-3">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-4 w-4" />
-            <span>{espaco.upcomingSessions} sessões</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <ClipboardList className="h-4 w-4" />
-            <span>{espaco.pendingAssignments} tarefas</span>
-          </div>
+          {isMentor && enrolledCount !== undefined ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                <span>{espaco.upcomingSessions} sessões</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ClipboardList className="h-4 w-4" />
+                <span>{espaco.pendingAssignments} correções</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                <span>{espaco.upcomingSessions} sessões</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ClipboardList className="h-4 w-4" />
+                <span>{espaco.pendingAssignments} tarefas</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Access Button - appears on hover */}
@@ -114,10 +141,24 @@ export function NetflixEspacoCard({ espaco }: NetflixEspacoCardProps) {
         >
           <Button
             size="sm"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl shadow-lg"
+            className={cn(
+              "w-full font-medium rounded-xl shadow-lg",
+              isMentor 
+                ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            )}
           >
-            Acessar
-            <ChevronRight className="h-4 w-4 ml-1" />
+            {isMentor ? (
+              <>
+                <Settings className="h-4 w-4 mr-1" />
+                Gerenciar
+              </>
+            ) : (
+              <>
+                Acessar
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </>
+            )}
           </Button>
         </div>
       </div>

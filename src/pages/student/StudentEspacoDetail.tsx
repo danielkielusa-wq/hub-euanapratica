@@ -7,6 +7,7 @@ import { useEspaco } from '@/hooks/useEspacos';
 import { useSessions } from '@/hooks/useSessions';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useFolders } from '@/hooks/useFolders';
+import { useEspacoDiscussionCount } from '@/hooks/useSessionPosts';
 import { EspacoLibrary } from '@/components/library/EspacoLibrary';
 import {
   EspacoHeroHeader,
@@ -16,9 +17,10 @@ import {
   TaskListGrouped,
   OverviewContent,
 } from '@/components/espacos/detail';
+import { DiscussionSessionsList } from '@/components/espacos/detail/DiscussionSessionsList';
 import { BookOpen, Video } from 'lucide-react';
 
-type TabValue = 'overview' | 'sessions' | 'assignments' | 'library';
+type TabValue = 'overview' | 'sessions' | 'assignments' | 'library' | 'discussao';
 
 export default function StudentEspacoDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,7 @@ export default function StudentEspacoDetail() {
   const { data: sessions, isLoading: sessionsLoading } = useSessions(id);
   const { data: assignments, isLoading: assignmentsLoading } = useAssignments({ espaco_id: id, status: 'published' });
   const { data: folders } = useFolders(id!);
+  const { data: discussionCount = 0 } = useEspacoDiscussionCount(id);
 
   // Filter upcoming sessions
   const upcomingSessions = sessions?.filter(s => 
@@ -110,6 +113,7 @@ export default function StudentEspacoDetail() {
           onTabChange={setActiveTab}
           pendingTasks={pendingAssignments.length}
           upcomingSessions={upcomingSessions.length}
+          discussionCount={discussionCount}
         />
 
         {/* Tab Content */}
@@ -145,6 +149,13 @@ export default function StudentEspacoDetail() {
                 espacoId={id!}
                 espacoName={espaco.name}
                 userRole="student"
+              />
+            )}
+
+            {activeTab === 'discussao' && (
+              <DiscussionSessionsList
+                sessions={sessions}
+                isLoading={sessionsLoading}
               />
             )}
           </div>
