@@ -5,3 +5,4 @@ export { SessionTimeline } from './SessionTimeline';
 export { TaskListGrouped } from './TaskListGrouped';
 export { OverviewContent } from './OverviewContent';
 export { DiscussionSessionsList } from './DiscussionSessionsList';
+export { MyFilesTab } from './MyFilesTab';
