@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, CheckCircle, FileText } from 'lucide-react';
+import { Clock, CheckCircle, FileText, Link as LinkIcon, Video, HelpCircle, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -11,8 +12,10 @@ interface Assignment {
   title: string;
   due_date: string;
   description?: string | null;
+  submission_type?: string | null;
   my_submission?: {
     status?: string | null;
+    review_result?: string | null;
   } | null;
 }
 
@@ -21,14 +24,32 @@ interface TaskListGroupedProps {
   isLoading?: boolean;
 }
 
+const submissionTypeLabels: Record<string, string> = {
+  file: 'Arquivo',
+  text: 'Texto',
+  both: 'Arquivo/Texto',
+  link: 'Link',
+  video: 'Vídeo',
+  quiz: 'Quiz',
+};
+
+const submissionTypeIcons: Record<string, React.ReactNode> = {
+  file: <FileText className="h-4 w-4" />,
+  text: <FileText className="h-4 w-4" />,
+  both: <FileText className="h-4 w-4" />,
+  link: <LinkIcon className="h-4 w-4" />,
+  video: <Video className="h-4 w-4" />,
+  quiz: <HelpCircle className="h-4 w-4" />,
+};
+
 export function TaskListGrouped({ assignments, isLoading }: TaskListGroupedProps) {
   const navigate = useNavigate();
 
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
+      <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 rounded-2xl bg-muted" />
+          <div key={i} className="h-20 rounded-[20px] bg-muted animate-pulse" />
         ))}
       </div>
     );
@@ -36,7 +57,7 @@ export function TaskListGrouped({ assignments, isLoading }: TaskListGroupedProps
 
   if (!assignments || assignments.length === 0) {
     return (
-      <div className="text-center py-12 px-4">
+      <div className="text-center py-16 px-4">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
           <FileText className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -45,123 +66,141 @@ export function TaskListGrouped({ assignments, isLoading }: TaskListGroupedProps
     );
   }
 
-  // Group assignments
-  const pending = assignments.filter(a => 
-    !a.my_submission || a.my_submission.status === 'draft'
-  );
-  const submitted = assignments.filter(a => 
-    a.my_submission?.status === 'submitted' || a.my_submission?.status === 'reviewed'
-  );
-
-  const renderTaskCard = (assignment: Assignment, index: number, isSubmitted: boolean) => {
+  // Determine task status
+  const getTaskStatus = (assignment: Assignment) => {
     const dueDate = new Date(assignment.due_date);
-    const isOverdue = dueDate < new Date() && !isSubmitted;
+    const now = new Date();
+    const isOverdue = dueDate < now;
+    
+    if (assignment.my_submission?.status === 'reviewed') {
+      return assignment.my_submission.review_result === 'approved' ? 'approved' : 'revision';
+    }
+    if (assignment.my_submission?.status === 'submitted') {
+      return 'submitted';
+    }
+    if (isOverdue) {
+      return 'overdue';
+    }
+    return 'pending';
+  };
 
-    return (
-      <div
-        key={assignment.id}
-        className={cn(
-          "p-4 rounded-2xl cursor-pointer transition-all duration-200",
-          "bg-card/70 dark:bg-card/50 backdrop-blur-sm",
-          "border border-border/40",
-          "hover:shadow-lg hover:border-primary/20",
-          "animate-fade-slide-up"
-        )}
-        style={{ animationDelay: `${index * 50}ms` }}
-        onClick={() => navigate(`/dashboard/tarefas/${assignment.id}`)}
-      >
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <h3 className="font-semibold text-foreground line-clamp-1">{assignment.title}</h3>
-          <Badge 
-            variant={isSubmitted ? 'secondary' : 'default'}
-            className={cn(
-              "shrink-0",
-              isSubmitted && "bg-accent/10 text-accent border-accent/20",
-              isOverdue && !isSubmitted && "bg-destructive/10 text-destructive border-destructive/20"
-            )}
-          >
-            {isSubmitted ? (
-              <>
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Entregue
-              </>
-            ) : isOverdue ? (
-              'Atrasada'
-            ) : (
-              'Pendente'
-            )}
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-          <Clock className="h-3.5 w-3.5" />
-          <span className={cn(isOverdue && !isSubmitted && "text-destructive")}>
-            Prazo: {format(dueDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </span>
-        </div>
-
-        {assignment.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">{assignment.description}</p>
-        )}
-
-        {!isSubmitted && (
-          <div className="mt-3">
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl min-h-[40px]"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/dashboard/tarefas/${assignment.id}`);
-              }}
-            >
-              <FileText className="h-4 w-4 mr-1.5" />
-              Entregar
-            </Button>
-          </div>
-        )}
-      </div>
-    );
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return {
+          iconBg: 'bg-emerald-100 dark:bg-emerald-500/20',
+          iconColor: 'text-emerald-600 dark:text-emerald-400',
+          label: 'Aprovada',
+          badgeClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
+        };
+      case 'submitted':
+        return {
+          iconBg: 'bg-blue-100 dark:bg-blue-500/20',
+          iconColor: 'text-blue-600 dark:text-blue-400',
+          label: 'Enviada',
+          badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+        };
+      case 'revision':
+        return {
+          iconBg: 'bg-amber-100 dark:bg-amber-500/20',
+          iconColor: 'text-amber-600 dark:text-amber-400',
+          label: 'Revisão',
+          badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+        };
+      case 'overdue':
+        return {
+          iconBg: 'bg-pink-100 dark:bg-pink-500/20',
+          iconColor: 'text-pink-600 dark:text-pink-400',
+          label: 'Atrasada',
+          badgeClass: 'bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-400',
+        };
+      default:
+        return {
+          iconBg: 'bg-primary/10',
+          iconColor: 'text-primary',
+          label: 'Pendente',
+          badgeClass: 'bg-muted text-muted-foreground',
+        };
+    }
   };
 
   return (
-    <div className="space-y-8">
-      {/* Pending Tasks */}
-      {pending.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-foreground">Pendentes</h3>
-            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-secondary text-secondary-foreground">
-              {pending.length}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {pending.map((assignment, idx) => renderTaskCard(assignment, idx, false))}
-          </div>
-        </div>
-      )}
+    <div className="space-y-6">
+      {/* Header */}
+      <h2 className="text-lg font-semibold text-foreground">Suas Atividades</h2>
 
-      {/* Submitted Tasks */}
-      {submitted.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-foreground">Entregues</h3>
-            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-accent/20 text-accent">
-              {submitted.length}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {submitted.map((assignment, idx) => renderTaskCard(assignment, idx, true))}
-          </div>
-        </div>
-      )}
+      {/* Tasks List */}
+      <div className="space-y-3">
+        {assignments.map((assignment) => {
+          const dueDate = new Date(assignment.due_date);
+          const status = getTaskStatus(assignment);
+          const config = getStatusConfig(status);
+          const submissionType = assignment.submission_type || 'file';
+          const isCompleted = status === 'approved' || status === 'submitted';
 
-      {/* All done state */}
-      {pending.length === 0 && submitted.length > 0 && (
-        <div className="text-center py-6 px-4 rounded-2xl bg-accent/5 border border-accent/20">
-          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-accent" />
-          <p className="text-accent font-medium">Todas as tarefas entregues! 🎉</p>
-        </div>
-      )}
+          return (
+            <Card 
+              key={assignment.id}
+              className={cn(
+                "rounded-[20px] border-border/50 overflow-hidden cursor-pointer transition-all hover:shadow-md",
+                status === 'overdue' && "border-pink-200 dark:border-pink-500/30"
+              )}
+              onClick={() => navigate(`/dashboard/tarefas/${assignment.id}`)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  {/* Status Icon */}
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                    config.iconBg
+                  )}>
+                    {isCompleted ? (
+                      <CheckCircle className={cn("h-5 w-5", config.iconColor)} />
+                    ) : (
+                      <FileText className={cn("h-5 w-5", config.iconColor)} />
+                    )}
+                  </div>
+
+                  {/* Task Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground truncate">{assignment.title}</h3>
+                      <Badge variant="outline" className="shrink-0 text-[10px] px-2 py-0">
+                        {submissionTypeLabels[submissionType] || 'Arquivo'}
+                      </Badge>
+                    </div>
+                    
+                    <div className={cn(
+                      "flex items-center gap-1.5 text-sm",
+                      status === 'overdue' ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
+                    )}>
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>
+                        {status === 'overdue' ? 'Atrasada - ' : 'Prazo: '}
+                        {format(dueDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Badge or Button */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isCompleted ? (
+                      <Badge className={cn("border-0", config.badgeClass)}>
+                        {config.label}
+                      </Badge>
+                    ) : (
+                      <Button size="sm" className="rounded-xl" variant={status === 'overdue' ? 'destructive' : 'default'}>
+                        Enviar Entrega
+                      </Button>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
