@@ -1,201 +1,133 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { UserFilters, UserAuditLog } from '@/types/admin';
 import { toast } from 'sonner';
+import type { UserFilters, UserAuditLog } from '@/types/admin';
 
-export interface AdminUser {
+export interface UserExtended {
   id: string;
-  full_name: string;
   email: string;
+  full_name: string;
   phone: string | null;
   profile_photo_url: string | null;
+  status: string;
   created_at: string | null;
-  status: 'active' | 'inactive';
   last_login_at: string | null;
-  role: 'admin' | 'mentor' | 'student';
-  enrollments_count?: number;
+  role: string;
+  enrollments_count: number;
 }
 
-export function useAdminUsers(filters?: UserFilters) {
+export function useAdminUsers(filters: UserFilters = {}) {
   return useQuery({
     queryKey: ['admin-users', filters],
     queryFn: async () => {
-      // First get all profiles
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id,
+          email,
+          full_name,
+          phone,
+          profile_photo_url,
+          status,
+          created_at,
+          last_login_at,
+          user_roles!inner(role),
+          user_espacos(count)
+        `)
         .order('created_at', { ascending: false });
 
-      if (filters?.search) {
-        query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
-      }
-
-      // Filter by status - default to active
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      } else if (!filters?.includeInactive) {
+      // Apply status filter
+      if (!filters.includeInactive) {
         query = query.eq('status', 'active');
       }
 
-      const { data: profiles, error } = await query;
-      if (error) throw error;
-
-      // Get all user roles
-      const userIds = profiles.map(p => p.id);
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', userIds);
-
-      const roleMap = Object.fromEntries((roles ?? []).map(r => [r.user_id, r.role]));
-
-      // Get enrollment counts
-      const { data: enrollments } = await supabase
-        .from('user_espacos')
-        .select('user_id')
-        .in('user_id', userIds)
-        .eq('status', 'active');
-
-      const enrollmentCounts: Record<string, number> = {};
-      (enrollments ?? []).forEach(e => {
-        enrollmentCounts[e.user_id] = (enrollmentCounts[e.user_id] || 0) + 1;
-      });
-
-      let result = profiles.map(profile => ({
-        ...profile,
-        status: profile.status || 'active',
-        last_login_at: profile.last_login_at || null,
-        role: roleMap[profile.id] || 'student',
-        enrollments_count: enrollmentCounts[profile.id] || 0
-      })) as AdminUser[];
-
-      // Filter by role if specified
-      if (filters?.role) {
-        result = result.filter(u => u.role === filters.role);
+      // Apply role filter
+      if (filters.role) {
+        query = query.eq('user_roles.role', filters.role);
       }
 
-      return result;
-    }
-  });
-}
+      // Apply search filter
+      if (filters.search) {
+        query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
 
-export function useAdminUser(id: string) {
-  return useQuery({
-    queryKey: ['admin-user', id],
-    queryFn: async () => {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      // Get role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', id)
-        .single();
-
-      // Get enrollments
-      const { data: enrollments } = await supabase
-        .from('user_espacos')
-        .select('*')
-        .eq('user_id', id)
-        .order('enrolled_at', { ascending: false });
-
-      // Get espaco names
-      const espacoIds = (enrollments ?? []).map(e => e.espaco_id);
-      const { data: espacos } = await supabase
-        .from('espacos')
-        .select('id, name')
-        .in('id', espacoIds);
-
-      const espacoMap = Object.fromEntries((espacos ?? []).map(e => [e.id, e]));
-
-      return {
-        ...profile,
-        role: roleData?.role || 'student',
-        enrollments: (enrollments ?? []).map(e => ({
-          ...e,
-          espaco: espacoMap[e.espaco_id]
-        }))
-      };
-    },
-    enabled: !!id
+      // Transform data to expected format
+      return (data || []).map((user: any) => ({
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        phone: user.phone,
+        profile_photo_url: user.profile_photo_url,
+        status: user.status || 'active',
+        created_at: user.created_at,
+        last_login_at: user.last_login_at,
+        role: user.user_roles?.[0]?.role || 'student',
+        enrollments_count: user.user_espacos?.[0]?.count || 0
+      })) as UserExtended[];
+    }
   });
 }
 
 export function useUpdateUserRole() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user: adminUser } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'mentor' | 'student' }) => {
-      // Get current role for audit
+      // Get current role for audit log
       const { data: currentRole } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      // First check if user already has a role entry
-      const { data: existing } = await supabase
+      // Update the role
+      const { error } = await supabase
         .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
+        .update({ role })
+        .eq('user_id', userId);
 
-      if (existing) {
-        // Update existing role
-        const { error } = await supabase
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', userId);
-        if (error) throw error;
-      } else {
-        // Insert new role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role });
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       // Log the change
       await supabase.from('user_audit_logs').insert({
         user_id: userId,
-        changed_by_user_id: user?.id,
+        changed_by_user_id: adminUser?.id,
         action: 'role_changed',
         old_values: { role: currentRole?.role },
         new_values: { role }
       });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user', variables.userId] });
       toast.success('Papel do usuário atualizado!');
     },
     onError: (error) => {
-      toast.error('Erro ao atualizar papel: ' + error.message);
+      console.error('Error updating role:', error);
+      toast.error('Erro ao atualizar papel');
     }
   });
 }
 
 export function useUpdateUserStatus() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user: adminUser } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ userId, status }: { userId: string; status: 'active' | 'inactive' }) => {
-      // Get current status for audit
-      const { data: profile } = await supabase
+    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
+      // Get current status for audit log
+      const { data: currentProfile } = await supabase
         .from('profiles')
         .select('status')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
+      // Update the status
       const { error } = await supabase
         .from('profiles')
         .update({ status })
@@ -206,19 +138,55 @@ export function useUpdateUserStatus() {
       // Log the change
       await supabase.from('user_audit_logs').insert({
         user_id: userId,
-        changed_by_user_id: user?.id,
+        changed_by_user_id: adminUser?.id,
         action: 'status_changed',
-        old_values: { status: profile?.status },
+        old_values: { status: currentProfile?.status },
         new_values: { status }
       });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user', variables.userId] });
-      toast.success(variables.status === 'active' ? 'Usuário reativado!' : 'Usuário desativado!');
+      toast.success('Status do usuário atualizado!');
     },
     onError: (error) => {
-      toast.error('Erro ao alterar status: ' + error.message);
+      console.error('Error updating status:', error);
+      toast.error('Erro ao atualizar status');
+    }
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  const { user: adminUser } = useAuth();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      // Log the deletion before deleting
+      await supabase.from('user_audit_logs').insert({
+        user_id: userId,
+        changed_by_user_id: adminUser?.id,
+        action: 'user_deleted',
+        old_values: { deleted: false },
+        new_values: { deleted: true }
+      });
+
+      // Call edge function to delete user from auth
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Usuário excluído permanentemente!');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Erro ao excluir usuário');
     }
   });
 }

@@ -6,11 +6,13 @@ export interface EspacoWithStats {
   id: string;
   name: string;
   description: string | null;
+  category: string | null;
+  visibility: string | null;
   status: string | null;
+  mentor_id: string | null;
+  cover_image_url: string | null;
   start_date: string | null;
   end_date: string | null;
-  cover_image_url: string | null;
-  category: string | null;
   upcomingSessions: number;
   pendingAssignments: number;
   progressPercent: number;
@@ -20,98 +22,111 @@ export function useStudentEspacosWithStats() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['student-espacos-with-stats', user?.id],
-    queryFn: async () => {
+    queryKey: ['student-espacos-stats', user?.id],
+    queryFn: async (): Promise<EspacoWithStats[]> => {
       if (!user?.id) return [];
 
-      // Get enrolled espacos
+      // Get enrolled espacos - exclude archived ones
       const { data: enrollments, error: enrollmentError } = await supabase
         .from('user_espacos')
         .select(`
           espaco_id,
-          espacos (
+          espacos!inner(
             id,
             name,
             description,
+            category,
+            visibility,
             status,
-            start_date,
-            end_date,
+            mentor_id,
             cover_image_url,
-            category
+            start_date,
+            end_date
           )
         `)
         .eq('user_id', user.id)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .neq('espacos.status', 'arquivado'); // Filter out archived espacos
 
       if (enrollmentError) throw enrollmentError;
-      if (!enrollments) return [];
+
+      if (!enrollments || enrollments.length === 0) return [];
 
       // Get stats for each espaco
-      const espacosWithStats: EspacoWithStats[] = await Promise.all(
-        enrollments
-          .filter((e) => e.espacos)
-          .map(async (enrollment) => {
-            const espaco = enrollment.espacos as any;
+      const espacoIds = enrollments.map(e => e.espaco_id);
 
-            // Get upcoming sessions count
-            const { count: sessionsCount } = await supabase
-              .from('sessions')
-              .select('*', { count: 'exact', head: true })
-              .eq('espaco_id', espaco.id)
-              .eq('status', 'scheduled')
-              .gte('datetime', new Date().toISOString());
+      // Get upcoming sessions
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('espaco_id')
+        .in('espaco_id', espacoIds)
+        .gte('datetime', new Date().toISOString())
+        .in('status', ['scheduled', 'live']);
 
-            // Get pending assignments count (published assignments without reviewed submission)
-            const { data: assignments } = await supabase
-              .from('assignments')
-              .select('id')
-              .eq('espaco_id', espaco.id)
-              .eq('status', 'published');
+      // Get all assignments for these espacos
+      const { data: assignments } = await supabase
+        .from('assignments')
+        .select('id, espaco_id')
+        .in('espaco_id', espacoIds)
+        .eq('status', 'published');
 
-            let pendingCount = 0;
-            let completedCount = 0;
+      // Get user submissions
+      const { data: submissions } = await supabase
+        .from('submissions')
+        .select('assignment_id, status')
+        .eq('user_id', user.id);
 
-            if (assignments && assignments.length > 0) {
-              for (const assignment of assignments) {
-                const { data: submission } = await supabase
-                  .from('submissions')
-                  .select('status')
-                  .eq('assignment_id', assignment.id)
-                  .eq('user_id', user.id)
-                  .maybeSingle();
+      // Calculate stats per espaco
+      return enrollments.map(enrollment => {
+        const espaco = enrollment.espacos as any;
+        
+        // Count upcoming sessions for this espaco
+        const upcomingSessions = (sessions || []).filter(
+          s => s.espaco_id === espaco.id
+        ).length;
 
-                if (!submission || submission.status === 'draft') {
-                  pendingCount++;
-                } else if (submission.status === 'reviewed') {
-                  completedCount++;
-                }
-              }
-            }
+        // Get assignments for this espaco
+        const espacoAssignments = (assignments || []).filter(
+          a => a.espaco_id === espaco.id
+        );
 
-            // Calculate progress (based on completed assignments)
-            const totalAssignments = assignments?.length || 0;
-            const progressPercent = totalAssignments > 0 
-              ? Math.round((completedCount / totalAssignments) * 100)
-              : 0;
+        // Count pending (not submitted or draft)
+        const submittedAssignmentIds = new Set(
+          (submissions || [])
+            .filter(s => s.status === 'submitted' || s.status === 'reviewed')
+            .map(s => s.assignment_id)
+        );
+        
+        const pendingAssignments = espacoAssignments.filter(
+          a => !submittedAssignmentIds.has(a.id)
+        ).length;
 
-            return {
-              id: espaco.id,
-              name: espaco.name,
-              description: espaco.description,
-              status: espaco.status,
-              start_date: espaco.start_date,
-              end_date: espaco.end_date,
-              cover_image_url: espaco.cover_image_url,
-              category: espaco.category,
-              upcomingSessions: sessionsCount || 0,
-              pendingAssignments: pendingCount,
-              progressPercent,
-            };
-          })
-      );
+        // Calculate progress (completed assignments / total)
+        const totalAssignments = espacoAssignments.length;
+        const completedAssignments = espacoAssignments.filter(
+          a => submittedAssignmentIds.has(a.id)
+        ).length;
+        const progressPercent = totalAssignments > 0 
+          ? Math.round((completedAssignments / totalAssignments) * 100)
+          : 0;
 
-      return espacosWithStats;
+        return {
+          id: espaco.id,
+          name: espaco.name,
+          description: espaco.description,
+          category: espaco.category,
+          visibility: espaco.visibility,
+          status: espaco.status,
+          mentor_id: espaco.mentor_id,
+          cover_image_url: espaco.cover_image_url,
+          start_date: espaco.start_date,
+          end_date: espaco.end_date,
+          upcomingSessions,
+          pendingAssignments,
+          progressPercent
+        };
+      });
     },
-    enabled: !!user,
+    enabled: !!user?.id
   });
 }
