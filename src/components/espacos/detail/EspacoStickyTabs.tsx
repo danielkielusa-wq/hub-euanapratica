@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
-import { Eye, Calendar, FileText, Library } from 'lucide-react';
+import { Eye, Calendar, FileText, Library, MessageCircle } from 'lucide-react';
 
-type TabValue = 'overview' | 'sessions' | 'assignments' | 'library';
+type TabValue = 'overview' | 'sessions' | 'assignments' | 'library' | 'discussao';
 
 interface TabItem {
   value: TabValue;
@@ -15,6 +15,7 @@ interface EspacoStickyTabsProps {
   onTabChange: (tab: TabValue) => void;
   pendingTasks: number;
   upcomingSessions: number;
+  discussionCount?: number;
 }
 
 export function EspacoStickyTabs({
@@ -22,12 +23,14 @@ export function EspacoStickyTabs({
   onTabChange,
   pendingTasks,
   upcomingSessions,
+  discussionCount = 0,
 }: EspacoStickyTabsProps) {
   const tabs: TabItem[] = [
     { value: 'overview', label: 'Visão Geral', icon: <Eye className="h-4 w-4" /> },
     { value: 'sessions', label: 'Sessões', icon: <Calendar className="h-4 w-4" />, badge: upcomingSessions > 0 ? upcomingSessions : undefined },
     { value: 'assignments', label: 'Tarefas', icon: <FileText className="h-4 w-4" />, badge: pendingTasks > 0 ? pendingTasks : undefined },
     { value: 'library', label: 'Biblioteca', icon: <Library className="h-4 w-4" /> },
+    { value: 'discussao', label: 'Discussão', icon: <MessageCircle className="h-4 w-4" />, badge: discussionCount > 0 ? discussionCount : undefined },
   ];
 
   return (

@@ -144,6 +144,37 @@ export function useSessionPosts(sessionId: string | undefined) {
   return query;
 }
 
+// Get total post count for all sessions in an espaco (for badge display on Discussão tab)
+export function useEspacoDiscussionCount(espacoId: string | undefined) {
+  return useQuery({
+    queryKey: ['espaco-discussion-count', espacoId],
+    queryFn: async () => {
+      if (!espacoId) return 0;
+
+      // Get all session IDs for this espaco
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('espaco_id', espacoId);
+
+      if (sessionsError) throw sessionsError;
+      if (!sessions || sessions.length === 0) return 0;
+
+      const sessionIds = sessions.map(s => s.id);
+
+      // Count posts for these sessions
+      const { count, error } = await supabase
+        .from('session_posts')
+        .select('*', { count: 'exact', head: true })
+        .in('session_id', sessionIds);
+
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!espacoId
+  });
+}
+
 // Get post count for a session (for badge display)
 export function useSessionPostCount(sessionId: string | undefined) {
   return useQuery({
