@@ -1,46 +1,48 @@
 
-# Plan: Redesign Student "Meus Espacos" and Detail Pages
+# Plan: Redesign Agenda, Atividades (Tasks), and Suporte Pages
 
 ## Overview
-This plan recreates the Student Spaces interface (list and detail pages) to exactly match the reference images, featuring horizontal course cards with gradient backgrounds, pill-style filters, and a modern detail page with full-width gradient hero header and reorganized tab content.
+This plan recreates three core pages to exactly match the reference images: the Agenda (calendar) page, the Atividades (tasks) page, and the Suporte (support) page. All three will be updated for all user types (Student, Mentor, Admin where applicable) with consistent modern styling.
 
 ---
 
-## Analysis of Reference Images
+## Reference Image Analysis
 
-### Image 1: "Meus Espacos" List Page
-- **Top Header**: Already implemented (search bar, mail/notification icons, user profile)
-- **Page Title**: "Meus Espaços" with subtitle "Seus cursos e mentorias ativos"
-- **Filter Tabs**: "Todos", "Em andamento", "Concluídos" (dark pill style for active)
-- **Card Grid**: Horizontal cards (NOT Netflix vertical 3:4) with:
-  - Gradient background (blue-purple, pink-purple, teal variants)
-  - Category badge in top-left (MENTORIA, CURSO, WORKSHOP)
-  - More options menu (⋮) in top-right
-  - Title BELOW the gradient area (outside the colored section)
-  - Stats: "X Módulos • Y Atividades" with icons
-  - Progress bar with percentage label
-- **"Explorar Cursos" Card**: Special card with arrow icon at bottom-left
+### Image 1: Agenda (Calendar) Page
+- **Header**: "Agenda" with subtitle "Planejamento mensal"
+- **Filters**: Right-aligned dropdowns "Todos os espaços" and "Todos os status" (not left-aligned)
+- **Calendar Card**: White card with rounded corners
+  - Navigation: Left/Right arrows + "Hoje" pill button (indigo background)
+  - Month title: Centered, "Janeiro De 2026" format (capitalized "De")
+  - Weekday headers: DOM, SEG, TER, QUA, QUI, SEX, SAB (uppercase, gray text)
+  - Day cells: Large clickable cells with number in top-left
+  - Today indicator: Blue circular background on day number
+  - Session pills: Indigo gradient pills showing "10:00 • Session Title..." truncated
+  - Sessions on the day appear as horizontal pills inside the cell
 
-### Images 2-6: Espaço Detail Page
-- **Full-width Gradient Hero Header**:
-  - "← Voltar" pill button (not icon-only)
-  - "MENTORIA ELITE" badge in top-right
-  - Large white title on gradient
-  - Stats: "32 Alunos • 12 Sessões"
-  - Right-side floating card: "PRÓXIMO ENCONTRO" with date and "Acessar Sala ao Vivo" button
+### Image 2: Atividades (Tasks) Page
+- **Header**: "Atividades" with subtitle "Gerencie suas entregas e feedbacks"
+- **Filter Tabs**: Right-aligned pill buttons: "Pendentes" (active/dark), "Concluídas", "Todas"
+- **Task Cards**: Horizontal cards (not grid) with:
+  - Left: Icon in circular indigo background (Upload icon)
+  - Title: "Upload Currículo em Inglês"
+  - Space badge: "Mentoria Elite Track" in gray pill
+  - Due date: "Prazo: 10 Fev 2026"
+  - Right: Status badge "Pendente" with clock icon (red outline)
+  - Arrow button on far right
 
-- **Sticky Tabs** (pill style, dark active):
-  - Visão Geral, Sessões (2), Tarefas (4), Materiais (6), Meus Arquivos (2)
-
-- **Tab Contents**:
-  - **Visão Geral**: 2-column layout
-    - Left: "Na sua agenda" (sessions with day badge, AO VIVO, Participar button)
-    - Left: "Para entregar" (assignments with icon, due date, Entregar button)
-    - Right: "Seu Progresso" (circular progress), "Grupo do Telegram" card
-  - **Sessões**: "Cronograma Completo" with "Baixar PDF" button, vertical session cards
-  - **Tarefas**: "Suas Atividades" with status-colored icons, type badges
-  - **Materiais**: Folder-grouped cards with colored file icons
-  - **Meus Arquivos**: Upload zone (dashed, cloud icon), file list with view/delete
+### Image 3: Suporte Page
+- **Header**: "Suporte" with subtitle "Como podemos ajudar você hoje?"
+- **Support Cards**: 2x2 grid layout with:
+  - Each card has icon in colored circular background (purple, green variants)
+  - "EM BREVE" badge in top-right for coming soon features
+  - Title below icon
+  - Description text
+  - Full-width button at bottom (outline style)
+- **Contact Section**: Separate card at bottom with:
+  - Title: "Outras Formas de Contato"
+  - Email with mail icon
+  - Business hours text
 
 ---
 
@@ -48,282 +50,328 @@ This plan recreates the Student Spaces interface (list and detail pages) to exac
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/pages/student/StudentEspacos.tsx` | Major Rewrite | New horizontal card layout with filters |
-| `src/components/espacos/StudentEspacoCard.tsx` | Create | New horizontal card component |
-| `src/pages/student/StudentEspacoDetail.tsx` | Major Rewrite | New hero header and content layout |
-| `src/components/espacos/detail/EspacoHeroHeader.tsx` | Major Rewrite | Match reference gradient hero |
-| `src/components/espacos/detail/EspacoStickyTabs.tsx` | Update | Pill-style tabs with badges |
-| `src/components/espacos/detail/OverviewContent.tsx` | Major Rewrite | 3-column layout with progress card |
-| `src/components/espacos/detail/SessionTimeline.tsx` | Update | New card design matching reference |
-| `src/components/espacos/detail/TaskListGrouped.tsx` | Update | New card design with colored icons |
-| `src/components/library/EspacoLibrary.tsx` | Update | Split into Materiais and Meus Arquivos tabs |
-| `src/components/espacos/detail/MyFilesTab.tsx` | Create | New upload zone component |
+| `src/components/calendar/MonthCalendar.tsx` | Major Rewrite | New layout with session pills in cells |
+| `src/components/calendar/CalendarHeader.tsx` | Update | Centered title, "Hoje" as pill button |
+| `src/components/calendar/DayCell.tsx` | Major Rewrite | Session pills instead of dots |
+| `src/components/sessions/SessionFilters.tsx` | Update | Right-aligned layout |
+| `src/pages/dashboards/StudentAgenda.tsx` | Update | New header layout, remove legend |
+| `src/pages/mentor/MentorAgenda.tsx` | Update | Same changes as StudentAgenda |
+| `src/components/assignments/student/AssignmentList.tsx` | Major Rewrite | Horizontal list layout with filters |
+| `src/components/assignments/student/AssignmentCard.tsx` | Major Rewrite | Horizontal card design |
+| `src/pages/assignments/StudentAssignments.tsx` | Update | New header, integrate top header |
+| `src/pages/student/StudentSuporte.tsx` | Major Rewrite | Match reference design exactly |
 
 ---
 
 ## Detailed Implementation
 
-### Phase 1: Create New Horizontal Card Component
+### Phase 1: Redesign Calendar Components
 
-**File:** `src/components/espacos/StudentEspacoCard.tsx`
+#### CalendarHeader.tsx Updates
 
+**New Layout:**
 ```
-Card Structure:
-┌──────────────────────────────────────────────────────────────┐
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ [CATEGORY BADGE]                            [⋮]          │ │
-│ │                                                          │ │
-│ │            GRADIENT BACKGROUND AREA                      │ │
-│ │              (aspect-[16/9])                             │ │
-│ │                                                          │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│ Title of the Course                                          │
-│ 🔲 X Módulos  📋 Y Atividades                                │
-│                                                              │
-│ Progresso ──────────────────────────────────── XX%          │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ [<] [>]  [Hoje]                    Janeiro De 2026              │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-**Key Styling:**
-- Card: `rounded-[20px] bg-white border border-gray-100 overflow-hidden hover:shadow-lg`
-- Gradient area: `aspect-[16/9] relative` with gradient background
-- Category badge: `absolute top-4 left-4 bg-indigo-600/90 text-white rounded-full px-3 py-1`
-- Menu button: `absolute top-4 right-4 text-white/70 hover:text-white`
-- Title section: `p-4 pt-3`
-- Stats row: `flex gap-4 text-sm text-gray-500`
-- Progress: Label "Progresso" left, percentage right, bar below
+**Key Changes:**
+- "Hoje" button: `bg-indigo-100 text-indigo-600 rounded-full px-4 py-1.5 text-sm font-medium`
+- Month title: Centered in the middle (not right)
+- Capitalize "De" in month format: "Janeiro De 2026"
+- Remove spacer div, use proper justify-between with centered title
 
-**Category Colors:**
-- MENTORIA: indigo-600/purple gradient
-- CURSO: pink-500/purple gradient
-- WORKSHOP: teal-400/emerald gradient
+#### DayCell.tsx Major Rewrite
 
-### Phase 2: Redesign StudentEspacos.tsx
+**New Structure:**
+```
+┌─────────────────────────────────┐
+│ 27                              │
+│                                 │
+│ ┌─────────────────────────────┐ │
+│ │ 10:00 • Teste Título da Se..│ │
+│ └─────────────────────────────┘ │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Key Changes:**
+- Day number: Top-left corner, `text-gray-600` (or `text-gray-400` for outside month)
+- Today: Day number in `bg-indigo-500 text-white rounded-full` circle
+- Session pills: Horizontal pills with gradient background
+  - Format: "HH:MM • Session Title..."
+  - Color: `bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg px-2 py-1`
+  - Max 1-2 visible with "+X" for more
+  - Text truncated with ellipsis
+- Cell size: Larger to accommodate session pills
+
+#### MonthCalendar.tsx Updates
+
+**Key Changes:**
+- Pass full session objects to DayCell (not just indicators)
+- Increase cell height for session pills
+- Add proper spacing between cells
+- Card styling: `rounded-[20px] bg-white border border-gray-100 shadow-sm`
+
+### Phase 2: Redesign Session Filters
+
+#### SessionFilters.tsx Updates
+
+**New Layout (Right-aligned):**
+```tsx
+<div className="flex items-center gap-3 justify-end">
+  <Select ...>
+    <SelectTrigger className="w-[180px] rounded-lg border-gray-200">
+      <SelectValue placeholder="Todos os espaços" />
+    </SelectTrigger>
+  </Select>
+  <Select ...>
+    <SelectTrigger className="w-[160px] rounded-lg border-gray-200">
+      <SelectValue placeholder="Todos os status" />
+    </SelectTrigger>
+  </Select>
+</div>
+```
+
+**Key Changes:**
+- Remove clear button (use "all" option in dropdown)
+- Right-aligned filters
+- Smaller, cleaner select styling
+- Rounded-lg borders
+
+### Phase 3: Update Agenda Pages
+
+#### StudentAgenda.tsx Updates
 
 **New Layout:**
 ```tsx
 <DashboardLayout>
   <DashboardTopHeader />
   
-  <div className="p-6 bg-gray-50/50">
-    {/* Page Header */}
+  <div className="flex-1 p-6 bg-gray-50/50">
+    {/* Header Row */}
     <div className="flex items-start justify-between mb-6">
       <div>
-        <h1 className="text-2xl font-bold">Meus Espaços</h1>
-        <p className="text-gray-500">Seus cursos e mentorias ativos</p>
+        <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
+        <p className="text-gray-500">Planejamento mensal</p>
       </div>
-      
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        <Button 
-          variant={filter === 'all' ? 'default' : 'outline'}
-          className="rounded-full"
-        >
-          Todos
-        </Button>
-        <Button variant="outline" className="rounded-full">Em andamento</Button>
-        <Button variant="outline" className="rounded-full">Concluídos</Button>
-      </div>
+      <SessionFilters ... />
     </div>
     
-    {/* Card Grid */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {espacos.map(espaco => (
-        <StudentEspacoCard key={espaco.id} espaco={espaco} />
-      ))}
-      
-      {/* Explore Card */}
-      <ExploreCoursesCard />
-    </div>
+    {/* Calendar */}
+    <MonthCalendar ... />
   </div>
 </DashboardLayout>
 ```
 
-**Filter State:**
-- `useState<'all' | 'in_progress' | 'completed'>('all')`
-- Filter espacos based on status and progress percentage
+**Key Changes:**
+- Add DashboardTopHeader
+- Remove status legend (not in reference)
+- Subtitle: "Planejamento mensal"
+- Filters right-aligned next to title
 
-### Phase 3: Redesign EspacoHeroHeader.tsx
+#### MentorAgenda.tsx Updates
+- Same changes as StudentAgenda
+- Keep "Nova Sessão" button (positioned in header row if needed)
 
-**New Structure:**
-```
-Full-width gradient header (no rounded corners, bleeds to edges)
-┌────────────────────────────────────────────────────────────────────────┐
-│ [← Voltar]                                        [MENTORIA ELITE]     │
-│                                                                        │
-│ Mentoria Elite Track                    ┌────────────────────────────┐ │
-│ Turma Março 2026                        │ 📅 PRÓXIMO ENCONTRO        │ │
-│                                         │    27 Jan, 10:00           │ │
-│ 👥 32 Alunos  •  🎥 12 Sessões          │ [Acessar Sala ao Vivo]     │ │
-│                                         └────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────┘
+### Phase 4: Redesign Task/Assignment Components
+
+#### AssignmentList.tsx Major Rewrite
+
+**New Layout:**
+```tsx
+<div className="space-y-4">
+  {/* Header with filters */}
+  <div className="flex items-start justify-between">
+    <div>
+      <h1 className="text-2xl font-bold">Atividades</h1>
+      <p className="text-gray-500">Gerencie suas entregas e feedbacks</p>
+    </div>
+    
+    {/* Pill Filter Tabs */}
+    <div className="flex gap-2">
+      <Button 
+        variant={activeTab === 'pending' ? 'default' : 'ghost'}
+        className="rounded-full"
+      >
+        Pendentes
+      </Button>
+      <Button variant="ghost" className="rounded-full">
+        Concluídas
+      </Button>
+      <Button variant="ghost" className="rounded-full">
+        Todas
+      </Button>
+    </div>
+  </div>
+  
+  {/* Vertical Stack of Cards */}
+  <div className="space-y-3">
+    {assignments.map(a => <AssignmentCard key={a.id} assignment={a} />)}
+  </div>
+</div>
 ```
 
 **Key Changes:**
-- Full-width gradient (from-indigo-500 via-indigo-600 to-purple-700)
-- "← Voltar" as pill button with text, not just icon
-- Category badge "MENTORIA ELITE" in top-right as dark pill
-- Large white title text
-- Stats row with icons in white text
-- Floating white card for "Próximo Encontro" on right side
-- Remove the collapsing scroll behavior (always visible)
+- Remove Tabs component, use pill buttons
+- Active filter: `bg-indigo-600 text-white rounded-full`
+- Inactive: `text-gray-600 hover:bg-gray-100 rounded-full`
+- Vertical stack of cards (not grid)
 
-### Phase 4: Redesign EspacoStickyTabs.tsx
+#### AssignmentCard.tsx Major Rewrite
 
-**New Tab Style:**
+**New Horizontal Layout:**
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ [✓ Visão Geral] [🎥 Sessões 2] [📋 Tarefas 4] [📁 Materiais 6] ... │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Key Changes:**
-- Tabs as pill buttons, not underlined text
-- Active tab: `bg-indigo-600 text-white rounded-full`
-- Inactive tab: `text-gray-600 hover:bg-gray-100 rounded-full`
-- Badge: `bg-gray-100 text-gray-600 rounded-full` (inactive) or `bg-white/20` (active)
-- Icons inside tabs
-- Rename "Biblioteca" to "Materiais" and add "Meus Arquivos" tab
-
-### Phase 5: Redesign OverviewContent.tsx
-
-**New 3-Column Layout:**
-```
-┌───────────────────────────────────────┬─────────────────────────┐
-│ Na sua agenda            [Ver todas]  │ Seu Progresso           │
-│ ┌─────────────────────────────────┐   │ ┌─────────────────────┐ │
-│ │ [TER] AO VIVO 10:00             │   │ │     ◐ 20%           │ │
-│ │ de   Teste Titulo da Sessao     │   │ │ 2 de 12 Módulos     │ │
-│ │      [Participar]               │   │ └─────────────────────┘ │
-│ └─────────────────────────────────┘   │                         │
-│ ┌─────────────────────────────────┐   │ Grupo do Telegram       │
-│ │ [QUI] AO VIVO 10:00             │   │ ┌─────────────────────┐ │
-│ │ de   01 Onboarding              │   │ │ Conecte-se com 32   │ │
-│ │      [Participar]               │   │ │ alunos da turma     │ │
-│ └─────────────────────────────────┘   │ │ [Acessar Grupo]     │ │
-│                                       │ └─────────────────────┘ │
-│ Para entregar            [Ver todas]  │                         │
-│ ┌──────────────────┐┌────────────────┐│                         │
-│ │ 📄              ││ 📄             ││                         │
-│ │ Atualizar       ││ Quiz: Cultura  ││                         │
-│ │ LinkedIn        ││ Americana      ││                         │
-│ │ Vence: 05/02    ││ Vence: 12/02   ││                         │
-│ │[Entregar]       ││[Entregar]      ││                         │
-│ └──────────────────┘└────────────────┘│                         │
-└───────────────────────────────────────┴─────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ┌─────┐   Upload Currículo em Inglês                                     │
+│ │ ↑   │   [Mentoria Elite Track]  Prazo: 10 Fev 2026   [⏱ Pendente] [→] │
+│ └─────┘                                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Key Changes:**
-- 2/3 + 1/3 grid layout
-- Session cards with day badge (TER, QUI, etc.) on left
-- "AO VIVO" badge with time
-- "Participar" button on right
-- Assignment cards in 2-column grid
-- Progress card with circular chart (using SVG or chart library)
-- Telegram group card at bottom-right
+- Horizontal card layout (flex row)
+- Left: Icon in indigo circular background (Upload, Link, FileText based on type)
+- Middle: Title on top line, space badge + due date on bottom line
+- Right: Status badge + arrow button
+- Status badge: `border border-red-200 text-red-600 rounded-full` for pending
+- Arrow button: Ghost button with ChevronRight icon
+- Card: `bg-white rounded-[20px] p-4 border border-gray-100 shadow-sm hover:shadow-md`
 
-### Phase 6: Redesign SessionTimeline.tsx (Sessions Tab)
+### Phase 5: Redesign Suporte Page
 
-**New Design:**
-- Header: "Cronograma Completo" with "↓ Baixar PDF" button on right
-- Each session as a full card:
-  - Video icon in circle on left
-  - Title, date/time, description
-  - "Ao Vivo" badge on right for live sessions
-  - "Participar da Sessão" button (indigo, rounded)
+#### StudentSuporte.tsx Major Rewrite
 
-### Phase 7: Redesign TaskListGrouped.tsx (Tarefas Tab)
+**New 2x2 Grid Layout:**
+```
+┌────────────────────────────┬────────────────────────────┐
+│ ┌──────┐                   │ ┌──────┐                   │
+│ │ 💬   │        [EM BREVE] │ │ ✉️   │                   │
+│ └──────┘                   │ └──────┘                   │
+│                            │                            │
+│ Chat de Suporte            │ E-mail                     │
+│ Converse com nossa equipe  │ Envie um e-mail para nossa │
+│ em tempo real...           │ equipe de suporte...       │
+│                            │                            │
+│ [    Iniciar Chat     ]    │ [   Enviar E-mail  ↗   ]   │
+└────────────────────────────┴────────────────────────────┘
+┌────────────────────────────┬────────────────────────────┐
+│ ┌──────┐                   │ ┌──────┐                   │
+│ │ ❓   │        [EM BREVE] │ │ 📄   │        [EM BREVE] │
+│ └──────┘                   │ └──────┘                   │
+│                            │                            │
+│ Central de Ajuda           │ Documentação               │
+│ Encontre respostas para as │ Guias passo a passo e      │
+│ perguntas frequentes...    │ tutoriais...               │
+│                            │                            │
+│ [      Ver FAQ        ]    │ [      Ver Docs       ]    │
+└────────────────────────────┴────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ Outras Formas de Contato                                 │
+│ ✉️ suporte@euanapratica.com                              │
+│ Nosso horário de atendimento...                          │
+└──────────────────────────────────────────────────────────┘
+```
 
-**New Design:**
-- Title: "Suas Atividades"
-- Each task as a horizontal card:
-  - Left: Colored icon circle (blue for normal, pink for overdue, green for completed)
-  - Title and type badge (Arquivo, Link, Video, Quiz)
-  - Due date (red if overdue)
-  - Right: Status indicator or "Enviar Entrega" button
+**Key Card Styling:**
+- Card: `bg-white rounded-[20px] p-6 border border-gray-100`
+- Icon container: `p-3 rounded-2xl` with colored background
+  - Chat: `bg-purple-100` with purple icon
+  - Email: `bg-emerald-100` with emerald icon
+  - FAQ: `bg-cyan-100` with cyan icon
+  - Docs: `bg-green-100` with green icon
+- "EM BREVE" badge: `bg-gray-100 text-gray-500 text-xs rounded-full px-2 py-0.5` positioned top-right
+- Button: Full-width outline button with gray background for disabled
 
-**Type Badges:**
-- Arquivo, Link, Video, Quiz as small gray pills
-
-**Status Colors:**
-- Normal: Blue icon
-- Atrasada: Pink/red icon + red text
-- Entregue: Green checkmark
-
-### Phase 8: Split Library into Materiais and Meus Arquivos
-
-**Materiais Tab:**
-- Group by folder (e.g., "Módulo 01: Fundamentos", "Templates & Recursos")
-- Grid of material cards:
-  - File type icon (colored: red for PDF, blue for DOC, gray for TXT, yellow for ZIP)
-  - Filename
-  - File type + size label
-  - More options menu (⋮)
-
-**Meus Arquivos Tab (New Component):**
-- Title: "Seus Arquivos" with subtitle
-- Upload zone:
-  - Dashed orange/amber border
-  - Cloud upload icon
-  - "Clique para enviar ou arraste"
-  - Supported formats text
-- File list:
-  - Icon, filename
-  - Size, upload date
-  - View (👁) and Delete (🗑) buttons
+**Icon Colors:**
+- Chat de Suporte: Purple (`MessageCircle`)
+- E-mail: Green/Emerald (`Mail`)
+- Central de Ajuda: Cyan (`HelpCircle`)
+- Documentação: Green (`FileText`)
 
 ---
 
 ## Visual Specifications
 
 ### Colors
-- **Primary Gradient**: `from-indigo-500 via-indigo-600 to-purple-700`
-- **Card Backgrounds**: White with subtle gray-100 border
-- **Active Tab/Button**: `bg-indigo-600 text-white`
-- **Inactive Tab/Button**: `text-gray-600 bg-transparent`
-- **Progress Bar**: Indigo for in-progress, Emerald for complete
-- **Overdue**: Pink/red accents
+- **Primary**: `#4F46E5` (indigo-600)
+- **Session Pills**: `bg-gradient-to-r from-indigo-500 to-purple-500`
+- **Background**: `#F9FAFB` (gray-50)
+- **Cards**: White with `border-gray-100`
+- **Pending Status**: `border-red-200 text-red-600`
+- **Completed Status**: `border-green-200 text-green-600`
 
 ### Typography
 - **Page Title**: `text-2xl font-bold text-gray-900`
-- **Section Headers**: `text-lg font-semibold text-gray-900`
-- **Card Titles**: `text-base font-semibold`
-- **Stats/Meta**: `text-sm text-gray-500`
-- **Badges**: `text-xs font-medium uppercase tracking-wide`
+- **Subtitle**: `text-gray-500`
+- **Card Title**: `font-semibold text-gray-900`
+- **Meta Text**: `text-sm text-gray-500`
+- **Badge Text**: `text-xs font-medium`
 
-### Spacing & Borders
-- **Cards**: `rounded-[20px]` for main cards, `rounded-[16px]` for inner cards
-- **Buttons**: `rounded-full` for pills, `rounded-xl` for action buttons
-- **Gaps**: `gap-6` between cards, `gap-4` within cards
+### Borders & Spacing
+- **Cards**: `rounded-[20px]` or `rounded-2xl`
+- **Buttons/Pills**: `rounded-full`
+- **Gaps**: `gap-4` to `gap-6` between sections
+- **Card Padding**: `p-4` to `p-6`
 
 ---
 
 ## Data Requirements
 
-The existing hooks provide sufficient data:
-- `useStudentEspacosWithStats()`: Provides espacos with progress, sessions, assignments counts
-- `useSessions()`: Session list with dates, links, status
+All existing hooks provide sufficient data:
+- `useSessions()`: Session list with datetime, title, status
+- `useEspacos()`: Space list for filtering
 - `useAssignments()`: Assignment list with due dates, submissions
-- `useMaterials()` / `useFolders()`: Library data
 
-**New Fields Needed in UI (derived):**
-- Module count: Count of unique sessions or folder count
-- Activity count: Assignment count
-- Day abbreviation from session date (TER, QUI, SEX, etc.)
-- Circular progress visualization
+**Derived Data:**
+- Session time from `datetime` field formatted as "HH:MM"
+- Day abbreviation from session date
+- Truncated session titles for calendar pills
+
+---
+
+## Responsive Behavior
+
+**Desktop (lg+):**
+- Full calendar grid with session pills visible
+- Horizontal assignment cards
+- 2x2 support card grid
+
+**Mobile:**
+- Calendar cells smaller, session pills truncated more aggressively
+- Assignment cards stack vertically (same layout, responsive width)
+- Support cards stack in single column
+
+---
+
+## Files to Create/Update
+
+### Updates:
+1. `src/components/calendar/CalendarHeader.tsx` - Centered title, "Hoje" pill
+2. `src/components/calendar/DayCell.tsx` - Session pills instead of dots
+3. `src/components/calendar/MonthCalendar.tsx` - Pass session data to cells
+4. `src/components/sessions/SessionFilters.tsx` - Right-aligned layout
+5. `src/pages/dashboards/StudentAgenda.tsx` - New layout with header
+6. `src/pages/mentor/MentorAgenda.tsx` - Same as StudentAgenda
+7. `src/components/assignments/student/AssignmentList.tsx` - Pill filters, vertical list
+8. `src/components/assignments/student/AssignmentCard.tsx` - Horizontal card design
+9. `src/pages/assignments/StudentAssignments.tsx` - Integrate header
+10. `src/pages/student/StudentSuporte.tsx` - Complete redesign
 
 ---
 
 ## Expected Results
 
 After implementation:
-1. "Meus Espaços" page shows horizontal cards matching the reference exactly
-2. Filter tabs work to show All, In Progress, or Completed spaces
-3. Detail page has full-width gradient hero with floating "Próximo Encontro" card
-4. Sticky tabs use pill style with badges
-5. Overview tab has 3-column layout with progress circle and Telegram card
-6. Sessions tab shows timeline with "Baixar PDF" option
-7. Tarefas tab shows tasks with colored status icons
-8. Materiais tab shows folder-grouped files
-9. Meus Arquivos tab has upload zone and file management
-10. All styling matches the premium, modern aesthetic from references
+1. Agenda page shows calendar with session pills inside day cells
+2. "Hoje" button is styled as indigo pill
+3. Month title centered with "De" capitalized
+4. Filters right-aligned next to page title
+5. No status legend (removed)
+6. Atividades page shows horizontal task cards in vertical stack
+7. Pill-style filter tabs (Pendentes/Concluídas/Todas)
+8. Status badges with clock icon for pending
+9. Suporte page shows 2x2 grid with colored icon backgrounds
+10. "EM BREVE" badges on coming soon features
+11. Contact section at bottom with email and hours
