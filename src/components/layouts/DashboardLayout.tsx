@@ -1,65 +1,100 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
-  BookOpen, 
-  Users, 
-  Settings, 
   LogOut,
   Menu,
   X,
   GraduationCap,
   ClipboardList,
-  UserCog,
   Calendar,
   MessageCircle,
   Library,
   FlaskConical,
-  MessageSquarePlus
+  MessageSquarePlus,
+  Users,
+  BookOpen,
+  UserCog,
+  Settings
 } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
+import logoHorizontal from '@/assets/logo-horizontal.png';
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const roleNavItems = {
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ElementType;
+}
+
+const roleNavSections: Record<string, NavSection[]> = {
   student: [
-    { label: 'Início', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
-    { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-    { label: 'Atividades', href: '/dashboard/tarefas', icon: ClipboardList },
-    { label: 'Suporte', href: '/dashboard/suporte', icon: MessageCircle },
+    {
+      label: 'OVERVIEW',
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
+        { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+        { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
+      ],
+    },
+    {
+      label: 'SOCIAL',
+      items: [
+        { label: 'Suporte', href: '/dashboard/suporte', icon: MessageCircle },
+      ],
+    },
   ],
   mentor: [
-    { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
-    { label: 'Meus Espaços', href: '/mentor/espacos', icon: GraduationCap },
-    { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
-    { label: 'Biblioteca', href: '/biblioteca', icon: Library },
-    { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
-    { label: 'Perfil', href: '/perfil', icon: Settings },
+    {
+      label: 'OVERVIEW',
+      items: [
+        { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
+        { label: 'Meus Espaços', href: '/mentor/espacos', icon: GraduationCap },
+        { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
+        { label: 'Biblioteca', href: '/biblioteca', icon: Library },
+        { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
+      ],
+    },
+    {
+      label: 'CONFIGURAÇÕES',
+      items: [
+        { label: 'Perfil', href: '/perfil', icon: Settings },
+      ],
+    },
   ],
   admin: [
-    { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-    { label: 'Espaços', href: '/admin/espacos', icon: GraduationCap },
-    { label: 'Biblioteca', href: '/biblioteca', icon: Library },
-    { label: 'Usuários', href: '/admin/usuarios', icon: Users },
-    { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
-    { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
-    { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
-    { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
-    { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
+    {
+      label: 'OVERVIEW',
+      items: [
+        { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+        { label: 'Espaços', href: '/admin/espacos', icon: GraduationCap },
+        { label: 'Biblioteca', href: '/biblioteca', icon: Library },
+        { label: 'Usuários', href: '/admin/usuarios', icon: Users },
+        { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
+        { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
+      ],
+    },
+    {
+      label: 'RELATÓRIOS',
+      items: [
+        { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
+        { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
+        { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
+      ],
+    },
   ],
-};
-
-const roleLabels = {
-  student: 'Aluno',
-  mentor: 'Mentor',
-  admin: 'Administrador',
 };
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -70,12 +105,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   
   if (!user) return null;
   
-  const navItems = roleNavItems[user.role];
+  const navSections = roleNavSections[user.role] || roleNavSections.student;
   
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const isActive = (href: string) => location.pathname === href;
   
   return (
     <div className="min-h-screen bg-muted/30">
@@ -88,7 +125,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
-        <span className="ml-4 font-semibold text-foreground">EUA Na Prática</span>
+        <img src={logoHorizontal} alt="EUA Na Prática" className="ml-4 h-8" />
       </header>
       
       {/* Sidebar */}
@@ -100,60 +137,59 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b border-border">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-foreground">EUA Na Prática</span>
+            <Link to="/" className="flex items-center">
+              <img src={logoHorizontal} alt="EUA Na Prática" className="h-8" />
             </Link>
-          </div>
-          
-          {/* User info */}
-          <div className="px-4 py-4 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-primary">
-                  {user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{user.full_name}</p>
-                <p className="text-xs text-muted-foreground">{roleLabels[user.role]}</p>
-              </div>
-            </div>
           </div>
           
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 overflow-y-auto">
-            <ul className="space-y-1">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      to={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                        isActive 
-                          ? "bg-primary text-primary-foreground" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            {navSections.map((section, sectionIdx) => (
+              <div key={section.label} className={cn(sectionIdx > 0 && "mt-6")}>
+                <p className="px-3 mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {section.label}
+                </p>
+                <ul className="space-y-1">
+                  {section.items.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        to={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                          isActive(item.href)
+                            ? "bg-primary text-primary-foreground" 
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </nav>
           
-          {/* Logout */}
-          <div className="p-4 border-t border-border">
+          {/* Bottom Actions */}
+          <div className="p-4 border-t border-border space-y-1">
+            <Link
+              to="/perfil"
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive('/perfil')
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Settings className="w-5 h-5" />
+              Configurações
+            </Link>
             <Button
               variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-destructive"
+              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={handleLogout}
             >
               <LogOut className="w-5 h-5 mr-3" />
@@ -173,9 +209,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       
       {/* Main content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
-        <div className="p-6 lg:p-8">
-          {children}
-        </div>
+        {children}
       </main>
 
       {/* Botão flutuante de feedback */}
