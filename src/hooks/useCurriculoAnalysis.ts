@@ -6,7 +6,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import type { FullAnalysisResult, AnalysisError } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
-type AnalysisStatus = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
+type AnalysisStatus = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error' | 'limit_reached';
 
 interface AnalysisState {
   status: AnalysisStatus;
@@ -14,6 +14,15 @@ interface AnalysisState {
   jobDescription: string;
   result: FullAnalysisResult | null;
   error: string | null;
+}
+
+interface LimitReachedResponse {
+  error_code: 'LIMIT_REACHED';
+  error: string;
+  error_message: string;
+  plan_id: string;
+  monthly_limit: number;
+  used: number;
 }
 
 export function useCurriculoAnalysis() {
@@ -27,6 +36,7 @@ export function useCurriculoAnalysis() {
     result: null,
     error: null,
   });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const setFile = (file: File | null) => {
     setState(prev => ({ ...prev, uploadedFile: file }));
@@ -57,11 +67,12 @@ export function useCurriculoAnalysis() {
       return;
     }
 
-    // Check quota before proceeding
+    // Check quota before proceeding (client-side check for better UX)
     if (quota && quota.remaining <= 0) {
+      setShowUpgradeModal(true);
       toast({
         title: 'Limite de análises atingido',
-        description: `Você já usou suas ${quota.monthlyLimit} análises do plano ${quota.planName} este mês. Faça upgrade para continuar.`,
+        description: `Você já usou suas ${quota.monthlyLimit} análise(s) do plano ${quota.planName} este mês.`,
         variant: 'destructive',
       });
       return;
@@ -96,12 +107,53 @@ export function useCurriculoAnalysis() {
       // Step 3: Clean up - delete temp file
       await supabase.storage.from('temp-resumes').remove([filePath]);
 
-      // Check for parsing errors from the edge function
+      // Check for 402 LIMIT_REACHED error from edge function
       if (error) {
+        // Check if it's a FunctionsHttpError with status 402
+        const errorBody = error.message;
+        try {
+          const parsedError = JSON.parse(errorBody);
+          if (parsedError.error_code === 'LIMIT_REACHED') {
+            setState(prev => ({
+              ...prev,
+              status: 'limit_reached',
+              error: parsedError.error_message,
+            }));
+            setShowUpgradeModal(true);
+            toast({
+              title: 'Limite mensal atingido',
+              description: parsedError.error_message,
+              variant: 'destructive',
+            });
+            // Refetch quota to update UI
+            await refetchQuota();
+            return;
+          }
+        } catch {
+          // Not a JSON error, handle normally
+        }
         throw error;
       }
 
-      // Check if response contains error codes
+      // Check for 402 response in data (edge function might return it in body)
+      if (data?.error_code === 'LIMIT_REACHED') {
+        const limitData = data as LimitReachedResponse;
+        setState(prev => ({
+          ...prev,
+          status: 'limit_reached',
+          error: limitData.error_message,
+        }));
+        setShowUpgradeModal(true);
+        toast({
+          title: 'Limite mensal atingido',
+          description: limitData.error_message,
+          variant: 'destructive',
+        });
+        await refetchQuota();
+        return;
+      }
+
+      // Check for parsing errors from the edge function
       if (data?.error_code || data?.parsing_error) {
         const errorData = data as AnalysisError;
         toast({
@@ -120,8 +172,8 @@ export function useCurriculoAnalysis() {
       // Step 4: Store result in localStorage and navigate
       localStorage.setItem(CURRICULO_RESULT_STORAGE_KEY, JSON.stringify(data));
       
-      // Step 5: Record usage after successful analysis
-      await recordUsage();
+      // Usage is now recorded in the edge function, just refetch quota
+      await refetchQuota();
       
       setState(prev => ({
         ...prev,
@@ -163,5 +215,7 @@ export function useCurriculoAnalysis() {
     reset,
     canAnalyze: !!state.uploadedFile && !!state.jobDescription.trim() && (!quota || quota.remaining > 0),
     refetchQuota,
+    showUpgradeModal,
+    setShowUpgradeModal,
   };
 }
