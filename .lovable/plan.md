@@ -1,377 +1,243 @@
 
-# Plan: Redesign Agenda, Atividades (Tasks), and Suporte Pages
 
-## Overview
-This plan recreates three core pages to exactly match the reference images: the Agenda (calendar) page, the Atividades (tasks) page, and the Suporte (support) page. All three will be updated for all user types (Student, Mentor, Admin where applicable) with consistent modern styling.
+# Plan: Fix Invitation Email System
 
----
+## Problem Summary
 
-## Reference Image Analysis
+The invitation system is creating database records but **not sending emails** because the `RESEND_API_KEY` secret is not configured. When a mentor clicks "Enviar Convite", the invitation is saved but the recipient never receives the email.
 
-### Image 1: Agenda (Calendar) Page
-- **Header**: "Agenda" with subtitle "Planejamento mensal"
-- **Filters**: Right-aligned dropdowns "Todos os espaços" and "Todos os status" (not left-aligned)
-- **Calendar Card**: White card with rounded corners
-  - Navigation: Left/Right arrows + "Hoje" pill button (indigo background)
-  - Month title: Centered, "Janeiro De 2026" format (capitalized "De")
-  - Weekday headers: DOM, SEG, TER, QUA, QUI, SEX, SAB (uppercase, gray text)
-  - Day cells: Large clickable cells with number in top-left
-  - Today indicator: Blue circular background on day number
-  - Session pills: Indigo gradient pills showing "10:00 • Session Title..." truncated
-  - Sessions on the day appear as horizontal pills inside the cell
+## Root Cause Analysis
 
-### Image 2: Atividades (Tasks) Page
-- **Header**: "Atividades" with subtitle "Gerencie suas entregas e feedbacks"
-- **Filter Tabs**: Right-aligned pill buttons: "Pendentes" (active/dark), "Concluídas", "Todas"
-- **Task Cards**: Horizontal cards (not grid) with:
-  - Left: Icon in circular indigo background (Upload icon)
-  - Title: "Upload Currículo em Inglês"
-  - Space badge: "Mentoria Elite Track" in gray pill
-  - Due date: "Prazo: 10 Fev 2026"
-  - Right: Status badge "Pendente" with clock icon (red outline)
-  - Arrow button on far right
+1. **Missing Secret**: The `RESEND_API_KEY` environment variable is not set in Supabase Secrets
+2. **Misleading Toast**: The frontend always shows "Um email foi enviado" even when `emailSent: false`
+3. **No Email Domain**: Resend requires a verified domain to send emails from
 
-### Image 3: Suporte Page
-- **Header**: "Suporte" with subtitle "Como podemos ajudar você hoje?"
-- **Support Cards**: 2x2 grid layout with:
-  - Each card has icon in colored circular background (purple, green variants)
-  - "EM BREVE" badge in top-right for coming soon features
-  - Title below icon
-  - Description text
-  - Full-width button at bottom (outline style)
-- **Contact Section**: Separate card at bottom with:
-  - Title: "Outras Formas de Contato"
-  - Email with mail icon
-  - Business hours text
+## Solution Overview
+
+### Step 1: Configure Resend Integration
+
+You will need to:
+1. Create a Resend account at https://resend.com
+2. Add and verify your domain (euanapratica.com) at https://resend.com/domains
+3. Create an API key at https://resend.com/api-keys
+4. Add the secret to the project
+
+### Step 2: Update Edge Function
+
+Improve error handling and logging in the edge function to better diagnose issues.
+
+### Step 3: Update Frontend Toast Messages
+
+Fix the toast to accurately reflect whether the email was sent or not.
+
+### Step 4: Enhance Email Template
+
+Improve the email design with clearer call-to-action and instructions.
 
 ---
 
-## File Changes Summary
+## File Changes
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/calendar/MonthCalendar.tsx` | Major Rewrite | New layout with session pills in cells |
-| `src/components/calendar/CalendarHeader.tsx` | Update | Centered title, "Hoje" as pill button |
-| `src/components/calendar/DayCell.tsx` | Major Rewrite | Session pills instead of dots |
-| `src/components/sessions/SessionFilters.tsx` | Update | Right-aligned layout |
-| `src/pages/dashboards/StudentAgenda.tsx` | Update | New header layout, remove legend |
-| `src/pages/mentor/MentorAgenda.tsx` | Update | Same changes as StudentAgenda |
-| `src/components/assignments/student/AssignmentList.tsx` | Major Rewrite | Horizontal list layout with filters |
-| `src/components/assignments/student/AssignmentCard.tsx` | Major Rewrite | Horizontal card design |
-| `src/pages/assignments/StudentAssignments.tsx` | Update | New header, integrate top header |
-| `src/pages/student/StudentSuporte.tsx` | Major Rewrite | Match reference design exactly |
+| `RESEND_API_KEY` | Add Secret | Configure Resend API key |
+| `supabase/functions/send-espaco-invitation/index.ts` | Update | Better logging and error handling |
+| `src/hooks/useEspacoInvitations.ts` | Update | Handle emailSent response properly |
+| `src/pages/Register.tsx` | Update | Improve invitation flow handling |
 
 ---
 
 ## Detailed Implementation
 
-### Phase 1: Redesign Calendar Components
+### Phase 1: Configure Resend API Key
 
-#### CalendarHeader.tsx Updates
+The system will prompt you to add your Resend API key. You need to:
 
-**New Layout:**
-```
-┌────────────────────────────────────────────────────────────────┐
-│ [<] [>]  [Hoje]                    Janeiro De 2026              │
-└────────────────────────────────────────────────────────────────┘
-```
+1. Go to https://resend.com and sign up
+2. Verify your domain `euanapratica.com` at https://resend.com/domains
+   - Add DNS records (TXT, DKIM) to your domain
+   - Wait for verification (usually a few minutes)
+3. Create an API key at https://resend.com/api-keys
+4. Provide the API key when prompted
 
-**Key Changes:**
-- "Hoje" button: `bg-indigo-100 text-indigo-600 rounded-full px-4 py-1.5 text-sm font-medium`
-- Month title: Centered in the middle (not right)
-- Capitalize "De" in month format: "Janeiro De 2026"
-- Remove spacer div, use proper justify-between with centered title
+### Phase 2: Update Edge Function
 
-#### DayCell.tsx Major Rewrite
+**Improvements:**
+- Add detailed logging for debugging
+- Validate domain is verified before sending
+- Return clear error messages if email fails
+- Include invitation link in response for fallback
 
-**New Structure:**
-```
-┌─────────────────────────────────┐
-│ 27                              │
-│                                 │
-│ ┌─────────────────────────────┐ │
-│ │ 10:00 • Teste Título da Se..│ │
-│ └─────────────────────────────┘ │
-│                                 │
-└─────────────────────────────────┘
-```
+```typescript
+// Key changes:
+// 1. Log when RESEND_API_KEY is missing
+if (!resendApiKey) {
+  console.warn("RESEND_API_KEY not configured - email will not be sent");
+}
 
-**Key Changes:**
-- Day number: Top-left corner, `text-gray-600` (or `text-gray-400` for outside month)
-- Today: Day number in `bg-indigo-500 text-white rounded-full` circle
-- Session pills: Horizontal pills with gradient background
-  - Format: "HH:MM • Session Title..."
-  - Color: `bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg px-2 py-1`
-  - Max 1-2 visible with "+X" for more
-  - Text truncated with ellipsis
-- Cell size: Larger to accommodate session pills
+// 2. Log full response from Resend for debugging
+const emailResponse = await fetch(...);
+const emailResult = await emailResponse.json();
+console.log("Resend response:", JSON.stringify(emailResult));
 
-#### MonthCalendar.tsx Updates
-
-**Key Changes:**
-- Pass full session objects to DayCell (not just indicators)
-- Increase cell height for session pills
-- Add proper spacing between cells
-- Card styling: `rounded-[20px] bg-white border border-gray-100 shadow-sm`
-
-### Phase 2: Redesign Session Filters
-
-#### SessionFilters.tsx Updates
-
-**New Layout (Right-aligned):**
-```tsx
-<div className="flex items-center gap-3 justify-end">
-  <Select ...>
-    <SelectTrigger className="w-[180px] rounded-lg border-gray-200">
-      <SelectValue placeholder="Todos os espaços" />
-    </SelectTrigger>
-  </Select>
-  <Select ...>
-    <SelectTrigger className="w-[160px] rounded-lg border-gray-200">
-      <SelectValue placeholder="Todos os status" />
-    </SelectTrigger>
-  </Select>
-</div>
+// 3. Return invitation link for manual fallback
+return new Response(JSON.stringify({
+  success: true,
+  emailSent,
+  inviteLink: emailSent ? undefined : inviteLink, // Fallback link
+}));
 ```
 
-**Key Changes:**
-- Remove clear button (use "all" option in dropdown)
-- Right-aligned filters
-- Smaller, cleaner select styling
-- Rounded-lg borders
+### Phase 3: Update Frontend Toast
 
-### Phase 3: Update Agenda Pages
-
-#### StudentAgenda.tsx Updates
-
-**New Layout:**
-```tsx
-<DashboardLayout>
-  <DashboardTopHeader />
-  
-  <div className="flex-1 p-6 bg-gray-50/50">
-    {/* Header Row */}
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
-        <p className="text-gray-500">Planejamento mensal</p>
-      </div>
-      <SessionFilters ... />
-    </div>
-    
-    {/* Calendar */}
-    <MonthCalendar ... />
-  </div>
-</DashboardLayout>
+**Current behavior (misleading):**
+```typescript
+// Always shows success message
+toast({
+  title: 'Convite enviado!',
+  description: `Um email foi enviado para ${variables.email}`,
+});
 ```
 
-**Key Changes:**
-- Add DashboardTopHeader
-- Remove status legend (not in reference)
-- Subtitle: "Planejamento mensal"
-- Filters right-aligned next to title
-
-#### MentorAgenda.tsx Updates
-- Same changes as StudentAgenda
-- Keep "Nova Sessão" button (positioned in header row if needed)
-
-### Phase 4: Redesign Task/Assignment Components
-
-#### AssignmentList.tsx Major Rewrite
-
-**New Layout:**
-```tsx
-<div className="space-y-4">
-  {/* Header with filters */}
-  <div className="flex items-start justify-between">
-    <div>
-      <h1 className="text-2xl font-bold">Atividades</h1>
-      <p className="text-gray-500">Gerencie suas entregas e feedbacks</p>
-    </div>
-    
-    {/* Pill Filter Tabs */}
-    <div className="flex gap-2">
-      <Button 
-        variant={activeTab === 'pending' ? 'default' : 'ghost'}
-        className="rounded-full"
-      >
-        Pendentes
-      </Button>
-      <Button variant="ghost" className="rounded-full">
-        Concluídas
-      </Button>
-      <Button variant="ghost" className="rounded-full">
-        Todas
-      </Button>
-    </div>
-  </div>
-  
-  {/* Vertical Stack of Cards */}
-  <div className="space-y-3">
-    {assignments.map(a => <AssignmentCard key={a.id} assignment={a} />)}
-  </div>
-</div>
+**Fixed behavior:**
+```typescript
+onSuccess: (response, variables) => {
+  if (response.emailSent) {
+    toast({
+      title: 'Convite enviado!',
+      description: `Um email foi enviado para ${variables.email}`,
+    });
+  } else {
+    // Show warning with manual link option
+    toast({
+      title: 'Convite criado',
+      description: `Email não configurado. Copie o link de convite manualmente.`,
+      variant: 'warning',
+      action: <CopyLinkButton link={response.inviteLink} />
+    });
+  }
+}
 ```
 
-**Key Changes:**
-- Remove Tabs component, use pill buttons
-- Active filter: `bg-indigo-600 text-white rounded-full`
-- Inactive: `text-gray-600 hover:bg-gray-100 rounded-full`
-- Vertical stack of cards (not grid)
+### Phase 4: Improve Email Template
 
-#### AssignmentCard.tsx Major Rewrite
+The current email is good but could be enhanced:
 
-**New Horizontal Layout:**
+```html
+<!-- Add clear step-by-step instructions -->
+<p>Para começar:</p>
+<ol>
+  <li>Clique no botão abaixo</li>
+  <li>Complete seu cadastro</li>
+  <li>Preencha o onboarding</li>
+  <li>Acesse "Meus Espaços"</li>
+</ol>
+
+<!-- More prominent CTA button -->
+<a href="${inviteLink}" style="
+  display: inline-block;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 18px 40px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+">
+  Aceitar Convite e Criar Conta
+</a>
+
+<!-- Add fallback link text -->
+<p style="color: #71717a; font-size: 12px; margin-top: 20px;">
+  Se o botão não funcionar, copie e cole este link no navegador:<br>
+  <a href="${inviteLink}">${inviteLink}</a>
+</p>
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│ ┌─────┐   Upload Currículo em Inglês                                     │
-│ │ ↑   │   [Mentoria Elite Track]  Prazo: 10 Fev 2026   [⏱ Pendente] [→] │
-│ └─────┘                                                                  │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-
-**Key Changes:**
-- Horizontal card layout (flex row)
-- Left: Icon in indigo circular background (Upload, Link, FileText based on type)
-- Middle: Title on top line, space badge + due date on bottom line
-- Right: Status badge + arrow button
-- Status badge: `border border-red-200 text-red-600 rounded-full` for pending
-- Arrow button: Ghost button with ChevronRight icon
-- Card: `bg-white rounded-[20px] p-4 border border-gray-100 shadow-sm hover:shadow-md`
-
-### Phase 5: Redesign Suporte Page
-
-#### StudentSuporte.tsx Major Rewrite
-
-**New 2x2 Grid Layout:**
-```
-┌────────────────────────────┬────────────────────────────┐
-│ ┌──────┐                   │ ┌──────┐                   │
-│ │ 💬   │        [EM BREVE] │ │ ✉️   │                   │
-│ └──────┘                   │ └──────┘                   │
-│                            │                            │
-│ Chat de Suporte            │ E-mail                     │
-│ Converse com nossa equipe  │ Envie um e-mail para nossa │
-│ em tempo real...           │ equipe de suporte...       │
-│                            │                            │
-│ [    Iniciar Chat     ]    │ [   Enviar E-mail  ↗   ]   │
-└────────────────────────────┴────────────────────────────┘
-┌────────────────────────────┬────────────────────────────┐
-│ ┌──────┐                   │ ┌──────┐                   │
-│ │ ❓   │        [EM BREVE] │ │ 📄   │        [EM BREVE] │
-│ └──────┘                   │ └──────┘                   │
-│                            │                            │
-│ Central de Ajuda           │ Documentação               │
-│ Encontre respostas para as │ Guias passo a passo e      │
-│ perguntas frequentes...    │ tutoriais...               │
-│                            │                            │
-│ [      Ver FAQ        ]    │ [      Ver Docs       ]    │
-└────────────────────────────┴────────────────────────────┘
-┌──────────────────────────────────────────────────────────┐
-│ Outras Formas de Contato                                 │
-│ ✉️ suporte@euanapratica.com                              │
-│ Nosso horário de atendimento...                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Key Card Styling:**
-- Card: `bg-white rounded-[20px] p-6 border border-gray-100`
-- Icon container: `p-3 rounded-2xl` with colored background
-  - Chat: `bg-purple-100` with purple icon
-  - Email: `bg-emerald-100` with emerald icon
-  - FAQ: `bg-cyan-100` with cyan icon
-  - Docs: `bg-green-100` with green icon
-- "EM BREVE" badge: `bg-gray-100 text-gray-500 text-xs rounded-full px-2 py-0.5` positioned top-right
-- Button: Full-width outline button with gray background for disabled
-
-**Icon Colors:**
-- Chat de Suporte: Purple (`MessageCircle`)
-- E-mail: Green/Emerald (`Mail`)
-- Central de Ajuda: Cyan (`HelpCircle`)
-- Documentação: Green (`FileText`)
 
 ---
 
-## Visual Specifications
+## Technical Details
 
-### Colors
-- **Primary**: `#4F46E5` (indigo-600)
-- **Session Pills**: `bg-gradient-to-r from-indigo-500 to-purple-500`
-- **Background**: `#F9FAFB` (gray-50)
-- **Cards**: White with `border-gray-100`
-- **Pending Status**: `border-red-200 text-red-600`
-- **Completed Status**: `border-green-200 text-green-600`
+### Email Flow After Fix
 
-### Typography
-- **Page Title**: `text-2xl font-bold text-gray-900`
-- **Subtitle**: `text-gray-500`
-- **Card Title**: `font-semibold text-gray-900`
-- **Meta Text**: `text-sm text-gray-500`
-- **Badge Text**: `text-xs font-medium`
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Mentor clicks "Enviar Convite"                               │
+├─────────────────────────────────────────────────────────────────┤
+│ 2. Frontend calls send-espaco-invitation edge function          │
+├─────────────────────────────────────────────────────────────────┤
+│ 3. Edge function:                                               │
+│    a. Validates mentor permissions                              │
+│    b. Creates/updates invitation in database                    │
+│    c. Calls Resend API with RESEND_API_KEY                      │
+│    d. Returns { success: true, emailSent: true }                │
+├─────────────────────────────────────────────────────────────────┤
+│ 4. Frontend shows accurate toast message                        │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### Borders & Spacing
-- **Cards**: `rounded-[20px]` or `rounded-2xl`
-- **Buttons/Pills**: `rounded-full`
-- **Gaps**: `gap-4` to `gap-6` between sections
-- **Card Padding**: `p-4` to `p-6`
+### Registration Flow After Email
 
----
-
-## Data Requirements
-
-All existing hooks provide sufficient data:
-- `useSessions()`: Session list with datetime, title, status
-- `useEspacos()`: Space list for filtering
-- `useAssignments()`: Assignment list with due dates, submissions
-
-**Derived Data:**
-- Session time from `datetime` field formatted as "HH:MM"
-- Day abbreviation from session date
-- Truncated session titles for calendar pills
-
----
-
-## Responsive Behavior
-
-**Desktop (lg+):**
-- Full calendar grid with session pills visible
-- Horizontal assignment cards
-- 2x2 support card grid
-
-**Mobile:**
-- Calendar cells smaller, session pills truncated more aggressively
-- Assignment cards stack vertically (same layout, responsive width)
-- Support cards stack in single column
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. User clicks link in email                                    │
+│    → /register?token=<uuid>&espaco_id=<uuid>                    │
+├─────────────────────────────────────────────────────────────────┤
+│ 2. Register page:                                               │
+│    a. Fetches invitation data by token                          │
+│    b. Pre-fills email and name from invitation                  │
+│    c. Shows "Você foi convidado!" with space name               │
+│    d. Stores token in localStorage                              │
+├─────────────────────────────────────────────────────────────────┤
+│ 3. User completes registration                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ 4. After registration:                                          │
+│    a. Calls process-invitation with stored token                │
+│    b. Creates enrollment in user_espacos                        │
+│    c. Marks invitation as "accepted"                            │
+├─────────────────────────────────────────────────────────────────┤
+│ 5. User redirected to /dashboard → onboarding (if not done)     │
+├─────────────────────────────────────────────────────────────────┤
+│ 6. After onboarding → "Meus Espaços" shows the enrolled space   │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Files to Create/Update
+## Prerequisites
 
-### Updates:
-1. `src/components/calendar/CalendarHeader.tsx` - Centered title, "Hoje" pill
-2. `src/components/calendar/DayCell.tsx` - Session pills instead of dots
-3. `src/components/calendar/MonthCalendar.tsx` - Pass session data to cells
-4. `src/components/sessions/SessionFilters.tsx` - Right-aligned layout
-5. `src/pages/dashboards/StudentAgenda.tsx` - New layout with header
-6. `src/pages/mentor/MentorAgenda.tsx` - Same as StudentAgenda
-7. `src/components/assignments/student/AssignmentList.tsx` - Pill filters, vertical list
-8. `src/components/assignments/student/AssignmentCard.tsx` - Horizontal card design
-9. `src/pages/assignments/StudentAssignments.tsx` - Integrate header
-10. `src/pages/student/StudentSuporte.tsx` - Complete redesign
+Before I can implement this fix, you need to:
+
+1. **Create Resend Account**
+   - Go to https://resend.com
+   - Sign up for a free account
+
+2. **Verify Your Domain**
+   - Go to https://resend.com/domains
+   - Add `euanapratica.com`
+   - Add the required DNS records (DKIM, SPF)
+   - Wait for verification
+
+3. **Create API Key**
+   - Go to https://resend.com/api-keys
+   - Click "Create API Key"
+   - Name it something like "EUA Na Pratica Production"
+   - Copy the key (it starts with `re_`)
+
+4. **Provide the API Key**
+   - When implementation begins, I will prompt you to add the secret
 
 ---
 
 ## Expected Results
 
 After implementation:
-1. Agenda page shows calendar with session pills inside day cells
-2. "Hoje" button is styled as indigo pill
-3. Month title centered with "De" capitalized
-4. Filters right-aligned next to page title
-5. No status legend (removed)
-6. Atividades page shows horizontal task cards in vertical stack
-7. Pill-style filter tabs (Pendentes/Concluídas/Todas)
-8. Status badges with clock icon for pending
-9. Suporte page shows 2x2 grid with colored icon backgrounds
-10. "EM BREVE" badges on coming soon features
-11. Contact section at bottom with email and hours
+
+1. Invitations send real emails via Resend
+2. Recipients receive professionally formatted emails with clear CTAs
+3. Clicking the email link takes them to a pre-filled registration page
+4. After registration, they're automatically enrolled in the space
+5. After completing onboarding, they see the space in "Meus Espaços"
+6. Frontend shows accurate feedback about email delivery status
+7. Fallback link available if email delivery fails
+
