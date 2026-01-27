@@ -1,231 +1,126 @@
 
+# Plan: Fix Invitation Email System Error Handling
 
-# Plan: Fix Invitation Email System
+## Problem Diagnosis
 
-## Problem Summary
+After investigating the edge function logs and analytics:
 
-The invitation system is creating database records but **not sending emails** because the `RESEND_API_KEY` secret is not configured. When a mentor clicks "Enviar Convite", the invitation is saved but the recipient never receives the email.
+1. **Root Cause Identified**: The 401 error was caused by an **expired user session**
+   - Analytics show: `POST | 401 | send-espaco-invitation`
+   - The user is currently on `/login` page (session expired)
+   - When the user tried to send an invitation, their auth token was no longer valid
 
-## Root Cause Analysis
+2. **Secondary Issue**: The error message "Edge Function returned a non-2xx status code" is not user-friendly. The frontend should show a clearer message like "Your session expired. Please log in again."
 
-1. **Missing Secret**: The `RESEND_API_KEY` environment variable is not set in Supabase Secrets
-2. **Misleading Toast**: The frontend always shows "Um email foi enviado" even when `emailSent: false`
-3. **No Email Domain**: Resend requires a verified domain to send emails from
+3. **Good News**: The `RESEND_API_KEY` is already configured and the edge function code is correct
+
+---
 
 ## Solution Overview
 
-### Step 1: Configure Resend Integration
+The fix requires improving error handling on both the **edge function** and **frontend** to provide better feedback when authentication fails.
 
-You will need to:
-1. Create a Resend account at https://resend.com
-2. Add and verify your domain (euanapratica.com) at https://resend.com/domains
-3. Create an API key at https://resend.com/api-keys
-4. Add the secret to the project
-
-### Step 2: Update Edge Function
-
-Improve error handling and logging in the edge function to better diagnose issues.
-
-### Step 3: Update Frontend Toast Messages
-
-Fix the toast to accurately reflect whether the email was sent or not.
-
-### Step 4: Enhance Email Template
-
-Improve the email design with clearer call-to-action and instructions.
-
----
-
-## File Changes
+### Changes Needed
 
 | File | Action | Description |
 |------|--------|-------------|
-| `RESEND_API_KEY` | Add Secret | Configure Resend API key |
-| `supabase/functions/send-espaco-invitation/index.ts` | Update | Better logging and error handling |
-| `src/hooks/useEspacoInvitations.ts` | Update | Handle emailSent response properly |
-| `src/pages/Register.tsx` | Update | Improve invitation flow handling |
+| `supabase/functions/send-espaco-invitation/index.ts` | Update | Add better error messages for auth failures |
+| `src/hooks/useEspacoInvitations.ts` | Update | Parse error responses and show helpful messages |
 
 ---
 
-## Detailed Implementation
+## Implementation Details
 
-### Phase 1: Configure Resend API Key
+### Phase 1: Improve Edge Function Error Responses
 
-The system will prompt you to add your Resend API key. You need to:
-
-1. Go to https://resend.com and sign up
-2. Verify your domain `euanapratica.com` at https://resend.com/domains
-   - Add DNS records (TXT, DKIM) to your domain
-   - Wait for verification (usually a few minutes)
-3. Create an API key at https://resend.com/api-keys
-4. Provide the API key when prompted
-
-### Phase 2: Update Edge Function
-
-**Improvements:**
-- Add detailed logging for debugging
-- Validate domain is verified before sending
-- Return clear error messages if email fails
-- Include invitation link in response for fallback
+The edge function should return more descriptive error messages that the frontend can use:
 
 ```typescript
-// Key changes:
-// 1. Log when RESEND_API_KEY is missing
-if (!resendApiKey) {
-  console.warn("RESEND_API_KEY not configured - email will not be sent");
-}
+// When auth header missing or invalid format
+return new Response(
+  JSON.stringify({ 
+    error: "Unauthorized", 
+    code: "AUTH_MISSING",
+    message: "Sessão não encontrada. Por favor, faça login novamente." 
+  }),
+  { status: 401, ... }
+);
 
-// 2. Log full response from Resend for debugging
-const emailResponse = await fetch(...);
-const emailResult = await emailResponse.json();
-console.log("Resend response:", JSON.stringify(emailResult));
-
-// 3. Return invitation link for manual fallback
-return new Response(JSON.stringify({
-  success: true,
-  emailSent,
-  inviteLink: emailSent ? undefined : inviteLink, // Fallback link
-}));
+// When token validation fails
+return new Response(
+  JSON.stringify({ 
+    error: "Unauthorized", 
+    code: "AUTH_EXPIRED",
+    message: "Sua sessão expirou. Por favor, faça login novamente." 
+  }),
+  { status: 401, ... }
+);
 ```
 
-### Phase 3: Update Frontend Toast
+### Phase 2: Improve Frontend Error Handling
 
-**Current behavior (misleading):**
-```typescript
-// Always shows success message
-toast({
-  title: 'Convite enviado!',
-  description: `Um email foi enviado para ${variables.email}`,
-});
-```
+The `useInviteStudent` hook should parse the error response and show user-friendly messages:
 
-**Fixed behavior:**
 ```typescript
-onSuccess: (response, variables) => {
-  if (response.emailSent) {
-    toast({
-      title: 'Convite enviado!',
-      description: `Um email foi enviado para ${variables.email}`,
-    });
-  } else {
-    // Show warning with manual link option
-    toast({
-      title: 'Convite criado',
-      description: `Email não configurado. Copie o link de convite manualmente.`,
-      variant: 'warning',
-      action: <CopyLinkButton link={response.inviteLink} />
-    });
+mutationFn: async (data: InviteStudentData): Promise<InviteResponse> => {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session?.access_token) {
+    throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
   }
-}
-```
 
-### Phase 4: Improve Email Template
+  const response = await supabase.functions.invoke('send-espaco-invitation', {
+    body: { ... },
+  });
 
-The current email is good but could be enhanced:
+  if (response.error) {
+    // Parse the error response for better messages
+    const errorData = response.error.context?.body 
+      ? JSON.parse(response.error.context.body) 
+      : null;
+    
+    const errorMessage = errorData?.message 
+      || errorData?.error 
+      || 'Erro ao enviar convite';
+    
+    throw new Error(errorMessage);
+  }
 
-```html
-<!-- Add clear step-by-step instructions -->
-<p>Para começar:</p>
-<ol>
-  <li>Clique no botão abaixo</li>
-  <li>Complete seu cadastro</li>
-  <li>Preencha o onboarding</li>
-  <li>Acesse "Meus Espaços"</li>
-</ol>
-
-<!-- More prominent CTA button -->
-<a href="${inviteLink}" style="
-  display: inline-block;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  padding: 18px 40px;
-  border-radius: 16px;
-  font-weight: 700;
-  font-size: 18px;
-  text-decoration: none;
-">
-  Aceitar Convite e Criar Conta
-</a>
-
-<!-- Add fallback link text -->
-<p style="color: #71717a; font-size: 12px; margin-top: 20px;">
-  Se o botão não funcionar, copie e cole este link no navegador:<br>
-  <a href="${inviteLink}">${inviteLink}</a>
-</p>
+  return response.data as InviteResponse;
+},
 ```
 
 ---
 
 ## Technical Details
 
-### Email Flow After Fix
+### Edge Function Error Codes
+
+| Code | Status | Message |
+|------|--------|---------|
+| `AUTH_MISSING` | 401 | Sessão não encontrada. Por favor, faça login novamente. |
+| `AUTH_EXPIRED` | 401 | Sua sessão expirou. Por favor, faça login novamente. |
+| `PERMISSION_DENIED` | 403 | Você não tem permissão para convidar alunos neste espaço. |
+| `ESPACO_NOT_FOUND` | 404 | Espaço não encontrado. |
+| `INVITATION_EXISTS` | 409 | Já existe um convite pendente para este email. |
+| `INVALID_EMAIL` | 400 | Formato de email inválido. |
+
+### Session Expiry Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Mentor clicks "Enviar Convite"                               │
-├─────────────────────────────────────────────────────────────────┤
-│ 2. Frontend calls send-espaco-invitation edge function          │
-├─────────────────────────────────────────────────────────────────┤
-│ 3. Edge function:                                               │
-│    a. Validates mentor permissions                              │
-│    b. Creates/updates invitation in database                    │
-│    c. Calls Resend API with RESEND_API_KEY                      │
-│    d. Returns { success: true, emailSent: true }                │
-├─────────────────────────────────────────────────────────────────┤
-│ 4. Frontend shows accurate toast message                        │
-└─────────────────────────────────────────────────────────────────┘
+User opens Invite Modal
+       ↓
+Session token attached to request
+       ↓
+┌─────────────────────────────────┐
+│ Edge Function validates token   │
+│ - If expired → 401 + clear msg  │
+│ - If valid → proceed            │
+└─────────────────────────────────┘
+       ↓
+Frontend catches error
+       ↓
+Shows user-friendly toast with login redirect option
 ```
-
-### Registration Flow After Email
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. User clicks link in email                                    │
-│    → /register?token=<uuid>&espaco_id=<uuid>                    │
-├─────────────────────────────────────────────────────────────────┤
-│ 2. Register page:                                               │
-│    a. Fetches invitation data by token                          │
-│    b. Pre-fills email and name from invitation                  │
-│    c. Shows "Você foi convidado!" with space name               │
-│    d. Stores token in localStorage                              │
-├─────────────────────────────────────────────────────────────────┤
-│ 3. User completes registration                                  │
-├─────────────────────────────────────────────────────────────────┤
-│ 4. After registration:                                          │
-│    a. Calls process-invitation with stored token                │
-│    b. Creates enrollment in user_espacos                        │
-│    c. Marks invitation as "accepted"                            │
-├─────────────────────────────────────────────────────────────────┤
-│ 5. User redirected to /dashboard → onboarding (if not done)     │
-├─────────────────────────────────────────────────────────────────┤
-│ 6. After onboarding → "Meus Espaços" shows the enrolled space   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Prerequisites
-
-Before I can implement this fix, you need to:
-
-1. **Create Resend Account**
-   - Go to https://resend.com
-   - Sign up for a free account
-
-2. **Verify Your Domain**
-   - Go to https://resend.com/domains
-   - Add `euanapratica.com`
-   - Add the required DNS records (DKIM, SPF)
-   - Wait for verification
-
-3. **Create API Key**
-   - Go to https://resend.com/api-keys
-   - Click "Create API Key"
-   - Name it something like "EUA Na Pratica Production"
-   - Copy the key (it starts with `re_`)
-
-4. **Provide the API Key**
-   - When implementation begins, I will prompt you to add the secret
 
 ---
 
@@ -233,11 +128,20 @@ Before I can implement this fix, you need to:
 
 After implementation:
 
-1. Invitations send real emails via Resend
-2. Recipients receive professionally formatted emails with clear CTAs
-3. Clicking the email link takes them to a pre-filled registration page
-4. After registration, they're automatically enrolled in the space
-5. After completing onboarding, they see the space in "Meus Espaços"
-6. Frontend shows accurate feedback about email delivery status
-7. Fallback link available if email delivery fails
+1. When a user's session expires, they see: "Sua sessão expirou. Por favor, faça login novamente."
+2. The toast includes a link/button to the login page
+3. Edge function logs include helpful debug information
+4. All error cases return proper error codes and messages in Portuguese
+5. The invitation flow works correctly when the user is properly authenticated
 
+---
+
+## Testing Checklist
+
+1. [ ] Log in as mentor and navigate to espaco detail page
+2. [ ] Open "Convidar Aluno" modal
+3. [ ] Enter a valid email and click "Enviar Convite"
+4. [ ] Verify email is sent (check edge function logs for "Invitation email sent successfully")
+5. [ ] Check recipient's inbox for the invitation email
+6. [ ] Click the link in email and verify registration flow works
+7. [ ] After registration, verify user is enrolled in the espaco
