@@ -19,7 +19,8 @@ import {
   UserCog,
   Settings,
   FileCheck,
-  CreditCard
+  CreditCard,
+  SlidersHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
@@ -102,6 +103,7 @@ const roleNavSections: Record<string, NavSection[]> = {
     {
       label: 'CONFIGURAÇÕES',
       items: [
+        { label: 'Configurar Planos', href: '/admin/planos', icon: SlidersHorizontal },
         { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
       ],
     },

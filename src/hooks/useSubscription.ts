@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface PlanFeatures {
   allow_pdf: boolean;
   show_improvements: boolean;
+  show_power_verbs: boolean;
   show_cheat_sheet: boolean;
   impact_cards: boolean;
   priority_support: boolean;
@@ -41,6 +42,7 @@ interface UseSubscriptionReturn {
 const DEFAULT_FEATURES: PlanFeatures = {
   allow_pdf: false,
   show_improvements: false,
+  show_power_verbs: false,
   show_cheat_sheet: false,
   impact_cards: false,
   priority_support: false,
@@ -90,6 +92,7 @@ export function useSubscription(): UseSubscriptionReturn {
           features: {
             allow_pdf: featuresObj.allow_pdf ?? false,
             show_improvements: featuresObj.show_improvements ?? false,
+            show_power_verbs: featuresObj.show_power_verbs ?? false,
             show_cheat_sheet: featuresObj.show_cheat_sheet ?? false,
             impact_cards: featuresObj.impact_cards ?? false,
             priority_support: featuresObj.priority_support ?? false,

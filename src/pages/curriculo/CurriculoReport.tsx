@@ -35,6 +35,7 @@ export default function CurriculoReport() {
   const features = quota?.features || {
     allow_pdf: false,
     show_improvements: false,
+    show_power_verbs: false,
     show_cheat_sheet: false,
     impact_cards: false,
     priority_support: false,

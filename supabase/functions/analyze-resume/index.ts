@@ -139,6 +139,9 @@ serve(async (req) => {
     if (!features.show_improvements) {
       systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include improvements. Return an EMPTY array [] for the 'improvements' field.";
     }
+    if (!features.show_power_verbs) {
+      systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include power verbs. Return an EMPTY array [] for the 'power_verbs_suggestions' field.";
+    }
     if (!features.show_cheat_sheet) {
       systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include interview preparation. Return an EMPTY array [] for the 'interview_cheat_sheet' field.";
     }
