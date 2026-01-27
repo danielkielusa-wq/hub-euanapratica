@@ -653,27 +653,39 @@ export type Database = {
       plans: {
         Row: {
           created_at: string
+          cta_text: string
+          display_features: Json
           features: Json
           id: string
           is_active: boolean
+          is_popular: boolean
           monthly_limit: number
           name: string
+          price: number
         }
         Insert: {
           created_at?: string
+          cta_text?: string
+          display_features?: Json
           features?: Json
           id: string
           is_active?: boolean
+          is_popular?: boolean
           monthly_limit?: number
           name: string
+          price?: number
         }
         Update: {
           created_at?: string
+          cta_text?: string
+          display_features?: Json
           features?: Json
           id?: string
           is_active?: boolean
+          is_popular?: boolean
           monthly_limit?: number
           name?: string
+          price?: number
         }
         Relationships: []
       }
@@ -1358,6 +1370,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_change_user_plan: {
+        Args: { p_new_plan_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      admin_get_users_with_usage: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          last_usage_at: string
+          monthly_limit: number
+          plan_id: string
+          plan_name: string
+          profile_photo_url: string
+          used_this_month: number
+          user_id: string
+        }[]
+      }
+      admin_reset_user_usage: { Args: { p_user_id: string }; Returns: boolean }
       can_access_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
@@ -1365,6 +1396,7 @@ export type Database = {
       get_user_quota: {
         Args: { p_user_id: string }
         Returns: {
+          features: Json
           monthly_limit: number
           plan_id: string
           plan_name: string

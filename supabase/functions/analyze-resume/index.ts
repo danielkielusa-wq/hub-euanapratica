@@ -35,6 +35,64 @@ serve(async (req) => {
       });
     }
 
+    const userId = claims.user.id;
+
+    // ========== SMART GATEKEEPER: Check subscription and quota ==========
+    
+    // 1. Get user's subscription and plan details
+    const { data: subData } = await supabase
+      .from("user_subscriptions")
+      .select("plan_id, plans(monthly_limit, features)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    // Default to basic plan if no subscription
+    const planId = subData?.plan_id || "basic";
+    // Handle the nested plans object which could be an array or single object
+    const plansData = subData?.plans;
+    const planObj = Array.isArray(plansData) ? plansData[0] : plansData;
+    const plan = planObj as { monthly_limit: number; features: Record<string, boolean> } | null || { 
+      monthly_limit: 1, 
+      features: {} 
+    };
+    const features = plan.features || {};
+
+    // 2. Count usage this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count: usageCount, error: countError } = await supabase
+      .from("usage_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("app_id", "curriculo_usa")
+      .gte("created_at", startOfMonth.toISOString());
+
+    if (countError) {
+      console.error("Error counting usage:", countError);
+    }
+
+    const currentUsage = usageCount || 0;
+
+    // 3. Check if quota exceeded
+    if (currentUsage >= plan.monthly_limit) {
+      return new Response(
+        JSON.stringify({
+          error_code: "LIMIT_REACHED",
+          error: "Limite mensal atingido",
+          error_message: `Você atingiu o limite de ${plan.monthly_limit} análise(s) do seu plano este mês.`,
+          plan_id: planId,
+          monthly_limit: plan.monthly_limit,
+          used: currentUsage,
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ========== END GATEKEEPER ==========
+
     const { filePath, jobDescription } = await req.json();
 
     if (!filePath || !jobDescription) {
@@ -75,7 +133,16 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = configData.value;
+    let systemPrompt = configData.value;
+
+    // ========== FEATURE STRIPPING: Modify prompt based on plan features ==========
+    if (!features.show_improvements) {
+      systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include improvements. Return an EMPTY array [] for the 'improvements' field.";
+    }
+    if (!features.show_cheat_sheet) {
+      systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include interview preparation. Return an EMPTY array [] for the 'interview_cheat_sheet' field.";
+    }
+    // ========== END FEATURE STRIPPING ==========
 
     // Download the resume file
     const { data: fileData, error: fileError } = await supabase.storage
@@ -396,6 +463,18 @@ serve(async (req) => {
     }
 
     const result = JSON.parse(toolCall.function.arguments);
+
+    // ========== RECORD USAGE: Log successful analysis ==========
+    const { error: logError } = await supabase.from("usage_logs").insert({
+      user_id: userId,
+      app_id: "curriculo_usa",
+    });
+
+    if (logError) {
+      console.error("Error logging usage:", logError);
+      // Don't fail the request, just log the error
+    }
+    // ========== END RECORD USAGE ==========
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

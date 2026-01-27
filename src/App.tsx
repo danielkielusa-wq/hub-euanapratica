@@ -43,6 +43,7 @@ import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
@@ -305,6 +306,11 @@ function AppRoutes() {
       <Route path="/admin/configuracoes" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminSettings />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/assinaturas" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminSubscriptions />
         </ProtectedRoute>
       } />
       

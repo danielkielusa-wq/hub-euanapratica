@@ -18,7 +18,8 @@ import {
   BookOpen,
   UserCog,
   Settings,
-  FileCheck
+  FileCheck,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
@@ -94,6 +95,7 @@ const roleNavSections: Record<string, NavSection[]> = {
       items: [
         { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
         { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
+        { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
         { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
       ],
     },

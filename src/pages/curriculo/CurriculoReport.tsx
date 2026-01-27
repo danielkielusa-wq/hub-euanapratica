@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, Wrench, GraduationCap, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, Wrench, GraduationCap, FileText, Loader2, Lock } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import {
   ReportHeader,
   MetricsRow,
@@ -15,16 +16,29 @@ import {
   InterviewCheatSheet,
   CriticalAlert,
 } from '@/components/curriculo/report';
+import { LockedFeature } from '@/components/curriculo/LockedFeature';
+import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import type { FullAnalysisResult } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
 export default function CurriculoReport() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { quota, isLoading: quotaLoading } = useSubscription();
   const [result, setResult] = useState<FullAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Get features from subscription
+  const features = quota?.features || {
+    allow_pdf: false,
+    show_improvements: false,
+    show_cheat_sheet: false,
+    impact_cards: false,
+    priority_support: false,
+  };
 
   useEffect(() => {
     // Load result from localStorage
@@ -48,6 +62,17 @@ export default function CurriculoReport() {
   };
 
   const handleDownloadPDF = async () => {
+    // Check if PDF is allowed in user's plan
+    if (!features.allow_pdf) {
+      setShowUpgradeModal(true);
+      toast({
+        title: 'Recurso Premium',
+        description: 'Exportar PDF está disponível nos planos Pro e VIP.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!reportRef.current) return;
     
     setIsGeneratingPDF(true);
@@ -129,11 +154,17 @@ export default function CurriculoReport() {
               onClick={handleDownloadPDF}
               disabled={isGeneratingPDF}
               className="gap-2 rounded-xl"
+              variant={features.allow_pdf ? "default" : "outline"}
             >
               {isGeneratingPDF ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Gerando arquivo...
+                </>
+              ) : !features.allow_pdf ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Baixar PDF
                 </>
               ) : (
                 <>
@@ -165,6 +196,9 @@ export default function CurriculoReport() {
                 >
                   <Wrench className="w-4 h-4" />
                   <span className="font-medium">Otimização</span>
+                  {!features.show_improvements && (
+                    <Lock className="w-3 h-3 ml-1 opacity-60" />
+                  )}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="preparation" 
@@ -172,6 +206,9 @@ export default function CurriculoReport() {
                 >
                   <GraduationCap className="w-4 h-4" />
                   <span className="font-medium">Preparação</span>
+                  {!features.show_cheat_sheet && (
+                    <Lock className="w-3 h-3 ml-1 opacity-60" />
+                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -199,23 +236,43 @@ export default function CurriculoReport() {
 
               {/* Tab 2: Otimização */}
               <TabsContent value="optimization" className="mt-6 animate-in fade-in duration-300">
-                <ImprovementsSection
-                  improvements={result.improvements}
-                  powerVerbs={result.power_verbs_suggestions}
-                />
+                <LockedFeature 
+                  isLocked={!features.show_improvements}
+                  featureName="Melhorias Sugeridas"
+                  onUpgrade={() => setShowUpgradeModal(true)}
+                >
+                  <ImprovementsSection
+                    improvements={result.improvements}
+                    powerVerbs={result.power_verbs_suggestions}
+                  />
+                </LockedFeature>
               </TabsContent>
 
               {/* Tab 3: Preparação */}
               <TabsContent value="preparation" className="mt-6 space-y-6 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <LinkedInQuickFix data={result.linkedin_fix} />
-                  <InterviewCheatSheet questions={result.interview_cheat_sheet} />
+                  
+                  <LockedFeature
+                    isLocked={!features.show_cheat_sheet}
+                    featureName="Cheat Sheet de Entrevista"
+                    onUpgrade={() => setShowUpgradeModal(true)}
+                  >
+                    <InterviewCheatSheet questions={result.interview_cheat_sheet} />
+                  </LockedFeature>
                 </div>
               </TabsContent>
             </Tabs>
           </div>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal}
+        currentPlanId={quota?.planId}
+      />
     </DashboardLayout>
   );
 }

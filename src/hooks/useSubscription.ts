@@ -1,12 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+interface PlanFeatures {
+  allow_pdf: boolean;
+  show_improvements: boolean;
+  show_cheat_sheet: boolean;
+  impact_cards: boolean;
+  priority_support: boolean;
+}
+
 interface UserQuota {
   planId: string;
   planName: string;
   monthlyLimit: number;
   usedThisMonth: number;
   remaining: number;
+  features: PlanFeatures;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  monthlyLimit: number;
+  displayFeatures: string[];
+  ctaText: string;
+  isPopular: boolean;
+  features: PlanFeatures;
 }
 
 interface UseSubscriptionReturn {
@@ -15,7 +35,16 @@ interface UseSubscriptionReturn {
   error: string | null;
   refetch: () => Promise<void>;
   recordUsage: () => Promise<boolean>;
+  fetchPlans: () => Promise<Plan[]>;
 }
+
+const DEFAULT_FEATURES: PlanFeatures = {
+  allow_pdf: false,
+  show_improvements: false,
+  show_cheat_sheet: false,
+  impact_cards: false,
+  priority_support: false,
+};
 
 export function useSubscription(): UseSubscriptionReturn {
   const [quota, setQuota] = useState<UserQuota | null>(null);
@@ -46,12 +75,25 @@ export function useSubscription(): UseSubscriptionReturn {
       const row = Array.isArray(data) ? data[0] : data;
       
       if (row) {
+        // Parse features from JSONB - handle both array and object
+        const rawFeatures = row.features;
+        const featuresObj = (typeof rawFeatures === 'object' && rawFeatures !== null && !Array.isArray(rawFeatures))
+          ? rawFeatures as unknown as PlanFeatures
+          : DEFAULT_FEATURES;
+
         setQuota({
           planId: row.plan_id,
           planName: row.plan_name,
           monthlyLimit: row.monthly_limit,
           usedThisMonth: row.used_this_month,
           remaining: row.remaining,
+          features: {
+            allow_pdf: featuresObj.allow_pdf ?? false,
+            show_improvements: featuresObj.show_improvements ?? false,
+            show_cheat_sheet: featuresObj.show_cheat_sheet ?? false,
+            impact_cards: featuresObj.impact_cards ?? false,
+            priority_support: featuresObj.priority_support ?? false,
+          },
         });
       } else {
         // Default to basic plan if no data
@@ -61,6 +103,7 @@ export function useSubscription(): UseSubscriptionReturn {
           monthlyLimit: 1,
           usedThisMonth: 0,
           remaining: 1,
+          features: DEFAULT_FEATURES,
         });
       }
     } catch (err) {
@@ -93,6 +136,34 @@ export function useSubscription(): UseSubscriptionReturn {
     }
   }, [fetchQuota]);
 
+  const fetchPlans = useCallback(async (): Promise<Plan[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('id, name, price, monthly_limit, display_features, cta_text, is_popular, features')
+        .eq('is_active', true)
+        .order('price', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price) || 0,
+        monthlyLimit: p.monthly_limit,
+        displayFeatures: Array.isArray(p.display_features) ? p.display_features as string[] : [],
+        ctaText: p.cta_text,
+        isPopular: p.is_popular,
+        features: (typeof p.features === 'object' && p.features !== null && !Array.isArray(p.features))
+          ? p.features as unknown as PlanFeatures
+          : DEFAULT_FEATURES,
+      }));
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     fetchQuota();
   }, [fetchQuota]);
@@ -103,5 +174,6 @@ export function useSubscription(): UseSubscriptionReturn {
     error,
     refetch: fetchQuota,
     recordUsage,
+    fetchPlans,
   };
 }
