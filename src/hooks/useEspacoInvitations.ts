@@ -235,28 +235,33 @@ export function useInvitationByToken(token: string | null) {
     queryFn: async () => {
       if (!token) return null;
 
+      // Use secure RPC function to fetch invitation by token
+      // This prevents email/PII exposure through RLS policy
       const { data, error } = await supabase
-        .from('espaco_invitations')
-        .select(`
-          *,
-          espacos:espaco_id (
-            id,
-            name,
-            description,
-            cover_image_url
-          )
-        `)
-        .eq('token', token)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
+        .rpc('get_invitation_by_token', { _token: token });
 
       if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
+        console.error('Error fetching invitation:', error);
+        return null;
       }
 
-      return data;
+      if (!data || data.length === 0) return null;
+
+      // Transform to match expected format
+      const invitation = data[0];
+      return {
+        id: invitation.id,
+        espaco_id: invitation.espaco_id,
+        invited_name: invitation.invited_name,
+        status: invitation.status,
+        expires_at: invitation.expires_at,
+        espacos: {
+          id: invitation.espaco_id,
+          name: invitation.espaco_name,
+          description: invitation.espaco_description,
+          cover_image_url: invitation.espaco_cover_image_url,
+        },
+      };
     },
     enabled: !!token,
   });

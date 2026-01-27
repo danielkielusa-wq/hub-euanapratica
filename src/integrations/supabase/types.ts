@@ -1393,6 +1393,19 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      get_invitation_by_token: {
+        Args: { _token: string }
+        Returns: {
+          espaco_cover_image_url: string
+          espaco_description: string
+          espaco_id: string
+          espaco_name: string
+          expires_at: string
+          id: string
+          invited_name: string
+          status: Database["public"]["Enums"]["invitation_status"]
+        }[]
+      }
       get_user_quota: {
         Args: { p_user_id: string }
         Returns: {
