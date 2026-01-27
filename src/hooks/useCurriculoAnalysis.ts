@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { FullAnalysisResult, AnalysisError } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
@@ -18,6 +19,7 @@ interface AnalysisState {
 export function useCurriculoAnalysis() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { quota, recordUsage, refetch: refetchQuota } = useSubscription();
   const [state, setState] = useState<AnalysisState>({
     status: 'idle',
     uploadedFile: null,
@@ -50,6 +52,16 @@ export function useCurriculoAnalysis() {
       toast({
         title: 'Campos obrigatórios',
         description: 'Por favor, envie seu currículo e cole a descrição da vaga.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check quota before proceeding
+    if (quota && quota.remaining <= 0) {
+      toast({
+        title: 'Limite de análises atingido',
+        description: `Você já usou suas ${quota.monthlyLimit} análises do plano ${quota.planName} este mês. Faça upgrade para continuar.`,
         variant: 'destructive',
       });
       return;
@@ -108,6 +120,9 @@ export function useCurriculoAnalysis() {
       // Step 4: Store result in localStorage and navigate
       localStorage.setItem(CURRICULO_RESULT_STORAGE_KEY, JSON.stringify(data));
       
+      // Step 5: Record usage after successful analysis
+      await recordUsage();
+      
       setState(prev => ({
         ...prev,
         status: 'complete',
@@ -141,10 +156,12 @@ export function useCurriculoAnalysis() {
 
   return {
     ...state,
+    quota,
     setFile,
     setJobDescription,
     analyze,
     reset,
-    canAnalyze: !!state.uploadedFile && !!state.jobDescription.trim(),
+    canAnalyze: !!state.uploadedFile && !!state.jobDescription.trim() && (!quota || quota.remaining > 0),
+    refetchQuota,
   };
 }
