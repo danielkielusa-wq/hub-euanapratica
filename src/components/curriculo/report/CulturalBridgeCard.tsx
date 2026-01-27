@@ -18,13 +18,15 @@ export function CulturalBridgeCard({ data }: CulturalBridgeCardProps) {
         </h3>
       </div>
 
-      {/* Title Comparison */}
-      <div className="flex items-center justify-between gap-4 mb-4">
-        {/* Brazil Title */}
-        <div className="flex-1 text-center">
-          <div className="inline-flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3">
-            <span className="text-lg">🇧🇷</span>
-            <span className="text-sm font-semibold text-gray-700 truncate">
+      {/* Title Comparison - Clean design without flags */}
+      <div className="flex items-center gap-3 mb-4">
+        {/* Original Title */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-gray-50 rounded-xl px-4 py-3">
+            <span 
+              className="text-sm font-semibold text-gray-700 block break-words leading-tight text-center"
+              style={{ hyphens: 'auto' }}
+            >
               {data.brazil_title}
             </span>
           </div>
@@ -33,11 +35,13 @@ export function CulturalBridgeCard({ data }: CulturalBridgeCardProps) {
         {/* Arrow */}
         <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
 
-        {/* US Title */}
-        <div className="flex-1 text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/5 rounded-xl px-4 py-3">
-            <span className="text-lg">🇺🇸</span>
-            <span className="text-sm font-semibold text-primary truncate">
+        {/* US Equivalent Title */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-primary/10 rounded-xl px-4 py-3">
+            <span 
+              className="text-sm font-semibold text-primary block break-words leading-tight text-center"
+              style={{ hyphens: 'auto' }}
+            >
               {data.us_equivalent}
             </span>
           </div>

@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
-import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { ImprovementCard } from './ImprovementCard';
 import type { Improvement } from '@/types/curriculo';
 
@@ -11,9 +13,13 @@ interface ImprovementsSectionProps {
 
 const ITEMS_PER_PAGE = 3;
 
+const POWER_VERBS_TOOLTIP = 
+  "Recrutadores americanos escaneiam seu currículo em busca de verbos de ação que demonstrem liderança e iniciativa. Use estas sugestões para substituir verbos passivos e aumentar o impacto das suas conquistas.";
+
 export function ImprovementsSection({ improvements, powerVerbs }: ImprovementsSectionProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   const totalPages = Math.ceil(improvements.length / ITEMS_PER_PAGE);
   
   const startIndex = currentPage * ITEMS_PER_PAGE;
@@ -31,6 +37,22 @@ export function ImprovementsSection({ improvements, powerVerbs }: ImprovementsSe
   const scrollRight = () => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollBy({ left: 150, behavior: 'smooth' });
+    }
+  };
+
+  const handleVerbCopy = async (verb: string) => {
+    try {
+      await navigator.clipboard.writeText(verb);
+      toast({
+        title: 'Copiado!',
+        description: `"${verb}" copiado para a área de transferência.`,
+      });
+    } catch {
+      toast({
+        title: 'Erro ao copiar',
+        description: 'Não foi possível copiar o verbo.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -80,7 +102,7 @@ export function ImprovementsSection({ improvements, powerVerbs }: ImprovementsSe
         )}
       </div>
 
-      {/* Power Verbs Horizontal Scroll */}
+      {/* Power Verbs Horizontal Scroll with Tooltip */}
       {powerVerbs.length > 0 && (
         <div className="relative">
           <Button
@@ -97,16 +119,31 @@ export function ImprovementsSection({ improvements, powerVerbs }: ImprovementsSe
             className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-10 py-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex-shrink-0 mr-2">
-              Power Verbs:
-            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 mr-2 cursor-help">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Power Verbs:
+                    </span>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-center">
+                  <p className="text-sm">{POWER_VERBS_TOOLTIP}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
             {powerVerbs.map((verb, index) => (
-              <span
+              <button
                 key={index}
-                className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium flex-shrink-0"
+                onClick={() => handleVerbCopy(verb)}
+                className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium flex-shrink-0 cursor-pointer hover:bg-primary/20 transition-colors"
+                title="Clique para copiar"
               >
                 {verb}
-              </span>
+              </button>
             ))}
           </div>
           
