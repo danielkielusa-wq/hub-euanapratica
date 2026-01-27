@@ -1,412 +1,320 @@
 
-
-# Currículo USA - Stage 1 Implementation Plan
+# Currículo USA v2.0 - Enhanced Analysis Report Implementation
 
 ## Overview
 
-"Currículo USA" is an AI-powered resume analyzer that helps students and mentors compare their resumes against US job descriptions. This Stage 1 focuses on building the user interface for upload, job description input, and loading states.
+This implementation upgrades the Currículo USA feature from a basic 5-field analysis to a comprehensive career consulting report using the full 20+ field JSON schema already configured in the admin prompt. The UI will match the provided reference designs with a premium "Clean Startup" aesthetic.
 
 ---
 
-## Feature Access
+## Current vs. Target State
 
-The feature will be accessible from the sidebar navigation for:
-- **Students**: New item under "OVERVIEW" section
-- **Mentors**: New item under "OVERVIEW" section  
-- **Admins**: Access via Admin Settings to manage the AI prompt
-
----
-
-## Architecture Overview
-
-```text
-+------------------+     +-------------------+     +------------------+
-|   Frontend UI    | --> |   Edge Function   | --> |   Lovable AI     |
-|  (React Page)    |     | (analyze-resume)  |     | (Gemini/GPT)     |
-+------------------+     +-------------------+     +------------------+
-        |                        |
-        v                        v
-+------------------+     +-------------------+
-| Supabase Storage |     | app_configs Table |
-|  (temp-resumes)  |     | (AI Prompt Store) |
-+------------------+     +-------------------+
-```
+| Aspect | Current | Target |
+|--------|---------|--------|
+| AI Response Fields | 5 (score, summary, strengths, improvements, keywords) | 20+ (header, metrics, cultural_bridge, market_value, improvements with before/after, linkedin_fix, interview_cheat_sheet, etc.) |
+| Score Display | Simple progress bar | Radial gauge chart with color coding |
+| Metrics | None | 4-card grid (ATS, Keywords, Verbs, Brevity) |
+| Improvements | Simple text list | Before/After cards with tags + copy button |
+| Model | gemini-3-flash-preview | gemini-2.5-pro (better for complex structured output) |
 
 ---
 
-## Database Schema
+## Reference Design Analysis
 
-A new `app_configs` table will store configurable settings like the AI prompt:
+Based on the uploaded images:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| key | text | Config key (unique) - e.g., "resume_analyzer_prompt" |
-| value | text | Config value (the AI prompt) |
-| updated_at | timestamptz | Last update timestamp |
-| updated_by | uuid | User who last updated |
+**Image 1 (Score Section):**
+- Radial gauge with score (82) in center + "SCORE" label
+- Status badge: "COMPATIBILIDADE DE MERCADO: ALTA" (purple gradient)
+- Main message: "Seu perfil e muito competitivo." (gradient text on "competitivo")
+- Sub message: percentage ranking
+- 2-column grid: Cultural Bridge card (left) + Market Value card (right)
+- 4-column metrics row: Formatacao ATS, Palavras-Chave, Verbos de Acao, Brevidade
 
-**RLS Policies:**
-- Everyone can READ configs
-- Only admins can UPDATE configs
+**Image 2 (Improvements Section):**
+- Section title: "Melhoria de Impacto" with TrendingUp icon
+- Subtitle: "Nossa IA reescreveu seus bullet points..."
+- Pagination indicator (1/2)
+- Power Verbs row: pill-shaped badges
+- Improvement cards with:
+  - Category tags (QUANTIFICACAO, POWER VERB, LIDERANCA, etc.)
+  - Impact label badge on right (IMPACTO, CLAREZA)
+  - ORIGINAL section with strikethrough text
+  - US STANDARD section with sparkles icon + "Copiar" button
+  - Divider line between sections
 
----
-
-## File Structure
-
-```text
-src/
-├── pages/
-│   ├── curriculo/
-│   │   └── CurriculoUSA.tsx          # Main page (students/mentors)
-│   └── admin/
-│       └── AdminSettings.tsx          # Admin config page (new)
-│
-├── components/
-│   └── curriculo/
-│       ├── ResumeUploadCard.tsx       # Drag-drop upload zone
-│       ├── JobDescriptionCard.tsx     # Textarea for job description
-│       ├── AnalyzingLoader.tsx        # Animated loading screen
-│       └── CurriculoHeader.tsx        # Page header with title/credits
-│
-├── hooks/
-│   └── useCurriculoAnalysis.ts        # Hook for AI analysis
-│
-supabase/
-└── functions/
-    └── analyze-resume/
-        └── index.ts                    # Edge function for AI call
-```
+**Image 3 (LinkedIn + Interview):**
+- LinkedIn Quick-Fix card: LinkedIn icon, headline in gray box, copy button
+- Cheat Sheet: Entrevista card: numbered list of interview questions
 
 ---
 
-## Screen 1: Input View
+## Files to Create/Modify
 
-### Visual Design (Following Reference)
+### New Files
 
-**Background**: `#F5F5F7` (light gray)
+| File | Purpose |
+|------|---------|
+| `src/types/curriculo.ts` | TypeScript interfaces for full analysis result |
+| `src/pages/curriculo/CurriculoReport.tsx` | Report page layout |
+| `src/components/curriculo/report/ScoreGauge.tsx` | Radial gauge SVG component |
+| `src/components/curriculo/report/ReportHeader.tsx` | Score + status + messages |
+| `src/components/curriculo/report/MetricsRow.tsx` | 4-metric cards grid |
+| `src/components/curriculo/report/CulturalBridgeCard.tsx` | Brazil → US title card |
+| `src/components/curriculo/report/MarketValueCard.tsx` | Salary range card |
+| `src/components/curriculo/report/ImprovementsSection.tsx` | Section wrapper with pagination |
+| `src/components/curriculo/report/PowerVerbsRow.tsx` | Suggested power verbs pills |
+| `src/components/curriculo/report/ImprovementCard.tsx` | Before/after with copy |
+| `src/components/curriculo/report/LinkedInQuickFix.tsx` | LinkedIn headline card |
+| `src/components/curriculo/report/InterviewCheatSheet.tsx` | Interview questions list |
+| `src/components/curriculo/report/index.ts` | Barrel export |
 
-**Layout Structure:**
-1. **Header Row** - Title with icon + Credits badge (right-aligned)
-2. **Hero Section** - Large centered title with gradient highlight
-3. **Subtitle** - Descriptive text about ATS simulation
-4. **2-Column Grid** - Upload card + Job description card
-5. **CTA Button** - Large centered "Analisar Compatibilidade Agora"
+### Modified Files
 
-### Component Details
-
-**CurriculoHeader.tsx**
-```text
-┌────────────────────────────────────────────────────┐
-│ [■] Currículo USA                    [∞ Créditos] │
-└────────────────────────────────────────────────────┘
-```
-- Left: Gray-900 icon box + "Currículo USA" title
-- Right: Pill-shaped badge showing credits (future use)
-
-**Hero Title**
-```text
-       Seu currículo está pronto para o
-              mercado Americano?
-```
-- Font: Inter ExtraBold, 4xl/5xl
-- "mercado Americano?" has gradient: from-brand-600 to-indigo-600
-
-**Subtitle**
-```text
-Compare seu CV com a vaga desejada e vença o ATS 
-(Applicant Tracking System). Nossa IA simula os robôs 
-de recrutamento dos EUA para te dar um score real.
-```
-
-**ResumeUploadCard.tsx**
-```text
-┌──────────────────────────────────────┐
-│           ┌─────────┐                │
-│           │   ⬆️    │ (gray-50 box)   │
-│           └─────────┘                │
-│                                      │
-│          Seu Currículo               │
-│  Arraste e solte seu arquivo         │
-│  (PDF/DOCX) aqui ou clique para      │
-│             enviar.                  │
-│                                      │
-│  📄 FORMATO PREFERENCIAL: PDF        │
-└──────────────────────────────────────┘
-
-Styling:
-- rounded-[32px]
-- border-2 dashed border-gray-200
-- Hover: border-brand-500, bg-brand-50/50
-- Height: 320px
-```
-
-**JobDescriptionCard.tsx**
-```text
-┌──────────────────────────────────────┐
-│                                      │
-│  Cole aqui a Descrição da Vaga       │
-│  (Job Description) que você deseja   │
-│  aplicar...                          │
-│                                      │
-│                                      │
-│                                      │
-│                             [💼]     │
-└──────────────────────────────────────┘
-
-Styling:
-- rounded-[32px]
-- border border-gray-200
-- shadow-sm
-- Full-height textarea, no border
-- Briefcase icon bottom-right (ghost)
-```
-
-**CTA Button**
-```text
-     ┌──────────────────────────────────┐
-     │ ✨ Analisar Compatibilidade Agora │
-     └──────────────────────────────────┘
-
-Styling:
-- bg-brand-600 (#2563EB)
-- rounded-[20px]
-- py-5 px-16
-- shadow-xl shadow-brand-600/30
-- Hover: subtle shimmer animation
-```
+| File | Changes |
+|------|---------|
+| `supabase/functions/analyze-resume/index.ts` | Update tool schema to full 20+ fields, switch to gemini-2.5-pro |
+| `src/hooks/useCurriculoAnalysis.ts` | Update types, add navigation to report page |
+| `src/pages/curriculo/CurriculoUSA.tsx` | Navigate to report after analysis |
+| `src/App.tsx` | Add `/curriculo/resultado` route |
+| `src/components/curriculo/index.ts` | Export new components |
 
 ---
 
-## Screen 2: Loading View
+## Implementation Details
 
-### Visual Design
+### Phase 1: TypeScript Interfaces
 
-**Full-height centered container** with:
-
-**Animated Icon**
-```text
-        ╭──────────────╮
-       │   ╭──────╮    │  ← Outer ring: pulsating (animate-ping)
-       │   │  ✨  │    │  ← Inner: Sparkles icon (#2563EB)
-       │   ╰──────╯    │
-        ╰──────────────╯
-
-Container: w-32 h-32 white circle
-Outer ring: bg-brand-500 rounded-full opacity-20 animate-ping
-```
-
-**Text**
-```text
-      Analisando seu Currículo...
-      
-  Nossa IA está comparando suas experiências
-   com os requisitos da vaga e padrões americanos.
-```
-- Title: font-bold text-gray-900
-- Subtitle: text-gray-500
-
----
-
-## State Management
-
-**useCurriculoAnalysis.ts Hook**
+Create `src/types/curriculo.ts` with the full analysis result interface:
 
 ```typescript
-interface AnalysisState {
-  status: 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
-  uploadedFile: File | null;
-  jobDescription: string;
-  result: AnalysisResult | null;
-  error: string | null;
-}
-
-interface AnalysisResult {
-  score: number;              // 0-100 compatibility score
-  summary: string;            // Brief summary
-  strengths: string[];        // What matches well
-  improvements: string[];     // What to improve
-  keywords: {                 // Keyword analysis
-    found: string[];
-    missing: string[];
+export interface FullAnalysisResult {
+  header: {
+    score: number;
+    status_tag: string;
+    main_message: string;
+    sub_message: string;
   };
+  metrics: {
+    ats_format: MetricItem;
+    keywords: KeywordsMetric;
+    action_verbs: VerbsMetric;
+    impact_metrics: ImpactMetric;
+    brevity: BrevityMetric;
+  };
+  cultural_bridge: {
+    brazil_title: string;
+    us_equivalent: string;
+    explanation: string;
+  };
+  market_value: {
+    range: string;
+    context: string;
+  };
+  power_verbs_suggestions: string[];
+  improvements: Improvement[];
+  linkedin_fix: {
+    headline: string;
+    reasoning_pt: string;
+  };
+  interview_cheat_sheet: InterviewQuestion[];
+  // ... etc
 }
 ```
 
----
+### Phase 2: Edge Function Update
 
-## Edge Function: analyze-resume
+Update `supabase/functions/analyze-resume/index.ts`:
 
-**Flow:**
-1. Receive resume file path + job description
-2. Fetch current AI prompt from `app_configs` table
-3. Parse the resume content (PDF/DOCX)
-4. Call Lovable AI with dynamic prompt
-5. Return structured analysis result
+1. Change model to `google/gemini-2.5-pro` for complex structured output
+2. Expand tool calling schema to include all 20+ fields
+3. Ensure proper nesting for metrics, improvements, etc.
 
-**Implementation Notes:**
-- Uses `LOVABLE_API_KEY` (already configured)
-- Model: `google/gemini-3-flash-preview` (default)
-- Uses tool calling for structured output
+**Key Schema Changes:**
+- Add `header` object with score, status_tag, main_message, sub_message
+- Add `metrics` object with 5 sub-objects (ats_format, keywords, action_verbs, impact_metrics, brevity)
+- Add `cultural_bridge` object
+- Add `market_value` object
+- Add `power_verbs_suggestions` array
+- Update `improvements` to include tags, original, improved, impact_label
+- Add `linkedin_fix` object
+- Add `interview_cheat_sheet` array
 
----
+### Phase 3: Report UI Components
 
-## Admin Prompt Management
+**ScoreGauge.tsx**
+- SVG-based radial progress indicator
+- Color coded: green (75+), yellow (50-74), red (<50)
+- Center displays score + "SCORE" label
+- Outer ring shows progress arc
 
-**Admin Settings Page** (new route: `/admin/configuracoes`)
+**ReportHeader.tsx**
+- Purple gradient status badge
+- Large title with gradient highlight on key word
+- Percentile sub-message
+- Back button to analyze another resume
 
-A simple interface for admins to:
-1. View current AI prompt
-2. Edit and save the prompt
-3. See when it was last updated
+**MetricsRow.tsx**
+- 4-column responsive grid (1 col mobile, 2 tablet, 4 desktop)
+- Each card: icon, label, score badge, status text
+- Color coding: green=100%, orange=60-99%, yellow=<60%
 
-**UI:**
+**CulturalBridgeCard.tsx**
+- Globe icon in blue container
+- Brazil title with flag indicator
+- Arrow → US title with flag indicator
+- Explanation text below
+
+**MarketValueCard.tsx**
+- Dollar icon in green container
+- Large salary range text
+- Context message (e.g., "+15% acima da media global")
+
+**ImprovementsSection.tsx**
+- Section header with icon and pagination
+- PowerVerbsRow with 5 verb pills
+- Map through improvements array
+
+**ImprovementCard.tsx**
+- Category tags (pill badges) on left
+- Impact label badge on right
+- ORIGINAL section: gray text with line-through
+- US STANDARD section: dark text with Sparkles icon + Copiar button
+- Copy-to-clipboard functionality with toast notification
+
+**LinkedInQuickFix.tsx**
+- LinkedIn icon in blue container
+- Headline in gray/white box
+- Copy button
+
+**InterviewCheatSheet.tsx**
+- Question mark icon
+- Numbered list of interview questions
+- Each question in italics
+
+### Phase 4: Report Page Layout
+
+**CurriculoReport.tsx**
 ```text
-┌─────────────────────────────────────────────────────┐
-│  Configurações da Plataforma                        │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  Analisador de Currículos - Prompt de IA           │
-│  ┌─────────────────────────────────────────────┐   │
-│  │ Você é um especialista em recrutamento...   │   │
-│  │ ...                                          │   │
-│  │                                              │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  Última atualização: 27/01/2026 por Admin          │
-│                                                     │
-│                           [Salvar Alterações]       │
-└─────────────────────────────────────────────────────┘
+<DashboardLayout>
+  <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8">
+    <div className="max-w-5xl mx-auto space-y-8">
+      
+      {/* Header with Back Button */}
+      <Button variant="ghost" onClick={goBack}>
+        ← Nova Analise
+      </Button>
+      
+      {/* Score Section */}
+      <ReportHeader result={result} />
+      
+      {/* Metrics Row */}
+      <MetricsRow metrics={result.metrics} />
+      
+      {/* Cultural Bridge + Market Value Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CulturalBridgeCard data={result.cultural_bridge} />
+        <MarketValueCard data={result.market_value} />
+      </div>
+      
+      {/* Improvements Section */}
+      <ImprovementsSection 
+        improvements={result.improvements}
+        powerVerbs={result.power_verbs_suggestions}
+      />
+      
+      {/* LinkedIn + Interview Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <LinkedInQuickFix data={result.linkedin_fix} />
+        <InterviewCheatSheet questions={result.interview_cheat_sheet} />
+      </div>
+      
+    </div>
+  </div>
+</DashboardLayout>
 ```
 
----
+### Phase 5: State Management & Navigation
 
-## Navigation Updates
+**Update useCurriculoAnalysis.ts:**
+1. Import `useNavigate` from react-router-dom
+2. Store result in localStorage for page refresh persistence
+3. After successful analysis, navigate to `/curriculo/resultado`
+4. Add method to retrieve stored result
 
-**DashboardLayout.tsx Updates:**
-
+**Update App.tsx:**
 ```typescript
-// Student navigation (line 42-57)
-student: [
-  {
-    label: 'OVERVIEW',
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
-      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },  // NEW
-      { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
-    ],
-  },
-  // ...
-],
-
-// Mentor navigation (line 59-76)
-mentor: [
-  {
-    label: 'OVERVIEW',
-    items: [
-      // ...existing items...
-      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },  // NEW
-    ],
-  },
-  // ...
-],
-
-// Admin navigation (line 77-97)
-admin: [
-  // ...existing items...
-  {
-    label: 'CONFIGURAÇÕES',
-    items: [
-      { label: 'Configurações', href: '/admin/configuracoes', icon: Settings }, // NEW
-    ],
-  },
-],
-```
-
----
-
-## Routes (App.tsx)
-
-```typescript
-// Add new routes
-<Route path="/curriculo" element={
+<Route path="/curriculo/resultado" element={
   <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-    <CurriculoUSA />
-  </ProtectedRoute>
-} />
-
-<Route path="/admin/configuracoes" element={
-  <ProtectedRoute allowedRoles={['admin']}>
-    <AdminSettings />
+    <CurriculoReport />
   </ProtectedRoute>
 } />
 ```
+
+---
+
+## Design System Specifications
+
+Following the "Clean Startup" aesthetic from references:
+
+| Element | Style |
+|---------|-------|
+| Background | `#F5F5F7` (Apple light gray) |
+| Cards | `bg-white rounded-[24px] border border-gray-100 shadow-sm` |
+| Status Badge | `bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-full px-4 py-1.5` |
+| Metric Cards | `rounded-[20px]` with colored icon containers |
+| Score Colors | Green: `#22c55e`, Yellow: `#f59e0b`, Red: `#ef4444` |
+| Category Tags | `bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-medium` |
+| Impact Badge | `bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-semibold` |
+| Copy Button | Ghost variant with icon, shows toast on click |
 
 ---
 
 ## Implementation Order
 
-### Phase 1: Database Setup
-1. Create `app_configs` table with RLS policies
-2. Insert default AI prompt
-
-### Phase 2: UI Components
-1. Create `CurriculoHeader.tsx`
-2. Create `ResumeUploadCard.tsx` (with react-dropzone)
-3. Create `JobDescriptionCard.tsx`
-4. Create `AnalyzingLoader.tsx`
-5. Create main `CurriculoUSA.tsx` page
-
-### Phase 3: Navigation
-1. Update `DashboardLayout.tsx` with new menu items
-2. Add routes in `App.tsx`
-
-### Phase 4: Backend
-1. Create `analyze-resume` edge function
-2. Create `useCurriculoAnalysis.ts` hook
-
-### Phase 5: Admin
-1. Create `AdminSettings.tsx` page
-2. Create `useAppConfigs.ts` hook for admin
-
----
-
-## Default AI Prompt
-
-The system will include a default prompt that administrators can customize:
-
-```text
-Você é um especialista em recrutamento e ATS (Applicant Tracking Systems) do mercado americano.
-
-Analise o currículo fornecido em comparação com a descrição da vaga e forneça:
-
-1. **Score de Compatibilidade** (0-100): Baseado em keywords, experiência e formatação
-2. **Pontos Fortes**: O que no currículo se alinha bem com a vaga
-3. **Melhorias Sugeridas**: O que precisa ser ajustado para aumentar as chances
-4. **Análise de Keywords**: 
-   - Keywords encontradas no currículo
-   - Keywords importantes da vaga que estão faltando
-
-Considere os padrões americanos de formatação de currículo:
-- Uma página para até 10 anos de experiência
-- Foco em resultados quantificáveis
-- Verbos de ação no passado
-- Sem foto, idade ou informações pessoais desnecessárias
-
-Responda em português brasileiro de forma clara e direta.
-```
+1. **Create TypeScript interfaces** (`src/types/curriculo.ts`)
+2. **Update Edge Function** with full schema (deploy and test)
+3. **Create report components** (ScoreGauge, MetricsRow, etc.)
+4. **Create CurriculoReport page**
+5. **Update navigation and routing**
+6. **Update useCurriculoAnalysis hook** for navigation
+7. **Test full flow**
 
 ---
 
 ## Technical Notes
 
-1. **File Parsing**: For this stage, we'll send the file to the edge function and use Lovable AI's multimodal capabilities to read PDF content directly
+1. **Model Upgrade**: Using `google/gemini-2.5-pro` instead of flash for better structured output with complex nested schemas
 
-2. **Storage**: Temporary files stored in `temp-resumes` bucket, auto-deleted after analysis
+2. **Copy to Clipboard**: Use `navigator.clipboard.writeText()` with toast feedback
 
-3. **Credits**: Placeholder for now - will show "∞ Créditos" (infinite credits since it's free)
+3. **State Persistence**: Store result in localStorage to survive page refresh. Clear on "Nova Analise"
 
-4. **Styling**: Following the "Clean Startup" design system from the reference images with rounded-[32px] cards, soft shadows, and gradient accents
+4. **Pagination**: Improvements section shows 3 items per page with prev/next controls
 
+5. **Responsive Design**: 
+   - Mobile: single column, stacked cards
+   - Tablet: 2-column grids
+   - Desktop: 4-column metrics row
+
+6. **Animation**: Subtle fade-in on page load using existing `animate-fade-slide-up`
+
+---
+
+## Expected User Flow
+
+1. User uploads resume + pastes job description
+2. Clicks "Analisar Compatibilidade Agora"
+3. Loading animation displays
+4. AI processes (10-20 seconds for full analysis)
+5. Navigates to `/curriculo/resultado`
+6. Report displays with all sections:
+   - Score gauge + status message
+   - 4 metrics cards
+   - Cultural Bridge + Market Value
+   - Power Verbs suggestions
+   - Before/After improvement cards with copy buttons
+   - LinkedIn headline with copy
+   - Interview cheat sheet questions
+7. User can copy improved bullet points directly
+8. "Nova Analise" button returns to input screen
