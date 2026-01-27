@@ -1,147 +1,412 @@
 
-# Plan: Fix Invitation Email System Error Handling
 
-## Problem Diagnosis
+# Currículo USA - Stage 1 Implementation Plan
 
-After investigating the edge function logs and analytics:
+## Overview
 
-1. **Root Cause Identified**: The 401 error was caused by an **expired user session**
-   - Analytics show: `POST | 401 | send-espaco-invitation`
-   - The user is currently on `/login` page (session expired)
-   - When the user tried to send an invitation, their auth token was no longer valid
-
-2. **Secondary Issue**: The error message "Edge Function returned a non-2xx status code" is not user-friendly. The frontend should show a clearer message like "Your session expired. Please log in again."
-
-3. **Good News**: The `RESEND_API_KEY` is already configured and the edge function code is correct
+"Currículo USA" is an AI-powered resume analyzer that helps students and mentors compare their resumes against US job descriptions. This Stage 1 focuses on building the user interface for upload, job description input, and loading states.
 
 ---
 
-## Solution Overview
+## Feature Access
 
-The fix requires improving error handling on both the **edge function** and **frontend** to provide better feedback when authentication fails.
-
-### Changes Needed
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/send-espaco-invitation/index.ts` | Update | Add better error messages for auth failures |
-| `src/hooks/useEspacoInvitations.ts` | Update | Parse error responses and show helpful messages |
+The feature will be accessible from the sidebar navigation for:
+- **Students**: New item under "OVERVIEW" section
+- **Mentors**: New item under "OVERVIEW" section  
+- **Admins**: Access via Admin Settings to manage the AI prompt
 
 ---
 
-## Implementation Details
-
-### Phase 1: Improve Edge Function Error Responses
-
-The edge function should return more descriptive error messages that the frontend can use:
-
-```typescript
-// When auth header missing or invalid format
-return new Response(
-  JSON.stringify({ 
-    error: "Unauthorized", 
-    code: "AUTH_MISSING",
-    message: "Sessão não encontrada. Por favor, faça login novamente." 
-  }),
-  { status: 401, ... }
-);
-
-// When token validation fails
-return new Response(
-  JSON.stringify({ 
-    error: "Unauthorized", 
-    code: "AUTH_EXPIRED",
-    message: "Sua sessão expirou. Por favor, faça login novamente." 
-  }),
-  { status: 401, ... }
-);
-```
-
-### Phase 2: Improve Frontend Error Handling
-
-The `useInviteStudent` hook should parse the error response and show user-friendly messages:
-
-```typescript
-mutationFn: async (data: InviteStudentData): Promise<InviteResponse> => {
-  const { data: session } = await supabase.auth.getSession();
-  if (!session?.session?.access_token) {
-    throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
-  }
-
-  const response = await supabase.functions.invoke('send-espaco-invitation', {
-    body: { ... },
-  });
-
-  if (response.error) {
-    // Parse the error response for better messages
-    const errorData = response.error.context?.body 
-      ? JSON.parse(response.error.context.body) 
-      : null;
-    
-    const errorMessage = errorData?.message 
-      || errorData?.error 
-      || 'Erro ao enviar convite';
-    
-    throw new Error(errorMessage);
-  }
-
-  return response.data as InviteResponse;
-},
-```
-
----
-
-## Technical Details
-
-### Edge Function Error Codes
-
-| Code | Status | Message |
-|------|--------|---------|
-| `AUTH_MISSING` | 401 | Sessão não encontrada. Por favor, faça login novamente. |
-| `AUTH_EXPIRED` | 401 | Sua sessão expirou. Por favor, faça login novamente. |
-| `PERMISSION_DENIED` | 403 | Você não tem permissão para convidar alunos neste espaço. |
-| `ESPACO_NOT_FOUND` | 404 | Espaço não encontrado. |
-| `INVITATION_EXISTS` | 409 | Já existe um convite pendente para este email. |
-| `INVALID_EMAIL` | 400 | Formato de email inválido. |
-
-### Session Expiry Flow
+## Architecture Overview
 
 ```text
-User opens Invite Modal
-       ↓
-Session token attached to request
-       ↓
-┌─────────────────────────────────┐
-│ Edge Function validates token   │
-│ - If expired → 401 + clear msg  │
-│ - If valid → proceed            │
-└─────────────────────────────────┘
-       ↓
-Frontend catches error
-       ↓
-Shows user-friendly toast with login redirect option
++------------------+     +-------------------+     +------------------+
+|   Frontend UI    | --> |   Edge Function   | --> |   Lovable AI     |
+|  (React Page)    |     | (analyze-resume)  |     | (Gemini/GPT)     |
++------------------+     +-------------------+     +------------------+
+        |                        |
+        v                        v
++------------------+     +-------------------+
+| Supabase Storage |     | app_configs Table |
+|  (temp-resumes)  |     | (AI Prompt Store) |
++------------------+     +-------------------+
 ```
 
 ---
 
-## Expected Results
+## Database Schema
 
-After implementation:
+A new `app_configs` table will store configurable settings like the AI prompt:
 
-1. When a user's session expires, they see: "Sua sessão expirou. Por favor, faça login novamente."
-2. The toast includes a link/button to the login page
-3. Edge function logs include helpful debug information
-4. All error cases return proper error codes and messages in Portuguese
-5. The invitation flow works correctly when the user is properly authenticated
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| key | text | Config key (unique) - e.g., "resume_analyzer_prompt" |
+| value | text | Config value (the AI prompt) |
+| updated_at | timestamptz | Last update timestamp |
+| updated_by | uuid | User who last updated |
+
+**RLS Policies:**
+- Everyone can READ configs
+- Only admins can UPDATE configs
 
 ---
 
-## Testing Checklist
+## File Structure
 
-1. [ ] Log in as mentor and navigate to espaco detail page
-2. [ ] Open "Convidar Aluno" modal
-3. [ ] Enter a valid email and click "Enviar Convite"
-4. [ ] Verify email is sent (check edge function logs for "Invitation email sent successfully")
-5. [ ] Check recipient's inbox for the invitation email
-6. [ ] Click the link in email and verify registration flow works
-7. [ ] After registration, verify user is enrolled in the espaco
+```text
+src/
+├── pages/
+│   ├── curriculo/
+│   │   └── CurriculoUSA.tsx          # Main page (students/mentors)
+│   └── admin/
+│       └── AdminSettings.tsx          # Admin config page (new)
+│
+├── components/
+│   └── curriculo/
+│       ├── ResumeUploadCard.tsx       # Drag-drop upload zone
+│       ├── JobDescriptionCard.tsx     # Textarea for job description
+│       ├── AnalyzingLoader.tsx        # Animated loading screen
+│       └── CurriculoHeader.tsx        # Page header with title/credits
+│
+├── hooks/
+│   └── useCurriculoAnalysis.ts        # Hook for AI analysis
+│
+supabase/
+└── functions/
+    └── analyze-resume/
+        └── index.ts                    # Edge function for AI call
+```
+
+---
+
+## Screen 1: Input View
+
+### Visual Design (Following Reference)
+
+**Background**: `#F5F5F7` (light gray)
+
+**Layout Structure:**
+1. **Header Row** - Title with icon + Credits badge (right-aligned)
+2. **Hero Section** - Large centered title with gradient highlight
+3. **Subtitle** - Descriptive text about ATS simulation
+4. **2-Column Grid** - Upload card + Job description card
+5. **CTA Button** - Large centered "Analisar Compatibilidade Agora"
+
+### Component Details
+
+**CurriculoHeader.tsx**
+```text
+┌────────────────────────────────────────────────────┐
+│ [■] Currículo USA                    [∞ Créditos] │
+└────────────────────────────────────────────────────┘
+```
+- Left: Gray-900 icon box + "Currículo USA" title
+- Right: Pill-shaped badge showing credits (future use)
+
+**Hero Title**
+```text
+       Seu currículo está pronto para o
+              mercado Americano?
+```
+- Font: Inter ExtraBold, 4xl/5xl
+- "mercado Americano?" has gradient: from-brand-600 to-indigo-600
+
+**Subtitle**
+```text
+Compare seu CV com a vaga desejada e vença o ATS 
+(Applicant Tracking System). Nossa IA simula os robôs 
+de recrutamento dos EUA para te dar um score real.
+```
+
+**ResumeUploadCard.tsx**
+```text
+┌──────────────────────────────────────┐
+│           ┌─────────┐                │
+│           │   ⬆️    │ (gray-50 box)   │
+│           └─────────┘                │
+│                                      │
+│          Seu Currículo               │
+│  Arraste e solte seu arquivo         │
+│  (PDF/DOCX) aqui ou clique para      │
+│             enviar.                  │
+│                                      │
+│  📄 FORMATO PREFERENCIAL: PDF        │
+└──────────────────────────────────────┘
+
+Styling:
+- rounded-[32px]
+- border-2 dashed border-gray-200
+- Hover: border-brand-500, bg-brand-50/50
+- Height: 320px
+```
+
+**JobDescriptionCard.tsx**
+```text
+┌──────────────────────────────────────┐
+│                                      │
+│  Cole aqui a Descrição da Vaga       │
+│  (Job Description) que você deseja   │
+│  aplicar...                          │
+│                                      │
+│                                      │
+│                                      │
+│                             [💼]     │
+└──────────────────────────────────────┘
+
+Styling:
+- rounded-[32px]
+- border border-gray-200
+- shadow-sm
+- Full-height textarea, no border
+- Briefcase icon bottom-right (ghost)
+```
+
+**CTA Button**
+```text
+     ┌──────────────────────────────────┐
+     │ ✨ Analisar Compatibilidade Agora │
+     └──────────────────────────────────┘
+
+Styling:
+- bg-brand-600 (#2563EB)
+- rounded-[20px]
+- py-5 px-16
+- shadow-xl shadow-brand-600/30
+- Hover: subtle shimmer animation
+```
+
+---
+
+## Screen 2: Loading View
+
+### Visual Design
+
+**Full-height centered container** with:
+
+**Animated Icon**
+```text
+        ╭──────────────╮
+       │   ╭──────╮    │  ← Outer ring: pulsating (animate-ping)
+       │   │  ✨  │    │  ← Inner: Sparkles icon (#2563EB)
+       │   ╰──────╯    │
+        ╰──────────────╯
+
+Container: w-32 h-32 white circle
+Outer ring: bg-brand-500 rounded-full opacity-20 animate-ping
+```
+
+**Text**
+```text
+      Analisando seu Currículo...
+      
+  Nossa IA está comparando suas experiências
+   com os requisitos da vaga e padrões americanos.
+```
+- Title: font-bold text-gray-900
+- Subtitle: text-gray-500
+
+---
+
+## State Management
+
+**useCurriculoAnalysis.ts Hook**
+
+```typescript
+interface AnalysisState {
+  status: 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
+  uploadedFile: File | null;
+  jobDescription: string;
+  result: AnalysisResult | null;
+  error: string | null;
+}
+
+interface AnalysisResult {
+  score: number;              // 0-100 compatibility score
+  summary: string;            // Brief summary
+  strengths: string[];        // What matches well
+  improvements: string[];     // What to improve
+  keywords: {                 // Keyword analysis
+    found: string[];
+    missing: string[];
+  };
+}
+```
+
+---
+
+## Edge Function: analyze-resume
+
+**Flow:**
+1. Receive resume file path + job description
+2. Fetch current AI prompt from `app_configs` table
+3. Parse the resume content (PDF/DOCX)
+4. Call Lovable AI with dynamic prompt
+5. Return structured analysis result
+
+**Implementation Notes:**
+- Uses `LOVABLE_API_KEY` (already configured)
+- Model: `google/gemini-3-flash-preview` (default)
+- Uses tool calling for structured output
+
+---
+
+## Admin Prompt Management
+
+**Admin Settings Page** (new route: `/admin/configuracoes`)
+
+A simple interface for admins to:
+1. View current AI prompt
+2. Edit and save the prompt
+3. See when it was last updated
+
+**UI:**
+```text
+┌─────────────────────────────────────────────────────┐
+│  Configurações da Plataforma                        │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Analisador de Currículos - Prompt de IA           │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ Você é um especialista em recrutamento...   │   │
+│  │ ...                                          │   │
+│  │                                              │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  Última atualização: 27/01/2026 por Admin          │
+│                                                     │
+│                           [Salvar Alterações]       │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Navigation Updates
+
+**DashboardLayout.tsx Updates:**
+
+```typescript
+// Student navigation (line 42-57)
+student: [
+  {
+    label: 'OVERVIEW',
+    items: [
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
+      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },  // NEW
+      { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
+    ],
+  },
+  // ...
+],
+
+// Mentor navigation (line 59-76)
+mentor: [
+  {
+    label: 'OVERVIEW',
+    items: [
+      // ...existing items...
+      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },  // NEW
+    ],
+  },
+  // ...
+],
+
+// Admin navigation (line 77-97)
+admin: [
+  // ...existing items...
+  {
+    label: 'CONFIGURAÇÕES',
+    items: [
+      { label: 'Configurações', href: '/admin/configuracoes', icon: Settings }, // NEW
+    ],
+  },
+],
+```
+
+---
+
+## Routes (App.tsx)
+
+```typescript
+// Add new routes
+<Route path="/curriculo" element={
+  <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+    <CurriculoUSA />
+  </ProtectedRoute>
+} />
+
+<Route path="/admin/configuracoes" element={
+  <ProtectedRoute allowedRoles={['admin']}>
+    <AdminSettings />
+  </ProtectedRoute>
+} />
+```
+
+---
+
+## Implementation Order
+
+### Phase 1: Database Setup
+1. Create `app_configs` table with RLS policies
+2. Insert default AI prompt
+
+### Phase 2: UI Components
+1. Create `CurriculoHeader.tsx`
+2. Create `ResumeUploadCard.tsx` (with react-dropzone)
+3. Create `JobDescriptionCard.tsx`
+4. Create `AnalyzingLoader.tsx`
+5. Create main `CurriculoUSA.tsx` page
+
+### Phase 3: Navigation
+1. Update `DashboardLayout.tsx` with new menu items
+2. Add routes in `App.tsx`
+
+### Phase 4: Backend
+1. Create `analyze-resume` edge function
+2. Create `useCurriculoAnalysis.ts` hook
+
+### Phase 5: Admin
+1. Create `AdminSettings.tsx` page
+2. Create `useAppConfigs.ts` hook for admin
+
+---
+
+## Default AI Prompt
+
+The system will include a default prompt that administrators can customize:
+
+```text
+Você é um especialista em recrutamento e ATS (Applicant Tracking Systems) do mercado americano.
+
+Analise o currículo fornecido em comparação com a descrição da vaga e forneça:
+
+1. **Score de Compatibilidade** (0-100): Baseado em keywords, experiência e formatação
+2. **Pontos Fortes**: O que no currículo se alinha bem com a vaga
+3. **Melhorias Sugeridas**: O que precisa ser ajustado para aumentar as chances
+4. **Análise de Keywords**: 
+   - Keywords encontradas no currículo
+   - Keywords importantes da vaga que estão faltando
+
+Considere os padrões americanos de formatação de currículo:
+- Uma página para até 10 anos de experiência
+- Foco em resultados quantificáveis
+- Verbos de ação no passado
+- Sem foto, idade ou informações pessoais desnecessárias
+
+Responda em português brasileiro de forma clara e direta.
+```
+
+---
+
+## Technical Notes
+
+1. **File Parsing**: For this stage, we'll send the file to the edge function and use Lovable AI's multimodal capabilities to read PDF content directly
+
+2. **Storage**: Temporary files stored in `temp-resumes` bucket, auto-deleted after analysis
+
+3. **Credits**: Placeholder for now - will show "∞ Créditos" (infinite credits since it's free)
+
+4. **Styling**: Following the "Clean Startup" design system from the reference images with rounded-[32px] cards, soft shadows, and gradient accents
+
