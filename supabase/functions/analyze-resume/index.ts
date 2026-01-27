@@ -6,17 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AnalysisResult {
-  score: number;
-  summary: string;
-  strengths: string[];
-  improvements: string[];
-  keywords: {
-    found: string[];
-    missing: string[];
-  };
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -92,7 +81,7 @@ serve(async (req) => {
       ? "application/pdf" 
       : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-    // Call Lovable AI Gateway
+    // Call Lovable AI Gateway with gemini-2.5-pro for complex structured output
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(
@@ -108,7 +97,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
             role: "system",
@@ -134,53 +123,150 @@ serve(async (req) => {
           {
             type: "function",
             function: {
-              name: "analyze_resume",
-              description: "Return structured resume analysis with score, strengths, improvements and keywords",
+              name: "analyze_resume_full",
+              description: "Return comprehensive resume analysis with score, metrics, cultural bridge, market value, improvements, and interview preparation",
               parameters: {
                 type: "object",
                 properties: {
-                  score: {
-                    type: "number",
-                    description: "Compatibility score from 0 to 100",
+                  header: {
+                    type: "object",
+                    description: "Score and main messaging",
+                    properties: {
+                      score: { type: "number", description: "Compatibility score 0-100" },
+                      status_tag: { type: "string", description: "Status label like COMPATIBILIDADE DE MERCADO: ALTA" },
+                      main_message: { type: "string", description: "Main message about the profile" },
+                      sub_message: { type: "string", description: "Secondary message with percentile context" },
+                    },
+                    required: ["score", "status_tag", "main_message", "sub_message"],
                   },
-                  summary: {
-                    type: "string",
-                    description: "Brief summary of the analysis in 2-3 sentences",
+                  metrics: {
+                    type: "object",
+                    description: "Four key resume metrics",
+                    properties: {
+                      ats_format: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          label: { type: "string" },
+                          details_pt: { type: "string" },
+                        },
+                        required: ["score", "label", "details_pt"],
+                      },
+                      keywords: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          label: { type: "string" },
+                          details_pt: { type: "string" },
+                          matched_count: { type: "number" },
+                          total_required: { type: "number" },
+                        },
+                        required: ["score", "label", "details_pt", "matched_count", "total_required"],
+                      },
+                      action_verbs: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          label: { type: "string" },
+                          details_pt: { type: "string" },
+                          count: { type: "number" },
+                        },
+                        required: ["score", "label", "details_pt", "count"],
+                      },
+                      brevity: {
+                        type: "object",
+                        properties: {
+                          score: { type: "number" },
+                          label: { type: "string" },
+                          details_pt: { type: "string" },
+                          page_count: { type: "number" },
+                          ideal_page_count: { type: "number" },
+                        },
+                        required: ["score", "label", "details_pt", "page_count", "ideal_page_count"],
+                      },
+                    },
+                    required: ["ats_format", "keywords", "action_verbs", "brevity"],
                   },
-                  strengths: {
+                  cultural_bridge: {
+                    type: "object",
+                    description: "Brazil to US title translation",
+                    properties: {
+                      brazil_title: { type: "string", description: "Original Brazilian job title" },
+                      us_equivalent: { type: "string", description: "US equivalent title" },
+                      explanation: { type: "string", description: "Explanation in Portuguese" },
+                    },
+                    required: ["brazil_title", "us_equivalent", "explanation"],
+                  },
+                  market_value: {
+                    type: "object",
+                    description: "Salary range estimation",
+                    properties: {
+                      range: { type: "string", description: "Salary range like $85k - $110k/yr" },
+                      context: { type: "string", description: "Context like +15% acima da média" },
+                    },
+                    required: ["range", "context"],
+                  },
+                  power_verbs_suggestions: {
                     type: "array",
                     items: { type: "string" },
-                    description: "List of 3-5 strengths that match the job",
+                    description: "5-8 suggested power verbs in English",
                   },
                   improvements: {
                     type: "array",
-                    items: { type: "string" },
-                    description: "List of 3-5 improvements to increase compatibility",
-                  },
-                  keywords: {
-                    type: "object",
-                    properties: {
-                      found: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Keywords from job description found in resume",
+                    description: "3-5 bullet point improvements",
+                    items: {
+                      type: "object",
+                      properties: {
+                        tags: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Category tags like QUANTIFICAÇÃO, LIDERANÇA, POWER VERB",
+                        },
+                        original: { type: "string", description: "Original text from resume" },
+                        improved: { type: "string", description: "Improved version in English following US standards" },
+                        impact_label: { type: "string", description: "Impact type like IMPACTO, CLAREZA, CONTEXTO" },
                       },
-                      missing: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Important keywords from job description missing in resume",
-                      },
+                      required: ["tags", "original", "improved", "impact_label"],
                     },
-                    required: ["found", "missing"],
+                  },
+                  linkedin_fix: {
+                    type: "object",
+                    description: "LinkedIn headline suggestion",
+                    properties: {
+                      headline: { type: "string", description: "Suggested LinkedIn headline in English" },
+                      reasoning_pt: { type: "string", description: "Explanation in Portuguese" },
+                    },
+                    required: ["headline", "reasoning_pt"],
+                  },
+                  interview_cheat_sheet: {
+                    type: "array",
+                    description: "3-5 likely interview questions",
+                    items: {
+                      type: "object",
+                      properties: {
+                        question: { type: "string", description: "Interview question in English" },
+                        context_pt: { type: "string", description: "Context/tip in Portuguese" },
+                      },
+                      required: ["question", "context_pt"],
+                    },
                   },
                 },
-                required: ["score", "summary", "strengths", "improvements", "keywords"],
+                required: [
+                  "header",
+                  "metrics",
+                  "cultural_bridge",
+                  "market_value",
+                  "power_verbs_suggestions",
+                  "improvements",
+                  "linkedin_fix",
+                  "interview_cheat_sheet",
+                ],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "analyze_resume" } },
+        tool_choice: { type: "function", function: { name: "analyze_resume_full" } },
       }),
     });
 
@@ -209,7 +295,7 @@ serve(async (req) => {
     
     // Extract the tool call result
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "analyze_resume") {
+    if (!toolCall || toolCall.function.name !== "analyze_resume_full") {
       console.error("Unexpected AI response format:", aiData);
       return new Response(
         JSON.stringify({ error: "Failed to parse AI analysis" }),
@@ -217,7 +303,7 @@ serve(async (req) => {
       );
     }
 
-    const result: AnalysisResult = JSON.parse(toolCall.function.arguments);
+    const result = JSON.parse(toolCall.function.arguments);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

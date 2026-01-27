@@ -44,6 +44,7 @@ import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
+import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -311,6 +312,11 @@ function AppRoutes() {
       <Route path="/curriculo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <CurriculoUSA />
+        </ProtectedRoute>
+      } />
+      <Route path="/curriculo/resultado" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <CurriculoReport />
         </ProtectedRoute>
       } />
       

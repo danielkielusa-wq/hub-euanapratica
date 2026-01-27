@@ -4,3 +4,6 @@ export { JobDescriptionCard } from './JobDescriptionCard';
 export { AnalyzingLoader } from './AnalyzingLoader';
 export { AnalysisResult } from './AnalysisResult';
 export type { AnalysisResultData } from './AnalysisResult';
+
+// Report components
+export * from './report';
