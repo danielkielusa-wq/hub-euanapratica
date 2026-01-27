@@ -650,6 +650,33 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          is_active: boolean
+          monthly_limit: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id: string
+          is_active?: boolean
+          monthly_limit?: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          is_active?: boolean
+          monthly_limit?: number
+          name?: string
+        }
+        Relationships: []
+      }
       product_espacos: {
         Row: {
           created_at: string | null
@@ -1102,6 +1129,27 @@ export type Database = {
           },
         ]
       }
+      usage_logs: {
+        Row: {
+          app_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          app_id?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          app_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_audit_logs: {
         Row: {
           action: string
@@ -1264,6 +1312,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          plan_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan_id: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          plan_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1272,6 +1361,16 @@ export type Database = {
       can_access_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
+      }
+      get_user_quota: {
+        Args: { p_user_id: string }
+        Returns: {
+          monthly_limit: number
+          plan_id: string
+          plan_name: string
+          remaining: number
+          used_this_month: number
+        }[]
       }
       has_role: {
         Args: {
@@ -1289,6 +1388,7 @@ export type Database = {
         Args: { _espaco_id: string; _user_id: string }
         Returns: boolean
       }
+      record_curriculo_usage: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       access_level: "public" | "restricted"
