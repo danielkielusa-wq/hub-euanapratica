@@ -100,7 +100,15 @@ serve(async (req) => {
     
     if (isPdf) {
       // For PDF, convert to base64 for multimodal processing
-      pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      // Use chunked encoding to avoid stack overflow on large files
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const chunkSize = 8192;
+      let binaryString = "";
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.subarray(i, i + chunkSize);
+        binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      pdfBase64 = btoa(binaryString);
       resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
     } else if (isDocx) {
       // For DOCX, extract text content from the XML
