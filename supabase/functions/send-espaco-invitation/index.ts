@@ -172,12 +172,22 @@ Deno.serve(async (req) => {
     // Try to send email via Resend if configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     let emailSent = false;
+    const origin = req.headers.get("origin") || "https://enphub.lovable.app";
+    const inviteLink = invitation?.token 
+      ? `${origin}/register?token=${invitation.token}&espaco_id=${espaco_id}`
+      : null;
+
+    console.log("Invitation created for:", email);
+    console.log("Invite link:", inviteLink);
+
+    if (!resendApiKey) {
+      console.warn("RESEND_API_KEY not configured - email will not be sent");
+    }
 
     if (resendApiKey && invitation?.token) {
-      const origin = req.headers.get("origin") || "https://enphub.lovable.app";
-      const inviteLink = `${origin}/register?token=${invitation.token}&espaco_id=${espaco_id}`;
-
       try {
+        console.log("Sending invitation email via Resend...");
+        
         const emailResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -187,7 +197,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "EUA Na Prática <noreply@euanapratica.com>",
             to: [email],
-            subject: `Você foi convidado para: ${espaco.name}`,
+            subject: `🎉 Você foi convidado para: ${espaco.name}`,
             html: `
               <!DOCTYPE html>
               <html>
@@ -201,40 +211,58 @@ Deno.serve(async (req) => {
                     <td align="center">
                       <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
                         <tr>
-                          <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 40px 30px; text-align: center;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">
-                              Você foi convidado!
+                          <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 48px 30px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                              🎉 Você foi convidado!
                             </h1>
                           </td>
                         </tr>
                         <tr>
                           <td style="padding: 40px 30px;">
                             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                              Olá${invited_name ? ` ${invited_name}` : ''},
+                              Olá${invited_name ? ` <strong>${invited_name}</strong>` : ''},
                             </p>
                             <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                              ${mentorProfile?.full_name || 'Um mentor'} te convidou para participar do espaço:
+                              <strong>${mentorProfile?.full_name || 'Um mentor'}</strong> te convidou para participar do espaço:
                             </p>
-                            <div style="background: linear-gradient(135deg, #f0f0ff, #faf5ff); border-radius: 16px; padding: 24px; margin: 24px 0; text-align: center;">
-                              <h2 style="color: #6366f1; margin: 0; font-size: 20px; font-weight: 600;">
+                            <div style="background: linear-gradient(135deg, #f0f0ff, #faf5ff); border-radius: 16px; padding: 24px; margin: 24px 0; text-align: center; border: 1px solid #e4e4e7;">
+                              <h2 style="color: #6366f1; margin: 0; font-size: 22px; font-weight: 700;">
                                 ${espaco.name}
                               </h2>
                             </div>
-                            <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                              Clique no botão abaixo para criar sua conta e começar sua jornada:
-                            </p>
-                            <div style="text-align: center;">
-                              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                                Aceitar Convite
+                            
+                            <div style="background-color: #fafafa; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                              <p style="color: #52525b; font-size: 14px; font-weight: 600; margin: 0 0 12px;">📋 Para começar:</p>
+                              <ol style="color: #71717a; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                <li>Clique no botão abaixo</li>
+                                <li>Complete seu cadastro</li>
+                                <li>Preencha o onboarding</li>
+                                <li>Acesse "Meus Espaços" e comece!</li>
+                              </ol>
+                            </div>
+                            
+                            <div style="text-align: center; margin: 32px 0;">
+                              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 16px; font-weight: 700; font-size: 18px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                                Aceitar Convite e Criar Conta
                               </a>
                             </div>
-                            <p style="color: #a1a1aa; font-size: 14px; line-height: 1.6; margin: 30px 0 0; text-align: center;">
-                              Este convite expira em 7 dias.
+                            
+                            <p style="color: #a1a1aa; font-size: 13px; line-height: 1.6; margin: 30px 0 0; text-align: center;">
+                              ⏰ Este convite expira em <strong>7 dias</strong>.
                             </p>
+                            
+                            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e4e4e7;">
+                              <p style="color: #a1a1aa; font-size: 12px; margin: 0; text-align: center;">
+                                Se o botão não funcionar, copie e cole este link no navegador:
+                              </p>
+                              <p style="color: #6366f1; font-size: 11px; word-break: break-all; margin: 8px 0 0; text-align: center;">
+                                <a href="${inviteLink}" style="color: #6366f1;">${inviteLink}</a>
+                              </p>
+                            </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style="background-color: #fafafa; padding: 20px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+                          <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
                             <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
                               © ${new Date().getFullYear()} EUA Na Prática. Todos os direitos reservados.
                             </p>
@@ -250,24 +278,27 @@ Deno.serve(async (req) => {
           }),
         });
 
+        const emailResult = await emailResponse.json();
+        console.log("Resend API response:", JSON.stringify(emailResult));
+
         if (emailResponse.ok) {
           emailSent = true;
-          console.log("Invitation email sent successfully");
+          console.log("✅ Invitation email sent successfully to:", email);
         } else {
-          const errorBody = await emailResponse.text();
-          console.error("Failed to send email:", errorBody);
+          console.error("❌ Failed to send email. Status:", emailResponse.status, "Response:", JSON.stringify(emailResult));
         }
       } catch (emailError) {
-        console.error("Error sending email:", emailError);
+        console.error("❌ Error sending email:", emailError);
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: emailSent ? "Invitation sent successfully" : "Invitation created (email not configured)",
+        message: emailSent ? "Invitation sent successfully" : "Invitation created (email not sent)",
         token: invitation?.token,
         emailSent,
+        inviteLink: emailSent ? undefined : inviteLink, // Only provide link as fallback if email failed
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

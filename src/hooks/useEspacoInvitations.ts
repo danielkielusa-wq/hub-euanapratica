@@ -58,12 +58,20 @@ export function useSearchProfiles(searchTerm: string) {
   });
 }
 
+interface InviteResponse {
+  success: boolean;
+  emailSent: boolean;
+  inviteLink?: string;
+  token?: string;
+  message?: string;
+}
+
 export function useInviteStudent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: InviteStudentData) => {
+    mutationFn: async (data: InviteStudentData): Promise<InviteResponse> => {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
         throw new Error('Não autenticado');
@@ -81,14 +89,36 @@ export function useInviteStudent() {
         throw new Error(response.error.message || 'Erro ao enviar convite');
       }
 
-      return response.data;
+      return response.data as InviteResponse;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['espaco-invitations', variables.espaco_id] });
-      toast({
-        title: 'Convite enviado!',
-        description: `Um email foi enviado para ${variables.email}`,
-      });
+      
+      if (response.emailSent) {
+        toast({
+          title: 'Convite enviado!',
+          description: `Um email foi enviado para ${variables.email}`,
+        });
+      } else if (response.inviteLink) {
+        // Email not sent, provide fallback link
+        toast({
+          title: 'Convite criado',
+          description: 'Email não enviado. Copie o link abaixo para compartilhar manualmente.',
+          duration: 10000,
+        });
+        // Copy link to clipboard
+        navigator.clipboard.writeText(response.inviteLink).then(() => {
+          toast({
+            title: 'Link copiado!',
+            description: 'O link de convite foi copiado para a área de transferência.',
+          });
+        });
+      } else {
+        toast({
+          title: 'Convite criado',
+          description: 'O convite foi registrado no sistema.',
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
