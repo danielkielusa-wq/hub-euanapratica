@@ -74,7 +74,7 @@ export function useInviteStudent() {
     mutationFn: async (data: InviteStudentData): Promise<InviteResponse> => {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session?.access_token) {
-        throw new Error('Não autenticado');
+        throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
       }
 
       const response = await supabase.functions.invoke('send-espaco-invitation', {
@@ -86,7 +86,26 @@ export function useInviteStudent() {
       });
 
       if (response.error) {
-        throw new Error(response.error.message || 'Erro ao enviar convite');
+        // Try to parse the error response for better messages
+        let errorMessage = 'Erro ao enviar convite';
+        
+        try {
+          // The error context may contain the JSON body from the edge function
+          const errorBody = response.error.context?.body;
+          if (errorBody) {
+            const parsed = JSON.parse(errorBody);
+            errorMessage = parsed.message || parsed.error || errorMessage;
+          } else if (response.error.message) {
+            errorMessage = response.error.message;
+          }
+        } catch {
+          // If parsing fails, use the original error message
+          if (response.error.message) {
+            errorMessage = response.error.message;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       return response.data as InviteResponse;

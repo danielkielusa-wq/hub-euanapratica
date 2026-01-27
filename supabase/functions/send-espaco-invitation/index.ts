@@ -20,8 +20,13 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error("Auth header missing or invalid format");
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ 
+          error: "Unauthorized", 
+          code: "AUTH_MISSING",
+          message: "Sessão não encontrada. Por favor, faça login novamente." 
+        }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -39,8 +44,13 @@ Deno.serve(async (req) => {
     const { data: claims, error: claimsError } = await supabaseUser.auth.getUser(token);
     
     if (claimsError || !claims?.user) {
+      console.error("Token validation failed:", claimsError?.message || "No user found");
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ 
+          error: "Unauthorized", 
+          code: "AUTH_EXPIRED",
+          message: "Sua sessão expirou. Por favor, faça login novamente." 
+        }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -54,7 +64,11 @@ Deno.serve(async (req) => {
 
     if (!espaco_id || !email) {
       return new Response(
-        JSON.stringify({ error: "espaco_id and email are required" }),
+        JSON.stringify({ 
+          error: "Bad Request", 
+          code: "MISSING_FIELDS",
+          message: "ID do espaço e email são obrigatórios." 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -63,7 +77,11 @@ Deno.serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ error: "Invalid email format" }),
+        JSON.stringify({ 
+          error: "Bad Request", 
+          code: "INVALID_EMAIL",
+          message: "Formato de email inválido." 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -76,8 +94,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (espacoError || !espaco) {
+      console.error("Espaco not found:", espaco_id);
       return new Response(
-        JSON.stringify({ error: "Espaço not found" }),
+        JSON.stringify({ 
+          error: "Not Found", 
+          code: "ESPACO_NOT_FOUND",
+          message: "Espaço não encontrado." 
+        }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -93,8 +116,13 @@ Deno.serve(async (req) => {
     const isAdmin = userRole?.role === "admin";
 
     if (!isMentor && !isAdmin) {
+      console.error("Permission denied for user:", userId);
       return new Response(
-        JSON.stringify({ error: "Permission denied" }),
+        JSON.stringify({ 
+          error: "Forbidden", 
+          code: "PERMISSION_DENIED",
+          message: "Você não tem permissão para convidar alunos neste espaço." 
+        }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -110,7 +138,11 @@ Deno.serve(async (req) => {
     if (existingInvitation) {
       if (existingInvitation.status === "pending") {
         return new Response(
-          JSON.stringify({ error: "An invitation is already pending for this email" }),
+          JSON.stringify({ 
+            error: "Conflict", 
+            code: "INVITATION_EXISTS",
+            message: "Já existe um convite pendente para este email." 
+          }),
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
