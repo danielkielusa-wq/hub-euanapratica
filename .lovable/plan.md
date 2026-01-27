@@ -1,81 +1,41 @@
 
-# Currículo USA v3.0 - Complete SaaS Subscription Ecosystem
+
+# Configurar Planos - Admin Interface & Dynamic Paywall System
 
 ## Overview
 
-This implementation creates a fully dynamic, database-driven SaaS subscription system with:
-1. **Enhanced database schema** with marketing fields (price, display_features, cta_text, is_popular)
-2. **Smart Gatekeeper edge function** that checks quotas, strips features, and returns 402 on limit
-3. **Feature-gated UI** with blur/lock overlays on restricted sections
-4. **Upgrade Modal** that dynamically fetches plans and redirects to WhatsApp
-5. **Admin Subscriptions Dashboard** for user plan management
+This implementation adds a new admin page `/admin/planos` for granular plan configuration matching the provided design reference, plus fixes the dynamic usage bars and ensures the report page respects all plan feature flags from the database.
 
 ---
 
 ## Current State Analysis
 
 ### What Already Exists
-- `plans` table with `id`, `name`, `monthly_limit`, `features`, `is_active`
-- `user_subscriptions` table linking users to plans
-- `usage_logs` table tracking API calls
-- `get_user_quota()` and `record_curriculo_usage()` RPC functions
-- `useSubscription` hook for frontend quota management
-- Basic quota checking in `useCurriculoAnalysis`
+- **`plans` table**: Has columns `id`, `name`, `price`, `monthly_limit`, `features` (JSONB), `display_features` (JSONB), `cta_text`, `is_popular`, `is_active`
+- **Feature flags in DB**: `allow_pdf`, `show_improvements`, `show_cheat_sheet`, `impact_cards`, `priority_support`
+- **Admin Subscriptions page**: Lists users with usage bars (but uses hardcoded format)
+- **Edge function**: Already checks quota and does feature stripping
+- **LockedFeature component**: Already implements blur/lock overlay
 
-### What Needs to Be Added
-- Marketing columns in `plans` table (`price`, `display_features`, `cta_text`, `is_popular`)
-- Edge function quota enforcement with feature stripping
-- Report page feature gating with blur/lock UI
-- Upgrade modal component
-- Admin subscription management page
+### What Needs to Be Added/Fixed
+1. **New Admin Page**: "Configurar Planos" with granular feature toggles matching the design
+2. **Usage Bar Fix**: Make it dynamic based on actual `monthly_limit` from user's plan
+3. **Multi-App Structure**: Organize features by app (Currículo USA, Job Marketplace future)
+4. **Add Power Verbs toggle**: Missing from current features JSONB
 
 ---
 
-## Architecture
+## Design Reference Analysis
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                           SUBSCRIPTION ECOSYSTEM                              │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│   ┌─────────────┐     ┌─────────────────┐     ┌─────────────────────────┐    │
-│   │   plans     │ ──► │ user_subscripts │ ──► │      usage_logs         │    │
-│   │ (tiers)     │     │ (user mapping)  │     │ (monthly tracking)      │    │
-│   └─────────────┘     └─────────────────┘     └─────────────────────────┘    │
-│          │                    │                          ▲                    │
-│          │                    │                          │                    │
-│          ▼                    ▼                          │                    │
-│   ┌─────────────────────────────────────────────────────────────────────┐    │
-│   │                     analyze-resume (Edge Function)                   │    │
-│   │  1. Check user plan & monthly_limit                                 │    │
-│   │  2. Count usage_logs for current month                              │    │
-│   │  3. If count >= limit → return 402 LIMIT_REACHED                    │    │
-│   │  4. Check features JSONB → strip disabled features from AI call     │    │
-│   │  5. On success → insert usage_log                                   │    │
-│   └─────────────────────────────────────────────────────────────────────┘    │
-│                                   │                                           │
-│                                   ▼                                           │
-│   ┌─────────────────────────────────────────────────────────────────────┐    │
-│   │                         Frontend UI                                  │    │
-│   │                                                                      │    │
-│   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │    │
-│   │  │  CurriculoUSA│  │CurriculoReport  │Upgrade Modal (Dynamic)   │   │    │
-│   │  │  (Quota      │  │  (Feature    │  │  - Fetches plans         │   │    │
-│   │  │   Display)   │  │   Gating)    │  │  - Shows pricing cards   │   │    │
-│   │  └──────────────┘  └──────────────┘  │  - WhatsApp CTA          │   │    │
-│   │                                       └──────────────────────────┘   │    │
-│   └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                               │
-│   ┌─────────────────────────────────────────────────────────────────────┐    │
-│   │                    Admin Dashboard (/admin/assinaturas)              │    │
-│   │  - User list with current plan                                       │    │
-│   │  - Change plan dropdown                                              │    │
-│   │  - Reset usage button                                                │    │
-│   │  - Usage statistics                                                  │    │
-│   └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                               │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+From the uploaded image:
+- **Three cards** side-by-side: Plano Básico, Plano PRO (with "MAIS ESCOLHIDO" badge), Plano VIP (gold gradient header)
+- **Fields per card**:
+  - PREÇO MENSAL (R$) - Input/Select
+  - LIMITE DE ANÁLISES/MÊS - Input/Select (or "Ilimitado")
+  - FUNCIONALIDADES - Group of toggles organized by app
+- **Currículo USA toggles**: Melhorias de Impacto, Power Verbs, Guia de Entrevistas, Exportar PDF
+- **RECURSOS MARKETING** - Editable text field showing display_features
+- **Save button** per card: "Salvar Configurações"
 
 ---
 
@@ -83,269 +43,172 @@ This implementation creates a fully dynamic, database-driven SaaS subscription s
 
 ### Phase 1: Database Enhancement
 
-**Migration: Add marketing columns to `plans` table**
+**Add Missing Feature Flag**
 
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| `price` | numeric | 0 | Price in BRL |
-| `display_features` | jsonb | '[]' | Array of marketing feature strings |
-| `cta_text` | text | 'Escolher Plano' | Call-to-action button text |
-| `is_popular` | boolean | false | Show "Popular" badge |
-
-**Update seed data:**
 ```sql
-UPDATE plans SET 
-  price = 0, 
-  display_features = '["1 análise por mês", "Score básico", "Métricas principais"]'::jsonb,
-  cta_text = 'Plano Atual',
-  is_popular = false
+-- Add 'show_power_verbs' flag to features JSONB
+UPDATE plans 
+SET features = features || '{"show_power_verbs": false}'::jsonb 
 WHERE id = 'basic';
 
-UPDATE plans SET 
-  price = 47, 
-  display_features = '["10 análises por mês", "Relatório completo", "Power Verbs", "Melhorias sugeridas", "LinkedIn Quick-Fix", "Exportar PDF"]'::jsonb,
-  cta_text = 'Fazer Upgrade',
-  is_popular = true
-WHERE id = 'pro';
-
-UPDATE plans SET 
-  price = 97, 
-  display_features = '["Análises ilimitadas", "Tudo do Pro", "Cheat Sheet de Entrevista", "Suporte prioritário"]'::jsonb,
-  cta_text = 'Quero Ser VIP',
-  is_popular = false
-WHERE id = 'vip';
+UPDATE plans 
+SET features = features || '{"show_power_verbs": true}'::jsonb 
+WHERE id IN ('pro', 'vip');
 ```
+
+**Update get_user_quota RPC to include all features**
+
+The function already returns `features`, no changes needed.
 
 ---
 
-### Phase 2: Edge Function - Smart Gatekeeper
+### Phase 2: Admin Plan Configuration Page
 
-**File:** `supabase/functions/analyze-resume/index.ts`
+**New File:** `src/pages/admin/AdminPlans.tsx`
 
-**New Logic Flow:**
-
-```typescript
-// 1. Get user's subscription and plan
-const { data: subData } = await supabase
-  .from('user_subscriptions')
-  .select('plan_id, plans(monthly_limit, features)')
-  .eq('user_id', userId)
-  .eq('status', 'active')
-  .maybeSingle();
-
-// Default to basic if no subscription
-const plan = subData?.plans || { monthly_limit: 1, features: {} };
-const features = plan.features as Record<string, boolean>;
-
-// 2. Count usage this month
-const { count } = await supabase
-  .from('usage_logs')
-  .select('*', { count: 'exact', head: true })
-  .eq('user_id', userId)
-  .eq('app_id', 'curriculo_usa')
-  .gte('created_at', startOfMonth);
-
-// 3. Check quota
-if (count >= plan.monthly_limit) {
-  return new Response(
-    JSON.stringify({ 
-      error_code: 'LIMIT_REACHED',
-      error: 'Limite mensal atingido',
-      plan_id: subData?.plan_id || 'basic',
-      monthly_limit: plan.monthly_limit,
-      used: count
-    }),
-    { status: 402, headers: corsHeaders }
-  );
-}
-
-// 4. Modify AI instructions based on features
-let modifiedPrompt = systemPrompt;
-if (!features.show_improvements) {
-  modifiedPrompt += "\n\nIMPORTANT: Return an empty array for 'improvements'.";
-}
-if (!features.show_cheat_sheet) {
-  modifiedPrompt += "\n\nIMPORTANT: Return an empty array for 'interview_cheat_sheet'.";
-}
-
-// 5. After successful AI call, record usage
-await supabase.from('usage_logs').insert({
-  user_id: userId,
-  app_id: 'curriculo_usa'
-});
-```
-
----
-
-### Phase 3: Frontend - Feature Gating
-
-**New Component:** `src/components/curriculo/LockedFeature.tsx`
-
-```typescript
-interface LockedFeatureProps {
-  isLocked: boolean;
-  featureName: string;
-  children: React.ReactNode;
-}
-
-// Renders children with blur overlay and lock icon if locked
-// On click, opens upgrade modal
-```
-
-**Design:**
+**UI Structure:**
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      [Content with blur-sm]                      │
-│                                                                  │
-│              ┌────────────────────────────────┐                  │
-│              │     🔒  Recurso Premium        │                  │
-│              │                                │                  │
-│              │  Faça upgrade para desbloquear │                  │
-│              │                                │                  │
-│              │    [ Ver Planos ]              │                  │
-│              └────────────────────────────────┘                  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│  Configurar Planos                                          [ Atualizar Dashboard ] │
+│  Defina os limites e funcionalidades de cada plano para os usuários.                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌─────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐    │
+│  │  Plano Básico   │   │    ❖ MAIS ESCOLHIDO     │   │  ✦ Plano VIP            │    │
+│  │                 │   │      Plano PRO          │   │  (gold gradient header)  │    │
+│  │  PREÇO: R$0.00  │   │                         │   │                          │    │
+│  │  LIMITE: 1      │   │  PREÇO: R$47.00         │   │  PREÇO: R$197.00         │    │
+│  │                 │   │  LIMITE: 10             │   │  LIMITE: Ilimitado       │    │
+│  │  FUNCIONALIDADES│   │                         │   │                          │    │
+│  │  ──────────────  │   │  FUNCIONALIDADES       │   │  FUNCIONALIDADES         │    │
+│  │  ○ Melhorias    │   │  ● Melhorias           │   │  ● Melhorias             │    │
+│  │  ○ Power Verbs  │   │  ● Power Verbs         │   │  ● Power Verbs           │    │
+│  │  ○ Guia Entrev. │   │  ○ Guia Entrev.        │   │  ● Guia Entrev.          │    │
+│  │  ○ Exportar PDF │   │  ● Exportar PDF        │   │  ● Exportar PDF          │    │
+│  │                 │   │                         │   │                          │    │
+│  │  RECURSOS MKTG  │   │  RECURSOS MKTG         │   │  RECURSOS MKTG           │    │
+│  │  [textarea]     │   │  [textarea]            │   │  [textarea]              │    │
+│  │                 │   │                         │   │                          │    │
+│  │ [Salvar Config] │   │ [Salvar Configurações] │   │ [Salvar Configurações]   │    │
+│  └─────────────────┘   └─────────────────────────┘   └─────────────────────────┘    │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**CSS Classes:**
-- Container: `relative`
-- Blur layer: `blur-sm pointer-events-none`
-- Overlay: `absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center`
-- Lock card: `bg-white rounded-2xl shadow-xl p-6 text-center`
+**Components for Each Plan Card:**
+- Input for price (number with BRL formatting)
+- Select for monthly_limit (1, 5, 10, 20, 50, 100, "Ilimitado" = 999)
+- Section header "FUNCIONALIDADES"
+- App group header "App: Currículo USA"
+- Toggle rows with icons:
+  - TrendingUp icon + "Melhorias de Impacto" (`show_improvements`)
+  - Zap icon + "Power Verbs" (`show_power_verbs`)
+  - GraduationCap icon + "Guia de Entrevistas" (`show_cheat_sheet`)
+  - Download icon + "Exportar PDF" (`allow_pdf`)
+- Future: App group "App: Job Marketplace" with placeholder toggles
+- Textarea for marketing features (comma-separated, parsed to array)
+- Save button
 
----
-
-### Phase 4: Upgrade Modal
-
-**New Component:** `src/components/curriculo/UpgradeModal.tsx`
-
-**Features:**
-- Dynamically fetches all active plans from `plans` table
-- Displays price, display_features list, and is_popular badge
-- CTA button uses cta_text from database
-- WhatsApp link: `https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg?plan={plan_id}`
-
-**Design:**
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      ⚡ Potencialize Suas Análises                      │
-│                                                                         │
-│  ┌───────────────┐  ┌───────────────────────┐  ┌───────────────┐       │
-│  │    BÁSICO     │  │        ⭐ PRO         │  │      VIP      │       │
-│  │               │  │      (Popular)        │  │               │       │
-│  │    Grátis     │  │      R$ 47/mês        │  │   R$ 97/mês   │       │
-│  │               │  │                       │  │               │       │
-│  │ • 1 análise   │  │ • 10 análises         │  │ • Ilimitado   │       │
-│  │ • Score       │  │ • Relatório completo  │  │ • Tudo do Pro │       │
-│  │ • Métricas    │  │ • Power Verbs         │  │ • Entrevista  │       │
-│  │               │  │ • LinkedIn Fix        │  │ • Suporte VIP │       │
-│  │               │  │ • PDF Export          │  │               │       │
-│  │               │  │                       │  │               │       │
-│  │ [Plano Atual] │  │ [ Fazer Upgrade ]     │  │[Quero Ser VIP]│       │
-│  └───────────────┘  └───────────────────────┘  └───────────────┘       │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Phase 5: Report Page Integration
-
-**File:** `src/pages/curriculo/CurriculoReport.tsx`
-
-**Changes:**
-
-1. **Fetch user's features** via `useSubscription` hook (extend to return features)
-2. **Wrap gated sections** with `LockedFeature` component:
-   - `ImprovementsSection` → locked if `!features.show_improvements`
-   - `InterviewCheatSheet` → locked if `!features.show_cheat_sheet`
-   - PDF Download button → locked if `!features.allow_pdf`
-3. **Handle 402 errors** in `useCurriculoAnalysis`:
-   - If status 402, open UpgradeModal automatically
-
-**Updated Tab Structure:**
+**State Management:**
 ```typescript
-// Tab 2: Otimização
-<LockedFeature 
-  isLocked={!features?.show_improvements} 
-  featureName="Melhorias Sugeridas"
-  onUpgrade={() => setShowUpgradeModal(true)}
->
-  <ImprovementsSection ... />
-</LockedFeature>
-
-// Tab 3: Preparação > Interview Cheat Sheet
-<LockedFeature 
-  isLocked={!features?.show_cheat_sheet}
-  featureName="Cheat Sheet de Entrevista"
-  onUpgrade={() => setShowUpgradeModal(true)}
->
-  <InterviewCheatSheet ... />
-</LockedFeature>
-```
-
----
-
-### Phase 6: Admin Subscriptions Page
-
-**New File:** `src/pages/admin/AdminSubscriptions.tsx`
-
-**Features:**
-- Table with all users showing: Name, Email, Plan, Usage (X/Y), Last Analysis
-- Dropdown to change user's plan
-- "Reset Usage" button to clear current month's logs
-- Stats cards: Total Users, Pro Users, VIP Users, Analyses This Month
-
-**Table Columns:**
-| Column | Content |
-|--------|---------|
-| Usuário | Avatar + Name + Email |
-| Plano | Badge (Basic/Pro/VIP) |
-| Uso | Progress bar X/Y |
-| Último Uso | Date |
-| Ações | Change Plan dropdown, Reset button |
-
-**RPC Function:** Create `admin_get_users_with_usage()` to fetch aggregated data
-
----
-
-### Phase 7: Extend useSubscription Hook
-
-**File:** `src/hooks/useSubscription.ts`
-
-**Changes:**
-- Add `features` to the returned UserQuota interface
-- Add `fetchPlans()` method to get all available plans
-- Return plan pricing data for the upgrade modal
-
-**Updated Interface:**
-```typescript
-interface UserQuota {
-  planId: string;
-  planName: string;
-  monthlyLimit: number;
-  usedThisMonth: number;
-  remaining: number;
-  features: {
-    allow_pdf: boolean;
-    show_improvements: boolean;
-    show_cheat_sheet: boolean;
-    impact_cards: boolean;
-    priority_support: boolean;
-  };
-}
-
-interface Plan {
+interface PlanConfig {
   id: string;
   name: string;
   price: number;
-  monthlyLimit: number;
-  displayFeatures: string[];
-  ctaText: string;
-  isPopular: boolean;
+  monthly_limit: number;
+  features: {
+    show_improvements: boolean;
+    show_power_verbs: boolean;
+    show_cheat_sheet: boolean;
+    allow_pdf: boolean;
+    impact_cards: boolean;
+    priority_support: boolean;
+  };
+  display_features: string[];
+  is_popular: boolean;
 }
 ```
+
+**Save Logic:**
+```typescript
+const savePlanConfig = async (plan: PlanConfig) => {
+  const { error } = await supabase
+    .from('plans')
+    .update({
+      price: plan.price,
+      monthly_limit: plan.monthly_limit,
+      features: plan.features,
+      display_features: plan.display_features,
+    })
+    .eq('id', plan.id);
+  
+  if (error) throw error;
+  toast({ title: 'Plano atualizado!' });
+};
+```
+
+---
+
+### Phase 3: Fix Dynamic Usage Bars
+
+**File:** `src/pages/admin/AdminSubscriptions.tsx`
+
+**Current Problem:**
+The usage bar shows `/1` for all users regardless of their actual plan limit.
+
+**Fix:**
+The `admin_get_users_with_usage` RPC already returns `monthly_limit` from the user's plan. The current code at line 239 already uses `user.monthly_limit`:
+```tsx
+/{user.monthly_limit === 999 ? '∞' : user.monthly_limit}
+```
+
+This appears to already be working correctly. I'll verify the RPC function returns the correct data.
+
+---
+
+### Phase 4: Update Subscription Hook & Report
+
+**File:** `src/hooks/useSubscription.ts`
+
+**Add `show_power_verbs` to features interface:**
+```typescript
+interface PlanFeatures {
+  allow_pdf: boolean;
+  show_improvements: boolean;
+  show_power_verbs: boolean;  // NEW
+  show_cheat_sheet: boolean;
+  impact_cards: boolean;
+  priority_support: boolean;
+}
+```
+
+**File:** `src/pages/curriculo/CurriculoReport.tsx`
+
+**Ensure Power Verbs respects feature flag:**
+The `ImprovementsSection` component displays power verbs. We need to check if the feature is locked.
+
+---
+
+### Phase 5: Update Edge Function Feature Stripping
+
+**File:** `supabase/functions/analyze-resume/index.ts`
+
+**Add Power Verbs stripping:**
+```typescript
+if (!features.show_power_verbs) {
+  systemPrompt += "\n\nIMPORTANT RESTRICTION: The user's plan does not include power verbs. Return an EMPTY array [] for the 'power_verbs_suggestions' field.";
+}
+```
+
+---
+
+### Phase 6: Navigation & Routes
+
+**File:** `src/App.tsx`
+- Add route for `/admin/planos`
+
+**File:** `src/components/layouts/DashboardLayout.tsx`
+- Add "Configurar Planos" menu item under CONFIGURAÇÕES section for admins
 
 ---
 
@@ -353,62 +216,86 @@ interface Plan {
 
 | Action | File | Description |
 |--------|------|-------------|
-| MIGRATE | Database | Add marketing columns to plans table |
-| MODIFY | `supabase/functions/analyze-resume/index.ts` | Add quota check, feature stripping, usage logging |
-| MODIFY | `src/hooks/useSubscription.ts` | Add features, fetchPlans() |
-| CREATE | `src/components/curriculo/LockedFeature.tsx` | Blur/lock overlay component |
-| CREATE | `src/components/curriculo/UpgradeModal.tsx` | Dynamic pricing modal |
-| MODIFY | `src/pages/curriculo/CurriculoReport.tsx` | Integrate feature gating |
-| MODIFY | `src/hooks/useCurriculoAnalysis.ts` | Handle 402 errors |
-| CREATE | `src/pages/admin/AdminSubscriptions.tsx` | Admin subscription management |
-| CREATE | `src/hooks/useAdminSubscriptions.ts` | Admin data fetching |
-| MODIFY | `src/App.tsx` | Add /admin/assinaturas route |
+| CREATE | `src/pages/admin/AdminPlans.tsx` | Plan configuration admin page |
+| CREATE | `src/components/admin/plans/PlanConfigCard.tsx` | Reusable plan config card component |
+| CREATE | `src/hooks/useAdminPlans.ts` | Hook for plan CRUD operations |
+| MODIFY | `src/App.tsx` | Add /admin/planos route |
 | MODIFY | `src/components/layouts/DashboardLayout.tsx` | Add sidebar menu item |
+| MODIFY | `src/hooks/useSubscription.ts` | Add show_power_verbs to PlanFeatures |
+| MODIFY | `src/pages/curriculo/CurriculoReport.tsx` | Gate Power Verbs section if needed |
+| MODIFY | `supabase/functions/analyze-resume/index.ts` | Add power verbs feature stripping |
+| MIGRATE | Database | Add show_power_verbs to features JSONB |
 
 ---
 
-## Security Considerations
+## Design Specifications (Matching Reference)
 
-1. **Admin Access**: Uses existing `user_roles` table with `has_role()` function - NO is_admin column needed
-2. **RLS Policies**: 
-   - `usage_logs`: Users can only read their own logs (already configured)
-   - Admin functions use SECURITY DEFINER to bypass RLS
-3. **Edge Function**: Validates JWT token before any operation
-4. **No Client-Side Gating Only**: Edge function enforces limits server-side; UI gating is purely UX
+### Card Styling
+- **Container**: `bg-white rounded-[24px] border border-border shadow-sm p-6`
+- **PRO badge**: `absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-1 rounded-full text-xs uppercase tracking-wider`
+- **VIP header**: Gold gradient `bg-gradient-to-r from-amber-400 to-orange-500 rounded-t-[24px] -mx-6 -mt-6 px-6 py-4 mb-6`
+- **Section labels**: `text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2`
+- **Inputs**: `rounded-xl border-border bg-muted/30`
+- **Toggle rows**: `flex items-center justify-between py-2`
+- **Save button**: Full width, `rounded-xl bg-primary text-white py-3 font-medium`
 
----
-
-## WhatsApp Integration
-
-CTA buttons link to the provided WhatsApp group with plan context:
+### Toggle Row Structure
+```tsx
+<div className="flex items-center justify-between py-2">
+  <div className="flex items-center gap-3">
+    <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
+      <Icon className="w-4 h-4 text-muted-foreground" />
+    </div>
+    <span className="text-sm font-medium">Feature Name</span>
+  </div>
+  <Switch checked={value} onCheckedChange={onChange} />
+</div>
 ```
-https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg?text=Olá!%20Quero%20fazer%20upgrade%20para%20o%20plano%20{plan_name}
+
+### Marketing Resources Field
+```tsx
+<div className="space-y-2">
+  <div className="flex items-center gap-2">
+    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      RECURSOS MARKETING
+    </span>
+    <Tooltip>
+      <TooltipTrigger>
+        <Info className="w-3 h-3 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        Bullets que aparecem na página de preços
+      </TooltipContent>
+    </Tooltip>
+  </div>
+  <Input 
+    value={displayFeatures.join(', ')}
+    onChange={(e) => setDisplayFeatures(e.target.value.split(',').map(s => s.trim()))}
+    className="rounded-xl text-sm"
+    placeholder="[Feature 1, Feature 2, ...]"
+  />
+</div>
 ```
 
 ---
 
-## Testing Checklist
+## Feature Mapping
 
-1. **Quota Enforcement**
-   - [ ] Basic user: 1 analysis → 2nd attempt returns 402
-   - [ ] Pro user: 10 analyses work, 11th returns 402
-   - [ ] VIP user: 999+ analyses work
+| UI Toggle | DB Feature Key | Edge Function Param |
+|-----------|----------------|---------------------|
+| Melhorias de Impacto | `show_improvements` | strips `improvements` |
+| Power Verbs | `show_power_verbs` | strips `power_verbs_suggestions` |
+| Guia de Entrevistas | `show_cheat_sheet` | strips `interview_cheat_sheet` |
+| Exportar PDF | `allow_pdf` | (frontend only) |
 
-2. **Feature Gating**
-   - [ ] Basic: Improvements tab is blurred/locked
-   - [ ] Basic: Interview Cheat Sheet is blurred/locked
-   - [ ] Basic: PDF button shows upgrade prompt
-   - [ ] Pro: All features unlocked except priority support
-   - [ ] VIP: Everything unlocked
+---
 
-3. **Upgrade Modal**
-   - [ ] Opens on 402 error
-   - [ ] Opens when clicking locked features
-   - [ ] Correctly displays plan data from database
-   - [ ] WhatsApp link works with plan context
+## Summary
 
-4. **Admin Dashboard**
-   - [ ] Only accessible by admin role
-   - [ ] Shows all users with usage stats
-   - [ ] Plan change updates immediately
-   - [ ] Reset usage clears current month logs
+1. **AdminPlans.tsx**: New admin page with three cards matching the design
+2. **Database migration**: Add `show_power_verbs` feature flag
+3. **Edge function update**: Strip power verbs when not in plan
+4. **Frontend gating**: Extend LockedFeature usage for Power Verbs section
+5. **Routing**: Add `/admin/planos` route and sidebar item
+6. **Usage bars**: Already dynamic - verify RPC returns correct limit
+
