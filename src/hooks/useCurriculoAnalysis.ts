@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { FullAnalysisResult } from '@/types/curriculo';
+import type { FullAnalysisResult, AnalysisError } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
 type AnalysisStatus = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
@@ -81,10 +81,29 @@ export function useCurriculoAnalysis() {
         },
       });
 
-      if (error) throw error;
-
       // Step 3: Clean up - delete temp file
       await supabase.storage.from('temp-resumes').remove([filePath]);
+
+      // Check for parsing errors from the edge function
+      if (error) {
+        throw error;
+      }
+
+      // Check if response contains error codes
+      if (data?.error_code || data?.parsing_error) {
+        const errorData = data as AnalysisError;
+        toast({
+          title: errorData.error || 'Erro no processamento',
+          description: errorData.error_message || 'Não foi possível processar seu currículo.',
+          variant: 'destructive',
+        });
+        setState(prev => ({
+          ...prev,
+          status: 'error',
+          error: errorData.error_message,
+        }));
+        return;
+      }
 
       // Step 4: Store result in localStorage and navigate
       localStorage.setItem(CURRICULO_RESULT_STORAGE_KEY, JSON.stringify(data));
