@@ -31,12 +31,11 @@ export default function Register() {
   // Fetch invitation data if token is present
   const { data: invitation, isLoading: invitationLoading } = useInvitationByToken(invitationToken);
 
-  // Pre-fill email from invitation
+  // Pre-fill name from invitation (email is intentionally not exposed for security)
   useEffect(() => {
     if (invitation) {
       setFormData(prev => ({
         ...prev,
-        email: invitation.email || prev.email,
         full_name: invitation.invited_name || prev.full_name,
       }));
     }
