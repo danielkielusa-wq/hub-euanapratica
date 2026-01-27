@@ -1,277 +1,414 @@
 
+# Currículo USA v3.0 - Complete SaaS Subscription Ecosystem
 
-# Currículo USA v2.3 - Report Header Redesign & SaaS Infrastructure
+## Overview
 
-## Part 1: Report Header Redesign
+This implementation creates a fully dynamic, database-driven SaaS subscription system with:
+1. **Enhanced database schema** with marketing fields (price, display_features, cta_text, is_popular)
+2. **Smart Gatekeeper edge function** that checks quotas, strips features, and returns 402 on limit
+3. **Feature-gated UI** with blur/lock overlays on restricted sections
+4. **Upgrade Modal** that dynamically fetches plans and redirects to WhatsApp
+5. **Admin Subscriptions Dashboard** for user plan management
 
-### Current Problem
-The current `ReportHeader` component stacks elements vertically:
-- Score gauge (large, centered)
-- Status badge
-- Main message
-- Sub message
+---
 
-### Reference Design Analysis
-From the uploaded image, the new layout should be:
-- **Horizontal layout** with score wheel on the left, text content on the right
-- Score wheel is **smaller** (~100px instead of 200px)
-- Status badge appears **above** the main message (green pill badge)
-- Main text is **left-aligned** with highlight on key word
-- All content in a single row on desktop
+## Current State Analysis
 
-### New Design Structure
+### What Already Exists
+- `plans` table with `id`, `name`, `monthly_limit`, `features`, `is_active`
+- `user_subscriptions` table linking users to plans
+- `usage_logs` table tracking API calls
+- `get_user_quota()` and `record_curriculo_usage()` RPC functions
+- `useSubscription` hook for frontend quota management
+- Basic quota checking in `useCurriculoAnalysis`
+
+### What Needs to Be Added
+- Marketing columns in `plans` table (`price`, `display_features`, `cta_text`, `is_popular`)
+- Edge function quota enforcement with feature stripping
+- Report page feature gating with blur/lock UI
+- Upgrade modal component
+- Admin subscription management page
+
+---
+
+## Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                              │
-│  ┌───────────┐     ✦ COMPATIBILIDADE DE MERCADO: ALTA                       │
-│  │           │                                                               │
-│  │    82     │     Seu perfil é **muito competitivo**.                      │
-│  │   SCORE   │                                                               │
-│  │           │     Você superou 82% dos candidatos para esta vaga.          │
-│  └───────────┘     Ajustando algumas palavras-chave e verbos de impacto,    │
-│                    você pode chegar a 95%.                                   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Files to Modify
-
-**1. `src/components/curriculo/report/ScoreGauge.tsx`**
-
-Changes:
-- Add `size` prop to control dimensions (default 200, compact 120)
-- Add `compact` boolean prop for smaller variant
-- Reduce pulse animation in compact mode
-- Keep tooltip functionality
-
-**2. `src/components/curriculo/report/ReportHeader.tsx`**
-
-Changes:
-- Convert from vertical flex to horizontal flex layout
-- Position ScoreGauge on left (compact variant)
-- Stack text content on right:
-  - Status badge (top, small green pill)
-  - Main message (large, with highlighted word)
-  - Sub message (gray, smaller)
-- Mobile: Stack vertically
-- Desktop: Side-by-side layout using `md:flex-row`
-
-### Design Tokens
-- Card: `rounded-[24px]` (keeping existing)
-- Background: White with subtle border
-- Padding: `p-6 md:p-8`
-- Score wheel size: 120px (compact)
-- Gap between wheel and text: `gap-8`
-
----
-
-## Part 2: SaaS Subscription Infrastructure
-
-### Database Architecture
-
-#### 1. Create `plans` Table
-
-Stores the tiered subscription plans.
-
-```sql
-CREATE TABLE public.plans (
-  id TEXT PRIMARY KEY,  -- 'basic', 'pro', 'vip'
-  name TEXT NOT NULL,
-  monthly_limit INTEGER NOT NULL DEFAULT 1,
-  features JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  is_active BOOLEAN NOT NULL DEFAULT true
-);
-```
-
-**Initial Data:**
-| id | name | monthly_limit | features |
-|----|------|---------------|----------|
-| basic | Básico | 1 | `{"allow_pdf": false, "show_cheat_sheet": false, "show_improvements": false}` |
-| pro | Pro | 10 | `{"allow_pdf": true, "show_cheat_sheet": true, "show_improvements": true, "impact_cards": true}` |
-| vip | VIP | 999 | `{"allow_pdf": true, "show_cheat_sheet": true, "show_improvements": true, "impact_cards": true, "priority_support": true}` |
-
-**RLS Policies:**
-- Anyone can read plans (public catalog)
-- Only admins can insert/update/delete
-
----
-
-#### 2. Create `user_subscriptions` Table
-
-Links users to their subscription plan.
-
-```sql
-CREATE TABLE public.user_subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  plan_id TEXT NOT NULL REFERENCES public.plans(id),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'cancelled')),
-  starts_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id)  -- One subscription per user
-);
-```
-
-**RLS Policies:**
-- Users can read their own subscription
-- Only admins can insert/update/delete
-
----
-
-#### 3. Create `usage_logs` Table
-
-Tracks every successful analysis for quota enforcement.
-
-```sql
-CREATE TABLE public.usage_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  app_id TEXT NOT NULL DEFAULT 'curriculo_usa',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-**RLS Policies:**
-- Users can read their own logs
-- Only authenticated users can insert their own logs
-- Admins can read all logs
-
----
-
-#### 4. Create Helper Functions
-
-**Function: Get User's Remaining Quota**
-```sql
-CREATE OR REPLACE FUNCTION public.get_user_quota(p_user_id UUID)
-RETURNS TABLE (
-  plan_id TEXT,
-  plan_name TEXT,
-  monthly_limit INTEGER,
-  used_this_month INTEGER,
-  remaining INTEGER
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    COALESCE(us.plan_id, 'basic'),
-    COALESCE(p.name, 'Básico'),
-    COALESCE(p.monthly_limit, 1),
-    COUNT(ul.id)::INTEGER AS used,
-    GREATEST(0, COALESCE(p.monthly_limit, 1) - COUNT(ul.id)::INTEGER) AS remaining
-  FROM public.user_subscriptions us
-  RIGHT JOIN (SELECT p_user_id AS user_id) u ON us.user_id = u.user_id
-  LEFT JOIN public.plans p ON p.id = COALESCE(us.plan_id, 'basic')
-  LEFT JOIN public.usage_logs ul ON ul.user_id = p_user_id 
-    AND ul.app_id = 'curriculo_usa'
-    AND ul.created_at >= date_trunc('month', now())
-  GROUP BY us.plan_id, p.name, p.monthly_limit;
-END;
-$$;
-```
-
-**Function: Record Usage**
-```sql
-CREATE OR REPLACE FUNCTION public.record_curriculo_usage(p_user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  INSERT INTO public.usage_logs (user_id, app_id)
-  VALUES (p_user_id, 'curriculo_usa');
-  RETURN true;
-END;
-$$;
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           SUBSCRIPTION ECOSYSTEM                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│   ┌─────────────┐     ┌─────────────────┐     ┌─────────────────────────┐    │
+│   │   plans     │ ──► │ user_subscripts │ ──► │      usage_logs         │    │
+│   │ (tiers)     │     │ (user mapping)  │     │ (monthly tracking)      │    │
+│   └─────────────┘     └─────────────────┘     └─────────────────────────┘    │
+│          │                    │                          ▲                    │
+│          │                    │                          │                    │
+│          ▼                    ▼                          │                    │
+│   ┌─────────────────────────────────────────────────────────────────────┐    │
+│   │                     analyze-resume (Edge Function)                   │    │
+│   │  1. Check user plan & monthly_limit                                 │    │
+│   │  2. Count usage_logs for current month                              │    │
+│   │  3. If count >= limit → return 402 LIMIT_REACHED                    │    │
+│   │  4. Check features JSONB → strip disabled features from AI call     │    │
+│   │  5. On success → insert usage_log                                   │    │
+│   └─────────────────────────────────────────────────────────────────────┘    │
+│                                   │                                           │
+│                                   ▼                                           │
+│   ┌─────────────────────────────────────────────────────────────────────┐    │
+│   │                         Frontend UI                                  │    │
+│   │                                                                      │    │
+│   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │    │
+│   │  │  CurriculoUSA│  │CurriculoReport  │Upgrade Modal (Dynamic)   │   │    │
+│   │  │  (Quota      │  │  (Feature    │  │  - Fetches plans         │   │    │
+│   │  │   Display)   │  │   Gating)    │  │  - Shows pricing cards   │   │    │
+│   │  └──────────────┘  └──────────────┘  │  - WhatsApp CTA          │   │    │
+│   │                                       └──────────────────────────┘   │    │
+│   └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+│   ┌─────────────────────────────────────────────────────────────────────┐    │
+│   │                    Admin Dashboard (/admin/assinaturas)              │    │
+│   │  - User list with current plan                                       │    │
+│   │  - Change plan dropdown                                              │    │
+│   │  - Reset usage button                                                │    │
+│   │  - Usage statistics                                                  │    │
+│   └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Frontend Integration
+## Implementation Plan
 
-#### 1. Create Hook: `useSubscription`
+### Phase 1: Database Enhancement
 
-**File**: `src/hooks/useSubscription.ts`
+**Migration: Add marketing columns to `plans` table**
+
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| `price` | numeric | 0 | Price in BRL |
+| `display_features` | jsonb | '[]' | Array of marketing feature strings |
+| `cta_text` | text | 'Escolher Plano' | Call-to-action button text |
+| `is_popular` | boolean | false | Show "Popular" badge |
+
+**Update seed data:**
+```sql
+UPDATE plans SET 
+  price = 0, 
+  display_features = '["1 análise por mês", "Score básico", "Métricas principais"]'::jsonb,
+  cta_text = 'Plano Atual',
+  is_popular = false
+WHERE id = 'basic';
+
+UPDATE plans SET 
+  price = 47, 
+  display_features = '["10 análises por mês", "Relatório completo", "Power Verbs", "Melhorias sugeridas", "LinkedIn Quick-Fix", "Exportar PDF"]'::jsonb,
+  cta_text = 'Fazer Upgrade',
+  is_popular = true
+WHERE id = 'pro';
+
+UPDATE plans SET 
+  price = 97, 
+  display_features = '["Análises ilimitadas", "Tudo do Pro", "Cheat Sheet de Entrevista", "Suporte prioritário"]'::jsonb,
+  cta_text = 'Quero Ser VIP',
+  is_popular = false
+WHERE id = 'vip';
+```
+
+---
+
+### Phase 2: Edge Function - Smart Gatekeeper
+
+**File:** `supabase/functions/analyze-resume/index.ts`
+
+**New Logic Flow:**
 
 ```typescript
-// Hook to fetch user's subscription status and quota
-// - Fetches quota from RPC function
-// - Returns: planId, planName, limit, used, remaining
-// - isLoading state
-// - Caches result for session
+// 1. Get user's subscription and plan
+const { data: subData } = await supabase
+  .from('user_subscriptions')
+  .select('plan_id, plans(monthly_limit, features)')
+  .eq('user_id', userId)
+  .eq('status', 'active')
+  .maybeSingle();
+
+// Default to basic if no subscription
+const plan = subData?.plans || { monthly_limit: 1, features: {} };
+const features = plan.features as Record<string, boolean>;
+
+// 2. Count usage this month
+const { count } = await supabase
+  .from('usage_logs')
+  .select('*', { count: 'exact', head: true })
+  .eq('user_id', userId)
+  .eq('app_id', 'curriculo_usa')
+  .gte('created_at', startOfMonth);
+
+// 3. Check quota
+if (count >= plan.monthly_limit) {
+  return new Response(
+    JSON.stringify({ 
+      error_code: 'LIMIT_REACHED',
+      error: 'Limite mensal atingido',
+      plan_id: subData?.plan_id || 'basic',
+      monthly_limit: plan.monthly_limit,
+      used: count
+    }),
+    { status: 402, headers: corsHeaders }
+  );
+}
+
+// 4. Modify AI instructions based on features
+let modifiedPrompt = systemPrompt;
+if (!features.show_improvements) {
+  modifiedPrompt += "\n\nIMPORTANT: Return an empty array for 'improvements'.";
+}
+if (!features.show_cheat_sheet) {
+  modifiedPrompt += "\n\nIMPORTANT: Return an empty array for 'interview_cheat_sheet'.";
+}
+
+// 5. After successful AI call, record usage
+await supabase.from('usage_logs').insert({
+  user_id: userId,
+  app_id: 'curriculo_usa'
+});
 ```
 
-#### 2. Update Analysis Flow
+---
 
-**File**: `src/hooks/useCurriculoAnalysis.ts`
+### Phase 3: Frontend - Feature Gating
 
-Changes:
-- Before analysis, check user's remaining quota
-- If quota is 0, show upgrade prompt toast
-- After successful analysis, call `record_curriculo_usage` RPC
-- Handle quota exceeded error gracefully
+**New Component:** `src/components/curriculo/LockedFeature.tsx`
 
-#### 3. Create Quota Display Component
+```typescript
+interface LockedFeatureProps {
+  isLocked: boolean;
+  featureName: string;
+  children: React.ReactNode;
+}
 
-**File**: `src/components/curriculo/QuotaDisplay.tsx`
+// Renders children with blur overlay and lock icon if locked
+// On click, opens upgrade modal
+```
 
-Shows user's remaining analyses (e.g., "2/10 análises restantes este mês")
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                      [Content with blur-sm]                      │
+│                                                                  │
+│              ┌────────────────────────────────┐                  │
+│              │     🔒  Recurso Premium        │                  │
+│              │                                │                  │
+│              │  Faça upgrade para desbloquear │                  │
+│              │                                │                  │
+│              │    [ Ver Planos ]              │                  │
+│              └────────────────────────────────┘                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**CSS Classes:**
+- Container: `relative`
+- Blur layer: `blur-sm pointer-events-none`
+- Overlay: `absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center`
+- Lock card: `bg-white rounded-2xl shadow-xl p-6 text-center`
 
 ---
 
-### Admin Controls
+### Phase 4: Upgrade Modal
 
-The system already has admin roles via `user_roles.role = 'admin'`. We'll leverage the existing `has_role()` function.
+**New Component:** `src/components/curriculo/UpgradeModal.tsx`
 
-**Admin Capabilities:**
-- View all user subscriptions
-- Upgrade/downgrade user plans
-- View usage statistics
+**Features:**
+- Dynamically fetches all active plans from `plans` table
+- Displays price, display_features list, and is_popular badge
+- CTA button uses cta_text from database
+- WhatsApp link: `https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg?plan={plan_id}`
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      ⚡ Potencialize Suas Análises                      │
+│                                                                         │
+│  ┌───────────────┐  ┌───────────────────────┐  ┌───────────────┐       │
+│  │    BÁSICO     │  │        ⭐ PRO         │  │      VIP      │       │
+│  │               │  │      (Popular)        │  │               │       │
+│  │    Grátis     │  │      R$ 47/mês        │  │   R$ 97/mês   │       │
+│  │               │  │                       │  │               │       │
+│  │ • 1 análise   │  │ • 10 análises         │  │ • Ilimitado   │       │
+│  │ • Score       │  │ • Relatório completo  │  │ • Tudo do Pro │       │
+│  │ • Métricas    │  │ • Power Verbs         │  │ • Entrevista  │       │
+│  │               │  │ • LinkedIn Fix        │  │ • Suporte VIP │       │
+│  │               │  │ • PDF Export          │  │               │       │
+│  │               │  │                       │  │               │       │
+│  │ [Plano Atual] │  │ [ Fazer Upgrade ]     │  │[Quero Ser VIP]│       │
+│  └───────────────┘  └───────────────────────┘  └───────────────┘       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Implementation Order
+### Phase 5: Report Page Integration
 
-### Phase 1: UI Redesign (Report Header)
-1. Update `ScoreGauge.tsx` - Add compact prop
-2. Update `ReportHeader.tsx` - Horizontal layout
+**File:** `src/pages/curriculo/CurriculoReport.tsx`
 
-### Phase 2: Database (SaaS Infrastructure)
-1. Create `plans` table with initial data
-2. Create `user_subscriptions` table
-3. Create `usage_logs` table
-4. Create helper functions
+**Changes:**
 
-### Phase 3: Frontend Integration
-1. Create `useSubscription` hook
-2. Create `QuotaDisplay` component
-3. Update `useCurriculoAnalysis` to check/record quota
+1. **Fetch user's features** via `useSubscription` hook (extend to return features)
+2. **Wrap gated sections** with `LockedFeature` component:
+   - `ImprovementsSection` → locked if `!features.show_improvements`
+   - `InterviewCheatSheet` → locked if `!features.show_cheat_sheet`
+   - PDF Download button → locked if `!features.allow_pdf`
+3. **Handle 402 errors** in `useCurriculoAnalysis`:
+   - If status 402, open UpgradeModal automatically
+
+**Updated Tab Structure:**
+```typescript
+// Tab 2: Otimização
+<LockedFeature 
+  isLocked={!features?.show_improvements} 
+  featureName="Melhorias Sugeridas"
+  onUpgrade={() => setShowUpgradeModal(true)}
+>
+  <ImprovementsSection ... />
+</LockedFeature>
+
+// Tab 3: Preparação > Interview Cheat Sheet
+<LockedFeature 
+  isLocked={!features?.show_cheat_sheet}
+  featureName="Cheat Sheet de Entrevista"
+  onUpgrade={() => setShowUpgradeModal(true)}
+>
+  <InterviewCheatSheet ... />
+</LockedFeature>
+```
 
 ---
 
-## Files Summary
+### Phase 6: Admin Subscriptions Page
+
+**New File:** `src/pages/admin/AdminSubscriptions.tsx`
+
+**Features:**
+- Table with all users showing: Name, Email, Plan, Usage (X/Y), Last Analysis
+- Dropdown to change user's plan
+- "Reset Usage" button to clear current month's logs
+- Stats cards: Total Users, Pro Users, VIP Users, Analyses This Month
+
+**Table Columns:**
+| Column | Content |
+|--------|---------|
+| Usuário | Avatar + Name + Email |
+| Plano | Badge (Basic/Pro/VIP) |
+| Uso | Progress bar X/Y |
+| Último Uso | Date |
+| Ações | Change Plan dropdown, Reset button |
+
+**RPC Function:** Create `admin_get_users_with_usage()` to fetch aggregated data
+
+---
+
+### Phase 7: Extend useSubscription Hook
+
+**File:** `src/hooks/useSubscription.ts`
+
+**Changes:**
+- Add `features` to the returned UserQuota interface
+- Add `fetchPlans()` method to get all available plans
+- Return plan pricing data for the upgrade modal
+
+**Updated Interface:**
+```typescript
+interface UserQuota {
+  planId: string;
+  planName: string;
+  monthlyLimit: number;
+  usedThisMonth: number;
+  remaining: number;
+  features: {
+    allow_pdf: boolean;
+    show_improvements: boolean;
+    show_cheat_sheet: boolean;
+    impact_cards: boolean;
+    priority_support: boolean;
+  };
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  monthlyLimit: number;
+  displayFeatures: string[];
+  ctaText: string;
+  isPopular: boolean;
+}
+```
+
+---
+
+## Files to Create/Modify
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `src/components/curriculo/report/ScoreGauge.tsx` | Add compact mode with configurable size |
-| MODIFY | `src/components/curriculo/report/ReportHeader.tsx` | Horizontal layout matching reference |
-| MIGRATE | Database | Create plans, user_subscriptions, usage_logs tables |
-| CREATE | `src/hooks/useSubscription.ts` | Hook for quota management |
-| CREATE | `src/components/curriculo/QuotaDisplay.tsx` | Display remaining analyses |
-| MODIFY | `src/hooks/useCurriculoAnalysis.ts` | Integrate quota checking |
+| MIGRATE | Database | Add marketing columns to plans table |
+| MODIFY | `supabase/functions/analyze-resume/index.ts` | Add quota check, feature stripping, usage logging |
+| MODIFY | `src/hooks/useSubscription.ts` | Add features, fetchPlans() |
+| CREATE | `src/components/curriculo/LockedFeature.tsx` | Blur/lock overlay component |
+| CREATE | `src/components/curriculo/UpgradeModal.tsx` | Dynamic pricing modal |
+| MODIFY | `src/pages/curriculo/CurriculoReport.tsx` | Integrate feature gating |
+| MODIFY | `src/hooks/useCurriculoAnalysis.ts` | Handle 402 errors |
+| CREATE | `src/pages/admin/AdminSubscriptions.tsx` | Admin subscription management |
+| CREATE | `src/hooks/useAdminSubscriptions.ts` | Admin data fetching |
+| MODIFY | `src/App.tsx` | Add /admin/assinaturas route |
+| MODIFY | `src/components/layouts/DashboardLayout.tsx` | Add sidebar menu item |
 
 ---
 
 ## Security Considerations
 
-1. **Role-based access**: Admin checks use existing `has_role()` SECURITY DEFINER function
-2. **RLS everywhere**: All new tables have RLS enabled
-3. **No is_admin column**: Following the critical security warning, we use the existing `user_roles` table
-4. **Server-side quota enforcement**: Usage is recorded via SECURITY DEFINER function
+1. **Admin Access**: Uses existing `user_roles` table with `has_role()` function - NO is_admin column needed
+2. **RLS Policies**: 
+   - `usage_logs`: Users can only read their own logs (already configured)
+   - Admin functions use SECURITY DEFINER to bypass RLS
+3. **Edge Function**: Validates JWT token before any operation
+4. **No Client-Side Gating Only**: Edge function enforces limits server-side; UI gating is purely UX
 
+---
+
+## WhatsApp Integration
+
+CTA buttons link to the provided WhatsApp group with plan context:
+```
+https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg?text=Olá!%20Quero%20fazer%20upgrade%20para%20o%20plano%20{plan_name}
+```
+
+---
+
+## Testing Checklist
+
+1. **Quota Enforcement**
+   - [ ] Basic user: 1 analysis → 2nd attempt returns 402
+   - [ ] Pro user: 10 analyses work, 11th returns 402
+   - [ ] VIP user: 999+ analyses work
+
+2. **Feature Gating**
+   - [ ] Basic: Improvements tab is blurred/locked
+   - [ ] Basic: Interview Cheat Sheet is blurred/locked
+   - [ ] Basic: PDF button shows upgrade prompt
+   - [ ] Pro: All features unlocked except priority support
+   - [ ] VIP: Everything unlocked
+
+3. **Upgrade Modal**
+   - [ ] Opens on 402 error
+   - [ ] Opens when clicking locked features
+   - [ ] Correctly displays plan data from database
+   - [ ] WhatsApp link works with plan context
+
+4. **Admin Dashboard**
+   - [ ] Only accessible by admin role
+   - [ ] Shows all users with usage stats
+   - [ ] Plan change updates immediately
+   - [ ] Reset usage clears current month logs
