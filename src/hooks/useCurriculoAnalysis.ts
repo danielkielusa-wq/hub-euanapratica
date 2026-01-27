@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { AnalysisResultData } from '@/components/curriculo/AnalysisResult';
+import type { FullAnalysisResult } from '@/types/curriculo';
+import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
 type AnalysisStatus = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
 
@@ -9,12 +11,13 @@ interface AnalysisState {
   status: AnalysisStatus;
   uploadedFile: File | null;
   jobDescription: string;
-  result: AnalysisResultData | null;
+  result: FullAnalysisResult | null;
   error: string | null;
 }
 
 export function useCurriculoAnalysis() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [state, setState] = useState<AnalysisState>({
     status: 'idle',
     uploadedFile: null,
@@ -32,6 +35,7 @@ export function useCurriculoAnalysis() {
   };
 
   const reset = () => {
+    localStorage.removeItem(CURRICULO_RESULT_STORAGE_KEY);
     setState({
       status: 'idle',
       uploadedFile: null,
@@ -82,7 +86,9 @@ export function useCurriculoAnalysis() {
       // Step 3: Clean up - delete temp file
       await supabase.storage.from('temp-resumes').remove([filePath]);
 
-      // Step 4: Set result
+      // Step 4: Store result in localStorage and navigate
+      localStorage.setItem(CURRICULO_RESULT_STORAGE_KEY, JSON.stringify(data));
+      
       setState(prev => ({
         ...prev,
         status: 'complete',
@@ -91,20 +97,24 @@ export function useCurriculoAnalysis() {
 
       toast({
         title: 'Análise concluída!',
-        description: `Seu currículo obteve ${data.score}% de compatibilidade.`,
+        description: `Seu currículo obteve ${data.header?.score ?? data.score}% de compatibilidade.`,
       });
 
-    } catch (error: any) {
+      // Navigate to report page
+      navigate('/curriculo/resultado');
+
+    } catch (error: unknown) {
       console.error('Analysis error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao analisar currículo';
       setState(prev => ({
         ...prev,
         status: 'error',
-        error: error.message || 'Erro ao analisar currículo',
+        error: errorMessage,
       }));
       
       toast({
         title: 'Erro na análise',
-        description: error.message || 'Não foi possível analisar seu currículo. Tente novamente.',
+        description: errorMessage || 'Não foi possível analisar seu currículo. Tente novamente.',
         variant: 'destructive',
       });
     }
