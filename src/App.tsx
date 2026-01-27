@@ -42,6 +42,8 @@ import AdminFeedback from "./pages/admin/AdminFeedback";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
+import AdminSettings from "./pages/admin/AdminSettings";
+import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -297,6 +299,18 @@ function AppRoutes() {
       <Route path="/admin/feedback" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminFeedback />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/configuracoes" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminSettings />
+        </ProtectedRoute>
+      } />
+      
+      {/* Currículo USA - accessible by students, mentors, and admins */}
+      <Route path="/curriculo" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <CurriculoUSA />
         </ProtectedRoute>
       } />
       

@@ -17,7 +17,8 @@ import {
   Users,
   BookOpen,
   UserCog,
-  Settings
+  Settings,
+  FileCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
@@ -45,6 +46,7 @@ const roleNavSections: Record<string, NavSection[]> = {
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
+        { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
         { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
         { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
       ],
@@ -62,6 +64,7 @@ const roleNavSections: Record<string, NavSection[]> = {
       items: [
         { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
         { label: 'Meus Espaços', href: '/mentor/espacos', icon: GraduationCap },
+        { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
         { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
         { label: 'Biblioteca', href: '/biblioteca', icon: Library },
         { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
@@ -92,6 +95,12 @@ const roleNavSections: Record<string, NavSection[]> = {
         { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
         { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
         { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
+      ],
+    },
+    {
+      label: 'CONFIGURAÇÕES',
+      items: [
+        { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
       ],
     },
   ],
