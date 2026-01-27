@@ -8,3 +8,4 @@ export { ImprovementCard } from './ImprovementCard';
 export { ImprovementsSection } from './ImprovementsSection';
 export { LinkedInQuickFix } from './LinkedInQuickFix';
 export { InterviewCheatSheet } from './InterviewCheatSheet';
+export { CriticalAlert } from './CriticalAlert';

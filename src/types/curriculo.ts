@@ -1,3 +1,20 @@
+// Error types for parsing failures
+export type AnalysisErrorCode = 
+  | "UNSUPPORTED_FORMAT" 
+  | "EXTRACTION_FAILED" 
+  | "INSUFFICIENT_CONTENT" 
+  | "AI_ERROR";
+
+export interface AnalysisError {
+  error_code: AnalysisErrorCode;
+  error: string;
+  error_message: string;
+  parsing_error: boolean;
+}
+
+// Qualitative score labels
+export type QualitativeScore = "Crítico" | "Precisa Melhorar" | "Perfeito";
+
 // Full Analysis Result from AI (20+ fields)
 export interface FullAnalysisResult {
   header: {
@@ -28,6 +45,9 @@ export interface FullAnalysisResult {
     reasoning_pt: string;
   };
   interview_cheat_sheet: InterviewQuestion[];
+  // Optional error fields from AI
+  parsing_error?: boolean;
+  parsing_error_message?: string;
 }
 
 export interface MetricItem {

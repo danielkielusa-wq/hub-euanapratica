@@ -44,6 +44,22 @@ serve(async (req) => {
       );
     }
 
+    // Check for unsupported legacy .doc format (binary, not XML-based)
+    const lowerPath = filePath.toLowerCase();
+    const isLegacyDoc = lowerPath.endsWith(".doc") && !lowerPath.endsWith(".docx");
+    
+    if (isLegacyDoc) {
+      return new Response(
+        JSON.stringify({
+          error_code: "UNSUPPORTED_FORMAT",
+          error: "Formato não suportado",
+          error_message: "Arquivos .doc (formato legado) não são suportados. Por favor, converta seu currículo para PDF ou DOCX e tente novamente.",
+          parsing_error: true,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get AI prompt from app_configs
     const { data: configData, error: configError } = await supabase
       .from("app_configs")
@@ -76,7 +92,8 @@ serve(async (req) => {
 
     // Extract text content based on file type
     const arrayBuffer = await fileData.arrayBuffer();
-    const isPdf = filePath.endsWith(".pdf");
+    const isPdf = lowerPath.endsWith(".pdf");
+    const isDocx = lowerPath.endsWith(".docx");
     
     let resumeContent: string;
     let pdfBase64: string = "";
@@ -85,7 +102,7 @@ serve(async (req) => {
       // For PDF, convert to base64 for multimodal processing
       pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
-    } else {
+    } else if (isDocx) {
       // For DOCX, extract text content from the XML
       const uint8Array = new Uint8Array(arrayBuffer);
       const textDecoder = new TextDecoder("utf-8");
@@ -109,10 +126,33 @@ serve(async (req) => {
           .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
-        resumeContent = cleanText.slice(0, 15000); // Limit to avoid token issues
+        resumeContent = cleanText.slice(0, 15000);
       } else {
         resumeContent = extractedText.slice(0, 15000);
       }
+      
+      // Validate content quality
+      if (resumeContent.length < 100) {
+        return new Response(
+          JSON.stringify({
+            error_code: "EXTRACTION_FAILED",
+            error: "Falha na extração de texto",
+            error_message: "Não foi possível extrair texto legível do seu currículo. Por favor, salve como PDF e tente novamente.",
+            parsing_error: true,
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      return new Response(
+        JSON.stringify({
+          error_code: "UNSUPPORTED_FORMAT",
+          error: "Formato não suportado",
+          error_message: "Formato de arquivo não suportado. Por favor, envie um arquivo PDF ou DOCX.",
+          parsing_error: true,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Call Lovable AI Gateway with gemini-2.5-pro for complex structured output
@@ -285,6 +325,14 @@ serve(async (req) => {
                       },
                       required: ["question", "context_pt"],
                     },
+                  },
+                  parsing_error: {
+                    type: "boolean",
+                    description: "Set to true if the resume content could not be properly read or is corrupted",
+                  },
+                  parsing_error_message: {
+                    type: "string",
+                    description: "Error message in Portuguese if parsing_error is true",
                   },
                 },
                 required: [
