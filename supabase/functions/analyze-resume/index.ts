@@ -74,12 +74,46 @@ serve(async (req) => {
       );
     }
 
-    // Convert file to base64 for AI processing
+    // Extract text content based on file type
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const mimeType = filePath.endsWith(".pdf") 
-      ? "application/pdf" 
-      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const isPdf = filePath.endsWith(".pdf");
+    
+    let resumeContent: string;
+    let pdfBase64: string = "";
+    
+    if (isPdf) {
+      // For PDF, convert to base64 for multimodal processing
+      pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
+    } else {
+      // For DOCX, extract text content from the XML
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const textDecoder = new TextDecoder("utf-8");
+      
+      // DOCX is a ZIP file - we need to extract document.xml
+      // For simplicity, we'll try to find readable text patterns
+      const rawContent = textDecoder.decode(uint8Array);
+      
+      // Extract text between XML tags (simplified extraction)
+      const textMatches = rawContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+      const extractedText = textMatches
+        .map(match => match.replace(/<[^>]+>/g, ''))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      if (!extractedText || extractedText.length < 50) {
+        // Fallback: try to extract any readable text
+        const cleanText = rawContent
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        resumeContent = cleanText.slice(0, 15000); // Limit to avoid token issues
+      } else {
+        resumeContent = extractedText.slice(0, 15000);
+      }
+    }
 
     // Call Lovable AI Gateway with gemini-2.5-pro for complex structured output
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -105,18 +139,20 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Aqui está o currículo do candidato e a descrição da vaga para análise.\n\nDESCRIÇÃO DA VAGA:\n${jobDescription}`,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`,
-                },
-              },
-            ],
+            content: isPdf 
+              ? [
+                  {
+                    type: "text",
+                    text: `Aqui está o currículo do candidato e a descrição da vaga para análise.\n\nDESCRIÇÃO DA VAGA:\n${jobDescription}`,
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:application/pdf;base64,${pdfBase64}`,
+                    },
+                  },
+                ]
+              : `Aqui está o currículo do candidato e a descrição da vaga para análise.\n\nDESCRIÇÃO DA VAGA:\n${jobDescription}\n\nCONTEÚDO DO CURRÍCULO:\n${resumeContent}`,
           },
         ],
         tools: [
