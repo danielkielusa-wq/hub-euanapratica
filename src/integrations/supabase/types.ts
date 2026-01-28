@@ -511,8 +511,10 @@ export type Database = {
       }
       hub_services: {
         Row: {
+          accent_color: string | null
           category: string | null
           created_at: string | null
+          cta_text: string | null
           currency: string | null
           description: string | null
           display_order: number | null
@@ -521,16 +523,22 @@ export type Database = {
           is_highlighted: boolean | null
           is_visible_in_hub: boolean | null
           name: string
+          price: number | null
           price_display: string | null
           product_type: string | null
+          redirect_url: string | null
+          ribbon: string | null
           route: string | null
+          service_type: string | null
           status: string
           stripe_price_id: string | null
           updated_at: string | null
         }
         Insert: {
+          accent_color?: string | null
           category?: string | null
           created_at?: string | null
+          cta_text?: string | null
           currency?: string | null
           description?: string | null
           display_order?: number | null
@@ -539,16 +547,22 @@ export type Database = {
           is_highlighted?: boolean | null
           is_visible_in_hub?: boolean | null
           name: string
+          price?: number | null
           price_display?: string | null
           product_type?: string | null
+          redirect_url?: string | null
+          ribbon?: string | null
           route?: string | null
+          service_type?: string | null
           status?: string
           stripe_price_id?: string | null
           updated_at?: string | null
         }
         Update: {
+          accent_color?: string | null
           category?: string | null
           created_at?: string | null
+          cta_text?: string | null
           currency?: string | null
           description?: string | null
           display_order?: number | null
@@ -557,9 +571,13 @@ export type Database = {
           is_highlighted?: boolean | null
           is_visible_in_hub?: boolean | null
           name?: string
+          price?: number | null
           price_display?: string | null
           product_type?: string | null
+          redirect_url?: string | null
+          ribbon?: string | null
           route?: string | null
+          service_type?: string | null
           status?: string
           stripe_price_id?: string | null
           updated_at?: string | null

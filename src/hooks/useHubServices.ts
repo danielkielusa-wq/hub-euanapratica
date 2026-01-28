@@ -1,23 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-export interface HubService {
-  id: string;
-  name: string;
-  description: string | null;
-  icon_name: string;
-  status: 'available' | 'premium' | 'coming_soon';
-  route: string | null;
-  category: string | null;
-  is_visible_in_hub: boolean;
-  is_highlighted: boolean;
-  display_order: number;
-  stripe_price_id: string | null;
-  product_type: 'subscription' | 'one_time';
-  price_display: string | null;
-  currency: string;
-}
+import { HubService } from '@/types/hub';
 
 export function useHubServices() {
   return useQuery({
@@ -55,3 +39,6 @@ export function useUserHubAccess() {
     enabled: !!user?.id,
   });
 }
+
+// Re-export the HubService type for backwards compatibility
+export type { HubService };

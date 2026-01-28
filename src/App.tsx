@@ -36,7 +36,7 @@ import AdminEspacos from "./pages/admin/AdminEspacos";
 import AdminEspacoDetail from "./pages/admin/AdminEspacoDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminEnrollments from "./pages/admin/AdminEnrollments";
-import AdminProducts from "./pages/admin/AdminProducts";
+import AdminHubServices from "./pages/admin/AdminHubServices";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminFeedback from "./pages/admin/AdminFeedback";
 import StudentLibrary from "./pages/library/StudentLibrary";
@@ -287,7 +287,7 @@ function AppRoutes() {
       } />
       <Route path="/admin/produtos" element={
         <ProtectedRoute allowedRoles={['admin']}>
-          <AdminProducts />
+          <AdminHubServices />
         </ProtectedRoute>
       } />
       <Route path="/admin/relatorios" element={
