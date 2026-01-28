@@ -1,156 +1,376 @@
 
+# Plano: Redesign Completo da Landing Page "EUA Na Pratica"
 
-# Plano: Corrigir Gravação de Uso e Bloqueio de Quota no Currículo USA
+## Visao Geral
 
-## Problemas Identificados
+Transformar a landing page atual em uma experiencia "Elite SaaS" inspirada em Linear, Apple e Stripe, com foco em alta conversao, autoridade e minimalismo moderno.
 
-### 1. Falha Silenciosa na Gravação de Uso (Crítico)
-O edge function `analyze-resume` tenta gravar o uso via RPC mas falha com "connection reset" intermitente. O código atual (linhas 471-478) apenas loga o erro e continua:
+## Arquitetura de Componentes
 
-```typescript
-const { error: logError } = await supabase.rpc('record_curriculo_usage', {
-  p_user_id: userId,
-});
+Criar uma estrutura modular de componentes para a landing page:
 
-if (logError) {
-  console.error("Error logging usage:", logError);
-  // Don't fail the request, just log the error  <-- PROBLEMA!
-}
+```text
+src/
+  components/
+    landing/
+      Navbar.tsx              # Sticky navbar com glassmorphism
+      HeroSection.tsx         # Hero com floating widgets e prova social
+      TrustLogos.tsx          # Logos de empresas em grayscale
+      BentoGrid.tsx           # Grid de servicos estilo Bento
+      AIPreview.tsx           # Widget interativo Antes/Depois com typewriter
+      SuccessPath.tsx         # Grid de 6 passos numerados
+      WaitlistSection.tsx     # CTA com formulario glassmorphism
+      Footer.tsx              # Footer com links e redes sociais
+  pages/
+    Index.tsx                 # Orquestra todos os componentes
 ```
 
-**Resultado**: Análise retorna sucesso mas uso não é registrado → usuário pode executar análises infinitas.
+## Detalhamento por Secao
 
-### 2. Uso do Service Role Key
-A edge function usa o token do usuário para fazer a chamada RPC. Para garantir gravação confiável, devemos usar o `SUPABASE_SERVICE_ROLE_KEY` para a operação de INSERT no usage_logs.
+### 1. Atualizacao do Design System (index.css e tailwind.config.ts)
 
-### 3. Retry Logic Ausente
-Não há mecanismo de retry para falhas de rede transitórias.
+**Novas variaveis CSS:**
+- `--brand-blue`: 221 83% 53% (Blue Corporate #2563EB)
+- `--navy-dark`: 224 76% 33% (#1e3a8a)
+- `--bg-apple`: 240 5% 96% (#F5F5F7)
+- `--indigo`: 239 84% 67% (#4F46E5)
+- `--emerald-success`: 160 84% 39%
+
+**Novas animacoes no Tailwind:**
+- `typewriter`: Efeito de digitacao letra por letra
+- `shimmer`: Brilho que percorre o botao
+- `ping-slow`: Pulsacao suave para CTAs
+- `float`: Flutuacao sutil para widgets
+
+**Novos border-radius:**
+- `rounded-[40px]`: Cards principais
+- `rounded-3xl`: Elementos internos
 
 ---
 
-## Solução Proposta
+### 2. Navbar.tsx
 
-### Parte 1: Modificar Edge Function para Garantir Gravação
+**Especificacao Visual:**
+- Fundo: `bg-white/80 backdrop-blur-md`
+- Sticky top-0 com z-50
+- Altura: h-16
+- Sombra sutil no scroll
 
-1. **Criar cliente admin com Service Role Key** para operações de gravação
-2. **Inserir diretamente na tabela** em vez de usar RPC (mais confiável)
-3. **Implementar retry logic** para falhas transitórias
-4. **Falhar a análise** se o uso não puder ser gravado após retries (previne abuso)
+**Logo:**
+- Badge navy escuro (`bg-[#1e3a8a]`) com "USA" em branco
+- Texto "Na Pratica" em peso semibold
 
-```typescript
-// Create admin client for reliable writes
-const adminSupabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
+**Botoes:**
+- "Entrar": Ghost, cor navy
+- "Acessar Hub": Preto solido com hover suave
 
-// Retry logic with exponential backoff
-const recordUsageWithRetry = async (userId: string, maxRetries = 3) => {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const { error } = await adminSupabase
-      .from('usage_logs')
-      .insert({ user_id: userId, app_id: 'curriculo_usa' });
-    
-    if (!error) return true;
-    
-    console.error(`Usage recording attempt ${attempt + 1} failed:`, error);
-    if (attempt < maxRetries - 1) {
-      await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
-    }
-  }
-  return false;
-};
+---
 
-// Usage in the flow (BEFORE returning the AI result)
-const usageRecorded = await recordUsageWithRetry(userId);
-if (!usageRecorded) {
-  return new Response(
-    JSON.stringify({ 
-      error: 'Falha ao registrar uso. Tente novamente.',
-      error_code: 'USAGE_RECORDING_FAILED'
-    }),
-    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+### 3. HeroSection.tsx
+
+**Layout:**
+- Background: `#F5F5F7` com mesh gradient sutil
+- Container centralizado max-w-4xl
+
+**Badge Topo:**
+- Pill verde com icone de raio
+- Texto: "PLATAFORMA 2.0: NOVAS FERRAMENTAS DE IA DISPONIVEIS"
+
+**Titulo:**
+```text
+Construa sua carreira
+nos Estados Unidos.
+```
+- "nos Estados Unidos" com gradiente azul para indigo
+- Fonte: Inter Black (900), text-5xl a text-7xl
+
+**Floating Widgets (posicao absoluta):**
+- Esquerda: Card branco com icone $ verde, "SALARIO MEDIO", "$110k/ano"
+- Direita: Card branco com icone grafico azul, "JOBS ABERTOS", "+452 Novas"
+
+**Subtitulo:**
+- Texto muted-foreground, max-w-2xl, text-lg
+
+**CTAs:**
+- "Acessar o Hub": Preto solido com seta, rounded-xl
+- "Ver Mentorias": Outline preto
+
+**Prova Social:**
+- 4-5 avatares sobrepostos (stacked circles)
+- Badge "+2k" azul
+- 5 estrelas douradas
+- Texto: "Junte-se a milhares de brasileiros de sucesso"
+
+---
+
+### 4. TrustLogos.tsx
+
+**Especificacao:**
+- Label superior: "NOSSOS ALUNOS ESTAO NAS MAIORES TECHS E CONSULTORIAS DOS EUA"
+- Logos em texto (nao imagens): Google, amazon, Meta, Microsoft, Deloitte., SAP
+- Estilo: text-gray-400 com hover:text-gray-700 transition
+- Grid responsivo com gap-8 a gap-16
+
+---
+
+### 5. BentoGrid.tsx (Secao de Servicos)
+
+**Titulo:**
+- "Um ecossistema completo para sua jornada americana"
+- Subtitulo: "Nao e apenas um curso..."
+- Link: "Ver todos os servicos" com seta
+
+**Grid Layout (3 colunas):**
+
+**Card Principal (col-span-2, row-span-2):**
+- Fundo: `bg-[#111827]` (navy escuro)
+- Badge: "RECOMENDADO" verde no topo
+- Icone: FileCheck em azul
+- Titulo: "Curriculo USA **AI**" (AI em azul)
+- Descricao: "Nossa inteligencia artificial analisa seu CV..."
+- CTA: "Testar Agora Gratis" botao branco
+- Visual: Mockup de documento processado (gradiente)
+
+**Cards Secundarios:**
+1. **Portal do Aluno:**
+   - Fundo branco, borda sutil
+   - Icone: GraduationCap azul
+   - Link: "EXPLORAR ->"
+
+2. **Hot Seats & Mastermind:**
+   - Fundo branco
+   - Icone: Mic/Link azul
+   - Descricao: "Encontros mensais exclusivos com Daniel Kiel..."
+   - Link: "EXPLORAR ->"
+
+3. **Cursos EUA Na Pratica:**
+   - Badge: Cadeado "EM DESENVOLVIMENTO"
+   - Icone: BookOpen
+
+4. **Expert Marketplace:**
+   - Badge: Cadeado "EM DESENVOLVIMENTO"
+   - Icone: Users
+
+---
+
+### 6. AIPreview.tsx (Secao Interativa)
+
+**Header:**
+- Badge: "TECNOLOGIA PROPRIETARIA" com icone de lapis
+- Titulo: "Nao apenas traduzimos. **Maximizamos seu impacto.**"
+- Subtitulo: Framework STAR, resultados quantificaveis
+
+**Widget Interativo (2 colunas):**
+
+**Coluna Esquerda - Card Escuro:**
+```text
+Estado 1 (Input):
+- Label: "PADRAO COMUM (BRASIL)" com dot laranja
+- Texto em portugues italico opaco:
+  "Fui responsavel por cuidar dos servidores e migrar o sistema para a nuvem."
+
+Botao Central:
+- Icone Zap em circulo azul
+- Efeito de pulsacao (animate-ping)
+
+Estado 2 (Output - apos clique):
+- Label: "PADRAO HIGH-IMPACT (USA AI)" com dot azul
+- Efeito typewriter no texto:
+  "Spearheaded a cloud migration project for 50+ microservices, 
+   reducing operational latency by 35% and saving $120k in annual 
+   infrastructure costs."
+- Cursor piscando durante digitacao
+- Badges ao final: "POWER VERBS", "METRICS INCLUDED"
+```
+
+**Coluna Direita - Lista de Beneficios:**
+1. **Verbos de Poder** (icone Zap)
+   - "Substituimos termos passivos por verbos de acao agressivos..."
+
+2. **Quantificacao de Dados** (icone ArrowRight)
+   - "Tudo nos EUA e sobre numeros..."
+
+3. **ATS Friendly** (icone Check)
+   - "Garantimos que seu documento seja legivel..."
+
+---
+
+### 7. SuccessPath.tsx (Trilha de Sucesso)
+
+**Header:**
+- Badge: "JORNADA COMPLETA" com icone Zap azul
+- Titulo: "Sua trilha para o sucesso."
+- Subtitulo: "Um plano executavel de 6 etapas..."
+
+**Grid 3x2 de Cards:**
+
+| Passo | Icone | Cor Fundo | Titulo | Descricao |
+|-------|-------|-----------|--------|-----------|
+| 01 | Grid | Azul | Acesso ao Hub | Ganhe acesso ao HUB EUA Na Pratica... |
+| 02 | BookOpen | Azul | Recursos Gratuitos | Comece sua jornada aprendendo... |
+| 03 | FileCheck | Verde | Validacao IA | Ajuste seu curriculo para os padroes... |
+| 04 | Link | Laranja | Hot Seats & Network | Networking de elite e sessoes ao vivo... |
+| 05 | Send | Rosa | Mentoria e Educacao | Aprofunde seus conhecimentos... |
+| 06 | Plane | Indigo | Sua Carreira USA | Visto aprovado, contrato assinado... |
+
+**Estilo dos Cards:**
+- Fundo: `bg-[#F8F9FA]` com borda sutil
+- Icone em circulo colorido (pastel)
+- Label "PASSO 0X" em azul
+- Hover: `-translate-y-1` com sombra
+
+**CTA Final:**
+- Botao outline: "Conheca nossa metodologia completa"
+
+---
+
+### 8. WaitlistSection.tsx (CTA Final)
+
+**Container:**
+- Fundo escuro `bg-[#0f172a]` a `bg-[#1e1b4b]` (mesh gradient)
+- Cantos arredondados: `rounded-[40px]`
+- Padding generoso (py-20)
+
+**Conteudo:**
+- Badge: "VAGAS LIMITADAS PARA O BETA" com icone de foguete
+- Titulo: "Seja o primeiro a **dominar o mercado USA.**"
+- Subtitulo: "As ferramentas de IA e o Concierge de Vagas estao em fase final..."
+
+**Formulario:**
+- Input grande com icone de email
+- Placeholder: "Seu melhor e-mail corporativo"
+- Botao: "Garantir Acesso" azul com icone Zap
+- Efeito shimmer no botao
+
+**Trust Badges:**
+- "PRIVACIDADE GARANTIDA" com icone escudo
+- "ZERO SPAM" com icone X
+- "ACESSO IMEDIATO AO HUB FREE" com icone check
+
+---
+
+### 9. Footer.tsx
+
+**Layout:**
+- Fundo branco
+- 4 colunas: Logo | Plataforma | Empresa | Social
+
+**Coluna 1 - Logo:**
+- Badge "USA" + "Na Pratica"
+- Tagline: "Transformando o sonho americano em um plano de carreira solido..."
+
+**Coluna 2 - Plataforma:**
+- Portal do Aluno
+- Cursos
+- Mentores
+
+**Coluna 3 - Empresa:**
+- Sobre Nos
+- Carreiras
+- Imprensa
+
+**Coluna 4 - Social:**
+- Icones: Instagram, LinkedIn, Twitter
+
+**Rodape:**
+- Linha divisoria
+- Copyright 2025
+
+---
+
+## Animacoes Detalhadas
+
+### Typewriter Effect (AIPreview)
+```css
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.typewriter-text {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typewriter 3s steps(80) forwards;
+}
+
+.cursor {
+  animation: blink 1s step-end infinite;
+}
+```
+
+### Shimmer Effect (Botoes)
+```css
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg, 
+    transparent 25%, 
+    rgba(255,255,255,0.3) 50%, 
+    transparent 75%
   );
-}
-
-// Only return success after usage is recorded
-return new Response(JSON.stringify(result), {...});
-```
-
-### Parte 2: Adicionar RLS Policy para INSERT via Service Role
-
-Precisamos adicionar uma policy que permita inserção pelo service role:
-
-```sql
--- Allow service role to insert usage logs
-CREATE POLICY "Service role can insert usage logs"
-  ON public.usage_logs FOR INSERT
-  WITH CHECK (true);
-```
-
-Nota: O service role bypassa RLS, mas é boa prática ter a policy documentada.
-
-### Parte 3: Frontend - Refetch Quota Após Erro
-
-No `useCurriculoAnalysis.ts`, garantir que o refetch ocorra após qualquer erro:
-
-```typescript
-} catch (error: unknown) {
-  // Always refetch quota on error to sync state
-  await refetchQuota();
-  // ... resto do handling
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }
 ```
+
+### Entrada no Viewport
+- Usar `animate-fade-slide-up` com delays escalonados
+- `hover:-translate-y-1 transition-transform duration-300`
 
 ---
 
-## Resumo das Alterações
+## Arquivos a Criar/Modificar
 
-| Arquivo | Tipo | Descrição |
+| Arquivo | Acao | Descricao |
 |---------|------|-----------|
-| `supabase/functions/analyze-resume/index.ts` | Modificar | Usar service role para gravação + retry logic + falhar se não gravar |
-| `src/hooks/useCurriculoAnalysis.ts` | Modificar | Refetch quota após erros |
-| Migração SQL | Criar | Adicionar policy para service role INSERT (opcional, documenta intenção) |
+| `src/index.css` | Modificar | Adicionar variaveis CSS e animacoes |
+| `tailwind.config.ts` | Modificar | Adicionar keyframes e cores |
+| `src/components/landing/Navbar.tsx` | Criar | Navbar sticky com glassmorphism |
+| `src/components/landing/HeroSection.tsx` | Criar | Hero com widgets flutuantes |
+| `src/components/landing/TrustLogos.tsx` | Criar | Logos de empresas |
+| `src/components/landing/BentoGrid.tsx` | Criar | Grid de servicos |
+| `src/components/landing/AIPreview.tsx` | Criar | Widget interativo com typewriter |
+| `src/components/landing/SuccessPath.tsx` | Criar | Trilha de 6 passos |
+| `src/components/landing/WaitlistSection.tsx` | Criar | CTA com formulario |
+| `src/components/landing/Footer.tsx` | Criar | Footer completo |
+| `src/components/landing/index.ts` | Criar | Barrel exports |
+| `src/pages/Index.tsx` | Reescrever | Orquestrar novos componentes |
 
 ---
 
-## Fluxo Corrigido
+## Dependencias
 
-```
-1. Usuário clica "Analisar"
-   → Frontend verifica quota (client-side, UX)
-   → Edge function recebe request
-
-2. Edge function:
-   → Verifica quota no banco (server-side, segurança)
-   → Se quota OK, processa com IA
-   → ANTES de retornar resultado:
-     → Tenta gravar uso com retry (3 tentativas)
-     → Se falhar todas: retorna erro 500
-     → Se sucesso: retorna resultado da análise
-
-3. Frontend:
-   → Recebe resultado
-   → Refetch quota para atualizar UI
-   → Navega para página de resultado
-```
+Nenhuma dependencia adicional necessaria. Utilizaremos:
+- React + TypeScript
+- Tailwind CSS (ja instalado)
+- Lucide React para icones (ja instalado)
+- Fonte Inter (ja configurada)
 
 ---
 
-## Por Que Falhar se Não Gravar?
+## Consideracoes de Performance
 
-É crítico que o uso seja registrado **antes** de entregar o resultado. Se permitirmos retornar sucesso sem gravar uso:
-- Usuários mal-intencionados podem explorar a falha
-- Custo de IA (Gemini) é perdido sem cobrança
-- Métricas de negócio ficam incorretas
+1. **Lazy Loading**: Usar `React.lazy()` para secoes abaixo da dobra
+2. **Intersection Observer**: Disparar animacoes apenas quando visiveis
+3. **Sem Imagens Externas**: Usar texto/CSS para logos e mockups
+4. **CSS Nativo**: Preferir animacoes CSS sobre JavaScript
 
 ---
 
-## Benefícios da Solução
+## Verificacao Final
 
-1. **Confiabilidade**: Retry logic reduz falhas transitórias
-2. **Segurança**: Uso é gravado antes de entregar resultado
-3. **Consistência**: Frontend sempre reflete estado real do banco
-4. **Auditoria**: Service role operations são logadas pelo Supabase
-5. **Integridade**: Impossível receber análise sem ter uso registrado
-
+Apos implementacao, verificar:
+1. Responsividade em mobile, tablet e desktop
+2. Animacao de typewriter funcionando corretamente
+3. Hover effects em todos os cards
+4. Formulario de waitlist funcional (integracao futura)
+5. Links de navegacao corretos (/login, /cadastro, /dashboard)
+6. Acessibilidade (contraste, focus states)
