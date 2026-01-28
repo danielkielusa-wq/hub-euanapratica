@@ -1547,6 +1547,10 @@ export type Database = {
         Args: { _espaco_id: string; _user_id: string }
         Returns: boolean
       }
+      is_phone_available: {
+        Args: { p_country_code: string; p_phone: string; p_user_id?: string }
+        Returns: boolean
+      }
       record_curriculo_usage: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
