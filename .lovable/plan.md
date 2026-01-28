@@ -1,153 +1,347 @@
 
-# Plano de Correção: Convites e Sistema de Créditos
+# Plano: Bloqueio Pre-Analise e Economia de Creditos de IA
 
-## Resumo dos Problemas Identificados
+## Resumo do Problema
 
-1. **Link de Convite Inválido**: O e-mail gera links para `/register`, mas a rota correta é `/cadastro`
-2. **Erro ao Alterar Plano (Admin)**: A constraint no banco não aceita as ações `plan_changed` e `usage_reset`
-3. **Display de Créditos Incorreto**: O cabeçalho mostra infinito ao invés do limite real do usuário
+O sistema atual permite upload e analise, mas bloqueia o resultado final. Isso desperdi creditos de IA porque a chamada ao Gemini ja foi feita. O objetivo e bloquear ANTES da chamada a API.
 
----
+## Analise Tecnica
 
-## Parte 1: Correção do Fluxo de Convites
+### O que ja funciona:
+1. **Edge Function (analyze-resume)**: Ja tem gatekeeper na linha 80 que retorna 402 se `currentUsage >= plan.monthly_limit` - ANTES de chamar Gemini
+2. **Hook (useCurriculoAnalysis)**: Ja verifica quota na linha 71 e bloqueia se `quota.remaining <= 0`
+3. **QuotaDisplay**: Ja mostra creditos reais com barra de progresso colorida
 
-### 1.1 Corrigir Rota do Link de Convite
-**Arquivo**: `supabase/functions/send-espaco-invitation/index.ts`
-
-Alterar a linha que gera o link de convite:
-```typescript
-// DE:
-const inviteLink = `${origin}/register?token=${invitation.token}&espaco_id=${espaco_id}`
-
-// PARA:
-const inviteLink = `${origin}/cadastro?token=${invitation.token}&espaco_id=${espaco_id}`
-```
-
-### 1.2 Atualizar Página de Registro
-**Arquivo**: `src/pages/Register.tsx`
-
-Modificar para:
-- Armazenar o `espaco_id` da URL para redirecionamento apos onboarding
-- Processar o convite automaticamente apos registro
-
-### 1.3 Adicionar Redirecionamento pos-Onboarding
-**Arquivo**: `src/pages/Onboarding.tsx`
-
-Apos completar onboarding, verificar se existe um `espaco_id` pendente no localStorage e redirecionar para a pagina do Espaco.
+### O que precisa melhorar:
+1. **Botao "Analisar"**: Nao mostra feedback visual quando desabilitado por falta de creditos
+2. **ResumeUploadCard**: Nao abre modal de upgrade ao tentar arrastar arquivo sem creditos
+3. **QuotaDisplay**: Nao tem alerta visual vermelho quando creditos = 0
 
 ---
 
-## Parte 2: Correção do Erro de Plano (Prioridade Alta)
+## Parte 1: Botao "Analisar" com Estados Dinamicos
 
-### 2.1 Atualizar Constraint do Banco de Dados
+### Arquivo: `src/pages/curriculo/CurriculoUSA.tsx`
 
-**Migracao SQL necessaria**:
-```sql
--- Remover constraint antiga
-ALTER TABLE public.user_audit_logs 
-DROP CONSTRAINT IF EXISTS user_audit_logs_action_check;
-
--- Adicionar nova constraint com acoes adicionais
-ALTER TABLE public.user_audit_logs 
-ADD CONSTRAINT user_audit_logs_action_check 
-CHECK (action = ANY (ARRAY[
-  'created', 
-  'updated', 
-  'status_changed', 
-  'role_changed', 
-  'profile_updated', 
-  'login',
-  'plan_changed',    -- NOVA
-  'usage_reset'      -- NOVA
-]));
-```
-
-Isso permitira que as funcoes RPC `admin_change_user_plan` e `admin_reset_user_usage` funcionem corretamente.
-
----
-
-## Parte 3: Sincronizacao de Creditos e Display
-
-### 3.1 Atualizar Cabecalho do Curriculo USA
-**Arquivo**: `src/components/curriculo/CurriculoHeader.tsx`
-
-Substituir o icone fixo de infinito pelo componente `QuotaDisplay` que ja existe:
+Alterar o botao para:
+- Mostrar texto diferente quando sem creditos: "Limite Mensal Atingido - Faca Upgrade"
+- Cor cinza/opacidade reduzida
+- Tooltip ao passar o mouse explicando o limite
+- Ao clicar, abrir UpgradeModal ao inves de tentar analisar
 
 ```typescript
-import { QuotaDisplay } from '@/components/curriculo/QuotaDisplay';
+import { useState } from 'react';
+import { Sparkles, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 
-export function CurriculoHeader() {
+export default function CurriculoUSA() {
+  const {
+    status,
+    uploadedFile,
+    jobDescription,
+    setFile,
+    setJobDescription,
+    analyze,
+    canAnalyze,
+    quota,
+    showUpgradeModal,
+    setShowUpgradeModal,
+  } = useCurriculoAnalysis();
+
+  const hasCredits = quota ? quota.remaining > 0 : true;
+  const hasRequiredFields = !!uploadedFile && !!jobDescription.trim();
+  
+  // Determinar estado do botao
+  const getButtonConfig = () => {
+    if (!hasCredits) {
+      return {
+        text: 'Limite Mensal Atingido - Faça Upgrade',
+        icon: Lock,
+        variant: 'secondary' as const,
+        disabled: false, // Permite clique para abrir modal
+        onClick: () => setShowUpgradeModal(true),
+        tooltip: `Você já usou seu limite de ${quota?.monthlyLimit} análise(s) este mês no plano ${quota?.planName}.`,
+      };
+    }
+    return {
+      text: status === 'error' ? 'Tentar Novamente' : 'Analisar Compatibilidade Agora',
+      icon: Sparkles,
+      variant: 'default' as const,
+      disabled: !hasRequiredFields,
+      onClick: analyze,
+      tooltip: null,
+    };
+  };
+
+  const buttonConfig = getButtonConfig();
+
   return (
-    <div className="flex items-center justify-between">
-      {/* ... logo ... */}
-      <QuotaDisplay />  {/* Usa os dados reais do plano */}
+    // ... JSX com botao condicional e tooltip
+  );
+}
+```
+
+---
+
+## Parte 2: ResumeUploadCard com Bloqueio de Drag
+
+### Arquivo: `src/components/curriculo/ResumeUploadCard.tsx`
+
+Adicionar prop `disabled` e callback `onBlockedDrop`:
+
+```typescript
+interface ResumeUploadCardProps {
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+  disabled?: boolean;
+  onBlockedDrop?: () => void;
+}
+
+export function ResumeUploadCard({ 
+  file, 
+  onFileChange, 
+  disabled = false,
+  onBlockedDrop 
+}: ResumeUploadCardProps) {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    // Verificar se esta desabilitado
+    if (disabled) {
+      onBlockedDrop?.();
+      return;
+    }
+    // ... resto da logica
+  }, [onFileChange, disabled, onBlockedDrop]);
+
+  // Adicionar overlay visual quando disabled
+  return (
+    <div className="relative">
+      {disabled && (
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm rounded-[32px] z-10 
+                        flex items-center justify-center cursor-not-allowed"
+             onClick={onBlockedDrop}>
+          <div className="text-center p-4">
+            <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Limite de creditos atingido</p>
+          </div>
+        </div>
+      )}
+      {/* ... dropzone existente */}
     </div>
   );
 }
 ```
 
-### 3.2 Verificar Display no Admin
-**Arquivo**: `src/pages/admin/AdminSubscriptions.tsx`
+### Atualizacao em CurriculoUSA.tsx:
 
-O codigo ja esta correto (linha 239 mostra `∞` para limite 999), mas o problema esta no RPC que nao consegue salvar devido ao erro de constraint. Apos corrigir a migracao, funcionara.
+```typescript
+<ResumeUploadCard 
+  file={uploadedFile} 
+  onFileChange={setFile}
+  disabled={!hasCredits}
+  onBlockedDrop={() => setShowUpgradeModal(true)}
+/>
+```
 
 ---
 
-## Parte 4: Consistencia de Feature Gating
+## Parte 3: QuotaDisplay com Alerta Visual
 
-### 4.1 Logica de Bloqueio
-**Arquivo**: `src/pages/curriculo/CurriculoReport.tsx`
+### Arquivo: `src/components/curriculo/QuotaDisplay.tsx`
 
-A logica atual bloqueia features baseado em `quota.features` (ex: `show_improvements`), que esta correto. O bloqueio NAO depende do numero de creditos restantes - depende apenas das features do plano.
+Adicionar animacao pulsante e cor vermelha quando creditos = 0:
 
-- Usuario Basico com 1 credito: ve score + metricas, mas Melhorias e Entrevista ficam bloqueados
-- Usuario Pro/VIP: todas features disponiveis
+```typescript
+export function QuotaDisplay({ className = '' }: QuotaDisplayProps) {
+  const { quota, isLoading } = useSubscription();
+  
+  // ... codigo existente ...
 
-**Nenhuma alteracao necessaria** - o sistema ja funciona assim.
+  const isExhausted = quota.remaining <= 0;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={cn(
+            "flex items-center gap-2 text-sm",
+            isExhausted && "animate-pulse",
+            className
+          )}>
+            {getPlanIcon()}
+            <span className={cn(
+              "text-muted-foreground",
+              isExhausted && "text-destructive"
+            )}>
+              <span className={cn(
+                "font-semibold",
+                isExhausted ? "text-destructive" : "text-foreground"
+              )}>
+                {quota.remaining}
+              </span>
+              /{quota.monthlyLimit} analises
+            </span>
+            {/* Barra de progresso com alerta */}
+            <div className={cn(
+              "w-12 h-1.5 rounded-full overflow-hidden",
+              isExhausted ? "bg-destructive/20" : "bg-muted"
+            )}>
+              <div 
+                className={cn(
+                  "h-full transition-all",
+                  isExhausted ? "bg-destructive" : getProgressColor()
+                )}
+                style={{ width: `${Math.max(5, (quota.remaining / quota.monthlyLimit) * 100)}%` }}
+              />
+            </div>
+            {/* Icone de alerta quando zerado */}
+            {isExhausted && (
+              <AlertCircle className="w-4 h-4 text-destructive" />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isExhausted ? (
+            <p className="text-destructive font-medium">
+              Limite atingido! Faca upgrade para continuar.
+            </p>
+          ) : (
+            <>
+              <p className="font-medium">{quota.planName}</p>
+              <p className="text-muted-foreground">
+                {quota.usedThisMonth} de {quota.monthlyLimit} analises usadas este mes
+              </p>
+            </>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+```
+
+---
+
+## Parte 4: Mensagem no UpgradeModal
+
+### Arquivo: `src/components/curriculo/UpgradeModal.tsx`
+
+Atualizar mensagem do header quando aberto por limite atingido:
+
+```typescript
+interface UpgradeModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentPlanId?: string;
+  reason?: 'limit_reached' | 'upgrade';
+}
+
+export function UpgradeModal({ 
+  open, 
+  onOpenChange, 
+  currentPlanId = 'basic',
+  reason = 'upgrade' 
+}: UpgradeModalProps) {
+  // ... codigo existente ...
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader className="text-center pb-4">
+          {reason === 'limit_reached' ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                <DialogTitle className="text-2xl font-bold">
+                  Voce Atingiu Seu Limite!
+                </DialogTitle>
+              </div>
+              <p className="text-muted-foreground">
+                Nao gaste sua chance. Atualize seu plano para continuar 
+                otimizando seu curriculo agora mesmo.
+              </p>
+            </>
+          ) : (
+            // ... header padrao existente ...
+          )}
+        </DialogHeader>
+        {/* ... resto do modal ... */}
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+---
+
+## Parte 5: Protecao na Edge Function (Confirmacao)
+
+### Arquivo: `supabase/functions/analyze-resume/index.ts`
+
+O gatekeeper JA EXISTE nas linhas 79-92:
+
+```typescript
+// 3. Check if quota exceeded - ANTES de chamar Gemini
+if (currentUsage >= plan.monthly_limit) {
+  return new Response(
+    JSON.stringify({
+      error_code: "LIMIT_REACHED",
+      error: "Limite mensal atingido",
+      error_message: `Voce atingiu o limite de ${plan.monthly_limit} analise(s) do seu plano este mes.`,
+      plan_id: planId,
+      monthly_limit: plan.monthly_limit,
+      used: currentUsage,
+    }),
+    { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+```
+
+**NENHUMA ALTERACAO NECESSARIA** - O edge function ja bloqueia ANTES de chamar a API do Gemini, economizando creditos.
 
 ---
 
 ## Resumo de Arquivos a Modificar
 
-| Arquivo | Tipo de Alteracao |
-|---------|------------------|
-| `supabase/migrations/xxx_fix_audit_constraint.sql` | Nova migracao (constraint) |
-| `supabase/functions/send-espaco-invitation/index.ts` | Corrigir rota do link |
-| `src/components/curriculo/CurriculoHeader.tsx` | Usar QuotaDisplay |
-| `src/pages/Register.tsx` | Armazenar espaco_id |
-| `src/pages/Onboarding.tsx` | Redirecionar para Espaco |
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/pages/curriculo/CurriculoUSA.tsx` | Botao com estados dinamicos, tooltip, UpgradeModal |
+| `src/components/curriculo/ResumeUploadCard.tsx` | Prop `disabled`, overlay de bloqueio |
+| `src/components/curriculo/QuotaDisplay.tsx` | Alerta vermelho pulsante quando 0 creditos |
+| `src/components/curriculo/UpgradeModal.tsx` | Mensagem especial para limite atingido |
 
 ---
 
-## Detalhes Tecnicos
+## Fluxo de Usuario Final
 
-### Constraint Atual (problema):
-```sql
-CHECK ((action = ANY (ARRAY['created', 'updated', 'status_changed', 
-'role_changed', 'profile_updated', 'login'])))
-```
+```text
+1. Usuario com 0 creditos acessa /curriculo
+   → Contador mostra "0/1" em vermelho pulsante
+   → Botao mostra "Limite Mensal Atingido - Faca Upgrade"
+   → Tooltip explica: "Voce ja usou seu limite de 1 analise este mes no plano Basico"
 
-### Nova Constraint (solucao):
-```sql
-CHECK ((action = ANY (ARRAY['created', 'updated', 'status_changed', 
-'role_changed', 'profile_updated', 'login', 'plan_changed', 'usage_reset'])))
-```
+2. Usuario tenta arrastar arquivo
+   → Card de upload mostra overlay de bloqueio
+   → Clique abre UpgradeModal
 
-### Fluxo de Convite Corrigido:
-```
-1. Mentor clica "Convidar Aluno"
-2. Sistema envia email com link /cadastro?token=X&espaco_id=Y
-3. Usuario clica no link e ve formulario de registro
-4. Usuario cria conta → processa convite automaticamente
-5. Redirect para onboarding
-6. Apos onboarding → redirect para /dashboard/espacos/{espaco_id}
+3. Usuario clica no botao
+   → UpgradeModal abre com mensagem: "Voce Atingiu Seu Limite! Nao gaste sua chance..."
+
+4. Usuario com creditos (1/1 restante)
+   → Contador mostra "1/1" em verde
+   → Botao normal: "Analisar Compatibilidade Agora"
+   → Pode fazer upload e analisar normalmente
+
+5. Protecao backend (seguranca nivel 2)
+   → Edge function verifica quota ANTES de chamar Gemini
+   → Retorna 402 se limite atingido, sem gastar creditos de IA
 ```
 
 ---
 
-## Ordem de Implementacao Recomendada
+## Ordem de Implementacao
 
-1. **Primeiro**: Corrigir a constraint do banco (libera funcionalidade de admin)
-2. **Segundo**: Corrigir o link do convite (de /register para /cadastro)
-3. **Terceiro**: Atualizar CurriculoHeader para usar QuotaDisplay
-4. **Quarto**: Implementar redirecionamento pos-onboarding para Espaco
+1. `QuotaDisplay.tsx` - Alerta visual vermelho
+2. `ResumeUploadCard.tsx` - Bloqueio de drag/drop
+3. `UpgradeModal.tsx` - Mensagem de limite atingido
+4. `CurriculoUSA.tsx` - Integrar tudo com botao dinamico
