@@ -1,0 +1,1 @@
+export { CurriculoReportPDF } from './CurriculoReportPDF';
