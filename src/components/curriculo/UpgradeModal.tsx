@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Crown, Sparkles, X, MessageCircle, Loader2 } from 'lucide-react';
+import { Check, Crown, Sparkles, AlertTriangle, Loader2, MessageCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,17 @@ interface UpgradeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentPlanId?: string;
+  reason?: 'limit_reached' | 'upgrade';
 }
 
 const WHATSAPP_GROUP = 'https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg';
 
-export function UpgradeModal({ open, onOpenChange, currentPlanId = 'basic' }: UpgradeModalProps) {
+export function UpgradeModal({ 
+  open, 
+  onOpenChange, 
+  currentPlanId = 'basic',
+  reason = 'upgrade'
+}: UpgradeModalProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,15 +79,32 @@ export function UpgradeModal({ open, onOpenChange, currentPlanId = 'basic' }: Up
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-center pb-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="w-6 h-6 text-primary" />
-            <DialogTitle className="text-2xl font-bold">
-              Potencialize Suas Análises
-            </DialogTitle>
-          </div>
-          <p className="text-muted-foreground">
-            Escolha o plano ideal para acelerar sua jornada profissional nos EUA
-          </p>
+          {reason === 'limit_reached' ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                <DialogTitle className="text-2xl font-bold">
+                  Você Atingiu Seu Limite!
+                </DialogTitle>
+              </div>
+              <p className="text-muted-foreground">
+                Não gaste sua chance. Atualize seu plano para continuar 
+                otimizando seu currículo agora mesmo.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-6 h-6 text-primary" />
+                <DialogTitle className="text-2xl font-bold">
+                  Potencialize Suas Análises
+                </DialogTitle>
+              </div>
+              <p className="text-muted-foreground">
+                Escolha o plano ideal para acelerar sua jornada profissional nos EUA
+              </p>
+            </>
+          )}
         </DialogHeader>
 
         {isLoading ? (
@@ -152,7 +175,7 @@ export function UpgradeModal({ open, onOpenChange, currentPlanId = 'basic' }: Up
                   ) : (
                     <Button
                       onClick={() => handleUpgrade(plan.id, plan.name)}
-                      variant={isPro ? "gradient" : "outline"}
+                      variant={isPro ? "default" : "outline"}
                       className="w-full gap-2"
                     >
                       <MessageCircle className="w-4 h-4" />
