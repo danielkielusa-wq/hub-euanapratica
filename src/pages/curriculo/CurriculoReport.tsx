@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, Wrench, GraduationCap, FileText, Loader2, Lock } from 'lucide-react';
+import { pdf } from '@react-pdf/renderer';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +19,7 @@ import {
 } from '@/components/curriculo/report';
 import { LockedFeature } from '@/components/curriculo/LockedFeature';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
+import { CurriculoReportPDF } from '@/components/curriculo/pdf';
 import type { FullAnalysisResult } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
@@ -29,7 +31,6 @@ export default function CurriculoReport() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   // Get features from subscription
   const features = quota?.features || {
@@ -74,38 +75,23 @@ export default function CurriculoReport() {
       return;
     }
 
-    if (!reportRef.current) return;
+    if (!result) return;
     
     setIsGeneratingPDF(true);
     
     try {
-      // Dynamic import to avoid SSR issues
-      const html2pdf = (await import('html2pdf.js')).default;
+      // Generate PDF using @react-pdf/renderer (secure, no vulnerabilities)
+      const blob = await pdf(<CurriculoReportPDF result={result} />).toBlob();
       
-      const element = reportRef.current;
-      
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: 'curriculo-usa-report.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { 
-            scale: 2, 
-            useCORS: true,
-            logging: false,
-          },
-          jsPDF: { 
-            unit: 'mm', 
-            format: 'a4', 
-            orientation: 'portrait' 
-          },
-          pagebreak: { 
-            mode: ['avoid-all', 'css', 'legacy'],
-            avoid: ['.improvement-card', '.metric-card', '.cultural-bridge-card']
-          }
-        })
-        .from(element)
-        .save();
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'curriculo-usa-report.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
         
       toast({
         title: 'PDF gerado!',
@@ -176,8 +162,8 @@ export default function CurriculoReport() {
             </Button>
           </div>
 
-          {/* Report Content - wrapped in ref for PDF generation */}
-          <div ref={reportRef} className="space-y-8">
+          {/* Report Content */}
+          <div className="space-y-8">
             {/* Score Section */}
             <ReportHeader result={result} />
 
