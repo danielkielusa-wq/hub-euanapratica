@@ -1,335 +1,356 @@
 
-# Plano: Ajuste de Logica de Compra vs. Acesso (Ticto Flow)
+# Plano: Correção de Fluxo de Compra/Acesso e Histórico de Pedidos
 
-## Resumo
+## Problemas Identificados
 
-Implementar diferenciacao clara entre usuarios que ja pagaram (acesso direto) e usuarios que ainda precisam comprar (redirecionar para checkout Ticto), alem de criar uma pagina de confirmacao pos-pagamento e proteger rotas de servicos premium.
+### 1. Lógica de Acesso Incorreta
+O serviço "Interview Test" está com `status: 'available'` mas deveria ser `'premium'`. Isso faz com que o código trate como "gratuito para todos":
+
+```typescript
+// Em HubServiceCard.tsx (linha 88)
+const canAccess = service.status === 'available' || hasAccess;
+// ↑ Se status é 'available', canAccess SEMPRE será true!
+```
+
+**Resultado:** O botão mostra "Acessar Agora" em vez de "Desbloquear Acesso".
+
+### 2. Tabela user_hub_services Vazia
+Não há registros em `user_hub_services`, indicando que nenhum acesso foi liberado ainda.
+
+### 3. Falta Histórico de Compras
+Não existe página de "Meus Pedidos" para usuários nem para admin.
 
 ---
 
-## Arquitetura da Solucao
+## Arquitetura da Solução
 
 ```text
-+-------------------+     +----------------------+     +------------------+
-|   Meu Hub         | --> |  HubServiceCard      | --> |  Decisao         |
-|   (StudentHub)    |     |  (logica de botao)   |     |  Acesso/Compra   |
-+-------------------+     +----------------------+     +------------------+
-                                    |
-                   +----------------+----------------+
-                   |                                 |
-            hasAccess=true                    hasAccess=false
-                   |                                 |
-                   v                                 v
++------------------+     +-------------------+     +------------------+
+| Admin Panel      |     | Hub Services DB   |     | HubServiceCard   |
+| (fix status)     | --> | status='premium'  | --> | Lógica corrigida |
++------------------+     +-------------------+     +------------------+
+                                                          |
+                                   +----------------------+
+                                   |
+                   +---------------+---------------+
+                   |                               |
+            hasAccess=true                  hasAccess=false
+            (user_hub_services)            (sem registro)
+                   |                               |
+                   v                               v
          +------------------+             +---------------------+
-         | Redireciona para |             | Redireciona para    |
-         | service.route    |             | ticto_checkout_url  |
-         | (/curriculo)     |             | (checkout externo)  |
+         | Acessar Agora    |             | Desbloquear Acesso  |
+         | (rota interna)   |             | (ticto_checkout_url)|
          +------------------+             +---------------------+
-                                                    |
-                                                    v
-                                          +---------------------+
-                                          | Ticto processa      |
-                                          | pagamento           |
-                                          +---------------------+
-                                                    |
-                                                    v
-                                          +---------------------+
-                                          | Redireciona para    |
-                                          | /payment-success    |
-                                          +---------------------+
-                                                    |
-                                                    v
-                                          +---------------------+
-                                          | Webhook Ticto       |
-                                          | libera acesso       |
-                                          +---------------------+
+                                                   |
+                                                   v
+                                          +----------------+
+                                          | Ticto Checkout |
+                                          +----------------+
+                                                   |
+                                                   v
+                                          +----------------+
+                                          | Webhook libera |
+                                          | user_hub_svcs  |
+                                          +----------------+
 ```
 
 ---
 
-## 1. Corrigir Logica do Botao no HubServiceCard
+## Correções Necessárias
+
+### 1. Corrigir Status do Serviço (Banco de Dados)
+Atualizar o serviço "Interview Test" para `status = 'premium'`:
+
+```sql
+UPDATE hub_services 
+SET status = 'premium' 
+WHERE ticto_checkout_url IS NOT NULL 
+  AND status = 'available';
+```
+
+### 2. Ajustar Lógica do HubServiceCard
+Atualizar o componente para:
+- Serviços `available` = gratuitos para todos
+- Serviços `premium` = exigem entrada em `user_hub_services`
+- Serviços `coming_soon` = desabilitados
 
 **Arquivo:** `src/components/hub/HubServiceCard.tsx`
 
-### Logica Atual (Problematica)
-O componente nao diferencia corretamente o fluxo:
-- Servicos `available` sao tratados como "liberados para todos"
-- Servicos `premium` com `hasAccess=true` devem ir para a rota interna
+A lógica atual já está correta (verifica `hasAccess` via hook), o problema é o status errado no banco.
 
-### Logica Corrigida
+### 3. Criar Página "Meus Pedidos" (Usuário)
+**Arquivo Novo:** `src/pages/orders/MyOrders.tsx`
 
-```typescript
-// Se usuario TEM acesso ativo -> ir para rota interna
-if (hasAccess && service.route) {
-  return <Link to={service.route}>...</Link>
-}
+Design: Padrão "Startup Elite" (fundo #F5F5F7, bordas 32px)
 
-// Se usuario NAO tem acesso -> ir para checkout Ticto
-if (!hasAccess && service.ticto_checkout_url) {
-  return <Button onClick={handleUnlock}>Desbloquear</Button>
-}
-```
-
-### Alteracoes Especificas
-
-| Cenario | Status Atual | Acao |
-|---------|--------------|------|
-| `hasAccess=true` + `route` existe | Mostra CTA interno | Navegar para `service.route` |
-| `hasAccess=false` + `ticto_checkout_url` existe | Mostra "Desbloquear" | Abrir checkout Ticto |
-| `status=available` (gratuito) | Todos tem acesso | Navegar para `service.route` |
-| `status=coming_soon` | Desabilitado | Mostrar "Em Breve" |
-
----
-
-## 2. Criar Pagina /payment-success
-
-**Arquivo Novo:** `src/pages/PaymentSuccess.tsx`
-
-### Design (Padrao Elite Startup)
-- Fundo: `#F5F5F7` (bg-muted/30)
-- Bordas arredondadas: `32px` (rounded-[32px])
-- Glassmorphism sutil
-- Icone de sucesso (CheckCircle) com animacao
-
-### Componentes da Pagina
-
-```text
-+--------------------------------------------------+
-|                                                  |
-|    [✓ Icone Animado]                            |
-|                                                  |
-|    Pagamento Confirmado!                         |
-|    Seu acesso foi liberado.                      |
-|                                                  |
-|    [Sincronizando seu acesso... ●●●]            |
-|    (loader com delay de 3-5 segundos)            |
-|                                                  |
-|    [=== Ir para o meu Hub ===]                  |
-|    (botao primario, gradiente Indigo-Purple)     |
-|                                                  |
-+--------------------------------------------------+
-```
-
-### Logica de Sincronizacao
-1. Ao montar a pagina, mostrar loader "Sincronizando..."
-2. Aguardar 3-5 segundos (tempo para webhook processar)
-3. Revalidar `useUserHubAccess()` para atualizar cache
-4. Mostrar botao "Ir para o meu Hub"
-
----
-
-## 3. Criar Hook de Verificacao de Acesso a Servico
-
-**Arquivo Novo:** `src/hooks/useServiceAccess.ts`
-
-Hook para verificar se usuario tem acesso a um servico especifico:
+Conteúdo:
+- Lista de transações do `payment_logs` filtrada por `user_id`
+- Colunas: Nome do Serviço, Data, Valor, Status (Badge)
+- Botão "Acessar" se status = 'processed'
 
 ```typescript
-export function useServiceAccess(serviceRoute: string) {
-  const { data: services } = useHubServices();
-  const { data: userAccess } = useUserHubAccess();
-  
-  const service = services?.find(s => s.route === serviceRoute);
-  
-  // Verifica se servico e gratuito ou se usuario tem acesso
-  const hasAccess = service?.status === 'available' || 
-                   (service && userAccess?.includes(service.id));
-  
-  return { 
-    hasAccess, 
-    service, 
-    isLoading: !services || !userAccess 
-  };
-}
+// Buscar histórico do usuário
+const { data } = await supabase
+  .from('payment_logs')
+  .select(`
+    *,
+    service:hub_services(name, route)
+  `)
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false });
 ```
 
----
+### 4. Criar Página "Histórico de Compras" (Admin)
+**Arquivo Novo:** `src/pages/admin/AdminOrders.tsx`
 
-## 4. Criar Componente de Protecao de Rota por Servico
+Design: Consistente com outros painéis admin
 
-**Arquivo Novo:** `src/components/guards/ServiceGuard.tsx`
-
-Wrapper que verifica acesso antes de renderizar a pagina:
+Conteúdo:
+- Lista de TODAS as transações do `payment_logs`
+- Colunas: Usuário, Email, Serviço, Data, Valor, Status
+- Filtros: Status, Data, Usuário
 
 ```typescript
-interface ServiceGuardProps {
-  serviceRoute: string;
-  children: React.ReactNode;
-}
-
-export function ServiceGuard({ serviceRoute, children }) {
-  const { hasAccess, isLoading } = useServiceAccess(serviceRoute);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  useEffect(() => {
-    if (!isLoading && !hasAccess) {
-      toast({
-        title: "Servico nao contratado",
-        description: "Adquira este servico no Hub para acessar.",
-        variant: "destructive",
-      });
-      navigate('/dashboard/hub');
-    }
-  }, [hasAccess, isLoading]);
-  
-  if (isLoading) return <Loader />;
-  if (!hasAccess) return null;
-  
-  return <>{children}</>;
-}
+// Buscar todas as transações (admin)
+const { data } = await supabase
+  .from('payment_logs')
+  .select(`
+    *,
+    profile:profiles(full_name, email),
+    service:hub_services(name)
+  `)
+  .order('created_at', { ascending: false });
 ```
 
----
+### 5. Ajustar RLS para payment_logs
+Permitir que usuários vejam suas próprias transações:
 
-## 5. Registrar Novas Rotas
-
-**Arquivo:** `src/App.tsx`
-
-### Nova Rota Publica
-```typescript
-// Pagina de sucesso de pagamento
-<Route path="/payment-success" element={
-  <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-    <PaymentSuccess />
-  </ProtectedRoute>
-} />
-```
-
-### Proteger Rotas de Servicos Premium
-Para rotas como `/curriculo`, envolver com `ServiceGuard`:
-
-```typescript
-<Route path="/curriculo" element={
-  <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-    <ServiceGuard serviceRoute="/curriculo">
-      <CurriculoUSA />
-    </ServiceGuard>
-  </ProtectedRoute>
-} />
+```sql
+-- Usuários podem ver seus próprios logs
+CREATE POLICY "Users can view own payment logs"
+ON public.payment_logs FOR SELECT
+USING (user_id = auth.uid());
 ```
 
 ---
 
 ## Arquivos a Criar/Modificar
 
-| Arquivo | Acao | Descricao |
+| Arquivo | Ação | Descrição |
 |---------|------|-----------|
-| `src/pages/PaymentSuccess.tsx` | Criar | Pagina de confirmacao pos-pagamento |
-| `src/hooks/useServiceAccess.ts` | Criar | Hook para verificar acesso a servico |
-| `src/components/guards/ServiceGuard.tsx` | Criar | Guard de rota para servicos premium |
-| `src/components/hub/HubServiceCard.tsx` | Modificar | Corrigir logica de botao |
-| `src/App.tsx` | Modificar | Adicionar rota /payment-success |
+| `src/pages/orders/MyOrders.tsx` | Criar | Histórico de compras do usuário |
+| `src/pages/admin/AdminOrders.tsx` | Criar | Histórico de todas as compras (admin) |
+| `src/hooks/usePaymentHistory.ts` | Criar | Hook para buscar payment_logs |
+| `src/App.tsx` | Modificar | Adicionar rotas `/meus-pedidos` e `/admin/pedidos` |
+| Migration SQL | Criar | Adicionar RLS e corrigir status do serviço |
 
 ---
 
-## Detalhes Tecnicos
+## Detalhes Técnicos
 
-### PaymentSuccess.tsx - Estrutura
+### MyOrders.tsx - Estrutura
+
 ```typescript
-export default function PaymentSuccess() {
-  const [isSyncing, setIsSyncing] = useState(true);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    // Aguardar webhook processar
-    const timer = setTimeout(() => {
-      // Invalida cache para buscar novos acessos
-      queryClient.invalidateQueries({ queryKey: ['user-hub-access'] });
-      setIsSyncing(false);
-    }, 4000); // 4 segundos de delay
-    
-    return () => clearTimeout(timer);
-  }, []);
-
+export default function MyOrders() {
+  const { user } = useAuth();
+  const { data: orders, isLoading } = usePaymentHistory(user?.id);
+  
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6">
-      <Card className="max-w-md w-full rounded-[32px] text-center p-8">
-        <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
-        <h1>Pagamento Confirmado!</h1>
-        <p>Seu acesso foi liberado.</p>
-        
-        {isSyncing ? (
-          <div className="flex items-center justify-center gap-2">
-            <Loader2 className="animate-spin" />
-            <span>Sincronizando seu acesso...</span>
+    <DashboardLayout>
+      <div className="min-h-screen bg-[#F5F5F7] p-6">
+        <div className="mx-auto max-w-4xl">
+          <h1 className="text-2xl font-bold mb-6">Meus Pedidos</h1>
+          
+          <div className="space-y-4">
+            {orders?.map((order) => (
+              <Card key={order.id} className="rounded-[32px] p-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3>{order.service?.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(order.created_at), "dd/MM/yyyy HH:mm")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge variant={order.status === 'processed' ? 'default' : 'secondary'}>
+                      {order.status === 'processed' ? 'Aprovado' : 'Aguardando'}
+                    </Badge>
+                    {order.status === 'processed' && order.service?.route && (
+                      <Link to={order.service.route}>
+                        <Button size="sm">Acessar</Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-        ) : (
-          <Button onClick={() => navigate('/dashboard/hub')}>
-            Ir para o meu Hub
-          </Button>
-        )}
-      </Card>
-    </div>
+        </div>
+      </div>
+    </DashboardLayout>
   );
 }
 ```
 
-### HubServiceCard.tsx - Logica de Botao Atualizada
+### usePaymentHistory Hook
+
 ```typescript
-// Determinar acao do botao
-const getButtonAction = () => {
-  // Coming soon - desabilitado
-  if (isComingSoon) {
-    return { type: 'disabled', label: 'Em Breve' };
-  }
+export function usePaymentHistory(userId?: string) {
+  return useQuery({
+    queryKey: ['payment-history', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_logs')
+        .select(`
+          *,
+          service:hub_services(name, route)
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useAdminPaymentHistory() {
+  return useQuery({
+    queryKey: ['admin-payment-history'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_logs')
+        .select(`
+          *,
+          profile:profiles(full_name, email),
+          service:hub_services(name)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+```
+
+### AdminOrders.tsx - Estrutura
+
+```typescript
+export default function AdminOrders() {
+  const { data: orders, isLoading } = useAdminPaymentHistory();
   
-  // Usuario TEM acesso (premium desbloqueado ou disponivel)
-  if (hasAccess) {
-    return { 
-      type: 'access', 
-      label: service.cta_text || 'Acessar Agora',
-      route: service.route 
-    };
-  }
-  
-  // Usuario NAO tem acesso - precisa comprar
-  if (service.ticto_checkout_url) {
-    return { 
-      type: 'unlock', 
-      label: 'Desbloquear Acesso',
-      checkoutUrl: service.ticto_checkout_url 
-    };
-  }
-  
-  // Fallback
-  return { type: 'details', label: 'Ver Detalhes' };
-};
+  return (
+    <DashboardLayout>
+      <div className="min-h-screen bg-muted/30 p-6">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="text-2xl font-bold mb-6">Histórico de Compras</h1>
+          
+          <Card className="rounded-2xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Transação</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders?.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{order.profile?.full_name}</p>
+                        <p className="text-sm text-muted-foreground">{order.profile?.email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{order.service?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      {format(new Date(order.created_at), "dd/MM/yyyy HH:mm")}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {order.transaction_id}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={order.status === 'processed' ? 'default' : 'secondary'}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
 ```
 
 ---
 
-## Configuracao na Ticto
+## Migração SQL
 
-Apos implementar, configure no painel Ticto:
+```sql
+-- 1. Atualizar status de serviços com checkout Ticto para 'premium'
+UPDATE hub_services 
+SET status = 'premium' 
+WHERE ticto_checkout_url IS NOT NULL 
+  AND status = 'available'
+  AND price > 0;
 
-| Campo | Valor |
-|-------|-------|
-| URL de Redirecionamento Pos-Pagamento | `https://enphub.lovable.app/payment-success` |
-| URL do Webhook | `https://buslxdknzogtgdnietow.supabase.co/functions/v1/ticto-webhook` |
-
----
-
-## Fluxo Completo do Usuario
-
-1. Usuario acessa **Meu Hub** (`/dashboard/hub`)
-2. Ve um servico premium que nao possui
-3. Clica em **"Desbloquear Acesso"**
-4. E redirecionado para checkout Ticto (com email preenchido)
-5. Completa o pagamento
-6. Ticto redireciona para `/payment-success`
-7. Pagina mostra "Sincronizando..." por 4 segundos
-8. Webhook processa e libera acesso em `user_hub_services`
-9. Usuario clica em "Ir para o meu Hub"
-10. Servico agora aparece como **ativo** com botao "Acessar Agora"
-11. Usuario pode acessar a rota interna do servico
+-- 2. Permitir usuários verem seus próprios payment_logs
+CREATE POLICY "Users can view own payment logs"
+ON public.payment_logs FOR SELECT
+USING (user_id = auth.uid());
+```
 
 ---
 
-## Seguranca
+## Novas Rotas
 
-- Rotas premium protegidas pelo `ServiceGuard`
-- Acesso digitando URL diretamente = redirect para Hub + toast de aviso
-- Verificacao sempre feita contra banco de dados (nao client-side)
-- Cache invalidado apos pagamento para refletir novo estado
+```typescript
+// Em App.tsx
+
+// Meus Pedidos (usuário)
+<Route path="/meus-pedidos" element={
+  <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+    <MyOrders />
+  </ProtectedRoute>
+} />
+
+// Histórico de Compras (admin)
+<Route path="/admin/pedidos" element={
+  <ProtectedRoute allowedRoles={['admin']}>
+    <AdminOrders />
+  </ProtectedRoute>
+} />
+```
+
+---
+
+## Fluxo Completo Corrigido
+
+1. Admin configura serviço premium com `status='premium'` e `ticto_checkout_url`
+2. Usuário acessa Hub e vê botão "Desbloquear Acesso"
+3. Clique redireciona para Ticto checkout (com email preenchido)
+4. Pagamento processado → Webhook libera acesso em `user_hub_services`
+5. Usuário redirecionado para `/payment-success`
+6. Cache invalidado → Hub mostra "Acessar Agora"
+7. Usuário pode ver histórico em `/meus-pedidos`
+8. Admin pode ver todas as compras em `/admin/pedidos`
+
+---
+
+## Checklist de Verificação
+
+- [ ] Serviços premium têm `status='premium'` no banco
+- [ ] `ticto_product_id` corresponde ao ID enviado no webhook
+- [ ] RLS permite usuário ver seus próprios `payment_logs`
+- [ ] Rotas `/meus-pedidos` e `/admin/pedidos` registradas
+- [ ] Menu lateral inclui link para "Meus Pedidos"
