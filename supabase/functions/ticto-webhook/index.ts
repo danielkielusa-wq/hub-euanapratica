@@ -6,25 +6,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ticto-token",
 };
 
-interface TictoWebhookPayload {
-  event?: string;
+interface TictoPayload {
   status?: string;
-  transaction_id?: string;
-  offer_id?: string;
-  product?: {
-    id?: string;
-    name?: string;
+  event?: string;
+  token?: string;
+  item?: {
+    product_id?: number;
+    offer_id?: number;
+    product_name?: string;
   };
   customer?: {
     name?: string;
     email?: string;
-    phone?: string;
+    phone?: { ddd?: string; ddi?: string; number?: string };
   };
-  payment?: {
-    status?: string;
-    method?: string;
-    value?: number;
+  order?: {
+    hash?: string;
+    paid_amount?: number;
   };
+  transaction_id?: string;
   [key: string]: unknown;
 }
 
@@ -35,9 +35,22 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Validate Ticto token
-    const tictoToken = req.headers.get("X-Ticto-Token") || req.headers.get("Authorization")?.replace("Bearer ", "");
+    // 1. Parse payload FIRST (token is in the body, not header)
+    const payload: TictoPayload = await req.json();
+    
+    console.log("Ticto webhook received:", {
+      status: payload.status,
+      productId: payload.item?.product_id,
+      offerId: payload.item?.offer_id,
+      email: payload.customer?.email,
+      tokenPresent: !!payload.token
+    });
+
+    // 2. Validate token - can come from body OR header
     const expectedToken = Deno.env.get("TICTO_SECRET_KEY");
+    const receivedToken = payload.token || 
+                          req.headers.get("X-Ticto-Token") || 
+                          req.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!expectedToken) {
       console.error("TICTO_SECRET_KEY not configured");
@@ -47,19 +60,18 @@ serve(async (req) => {
       });
     }
 
-    if (!tictoToken || tictoToken !== expectedToken) {
-      console.error("Invalid token received");
+    if (!receivedToken || receivedToken !== expectedToken) {
+      console.error("Token mismatch:", { 
+        received: receivedToken?.substring(0, 20) + "...",
+        expected: expectedToken?.substring(0, 20) + "..."
+      });
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. Parse payload
-    const payload: TictoWebhookPayload = await req.json();
-    const event = payload.event || payload.status;
-    
-    console.log("Ticto webhook received:", { event, payload });
+    console.log("Token validated successfully");
 
     // 3. Create Supabase admin client
     const supabase = createClient(
@@ -67,21 +79,26 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 4. Process sale event
-    const saleEvents = ["venda_realizada", "authorized", "approved", "paid", "completed"];
-    if (event && saleEvents.includes(event.toLowerCase())) {
-      const customerEmail = payload.customer?.email?.toLowerCase();
-      const productId = payload.product?.id || payload.offer_id;
-      const transactionId = payload.transaction_id;
+    // 4. Extract data from payload correctly (using Ticto's actual structure)
+    const eventStatus = (payload.status || payload.event || "").toLowerCase();
+    const customerEmail = payload.customer?.email?.toLowerCase();
+    const productId = String(payload.item?.product_id || payload.item?.offer_id || "");
+    const transactionId = payload.order?.hash || payload.transaction_id;
 
-      console.log("Processing sale:", { customerEmail, productId, transactionId });
+    console.log("Parsed data:", { eventStatus, customerEmail, productId, transactionId });
+
+    // 5. Process sale event
+    const saleEvents = ["paid", "completed", "approved", "authorized", "venda_realizada"];
+    
+    if (saleEvents.includes(eventStatus)) {
+      console.log("Processing sale event:", eventStatus);
 
       if (!customerEmail) {
         console.error("No customer email in payload");
         // Still log the transaction
         await supabase.from("payment_logs").insert({
           transaction_id: transactionId,
-          event_type: event,
+          event_type: eventStatus,
           payload: payload,
           status: "error_no_email",
           created_at: new Date().toISOString(),
@@ -103,7 +120,9 @@ serve(async (req) => {
         console.error("Error finding profile:", profileError);
       }
 
-      // Find service by ticto_product_id
+      console.log("Profile lookup:", { found: !!profile, email: customerEmail });
+
+      // Find service by ticto_product_id (can be product_id or offer_id)
       let service = null;
       if (productId) {
         const { data: serviceData, error: serviceError } = await supabase
@@ -117,6 +136,8 @@ serve(async (req) => {
         }
         service = serviceData;
       }
+
+      console.log("Service lookup:", { found: !!service, productId });
 
       // Grant access if user and service found
       if (profile && service) {
@@ -148,21 +169,17 @@ serve(async (req) => {
         user_id: profile?.id || null,
         service_id: service?.id || null,
         transaction_id: transactionId,
-        event_type: event,
+        event_type: eventStatus,
         payload: payload,
         status: profile && service ? "processed" : "partial",
         processed_at: new Date().toISOString(),
       });
     }
 
-    // 5. Process refund event
+    // 6. Process refund event
     const refundEvents = ["reembolso", "refunded", "chargedback", "cancelled"];
-    if (event && refundEvents.includes(event.toLowerCase())) {
-      const customerEmail = payload.customer?.email?.toLowerCase();
-      const productId = payload.product?.id || payload.offer_id;
-      const transactionId = payload.transaction_id;
-
-      console.log("Processing refund:", { customerEmail, productId, transactionId });
+    if (refundEvents.includes(eventStatus)) {
+      console.log("Processing refund event:", eventStatus);
 
       if (customerEmail && productId) {
         // Find user
@@ -195,7 +212,7 @@ serve(async (req) => {
           user_id: profile?.id || null,
           service_id: service?.id || null,
           transaction_id: transactionId,
-          event_type: event,
+          event_type: eventStatus,
           payload: payload,
           status: "processed",
           processed_at: new Date().toISOString(),
@@ -203,7 +220,32 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    // 7. For other events (like waiting_payment), just log and return success
+    if (!saleEvents.includes(eventStatus) && !refundEvents.includes(eventStatus)) {
+      console.log("Non-actionable event, logging only:", eventStatus);
+      
+      // Find user if possible for logging
+      let userId = null;
+      if (customerEmail) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", customerEmail)
+          .maybeSingle();
+        userId = profile?.id;
+      }
+
+      await supabase.from("payment_logs").insert({
+        user_id: userId,
+        transaction_id: transactionId,
+        event_type: eventStatus,
+        payload: payload,
+        status: "logged",
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, status: eventStatus }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
