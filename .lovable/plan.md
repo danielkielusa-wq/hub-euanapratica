@@ -1,144 +1,156 @@
 
-# Plano: Correcao Definitiva da Pagina de Gestao de Usuarios
 
-## Problema Identificado
+# Plano: Corrigir Gravação de Uso e Bloqueio de Quota no Currículo USA
 
-A query atual no hook `useAdminUsers` falha com **erro 400**:
+## Problemas Identificados
 
-```
-"Could not find a relationship between 'profiles' and 'user_espacos'"
-```
+### 1. Falha Silenciosa na Gravação de Uso (Crítico)
+O edge function `analyze-resume` tenta gravar o uso via RPC mas falha com "connection reset" intermitente. O código atual (linhas 471-478) apenas loga o erro e continua:
 
-### Analise do Erro
-
-A query tenta fazer embedding de duas tabelas relacionadas:
 ```typescript
-.select(`
-  ...
-  user_roles!inner(role),   // ✅ Agora funciona (FK adicionada)
-  user_espacos(count)       // ❌ FALHA - FK aponta para auth.users
-`)
+const { error: logError } = await supabase.rpc('record_curriculo_usage', {
+  p_user_id: userId,
+});
+
+if (logError) {
+  console.error("Error logging usage:", logError);
+  // Don't fail the request, just log the error  <-- PROBLEMA!
+}
 ```
 
-**Estrutura atual de FKs:**
-- `user_roles.user_id -> profiles.id` ✅ (adicionada na migracao anterior)
-- `user_espacos.user_id -> auth.users.id` ❌ (PostgREST nao consegue seguir)
+**Resultado**: Análise retorna sucesso mas uso não é registrado → usuário pode executar análises infinitas.
 
-PostgREST so consegue navegar FKs dentro do schema `public`. Como `user_espacos.user_id` referencia `auth.users`, a navegacao falha.
+### 2. Uso do Service Role Key
+A edge function usa o token do usuário para fazer a chamada RPC. Para garantir gravação confiável, devemos usar o `SUPABASE_SERVICE_ROLE_KEY` para a operação de INSERT no usage_logs.
+
+### 3. Retry Logic Ausente
+Não há mecanismo de retry para falhas de rede transitórias.
 
 ---
 
-## Solucao
+## Solução Proposta
 
-Duas abordagens possiveis:
+### Parte 1: Modificar Edge Function para Garantir Gravação
 
-### Opcao A: Adicionar FK de user_espacos para profiles (Recomendada)
+1. **Criar cliente admin com Service Role Key** para operações de gravação
+2. **Inserir diretamente na tabela** em vez de usar RPC (mais confiável)
+3. **Implementar retry logic** para falhas transitórias
+4. **Falhar a análise** se o uso não puder ser gravado após retries (previne abuso)
+
+```typescript
+// Create admin client for reliable writes
+const adminSupabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+// Retry logic with exponential backoff
+const recordUsageWithRetry = async (userId: string, maxRetries = 3) => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const { error } = await adminSupabase
+      .from('usage_logs')
+      .insert({ user_id: userId, app_id: 'curriculo_usa' });
+    
+    if (!error) return true;
+    
+    console.error(`Usage recording attempt ${attempt + 1} failed:`, error);
+    if (attempt < maxRetries - 1) {
+      await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
+    }
+  }
+  return false;
+};
+
+// Usage in the flow (BEFORE returning the AI result)
+const usageRecorded = await recordUsageWithRetry(userId);
+if (!usageRecorded) {
+  return new Response(
+    JSON.stringify({ 
+      error: 'Falha ao registrar uso. Tente novamente.',
+      error_code: 'USAGE_RECORDING_FAILED'
+    }),
+    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// Only return success after usage is recorded
+return new Response(JSON.stringify(result), {...});
+```
+
+### Parte 2: Adicionar RLS Policy para INSERT via Service Role
+
+Precisamos adicionar uma policy que permita inserção pelo service role:
+
 ```sql
-ALTER TABLE public.user_espacos
-ADD CONSTRAINT user_espacos_user_id_profiles_fkey
-FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+-- Allow service role to insert usage logs
+CREATE POLICY "Service role can insert usage logs"
+  ON public.usage_logs FOR INSERT
+  WITH CHECK (true);
 ```
 
-**Vantagens:**
-- Query simples com embedding
-- Consistente com a correcao de user_roles
-- Performance otima (uma query)
+Nota: O service role bypassa RLS, mas é boa prática ter a policy documentada.
 
-### Opcao B: Mudar o hook para queries separadas
+### Parte 3: Frontend - Refetch Quota Após Erro
 
-**Desvantagens:**
-- 2 roundtrips ao banco
-- Mais codigo para manter
+No `useCurriculoAnalysis.ts`, garantir que o refetch ocorra após qualquer erro:
 
----
-
-## Implementacao (Opcao A)
-
-### Parte 1: Migracao de Banco de Dados
-
-Adicionar FK `user_espacos.user_id -> profiles.id`:
-
-```sql
--- Add foreign key from user_espacos to profiles
--- This enables PostgREST to navigate the relationship
-ALTER TABLE public.user_espacos
-ADD CONSTRAINT user_espacos_user_id_profiles_fkey
-FOREIGN KEY (user_id) 
-REFERENCES public.profiles(id) 
-ON DELETE CASCADE;
-```
-
-### Parte 2: Nenhuma Alteracao no Hook
-
-O hook ja esta correto. Apos a FK ser adicionada, a query funcionara automaticamente.
-
----
-
-## Por Que a FK Adicional Funciona?
-
-Como `profiles.id` e sempre igual a `auth.users.id` (definido pelo trigger `handle_new_user`), podemos ter duas FKs:
-
-1. `user_espacos.user_id -> auth.users.id` (cascata de delecao do auth)
-2. `user_espacos.user_id -> profiles.id` (permite navegacao PostgREST)
-
-Ambas apontam para o mesmo UUID, mas servem propositos diferentes:
-- A FK para `auth.users` garante integridade quando o usuario e deletado do auth
-- A FK para `profiles` permite queries com embedding no PostgREST
-
----
-
-## Resumo das Alteracoes
-
-| Componente | Tipo | Descricao |
-|------------|------|-----------|
-| Migracao SQL | Nova | Adiciona FK `user_espacos.user_id -> profiles.id` |
-
----
-
-## Fluxo Apos Correcao
-
-```text
-1. Admin acessa /admin/usuarios
-   → Hook executa query com embedding
-   → PostgREST segue ambas as FKs:
-     - profiles -> user_roles ✅
-     - profiles -> user_espacos ✅
-   → Retorna todos os usuarios com roles e contagem de espacos
-
-2. Tabela renderiza corretamente:
-   | Usuario      | Papel        | Status | Ultimo Login | Espacos | Cadastro | Acoes   |
-   |--------------|--------------|--------|--------------|---------|----------|---------|
-   | Admin Teste  | Administrador| Ativo  | ha 1 hora    | 0       | 24/01    | [menu]  |
-   | Mentor Teste | Mentor       | Ativo  | ha 2 dias    | 2       | 24/01    | [menu]  |
-   | Aluno Kiel   | Aluno        | Ativo  | ha 3 dias    | 1       | 25/01    | [menu]  |
-
-3. Funcoes administrativas disponiveis:
-   - Alterar Papel ✅
-   - Ver Historico ✅
-   - Ativar/Desativar ✅
-   - Criar Usuario ✅
-   - Excluir Permanentemente ✅
+```typescript
+} catch (error: unknown) {
+  // Always refetch quota on error to sync state
+  await refetchQuota();
+  // ... resto do handling
+}
 ```
 
 ---
 
-## Verificacao Pos-Implementacao
+## Resumo das Alterações
 
-1. Acessar `/admin/usuarios` como admin
-2. Verificar que todos os 7 usuarios aparecem na tabela
-3. Verificar que a coluna "Espacos" mostra contagem correta
-4. Testar cada funcao administrativa
-5. Verificar filtros (papel, busca, mostrar inativos)
+| Arquivo | Tipo | Descrição |
+|---------|------|-----------|
+| `supabase/functions/analyze-resume/index.ts` | Modificar | Usar service role para gravação + retry logic + falhar se não gravar |
+| `src/hooks/useCurriculoAnalysis.ts` | Modificar | Refetch quota após erros |
+| Migração SQL | Criar | Adicionar policy para service role INSERT (opcional, documenta intenção) |
 
 ---
 
-## Notas Tecnicas
+## Fluxo Corrigido
 
-### Seguranca
-A FK adicional nao afeta RLS pois:
-- `user_espacos` ja tem policies baseadas em `is_admin_or_mentor()`
-- A FK apenas cria relacionamento para navegacao, nao altera permissoes
-- Dados ja existentes permanecem intactos
+```
+1. Usuário clica "Analisar"
+   → Frontend verifica quota (client-side, UX)
+   → Edge function recebe request
 
-### Consistencia
-Esta correcao segue o mesmo padrao aplicado a `user_roles`, garantindo que todas as tabelas com `user_id` possam ser acessadas via embedding no PostgREST.
+2. Edge function:
+   → Verifica quota no banco (server-side, segurança)
+   → Se quota OK, processa com IA
+   → ANTES de retornar resultado:
+     → Tenta gravar uso com retry (3 tentativas)
+     → Se falhar todas: retorna erro 500
+     → Se sucesso: retorna resultado da análise
+
+3. Frontend:
+   → Recebe resultado
+   → Refetch quota para atualizar UI
+   → Navega para página de resultado
+```
+
+---
+
+## Por Que Falhar se Não Gravar?
+
+É crítico que o uso seja registrado **antes** de entregar o resultado. Se permitirmos retornar sucesso sem gravar uso:
+- Usuários mal-intencionados podem explorar a falha
+- Custo de IA (Gemini) é perdido sem cobrança
+- Métricas de negócio ficam incorretas
+
+---
+
+## Benefícios da Solução
+
+1. **Confiabilidade**: Retry logic reduz falhas transitórias
+2. **Segurança**: Uso é gravado antes de entregar resultado
+3. **Consistência**: Frontend sempre reflete estado real do banco
+4. **Auditoria**: Service role operations são logadas pelo Supabase
+5. **Integridade**: Impossível receber análise sem ter uso registrado
+
