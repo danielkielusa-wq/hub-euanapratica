@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Rocket, Mail, Zap, Shield, X, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Rocket, Mail, Zap, Shield, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
 export function WaitlistSection() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -15,12 +15,12 @@ export function WaitlistSection() {
     setIsSubmitting(true);
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    toast.success('Você está na lista! 🚀', {
-      description: 'Em breve você receberá novidades exclusivas.',
+
+    toast.success("Você está na lista! 🚀", {
+      description: "Em breve você receberá novidades exclusivas.",
     });
-    
-    setEmail('');
+
+    setEmail("");
     setIsSubmitting(false);
   };
 
@@ -38,14 +38,12 @@ export function WaitlistSection() {
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/20 px-4 py-2">
               <Rocket className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">
-                VAGAS LIMITADAS PARA O BETA
-              </span>
+              <span className="text-sm font-medium text-primary">VAGAS LIMITADAS PARA O BETA</span>
             </div>
 
             {/* Title */}
             <h2 className="mb-4 text-3xl font-bold text-primary-foreground md:text-4xl lg:text-5xl">
-              Seja o primeiro a{' '}
+              Seja o primeiro a{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 dominar o mercado USA.
               </span>
@@ -53,8 +51,8 @@ export function WaitlistSection() {
 
             {/* Subtitle */}
             <p className="mb-10 text-primary-foreground/70">
-              As ferramentas de IA e o Concierge de Vagas estão em fase final de desenvolvimento. 
-              Entre na lista de espera e seja notificado em primeira mão.
+              As ferramentas de IA e o Concierge de Vagas estão em fase final de desenvolvimento. Entre na lista de
+              espera e seja notificado em primeira mão.
             </p>
 
             {/* Form */}
@@ -64,7 +62,7 @@ export function WaitlistSection() {
                   <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="email"
-                    placeholder="Seu melhor e-mail corporativo"
+                    placeholder="Seu melhor e-mail"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-14 rounded-xl border-0 bg-background/10 pl-12 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-primary"
@@ -80,7 +78,7 @@ export function WaitlistSection() {
                   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                   <span className="relative flex items-center gap-2">
                     <Zap className="h-5 w-5" />
-                    {isSubmitting ? 'Enviando...' : 'Garantir Acesso'}
+                    {isSubmitting ? "Enviando..." : "Garantir Acesso"}
                   </span>
                 </Button>
               </div>
