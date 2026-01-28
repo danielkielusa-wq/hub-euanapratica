@@ -1,219 +1,309 @@
 
-# Plano: Correção do Fluxo Pós-Pagamento Ticto
+# Plano: Tela de Teste para Simulacao de Callbacks Ticto
 
-## Problemas Identificados
+## Objetivo
 
-### 1. Duplicação de Registros no Histórico
-A Ticto enviou o mesmo webhook duas vezes (evento "authorized") em 22:07:16 e 22:08:50 para a mesma transação `TOP28016LE59PQ`. O sistema registrou ambos porque não há constraint de unicidade.
-
-### 2. Formulário Não Resetando Valores ao Editar
-O `HubServiceForm` usa `useForm` com `defaultValues` definidos apenas na montagem inicial do componente. Quando o usuário clica em "Editar" um serviço diferente, o formulário não é resetado com os novos valores do serviço selecionado.
-
-### 3. Redirecionamento Pós-Checkout Ticto
-Este é um problema **externo ao sistema**: a URL de redirecionamento pós-compra deve ser configurada diretamente no painel da Ticto, não no nosso código. O sistema interno já possui a página `/payment-success` pronta.
+Criar uma tela administrativa que permita simular callbacks da Ticto para testar o fluxo completo de pos-pagamento sem efetuar pagamentos reais. A tela deve chamar diretamente a Edge Function `ticto-webhook` com payloads simulados.
 
 ---
 
-## Solução Proposta
-
-### A) Banco de Dados: Evitar Duplicações
-
-Adicionar constraint única ou usar UPSERT no webhook para garantir que cada transação seja registrada apenas uma vez:
-
-**Migração SQL:**
-```sql
--- Criar índice único na combinação transaction_id + event_type
--- Isso permite múltiplos eventos diferentes para a mesma transação
--- (ex: "authorized", depois "refunded"), mas não o mesmo evento duplicado
-CREATE UNIQUE INDEX IF NOT EXISTS payment_logs_transaction_event_unique 
-ON payment_logs (transaction_id, event_type) 
-WHERE transaction_id IS NOT NULL;
-```
-
-**Edge Function (ticto-webhook):**
-Modificar o INSERT para usar UPSERT:
-```typescript
-// Antes: INSERT simples (cria duplicatas)
-await supabase.from("payment_logs").insert({...})
-
-// Depois: UPSERT com ON CONFLICT
-await supabase.from("payment_logs").upsert({
-  transaction_id: transactionId,
-  event_type: eventStatus,
-  // ... demais campos
-}, { 
-  onConflict: 'transaction_id,event_type',
-  ignoreDuplicates: true 
-});
-```
-
----
-
-### B) Formulário de Edição: Resetar Valores
-
-**Arquivo:** `src/components/admin/hub/HubServiceForm.tsx`
-
-O problema: `useForm` captura `defaultValues` apenas na montagem inicial. Solução: usar `useEffect` para chamar `form.reset()` quando o `service` prop mudar.
-
-```typescript
-// Adicionar useEffect para resetar o form quando service mudar
-useEffect(() => {
-  form.reset({
-    name: service?.name || '',
-    description: service?.description || '',
-    icon_name: service?.icon_name || 'FileCheck',
-    status: (service?.status as ServiceStatus) || 'available',
-    service_type: service?.service_type || 'ai_tool',
-    ribbon: service?.ribbon || null,
-    category: service?.category || '',
-    route: service?.route || '',
-    redirect_url: service?.redirect_url || '',
-    cta_text: service?.cta_text || 'Acessar Agora',
-    is_visible_in_hub: service?.is_visible_in_hub ?? true,
-    is_highlighted: service?.is_highlighted ?? false,
-    display_order: service?.display_order || 0,
-    price: service?.price || 0,
-    price_display: service?.price_display || '',
-    currency: service?.currency || 'BRL',
-    product_type: (service?.product_type as ProductType) || 'one_time',
-    stripe_price_id: service?.stripe_price_id || '',
-    accent_color: service?.accent_color || '',
-    ticto_product_id: service?.ticto_product_id || '',
-    ticto_checkout_url: service?.ticto_checkout_url || '',
-  });
-}, [service, form]);
-```
-
----
-
-### C) UX Melhorada na Página de Sucesso
-
-**Arquivo:** `src/pages/PaymentSuccess.tsx`
-
-Melhorar a experiência com estados mais claros:
-
-| Estado | Mensagem | Visual |
-|--------|----------|--------|
-| Sincronizando | "Estamos esperando a confirmação. Isso pode levar alguns minutos." | Loader suave |
-| Confirmado | "Tudo certo! Seu conteúdo está liberado." | Botão "Acessar Conteúdo" |
-| Fallback (webhook atrasado) | "Houve um atraso na confirmação. Você não precisa fazer nada." | Texto calmo |
-
----
-
-### D) Limpar Entradas Duplicadas Existentes
-
-**SQL de limpeza (executar manualmente):**
-```sql
--- Remover entradas duplicadas, mantendo a mais recente
-DELETE FROM payment_logs a
-USING payment_logs b
-WHERE a.transaction_id = b.transaction_id
-  AND a.event_type = b.event_type
-  AND a.created_at < b.created_at;
-```
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/migrations/xxx.sql` | Criar | Adicionar constraint única |
-| `supabase/functions/ticto-webhook/index.ts` | Modificar | Usar UPSERT em vez de INSERT |
-| `src/components/admin/hub/HubServiceForm.tsx` | Modificar | Adicionar useEffect para resetar form |
-| `src/pages/PaymentSuccess.tsx` | Modificar | Melhorar estados e mensagens |
-
----
-
-## Fluxo Visual Corrigido
+## Arquitetura da Solucao
 
 ```text
-Usuário paga na Ticto
-        │
-        ▼
-Ticto redireciona para /payment-success
-        │
-        ▼
-┌─────────────────────────────────────────┐
-│  "Sincronizando seu acesso..."          │
-│  (Loader suave, tom calmo)              │
-│                                         │
-│  Microcopy: "Estamos esperando a        │
-│  confirmação. Isso pode levar alguns    │
-│  minutos."                              │
-└─────────────────────────────────────────┘
-        │
-        │ (4 segundos + invalidate cache)
-        ▼
-┌─────────────────────────────────────────┐
-│  ✓ "Pagamento Confirmado!"              │
-│                                         │
-│  "Tudo certo! Seu conteúdo está         │
-│  liberado."                             │
-│                                         │
-│  [=== Ir para o meu Hub ===]            │
-└─────────────────────────────────────────┘
++---------------------------+
+|  Admin: Simulador Ticto   |
+|  /admin/ticto-simulator   |
++---------------------------+
+            |
+            v
++---------------------------+
+|  Selecao de Produto       |
+|  (hub_services)           |
++---------------------------+
+            |
+            v
++---------------------------+
+|  Selecao de Usuario       |
+|  (profiles - email)       |
++---------------------------+
+            |
+            v
++---------------------------+
+|  Selecao de Status        |
+|  (paid, refunded, etc)    |
++---------------------------+
+            |
+            v
++---------------------------+
+|  Preview do Payload JSON  |
++---------------------------+
+            |
+            v
++---------------------------+
+|  [Simular Callback]       |
+|  (POST ticto-webhook)     |
++---------------------------+
+            |
+            v
++---------------------------+
+|  Resultado (sucesso/erro) |
+|  + Logs da requisicao     |
++---------------------------+
 ```
 
 ---
 
-## Webhook: Mudança de INSERT para UPSERT
+## Funcionalidades da Tela
 
-**Antes (linha 168-176):**
-```typescript
-await supabase.from("payment_logs").insert({
-  user_id: profile?.id || null,
-  service_id: service?.id || null,
-  transaction_id: transactionId,
-  event_type: eventStatus,
-  payload: payload,
-  status: profile && service ? "processed" : "partial",
-  processed_at: new Date().toISOString(),
-});
-```
+### 1. Seletor de Produto
+- Dropdown com todos os produtos do catalogo (`hub_services`)
+- Cada opcao mostra:
+  - Nome do produto
+  - Tipo do servico (badge)
+  - Ticto Product ID (se configurado)
+- Ao selecionar, preenche automaticamente o `product_id` no payload
 
-**Depois:**
-```typescript
-// Usar upsert para evitar duplicatas se webhook for reenviado
-const { error: logError } = await supabase.from("payment_logs").upsert(
-  {
-    user_id: profile?.id || null,
-    service_id: service?.id || null,
-    transaction_id: transactionId,
-    event_type: eventStatus,
-    payload: payload,
-    status: profile && service ? "processed" : "partial",
-    processed_at: new Date().toISOString(),
+### 2. Seletor de Usuario (Email)
+- Campo de busca com autocomplete
+- Lista usuarios da tabela `profiles`
+- Permite simular pagamento para qualquer usuario cadastrado
+- Opcao de inserir email manualmente (para testar usuarios nao cadastrados)
+
+### 3. Seletor de Status de Pagamento
+Os status disponiveis no sistema (conforme webhook):
+
+| Status | Descricao | Acao no Sistema |
+|--------|-----------|-----------------|
+| `paid` | Pagamento confirmado | Libera acesso |
+| `completed` | Transacao completa | Libera acesso |
+| `approved` | Pagamento aprovado | Libera acesso |
+| `authorized` | Pagamento autorizado | Libera acesso |
+| `venda_realizada` | Venda realizada (Ticto) | Libera acesso |
+| `waiting_payment` | Aguardando pagamento | Apenas registra log |
+| `refunded` | Reembolsado | Revoga acesso |
+| `chargedback` | Chargeback | Revoga acesso |
+| `cancelled` | Cancelado | Revoga acesso |
+
+### 4. Preview do Payload
+- Card com preview do JSON que sera enviado
+- Formato identico ao payload real da Ticto:
+
+```json
+{
+  "status": "paid",
+  "token": "[TICTO_SECRET_KEY]",
+  "item": {
+    "product_id": 123456,
+    "product_name": "Interview Test"
   },
-  { 
-    onConflict: 'transaction_id,event_type',
-    ignoreDuplicates: false // Atualiza se já existir
+  "customer": {
+    "name": "Usuario Teste",
+    "email": "usuario@teste.com"
+  },
+  "order": {
+    "hash": "SIM_xxxxxxxxxx",
+    "paid_amount": 9900
   }
-);
-
-if (logError) {
-  console.warn("Error logging payment:", logError);
 }
 ```
 
+### 5. Botao de Simulacao
+- Chama a Edge Function `ticto-webhook` diretamente
+- Inclui o token de autenticacao (TICTO_SECRET_KEY)
+- Mostra resultado:
+  - Sucesso: Toast verde + preview da resposta
+  - Erro: Toast vermelho + detalhes do erro
+
+### 6. Logs de Resultado
+- Painel mostrando:
+  - Status da requisicao (200, 401, 500)
+  - Tempo de resposta
+  - Corpo da resposta JSON
+  - Acoes executadas (acesso liberado, log criado, etc)
+
 ---
 
-## Nota sobre Redirecionamento Ticto
+## Detalhes Tecnicos
 
-O redirecionamento pós-checkout é configurado diretamente na Ticto. Você deve:
+### Novo Arquivo: `src/pages/admin/AdminTictoSimulator.tsx`
 
-1. Acessar o painel da Ticto
-2. Editar a oferta/produto
-3. No campo "URL de Redirecionamento Pós-Compra", inserir:
-   `https://enphub.lovable.app/payment-success`
+Estrutura do componente:
 
-Isso garantirá que após o pagamento, o usuário seja levado à nossa página de sucesso em vez da página genérica da Ticto.
+```typescript
+export default function AdminTictoSimulator() {
+  const { data: services } = useAdminHubServices();
+  const { data: users } = useAdminUsers(); // ou busca de profiles
+  
+  const [selectedService, setSelectedService] = useState<HubService | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('paid');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<SimulationResult | null>(null);
+  
+  const generatePayload = () => ({
+    status: selectedStatus,
+    token: '[enviado pelo backend]', // NAO expor token real no frontend
+    item: {
+      product_id: selectedService?.ticto_product_id || 'SIMULATED_ID',
+      product_name: selectedService?.name
+    },
+    customer: {
+      name: 'Simulacao Admin',
+      email: selectedEmail
+    },
+    order: {
+      hash: `SIM_${Date.now()}`,
+      paid_amount: (selectedService?.price || 0) * 100
+    }
+  });
+  
+  const handleSimulate = async () => {
+    // Chama edge function diretamente via Supabase client
+    // O token sera passado via header no backend
+  };
+  
+  return (/* UI */);
+}
+```
+
+### Nova Edge Function: `simulate-ticto-callback`
+
+Para evitar expor o `TICTO_SECRET_KEY` no frontend, criaremos uma edge function intermediaria que:
+1. Valida que o usuario e admin
+2. Monta o payload com o token correto
+3. Chama a `ticto-webhook` internamente
+
+```typescript
+// supabase/functions/simulate-ticto-callback/index.ts
+serve(async (req) => {
+  // 1. Validar que usuario e admin (via JWT)
+  const authHeader = req.headers.get('Authorization');
+  // ... validacao de role admin
+  
+  // 2. Pegar dados da requisicao
+  const { email, product_id, status, amount } = await req.json();
+  
+  // 3. Montar payload Ticto simulado
+  const tictoPayload = {
+    status,
+    token: Deno.env.get("TICTO_SECRET_KEY"),
+    item: { product_id, product_name: 'Simulated' },
+    customer: { email },
+    order: { 
+      hash: `SIM_${Date.now()}`,
+      paid_amount: amount 
+    }
+  };
+  
+  // 4. Chamar ticto-webhook internamente
+  const response = await fetch(
+    `${Deno.env.get("SUPABASE_URL")}/functions/v1/ticto-webhook`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tictoPayload)
+    }
+  );
+  
+  // 5. Retornar resultado
+  return new Response(JSON.stringify({
+    success: response.ok,
+    status: response.status,
+    data: await response.json()
+  }));
+});
+```
 
 ---
 
-## Sobre Agendamento (Calendly-like)
+## Arquivos a Criar/Modificar
 
-Conforme sua instrução, a funcionalidade de agendamento de reuniões será implementada posteriormente. Para o momento atual, após a confirmação do pagamento:
+| Arquivo | Acao | Descricao |
+|---------|------|-----------|
+| `src/pages/admin/AdminTictoSimulator.tsx` | Criar | Tela principal do simulador |
+| `supabase/functions/simulate-ticto-callback/index.ts` | Criar | Edge function para simulacao segura |
+| `src/App.tsx` | Modificar | Adicionar rota `/admin/ticto-simulator` |
+| `src/hooks/useAdminUsers.ts` | Verificar | Garantir que lista profiles para autocomplete |
 
-- O botão mudará de "Desbloquear Acesso" para "Acessar Conteúdo"
-- No futuro, poderemos adicionar um segundo CTA para "Agendar Sessão" que abrirá um modal de calendário
+---
+
+## Design da Interface
+
+### Layout Geral
+- Fundo: `bg-muted/30` (padrao admin)
+- Container centralizado: `max-w-3xl mx-auto`
+- Cards com `rounded-2xl border bg-card`
+
+### Secoes
+
+1. **Header**
+   - Titulo: "Simulador de Callbacks Ticto"
+   - Subtitulo: "Teste o fluxo de pagamento sem transacoes reais"
+
+2. **Card de Configuracao**
+   - Select de Produto (com badges de tipo e preco)
+   - Combobox/Input de Email (com autocomplete)
+   - Select de Status do Pagamento (com cores indicativas)
+
+3. **Card de Preview**
+   - Titulo: "Payload a ser enviado"
+   - Bloco de codigo JSON formatado
+   - Botao "Copiar JSON"
+
+4. **Botao de Acao**
+   - "Simular Callback" (gradiente indigo-purple)
+   - Loading state durante requisicao
+
+5. **Card de Resultado** (apos simulacao)
+   - Badge de status (verde/vermelho)
+   - Tempo de resposta
+   - JSON da resposta
+   - Acoes executadas
+
+---
+
+## Fluxo de Uso
+
+1. Admin acessa `/admin/ticto-simulator`
+2. Seleciona um produto do catalogo
+3. Digita ou seleciona email do usuario alvo
+4. Escolhe o status a simular (ex: "paid")
+5. Visualiza preview do payload
+6. Clica em "Simular Callback"
+7. Sistema chama edge function intermediaria
+8. Edge function monta payload real e chama `ticto-webhook`
+9. Resultado e exibido na tela
+10. Admin verifica no Hub se acesso foi liberado
+
+---
+
+## Seguranca
+
+- Tela acessivel apenas para role `admin`
+- Token Ticto NUNCA exposto no frontend
+- Edge function valida role via JWT antes de processar
+- Transacoes simuladas tem prefixo `SIM_` para identificacao
+- Logs registrados normalmente em `payment_logs`
+
+---
+
+## Rotas
+
+Nova rota em `App.tsx`:
+
+```typescript
+<Route path="/admin/ticto-simulator" element={
+  <ProtectedRoute allowedRoles={['admin']}>
+    <AdminTictoSimulator />
+  </ProtectedRoute>
+} />
+```
+
+---
+
+## Bonus: Link no Menu Admin
+
+Adicionar item na sidebar de admin:
+- Icone: `TestTube` ou `Webhook`
+- Label: "Simulador Ticto"
+- Rota: `/admin/ticto-simulator`
