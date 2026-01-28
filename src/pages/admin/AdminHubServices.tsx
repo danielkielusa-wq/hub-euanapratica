@@ -179,21 +179,21 @@ export default function AdminHubServices() {
                             <div className="font-medium">
                               {formatPrice(service.price, service.currency)}
                             </div>
-                            {service.stripe_price_id ? (
+                            {service.ticto_product_id ? (
                               <button
-                                onClick={() => copyStripeId(service.stripe_price_id!)}
+                                onClick={() => copyStripeId(service.ticto_product_id!)}
                                 className="flex items-center gap-1 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
                               >
-                                {copiedId === service.stripe_price_id ? (
+                                {copiedId === service.ticto_product_id ? (
                                   <Check className="h-3 w-3 text-green-600" />
                                 ) : (
                                   <Copy className="h-3 w-3" />
                                 )}
-                                {service.stripe_price_id.slice(0, 16)}...
+                                Ticto: {service.ticto_product_id.slice(0, 12)}...
                               </button>
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                Sem Stripe ID
+                                Sem Ticto ID
                               </span>
                             )}
                           </div>

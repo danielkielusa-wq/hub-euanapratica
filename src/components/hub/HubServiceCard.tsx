@@ -32,6 +32,7 @@ import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
 interface HubServiceCardProps {
   service: HubService;
   hasAccess: boolean;
+  userEmail?: string;
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -79,7 +80,7 @@ const serviceTypeConfig: Record<ServiceType, { color: string }> = {
   consulting: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
 };
 
-export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
+export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCardProps) {
   const Icon = iconMap[service.icon_name] || FileCheck;
   const config = statusConfig[service.status] || statusConfig.available;
   const isLocked = service.status === 'premium' && !hasAccess;
@@ -98,11 +99,24 @@ export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
   const displayPrice = service.price_display || formatPrice(service.price, service.currency);
 
   const handleUnlock = () => {
-    // If there's a Stripe price ID, this would trigger Stripe Checkout
-    // For now, redirect to a contact or sales page
-    if (service.stripe_price_id) {
-      // TODO: Implement Stripe Checkout when enabled
-      console.log('Stripe checkout for:', service.stripe_price_id);
+    // Priority: Ticto checkout URL
+    if (service.ticto_checkout_url) {
+      try {
+        const checkoutUrl = new URL(service.ticto_checkout_url);
+        if (userEmail) {
+          checkoutUrl.searchParams.set('email', userEmail);
+        }
+        window.open(checkoutUrl.toString(), '_blank');
+      } catch {
+        // Invalid URL, fallback to direct open
+        window.open(service.ticto_checkout_url, '_blank');
+      }
+    } else if (service.redirect_url) {
+      // Fallback to generic redirect URL
+      window.open(service.redirect_url, '_blank');
+    } else {
+      // No checkout configured
+      console.warn('No checkout URL configured for service:', service.id);
     }
   };
 

@@ -51,6 +51,9 @@ const formSchema = z.object({
   product_type: z.enum(['one_time', 'lifetime', 'subscription_monthly', 'subscription_annual']),
   stripe_price_id: z.string().optional(),
   accent_color: z.string().optional(),
+  // Ticto fields
+  ticto_product_id: z.string().optional(),
+  ticto_checkout_url: z.string().url().optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -92,6 +95,9 @@ export function HubServiceForm({
       product_type: (service?.product_type as ProductType) || 'one_time',
       stripe_price_id: service?.stripe_price_id || '',
       accent_color: service?.accent_color || '',
+      // Ticto fields
+      ticto_product_id: service?.ticto_product_id || '',
+      ticto_checkout_url: service?.ticto_checkout_url || '',
     },
   });
 
@@ -274,11 +280,11 @@ export function HubServiceForm({
               </div>
             </div>
 
-            {/* Section 3: Pricing */}
+            {/* Section 3: Pricing & Ticto */}
             <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                 <CreditCard className="h-4 w-4" />
-                PRECIFICAÇÃO
+                PRECIFICAÇÃO & TICTO
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -371,13 +377,13 @@ export function HubServiceForm({
                 
                 <FormField
                   control={form.control}
-                  name="stripe_price_id"
+                  name="ticto_product_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Stripe Price ID</FormLabel>
+                      <FormLabel>Ticto Product ID</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="price_..."
+                          placeholder="PROD_abc123"
                           className="font-mono text-xs"
                           {...field}
                         />
@@ -390,12 +396,30 @@ export function HubServiceForm({
 
               <FormField
                 control={form.control}
+                name="ticto_checkout_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ticto Checkout URL</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://pay.ticto.com.br/..."
+                        className="font-mono text-xs"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="price_display"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Texto de Preço (Opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: R$ 97/mês ou A partir de R$ 197" {...field} />
+                      <Input placeholder="Ex: R$ 97 à vista ou A partir de R$ 197" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
