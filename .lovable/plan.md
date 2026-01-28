@@ -1,124 +1,89 @@
 
-# Plano: Correcao da Pagina de Gestao de Usuarios (/admin/usuarios)
+# Plano: Correcao Definitiva da Pagina de Gestao de Usuarios
 
 ## Problema Identificado
 
-A pagina `/admin/usuarios` mostra "Nenhum usuario encontrado" porque a query do Supabase falha com erro **400**:
+A query atual no hook `useAdminUsers` falha com **erro 400**:
 
 ```
-"Could not find a relationship between 'profiles' and 'user_roles' in the schema cache"
+"Could not find a relationship between 'profiles' and 'user_espacos'"
 ```
 
-### Causa Raiz
+### Analise do Erro
 
-A tabela `user_roles` tem uma foreign key para `auth.users(id)`:
-```sql
-user_roles_user_id_fkey: user_roles.user_id -> auth.users.id
-```
-
-Porem, o PostgREST **nao consegue** seguir relacionamentos para o schema `auth` (reservado). A query atual tenta usar embedding:
-
+A query tenta fazer embedding de duas tabelas relacionadas:
 ```typescript
 .select(`
-  id, email, full_name, ...
-  user_roles!inner(role),  // <- Falha aqui
-  user_espacos(count)
+  ...
+  user_roles!inner(role),   // ✅ Agora funciona (FK adicionada)
+  user_espacos(count)       // ❌ FALHA - FK aponta para auth.users
 `)
 ```
 
-O PostgREST nao encontra FK entre `profiles` e `user_roles` porque ela nao existe - apenas existe FK para `auth.users`.
+**Estrutura atual de FKs:**
+- `user_roles.user_id -> profiles.id` ✅ (adicionada na migracao anterior)
+- `user_espacos.user_id -> auth.users.id` ❌ (PostgREST nao consegue seguir)
+
+PostgREST so consegue navegar FKs dentro do schema `public`. Como `user_espacos.user_id` referencia `auth.users`, a navegacao falha.
 
 ---
 
-## Solucao: Adicionar Foreign Key para profiles
+## Solucao
 
-Como `profiles.id` e sempre igual a `auth.users.id` (definido pelo trigger `handle_new_user`), podemos adicionar uma FK adicional:
+Duas abordagens possiveis:
 
+### Opcao A: Adicionar FK de user_espacos para profiles (Recomendada)
 ```sql
-ALTER TABLE public.user_roles
-ADD CONSTRAINT user_roles_user_id_profiles_fkey
-FOREIGN KEY (user_id) 
-REFERENCES public.profiles(id) 
-ON DELETE CASCADE;
+ALTER TABLE public.user_espacos
+ADD CONSTRAINT user_espacos_user_id_profiles_fkey
+FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 ```
 
-### Por que isso funciona?
-- PostgREST detecta FKs no schema `public`
-- A relacao `profiles.id <-> user_roles.user_id` se torna navegavel
-- A query embedded `user_roles!inner(role)` passa a funcionar
+**Vantagens:**
+- Query simples com embedding
+- Consistente com a correcao de user_roles
+- Performance otima (uma query)
+
+### Opcao B: Mudar o hook para queries separadas
+
+**Desvantagens:**
+- 2 roundtrips ao banco
+- Mais codigo para manter
 
 ---
 
-## Implementacao
+## Implementacao (Opcao A)
 
 ### Parte 1: Migracao de Banco de Dados
 
-**Adicionar FK de user_roles para profiles:**
+Adicionar FK `user_espacos.user_id -> profiles.id`:
 
 ```sql
--- Add foreign key from user_roles to profiles
+-- Add foreign key from user_espacos to profiles
 -- This enables PostgREST to navigate the relationship
-ALTER TABLE public.user_roles
-ADD CONSTRAINT user_roles_user_id_profiles_fkey
+ALTER TABLE public.user_espacos
+ADD CONSTRAINT user_espacos_user_id_profiles_fkey
 FOREIGN KEY (user_id) 
 REFERENCES public.profiles(id) 
 ON DELETE CASCADE;
 ```
 
-### Parte 2: Melhoria no Hook (Fallback de Seguranca)
+### Parte 2: Nenhuma Alteracao no Hook
 
-Mesmo com a FK, e prudente adicionar tratamento de erro para o hook:
+O hook ja esta correto. Apos a FK ser adicionada, a query funcionara automaticamente.
 
-**Arquivo:** `src/hooks/useAdminUsers.ts`
+---
 
-```typescript
-export function useAdminUsers(filters: UserFilters = {}) {
-  return useQuery({
-    queryKey: ['admin-users', filters],
-    queryFn: async () => {
-      // Query with embedded relationship (works after FK is added)
-      let query = supabase
-        .from('profiles')
-        .select(`
-          id,
-          email,
-          full_name,
-          phone,
-          profile_photo_url,
-          status,
-          created_at,
-          last_login_at,
-          user_roles!inner(role),
-          user_espacos(count)
-        `)
-        .order('created_at', { ascending: false });
+## Por Que a FK Adicional Funciona?
 
-      // ... filters ...
+Como `profiles.id` e sempre igual a `auth.users.id` (definido pelo trigger `handle_new_user`), podemos ter duas FKs:
 
-      const { data, error } = await query;
+1. `user_espacos.user_id -> auth.users.id` (cascata de delecao do auth)
+2. `user_espacos.user_id -> profiles.id` (permite navegacao PostgREST)
 
-      if (error) {
-        console.error('Error fetching admin users:', error);
-        throw error;
-      }
-
-      // Transform data
-      return (data || []).map((user: any) => ({
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        phone: user.phone,
-        profile_photo_url: user.profile_photo_url,
-        status: user.status || 'active',
-        created_at: user.created_at,
-        last_login_at: user.last_login_at,
-        role: user.user_roles?.[0]?.role || 'student',
-        enrollments_count: user.user_espacos?.[0]?.count || 0
-      })) as UserExtended[];
-    }
-  });
-}
-```
+Ambas apontam para o mesmo UUID, mas servem propositos diferentes:
+- A FK para `auth.users` garante integridade quando o usuario e deletado do auth
+- A FK para `profiles` permite queries com embedding no PostgREST
 
 ---
 
@@ -126,32 +91,33 @@ export function useAdminUsers(filters: UserFilters = {}) {
 
 | Componente | Tipo | Descricao |
 |------------|------|-----------|
-| Migracao SQL | Nova | Adiciona FK `user_roles.user_id -> profiles.id` |
-| `useAdminUsers.ts` | Melhoria | Adiciona logging de erro para debug |
+| Migracao SQL | Nova | Adiciona FK `user_espacos.user_id -> profiles.id` |
 
 ---
 
 ## Fluxo Apos Correcao
 
-```
+```text
 1. Admin acessa /admin/usuarios
    → Hook executa query com embedding
-   → PostgREST segue FK user_roles -> profiles
-   → Retorna todos os usuarios com suas roles
+   → PostgREST segue ambas as FKs:
+     - profiles -> user_roles ✅
+     - profiles -> user_espacos ✅
+   → Retorna todos os usuarios com roles e contagem de espacos
 
-2. Tabela renderiza:
-   | Usuario      | Papel        | Status | Acoes    |
-   |--------------|--------------|--------|----------|
-   | Admin Teste  | Administrador| Ativo  | [menu]   |
-   | Mentor Teste | Mentor       | Ativo  | [menu]   |
-   | Aluno Teste  | Aluno        | Ativo  | [menu]   |
+2. Tabela renderiza corretamente:
+   | Usuario      | Papel        | Status | Ultimo Login | Espacos | Cadastro | Acoes   |
+   |--------------|--------------|--------|--------------|---------|----------|---------|
+   | Admin Teste  | Administrador| Ativo  | ha 1 hora    | 0       | 24/01    | [menu]  |
+   | Mentor Teste | Mentor       | Ativo  | ha 2 dias    | 2       | 24/01    | [menu]  |
+   | Aluno Kiel   | Aluno        | Ativo  | ha 3 dias    | 1       | 25/01    | [menu]  |
 
 3. Funcoes administrativas disponiveis:
-   - Alterar Papel (dropdown -> salvar)
-   - Ver Historico (modal de audit logs)
-   - Ativar/Desativar usuario
-   - Excluir permanentemente (hard delete via Edge Function)
-   - Criar novo usuario (dialog)
+   - Alterar Papel ✅
+   - Ver Historico ✅
+   - Ativar/Desativar ✅
+   - Criar Usuario ✅
+   - Excluir Permanentemente ✅
 ```
 
 ---
@@ -159,24 +125,20 @@ export function useAdminUsers(filters: UserFilters = {}) {
 ## Verificacao Pos-Implementacao
 
 1. Acessar `/admin/usuarios` como admin
-2. Verificar que todos os usuarios aparecem na tabela
-3. Testar "Alterar Papel" em um usuario
-4. Testar "Ver Historico" 
-5. Testar "Desativar Usuario"
-6. Testar "Criar Novo Usuario"
-7. Testar "Excluir Permanentemente" (com cautela!)
+2. Verificar que todos os 7 usuarios aparecem na tabela
+3. Verificar que a coluna "Espacos" mostra contagem correta
+4. Testar cada funcao administrativa
+5. Verificar filtros (papel, busca, mostrar inativos)
 
 ---
 
 ## Notas Tecnicas
 
-### Por que nao mudar a query?
-Poderiamos fazer 2 queries separadas (profiles + user_roles) e fazer join no frontend, mas:
-- Menos eficiente (2 roundtrips)
-- Mais codigo para manter
-- A FK adicional e a solucao correta do ponto de vista de modelagem
-
 ### Seguranca
 A FK adicional nao afeta RLS pois:
-- `user_roles` ja tem policies baseadas em `has_role(auth.uid(), 'admin')`
+- `user_espacos` ja tem policies baseadas em `is_admin_or_mentor()`
 - A FK apenas cria relacionamento para navegacao, nao altera permissoes
+- Dados ja existentes permanecem intactos
+
+### Consistencia
+Esta correcao segue o mesmo padrao aplicado a `user_roles`, garantindo que todas as tabelas com `user_id` possam ser acessadas via embedding no PostgREST.
