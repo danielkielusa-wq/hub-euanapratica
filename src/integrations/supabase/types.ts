@@ -1234,6 +1234,13 @@ export type Database = {
             referencedRelation: "espacos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_espacos_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_favorites: {
