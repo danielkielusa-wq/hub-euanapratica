@@ -1,349 +1,302 @@
 
-# Plano: Redesign Landing Page, Onboarding e Nova Pagina Meu Hub
+# Plano: Ajustes Landing Page, Onboarding e Redes Sociais
 
-Este plano abrange tres areas principais de mudancas:
-1. **Landing Page**: Ajustes pontuais de links, redes sociais e elementos visuais
-2. **Onboarding**: Redesign completo com stepper horizontal no topo e layout centralizado
-3. **Meu Hub**: Nova pagina de catalogo de servicos como landing pos-login
+## Alteracoes Solicitadas
 
----
-
-## PARTE 1: LANDING PAGE (Ajustes Pontuais)
-
-### 1.1 Navbar.tsx
-**Alteracoes:**
-- Remover completamente a `<nav>` com links "Curriculo AI", "Servicos", "Metodologia"
-- Manter apenas: Logo (esquerda) + Botoes "Entrar" e "Acessar Hub" (direita)
-- Todos os botoes devem apontar para `/login` ou `/cadastro`
-
-### 1.2 Footer.tsx
-**Alteracoes:**
-- Trocar Twitter por YouTube (icone `Youtube` do Lucide)
-- Atualizar URLs das redes sociais:
-  - Instagram: `https://instagram.com/euanapratica` (ou URL real se conhecida)
-  - LinkedIn: `https://linkedin.com/company/euanapratica`
-  - YouTube: `https://youtube.com/@euanapratica`
-- Alterar copyright de "2025" para "2026"
-- Todos os links de navegacao devem apontar para `/login`
-
-### 1.3 WaitlistSection.tsx
-**Alteracoes:**
-- Badge "VAGAS LIMITADAS PARA O BETA": mudar cor do texto e icone para branco (`text-white`)
-- Icone Rocket: `text-white`
-- Span do texto: `text-white`
-
-### 1.4 HeroSection.tsx
-**Alteracoes:**
-- Substituir circulos roxos por miniaturas de pessoas geradas por AI
-- Usar a funcionalidade de geracao de imagem do Lovable AI (google/gemini-2.5-flash-image) para gerar 5 fotos de perfil profissionais
-- Alternativa: usar URLs de avatares placeholder (randomuser.me ou similar)
-- Usar logos do projeto existente (`logo-horizontal.png`) no lugar de logos ficticios
-
-### 1.5 BentoGrid.tsx
-**Alteracoes:**
-- Card "Curriculo USA AI": Link "Testar Agora Gratis" → `/login` (em vez de `/curriculo-usa`)
-- Cards secundarios: todos os links "EXPLORAR" → `/login`
-
-### 1.6 SuccessPath.tsx
-**Alteracoes:**
-- Botao CTA "Conheca nossa metodologia completa" → `/login`
+1. **Redes Sociais na Landing Page** - Atualizar URLs corretas
+2. **Onboarding Step 1** - Remover botao duplicado "Comecar"
+3. **Validacao de Telefone** - Verificar duplicidade no sistema
+4. **Resume Upload** - Garantir salvamento no perfil
+5. **Ultima Etapa** - Redirecionar para "Meu Hub"
 
 ---
 
-## PARTE 2: ONBOARDING (Redesign Completo)
+## PARTE 1: Redes Sociais (Footer.tsx)
 
-### 2.1 Novo Layout Visual
+**Arquivo:** `src/components/landing/Footer.tsx`
 
-**Estrutura baseada nas imagens de referencia:**
+**Alteracoes nas linhas 74-97:**
 
-```
-+------------------------------------------------------------------+
-|  [EP] EUA Na Pratica   (1)----(2)----(3)----(4)----(5)----(6)  [?] Ajuda |
-|                        INICIO PERFIL CONTATO CARREIRA DESTINO FINAL     |
-+------------------------------------------------------------------+
-|                                                                    |
-|    +----------------------------------------------------------+   |
-|    |                                                          |   |
-|    |                  [ICONE GRANDE AZUL]                     |   |
-|    |                                                          |   |
-|    |                 Prepare-se para decolar                  |   |
-|    |      Sua jornada internacional comeca com um perfil     |   |
-|    |                    bem configurado.                      |   |
-|    |                                                          |   |
-|    |   [IA de Curriculos]      [Comunidade Elite]             |   |
-|    |   [Foco em Vistos]        [Trilhas de Carreira]          |   |
-|    |                                                          |   |
-|    |            [  Configurar meu Perfil  ->  ]               |   |
-|    |                                                          |   |
-|    +----------------------------------------------------------+   |
-|                                                                    |
-|   SUA SEGURANCA E NOSSA PRIORIDADE. DADOS PROTEGIDOS POR CRIPT.   |
-+------------------------------------------------------------------+
-```
-
-### 2.2 Componentes a Criar/Modificar
-
-**Novos Componentes:**
-- `OnboardingHorizontalStepper.tsx` - Stepper horizontal no topo com linha de progresso
-
-**Modificar:**
-- `OnboardingLayout.tsx` - Remover sidebar vertical, usar layout centralizado
-- `OnboardingSidebar.tsx` - Substituir por header com stepper horizontal
-- `WelcomeStep.tsx` - Redesign com icone de foguete e grid de beneficios
-- `PersonalInfoStep.tsx` - Inputs estilo Stripe (bg-gray-50, sem bordas)
-- `ContactStep.tsx` - Layout de telefone com seletor de pais e checkbox WhatsApp
-- `LinkedInResumeStep.tsx` - Campo LinkedIn com icone + zona de drag-and-drop
-- `LocationStep.tsx` - Selectors + cards visuais de destino (EUA vs Canada)
-- `ConfirmationStep.tsx` - Icone check verde, card de recursos desbloqueados
-
-### 2.3 Especificacoes de Estilo
-
-**Card Central:**
-- `max-w-2xl`
-- `rounded-[40px]`
-- `shadow-[0_10px_40px_rgba(0,0,0,0.03)]`
-- Fundo branco (`bg-white`)
-
-**Stepper Horizontal:**
-- Linha fina conectando circulos
-- Passos concluidos: Check icon em circulo azul
-- Passo atual: Numero em circulo azul com ring
-- Passos futuros: Numero em circulo cinza claro
-- Labels: INICIO, PERFIL, CONTATO, CARREIRA, DESTINO, FINAL
-
-**Inputs (Estilo Stripe):**
-- `bg-gray-50 border-0`
-- Focus: `ring-2 ring-blue-500/50 border-blue-500 bg-white`
-- Labels: `text-[10px] font-black tracking-[0.2em] uppercase text-gray-500`
-
-**Botoes de Navegacao:**
-- "Voltar": Discreto, cinza, sem fundo
-- "Proximo >": Azul primario (`bg-blue-600`), rounded-xl, icone seta
-
-**Footer de Seguranca:**
-- Texto pequeno cinza: "SUA SEGURANCA E NOSSA PRIORIDADE. DADOS PROTEGIDOS POR CRIPTOGRAFIA."
+| Rede Social | URL Atual | URL Correta |
+|-------------|-----------|-------------|
+| Instagram | `https://instagram.com/euanapratica` | `https://instagram.com/danielkielusa` |
+| LinkedIn | `https://linkedin.com/company/euanapratica` | `https://www.linkedin.com/in/danielkiel/` |
+| YouTube | `https://youtube.com/@euanapratica` | `https://www.youtube.com/@eua_na_pratica` |
 
 ---
 
-## PARTE 3: NOVA PAGINA MEU HUB
+## PARTE 2: Remover Botao Duplicado no Onboarding
 
-### 3.1 Estrutura da Pagina
+**Problema Identificado:**
+Na tela do step 1 (Welcome), existem DOIS botoes de navegacao:
+1. "Configurar meu Perfil →" (dentro do WelcomeStep)
+2. "Comecar →" (no footer do OnboardingLayout)
 
-**Rota:** `/dashboard/hub` ou `/hub` (substitui ou precede o dashboard atual)
+Ambos fazem a mesma coisa (`handleNext`), criando confusao visual.
 
-**Layout:**
+**Solucao:**
+Ocultar o botao de navegacao do footer quando estivermos no step 1, ja que o WelcomeStep tem seu proprio CTA.
+
+**Arquivo:** `src/components/onboarding/OnboardingLayout.tsx`
+
+**Alteracao na linha 76-84:**
+Adicionar condicao para nao renderizar o botao "Proximo" quando `currentStep === 1`:
+
+```tsx
+{/* Next Button - Hide on step 1 since WelcomeStep has its own CTA */}
+{currentStep !== 1 && (
+  <button
+    onClick={onNext}
+    disabled={!canGoNext}
+    className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold..."
+  >
+    {nextLabel || (isLastStep ? 'Ir para Meu Hub' : 'Próximo')}
+    <ArrowRight className="h-4 w-4" />
+  </button>
+)}
 ```
-+--------+------------------------------------------------+
-|        |  [Busca]                    [Notif] [Avatar] |
-|  Menu  |-----------------------------------------------|
-|  Lado  |                                               |
-|        |  Meu Hub de Servicos                          |
-|        |  Centralize sua carreira internacional...     |
-|        |                                               |
-|        |  (V) Meus Servicos Ativos                     |
-|        |  +----------+ +----------+ +----------+       |
-|        |  | Portal   | | Curriculo | | Certific.|      |
-|        |  | do Aluno | | USA [*]   | | ados     |      |
-|        |  +----------+ +----------+ +----------+       |
-|        |                                               |
-|        |  [*] Explorar & Contratar                     |
-|        |  +----------+ +----------+ +----------+       |
-|        |  | Mock     | | Visa     | | Job      |       |
-|        |  | Interview| | Journey  | | Hunter   |       |
-|        |  +----------+ +----------+ +----------+       |
-+--------+-----------------------------------------------+
-```
 
-### 3.2 Banco de Dados
+Adicionalmente, precisamos passar `currentStep` como prop para verificar a condicao.
 
-**Nova Tabela: `hub_services`**
+---
+
+## PARTE 3: Validacao de Telefone Unico
+
+**Problema:**
+Atualmente nao existe validacao de unicidade de telefone. Dois usuarios podem cadastrar o mesmo numero.
+
+**Solucao em 2 Partes:**
+
+### 3.1 Constraint Unico no Banco de Dados
+
+**Migracao SQL:**
 ```sql
-CREATE TABLE public.hub_services (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  description TEXT,
-  icon_name TEXT NOT NULL, -- Ex: "GraduationCap", "FileCheck", "Globe"
-  status TEXT NOT NULL DEFAULT 'available', -- 'available', 'premium', 'coming_soon'
-  route TEXT, -- Rota interna como "/curriculo"
-  category TEXT, -- "Carreira", "Educacao", "Imigracao"
-  is_visible_in_hub BOOLEAN DEFAULT true,
-  is_highlighted BOOLEAN DEFAULT false,
-  display_order INTEGER DEFAULT 0,
-  
-  -- Campos Stripe (para futura integracao)
-  stripe_price_id TEXT,
-  product_type TEXT DEFAULT 'subscription', -- 'subscription' ou 'one_time'
-  price_display TEXT, -- "Gratis", "R$47/mes", "Premium"
-  currency TEXT DEFAULT 'BRL',
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+-- Criar indice unico composto para telefone (codigo + numero)
+-- Apenas para telefones nao nulos
+CREATE UNIQUE INDEX idx_profiles_phone_unique 
+ON public.profiles (phone_country_code, phone) 
+WHERE phone IS NOT NULL AND phone != '';
 
--- Tabela para rastrear quais servicos cada usuario tem acesso
-CREATE TABLE public.user_hub_services (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  service_id UUID NOT NULL REFERENCES public.hub_services(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'active', -- 'active', 'expired', 'cancelled'
-  started_at TIMESTAMPTZ DEFAULT now(),
-  expires_at TIMESTAMPTZ,
-  UNIQUE(user_id, service_id)
-);
+-- Funcao auxiliar para verificar duplicidade
+CREATE OR REPLACE FUNCTION public.is_phone_available(
+  p_country_code TEXT,
+  p_phone TEXT,
+  p_user_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN NOT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE phone_country_code = p_country_code
+    AND phone = p_phone
+    AND (p_user_id IS NULL OR id != p_user_id)
+  );
+END;
+$$;
 ```
 
-**Seed Data:**
-```sql
-INSERT INTO public.hub_services (name, description, icon_name, status, route, category, is_highlighted) VALUES
-('Portal do Aluno', 'Acesse suas mentorias, aulas gravadas, atividades e conecte-se com sua turma.', 'GraduationCap', 'available', '/dashboard', 'Educacao', false),
-('Curriculo USA', 'Valide se seu curriculo passa nos robos (ATS) das empresas americanas com nossa IA.', 'FileCheck', 'available', '/curriculo', 'Carreira', true),
-('Certificados', 'Centralize e valide seus certificados e diplomas traduzidos para aplicacao.', 'Award', 'available', '/certificados', 'Educacao', false),
-('Mock Interview AI', 'Treine para entrevistas em ingles com um recrutador virtual e receba feedback instantaneo.', 'Monitor', 'premium', NULL, 'Carreira', false),
-('Visa Journey', 'Organize documentos, prazos e etapas do seu processo de visto O-1 ou EB-2 NIW.', 'Globe', 'coming_soon', NULL, 'Imigracao', false),
-('Job Hunter', 'Concierge de vagas "escondidas" no mercado americano curadas para brasileiros.', 'Building2', 'coming_soon', NULL, 'Carreira', false);
-```
+### 3.2 Validacao no Frontend
 
-### 3.3 Componentes do Hub
+**Arquivo:** `src/pages/Onboarding.tsx`
 
-**Nova Pagina:** `src/pages/hub/StudentHub.tsx`
+**Alterar funcao `validateStep` (linha 91-129):**
 
-**Componentes:**
-- `HubServiceCard.tsx` - Card individual de servico
-- `HubServiceGrid.tsx` - Grid de cards com secoes
-- `HubHeader.tsx` - Titulo e subtitulo da pagina
+Adicionar verificacao assincrona de duplicidade ao validar step 3:
 
-**Card Visual:**
-- `rounded-[32px]`
-- `border border-gray-100`
-- `shadow-sm`
-- Hover: `-translate-y-1 shadow-md`
-- Badge status: "DISPONIVEL" (verde), "PREMIUM" (roxo), "EM BREVE" (cinza)
-- Icone em quadrado arredondado colorido
-- Botao: "Acessar Agora ->" ou "Upgrade para Acessar" ou "Em Breve"
+```tsx
+const validateStep = useCallback(async (step: OnboardingStep): Promise<boolean> => {
+  const newErrors: Record<string, string> = {};
 
-**Destaque Curriculo USA:**
-- Borda azul leve
-- Icone Sparkles ao lado do nome
-- Botao azul primario
+  // ... validacoes existentes para step 2 ...
 
-### 3.4 Ajustes no Menu Lateral (Sidebar)
-
-**Modificar `DashboardLayout.tsx`:**
-- Adicionar "Meu Hub" como primeiro item do menu (acima de Dashboard)
-- Icone: `Home` ou `LayoutGrid`
-- Rota: `/dashboard/hub`
-
-**Nova Estrutura do Menu Student:**
-```typescript
-{
-  label: 'OVERVIEW',
-  items: [
-    { label: 'Meu Hub', href: '/dashboard/hub', icon: Home },       // NOVO
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Meus Espacos', href: '/dashboard/espacos', icon: GraduationCap },
-    { label: 'Curriculo USA', href: '/curriculo', icon: FileCheck, badge: 'IA' }, // Badge
-    { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-    { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
-  ],
-},
-```
-
-### 3.5 Hooks e Queries
-
-**Novo Hook:** `useHubServices.ts`
-```typescript
-export function useHubServices() {
-  return useQuery({
-    queryKey: ['hub-services'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('hub_services')
-        .select('*')
-        .eq('is_visible_in_hub', true)
-        .order('display_order');
+  if (step === 3) {
+    if (!formData.phone?.trim() || formData.phone.trim().length < 8) {
+      newErrors.phone = 'Telefone é obrigatório (mínimo 8 dígitos)';
+    } else {
+      // Verificar duplicidade no banco
+      const { data: isAvailable, error } = await supabase.rpc('is_phone_available', {
+        p_country_code: formData.phone_country_code || '+55',
+        p_phone: formData.phone,
+        p_user_id: user?.id
+      });
       
-      if (error) throw error;
-      return data;
-    },
-  });
+      if (error) {
+        console.error('Error checking phone:', error);
+      } else if (!isAvailable) {
+        newErrors.phone = 'Este número de telefone já está cadastrado no sistema.';
+      }
+    }
+    // ... resto das validacoes ...
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+}, [formData, user?.id]);
+```
+
+**Nota:** Precisamos tornar `validateStep` async e ajustar `handleNext` para usar await.
+
+---
+
+## PARTE 4: Garantir Salvamento do Curriculo no Perfil
+
+**Analise do Codigo Atual:**
+
+O fluxo atual JA salva o curriculo corretamente:
+1. `LinkedInResumeStep` chama `uploadResume(file)` que faz upload para o bucket 'resumes'
+2. `uploadResume` retorna o `path` do arquivo
+3. `onChange('resume_url', path)` atualiza o formData local
+4. `saveProgress()` eh chamado ao clicar "Proximo" e salva o `resume_url` no perfil
+
+**Problema Potencial:**
+Se o usuario fizer upload mas nao clicar "Proximo", o curriculo fica no storage mas nao no perfil.
+
+**Solucao - Salvamento Imediato:**
+
+**Arquivo:** `src/components/onboarding/steps/LinkedInResumeStep.tsx`
+
+**Modificar funcao `onDrop` (linha 20-30):**
+
+Alem de chamar `onChange`, tambem salvar imediatamente no banco:
+
+```tsx
+const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const file = acceptedFiles[0];
+  if (!file) return;
+
+  setUploadedFileName(file.name);
+  const path = await uploadResume(file);
+  if (path) {
+    onChange('resume_url', path);
+    
+    // Salvar imediatamente no perfil
+    try {
+      await supabase
+        .from('profiles')
+        .update({ resume_url: path })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error saving resume to profile:', error);
+    }
+  } else {
+    setUploadedFileName(null);
+  }
+}, [uploadResume, onChange, user?.id]);
+```
+
+Para isso, precisamos passar o `user` como prop ou usar o hook `useAuth` dentro do componente.
+
+---
+
+## PARTE 5: Redirecionar para "Meu Hub" na Ultima Etapa
+
+**Arquivos a Modificar:**
+
+### 5.1 ConfirmationStep.tsx
+
+**Alterar texto do botao (linha 67):**
+
+```tsx
+{isCompleting ? 'Finalizando...' : 'Acessar Meu Hub →'}
+```
+
+### 5.2 Onboarding.tsx
+
+**Alterar funcao `getDashboardPath` (linha 61-77):**
+
+Para estudantes, redirecionar para `/dashboard/hub` ao inves de `/dashboard`:
+
+```tsx
+const getDashboardPath = useCallback(() => {
+  // Check if there's a pending espaco_id from invitation flow
+  const pendingEspacoId = localStorage.getItem('pending_espaco_id');
+  if (pendingEspacoId) {
+    localStorage.removeItem('pending_espaco_id');
+    return `/dashboard/espacos/${pendingEspacoId}`;
+  }
+  
+  switch (user?.role) {
+    case 'admin':
+      return '/admin/dashboard';
+    case 'mentor':
+      return '/mentor/dashboard';
+    default:
+      return '/dashboard/hub';  // <-- Alterado de '/dashboard' para '/dashboard/hub'
+  }
+}, [user?.role]);
+```
+
+### 5.3 OnboardingLayout.tsx
+
+**Alterar label do botao (linha 81):**
+
+```tsx
+{nextLabel || (isLastStep ? 'Acessar Meu Hub' : 'Próximo')}
+```
+
+---
+
+## Resumo de Arquivos a Modificar
+
+| Arquivo | Alteracoes |
+|---------|------------|
+| `src/components/landing/Footer.tsx` | URLs das redes sociais |
+| `src/components/onboarding/OnboardingLayout.tsx` | Ocultar botao step 1, alterar label ultimo step |
+| `src/pages/Onboarding.tsx` | Validacao async telefone, redirecionar para Hub |
+| `src/components/onboarding/steps/LinkedInResumeStep.tsx` | Salvamento imediato do curriculo |
+| `src/components/onboarding/steps/ConfirmationStep.tsx` | Texto do botao CTA |
+| **Nova Migracao SQL** | Constraint unica telefone + funcao RPC |
+
+---
+
+## Detalhes Tecnicos
+
+### Validacao Assincrona no Onboarding
+
+A funcao `validateStep` sera convertida para async:
+
+```tsx
+// Antes
+const validateStep = useCallback((step: OnboardingStep): boolean => {
+
+// Depois  
+const validateStep = useCallback(async (step: OnboardingStep): Promise<boolean> => {
+```
+
+E `handleNext` sera ajustado:
+
+```tsx
+// Antes
+if (!validateStep(currentStep)) {
+  return;
 }
 
-export function useUserHubAccess() {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ['user-hub-access', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('user_hub_services')
-        .select('service_id, status')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
-      
-      if (error) throw error;
-      return data.map(d => d.service_id);
-    },
-    enabled: !!user?.id,
-  });
+// Depois
+const isValid = await validateStep(currentStep);
+if (!isValid) {
+  return;
 }
 ```
 
----
+### Experiencia do Usuario - Erro de Telefone
 
-## RESUMO DE ARQUIVOS A MODIFICAR/CRIAR
+Quando o usuario inserir um telefone duplicado, ele vera uma mensagem de erro vermelha abaixo do campo:
 
-### Modificar:
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/landing/Navbar.tsx` | Remover nav links, manter apenas logo + botoes |
-| `src/components/landing/Footer.tsx` | YouTube, URLs reais, copyright 2026 |
-| `src/components/landing/WaitlistSection.tsx` | Badge em branco |
-| `src/components/landing/HeroSection.tsx` | Avatares com fotos |
-| `src/components/landing/BentoGrid.tsx` | Links para /login |
-| `src/components/landing/SuccessPath.tsx` | CTA para /login |
-| `src/components/onboarding/OnboardingLayout.tsx` | Layout centralizado |
-| `src/components/onboarding/OnboardingSidebar.tsx` | Substituir por header horizontal |
-| `src/components/onboarding/steps/*.tsx` | Redesign de cada etapa |
-| `src/components/layouts/DashboardLayout.tsx` | Adicionar Meu Hub no menu |
-| `src/App.tsx` | Adicionar rota /dashboard/hub |
+"Este numero de telefone ja esta cadastrado no sistema."
 
-### Criar:
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/onboarding/OnboardingHorizontalStepper.tsx` | Stepper horizontal |
-| `src/pages/hub/StudentHub.tsx` | Pagina principal do Hub |
-| `src/components/hub/HubServiceCard.tsx` | Card de servico |
-| `src/components/hub/HubServiceGrid.tsx` | Grid de servicos |
-| `src/hooks/useHubServices.ts` | Hooks para buscar servicos |
-| Migracao SQL | Tabelas hub_services e user_hub_services |
-
-### Geracao de Imagem (AI):
-- Gerar 5 avatares profissionais para o Hero usando Lovable AI ou usar placeholders
+O usuario podera corrigir o numero antes de prosseguir.
 
 ---
 
-## ORDEM DE IMPLEMENTACAO
+## Ordem de Implementacao
 
-1. **Migracao de Banco de Dados** - Criar tabelas hub_services e user_hub_services
-2. **Landing Page Ajustes** - Rapido, poucas linhas de codigo
-3. **Pagina Meu Hub** - Componentes + hooks + rota
-4. **Onboarding Redesign** - Mais complexo, manter funcionalidade existente
-
----
-
-## NOTAS TECNICAS
-
-### Seguranca (RLS)
-- hub_services: Leitura publica para usuarios autenticados
-- user_hub_services: Usuarios so veem seus proprios acessos, admins veem todos
-
-### Responsividade
-- Hub: Grid 1 coluna mobile, 3 colunas desktop
-- Onboarding: Stepper horizontal esconde labels em mobile, mostra apenas numeros
-
-### Animacoes
-- Todos os cards: `transition-all duration-300 hover:-translate-y-1`
-- Entrada nas secoes: `animate-fade-in`
-- Botoes shimmer no Hub para servicos AI
+1. Migracao SQL para constraint de telefone unico
+2. Atualizar Footer.tsx com URLs corretas
+3. Modificar OnboardingLayout.tsx (ocultar botao step 1, label Hub)
+4. Modificar Onboarding.tsx (validacao async, redirect Hub)
+5. Modificar LinkedInResumeStep.tsx (salvamento imediato)
+6. Modificar ConfirmationStep.tsx (texto botao)
