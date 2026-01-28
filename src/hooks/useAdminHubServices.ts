@@ -45,6 +45,9 @@ export function useCreateHubService() {
           product_type: formData.product_type || 'one_time',
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          // Ticto fields
+          ticto_product_id: formData.ticto_product_id || null,
+          ticto_checkout_url: formData.ticto_checkout_url || null,
         })
         .select()
         .single();
@@ -91,6 +94,9 @@ export function useUpdateHubService() {
           product_type: formData.product_type,
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          // Ticto fields
+          ticto_product_id: formData.ticto_product_id || null,
+          ticto_checkout_url: formData.ticto_checkout_url || null,
         })
         .eq('id', id)
         .select()

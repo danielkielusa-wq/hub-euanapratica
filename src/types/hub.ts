@@ -28,6 +28,10 @@ export interface HubService {
   product_type: ProductType;
   stripe_price_id: string | null;
   
+  // Ticto integration
+  ticto_product_id: string | null;
+  ticto_checkout_url: string | null;
+  
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +56,9 @@ export interface HubServiceFormData {
   currency: string;
   product_type: ProductType;
   stripe_price_id: string;
+  // Ticto fields
+  ticto_product_id: string;
+  ticto_checkout_url: string;
 }
 
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {

@@ -532,6 +532,8 @@ export type Database = {
           service_type: string | null
           status: string
           stripe_price_id: string | null
+          ticto_checkout_url: string | null
+          ticto_product_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -556,6 +558,8 @@ export type Database = {
           service_type?: string | null
           status?: string
           stripe_price_id?: string | null
+          ticto_checkout_url?: string | null
+          ticto_product_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -580,6 +584,8 @@ export type Database = {
           service_type?: string | null
           status?: string
           stripe_price_id?: string | null
+          ticto_checkout_url?: string | null
+          ticto_product_id?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -721,6 +727,57 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_logs: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          processed_at: string | null
+          service_id: string | null
+          status: string | null
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          service_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          service_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_logs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -3,11 +3,12 @@ import { useHubServices, useUserHubAccess } from '@/hooks/useHubServices';
 import { HubServiceCard } from '@/components/hub/HubServiceCard';
 import { Loader2, LayoutGrid, Sparkles } from 'lucide-react';
 import { HubService } from '@/types/hub';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StudentHub() {
   const { data: services, isLoading } = useHubServices();
   const { data: userAccess = [] } = useUserHubAccess();
-
+  const { user } = useAuth();
   // Separate active services (available or has access) from locked/coming soon
   const activeServices =
     services?.filter(
@@ -62,6 +63,7 @@ export default function StudentHub() {
                     key={service.id}
                     service={service as HubService}
                     hasAccess={userAccess.includes(service.id) || service.status === 'available'}
+                    userEmail={user?.email}
                   />
                 ))}
               </div>
@@ -81,6 +83,7 @@ export default function StudentHub() {
                     key={service.id}
                     service={service as HubService}
                     hasAccess={false}
+                    userEmail={user?.email}
                   />
                 ))}
               </div>
