@@ -1,345 +1,369 @@
 
-# Plano: Unificacao Gestao de Produtos + Meu Hub (Stripe Ready)
+# Plano: Integração de Pagamento com Ticto
 
-## Visao Geral
+## Visão Geral
 
-Atualmente existem DOIS sistemas separados:
-1. **Tabela `products`** - Usada por AdminProducts (simples, focada em acesso)
-2. **Tabela `hub_services`** - Usada por StudentHub (mais completa, com icones/status)
+Substituir a integração Stripe pela Ticto para processamento de pagamentos no Hub de Serviços. A integração consiste em três partes:
 
-**Decisao de Arquitetura**: Vamos unificar usando a tabela `hub_services` como source of truth, pois ela ja possui os campos necessarios para display e Stripe. A tabela `products` sera deprecada em favor de `hub_services`.
+1. **Schema do Banco** - Adicionar campos Ticto e remover dependência do Stripe
+2. **Checkout Flow** - Redirecionar para URL de checkout da Ticto com email do usuário
+3. **Webhook Receiver** - Edge Function para processar postbacks e liberar acesso
 
 ---
 
-## PARTE 1: AJUSTE DE BANCO DE DADOS
+## PARTE 1: MIGRAÇÃO DO BANCO DE DADOS
 
-### 1.1 Adicionar Campos a `hub_services`
+### 1.1 Novos Campos na Tabela `hub_services`
 
-Novos campos necessarios para o design premium e conversao:
+| Campo Atual | Ação | Novo Campo |
+|-------------|------|------------|
+| `stripe_price_id` | Manter (compatibilidade) + Adicionar novos | - |
+| - | Adicionar | `ticto_product_id` |
+| - | Adicionar | `ticto_checkout_url` |
+
+**SQL Migration:**
+```sql
+-- Adicionar campos Ticto na tabela hub_services
+ALTER TABLE public.hub_services 
+  ADD COLUMN IF NOT EXISTS ticto_product_id TEXT,
+  ADD COLUMN IF NOT EXISTS ticto_checkout_url TEXT;
+
+-- Tabela para armazenar configurações globais da Ticto (Admin)
+-- O secret_key será armazenado como Supabase Secret por segurança
+```
+
+### 1.2 Tabela de Log de Transações
+
+Nova tabela para auditoria de pagamentos:
 
 ```sql
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS ribbon TEXT;
--- Valores: 'NOVO', 'POPULAR', 'EXCLUSIVO', null
+CREATE TABLE public.payment_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id),
+  service_id UUID REFERENCES public.hub_services(id),
+  transaction_id TEXT, -- ID único da Ticto
+  event_type TEXT NOT NULL, -- 'venda_realizada', 'reembolso', etc
+  payload JSONB, -- Payload completo para debug
+  status TEXT DEFAULT 'received',
+  processed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS service_type TEXT DEFAULT 'ai_tool';
--- Valores: 'ai_tool', 'live_mentoring', 'recorded_course', 'consulting'
-
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS price NUMERIC(10,2) DEFAULT 0;
--- Preco numerico para calculo/display
-
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS cta_text TEXT DEFAULT 'Acessar Agora';
--- Texto do botao personalizado
-
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS redirect_url TEXT;
--- URL de destino apos compra/acesso
-
-ALTER TABLE public.hub_services ADD COLUMN IF NOT EXISTS accent_color TEXT;
--- Cor de destaque opcional (hex)
+-- RLS: Apenas admins podem ver
+ALTER TABLE public.payment_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage payment logs"
+ON public.payment_logs FOR ALL USING (has_role(auth.uid(), 'admin'));
 ```
-
-### 1.2 RLS Policies (ja existentes)
-
-As policies atuais sao suficientes:
-- Admins podem gerenciar (ALL)
-- Usuarios autenticados podem visualizar (`is_visible_in_hub = true`)
 
 ---
 
-## PARTE 2: ADMIN PANEL - REDESIGN COMPLETO
+## PARTE 2: AJUSTES NO ADMIN (Formulário de Produto)
 
-### 2.1 Nova Estrutura Visual (Inspiracao: Imagem de Referencia)
+### 2.1 Arquivo: `src/components/admin/hub/HubServiceForm.tsx`
 
-**Header da Pagina:**
-```
-Gestao de Produtos
-Administre o catalogo de servicos do Hub e as regras de checkout.
-                                          [+ Criar Servico]
-```
+**Modificações na seção PRECIFICAÇÃO:**
 
-**Tabela Premium:**
-| ORD. | SERVICO | MODALIDADE | PRECO / STRIPE ID | STATUS | ACOES |
-|------|---------|------------|-------------------|--------|-------|
-| 1 | [icon] Imersao Fevereiro POPULAR | RECORDED COURSE | R$ 2.197,00 # Sem Stripe ID | VISIVEL | Edit/Del |
-| 2 | [icon] Curriculo USA AI NOVO | AI TOOL | R$ 97,00 # price_1QxABC123 | VISIVEL | Edit/Del |
+Substituir o campo "Stripe Price ID" por:
 
-**Colunas:**
-- Ordem (numero editavel inline)
-- Icone + Nome + Ribbon badge + Categoria
-- Modalidade (badge colorido)
-- Preco formatado + Stripe ID (monospace, copiavel)
-- Status (badge VISIVEL/OCULTO)
-- Acoes (Edit/Delete icons)
-
-### 2.2 Modal de Edicao (Sections)
-
-**Design baseado na imagem de referencia:**
+- **Ticto Product ID** - ID do produto na Ticto
+- **Ticto Checkout URL** - URL completa do checkout (ex: `https://pay.ticto.com.br/ABC123`)
 
 ```
-+------------------------------------------------------------------+
-| Novo Produto                                               [X]   |
-| Defina regras de acesso, precificacao e como o servico           |
-| aparece no Hub.                                                   |
-+------------------------------------------------------------------+
-| [icon] IDENTIDADE & VISIBILIDADE                                 |
-|                                                                   |
-| NOME DO PRODUTO *          FITA DE DESTAQUE (RIBBON)             |
-| [Ex: Mentoria Elite Track] [Ex: NOVO, POPULAR             v]     |
-|                                                                   |
-| DESCRICAO NO HUB                                                  |
-| [Texto curto que aparecera no card do servico...            ]    |
-+------------------------------------------------------------------+
-| [cards] TIPO DE SERVICO        [icons] ICONE VISUAL              |
-|                                                                   |
-| [x] FERRAMENTA DE IA           [ ][FileCheck][Monitor][Globe]    |
-| [ ] MENTORIA AO VIVO           [GradCap][Award][Building2]       |
-| [ ] CURSO GRAVADO              [Sparkles]                        |
-| [ ] CONSULTORIA AD-HOC                                           |
-+------------------------------------------------------------------+
-| [tag] PRECIFICACAO             [tag] CONVERSAO & CHECKOUT        |
-|                                                                   |
-| [x] ONE TIME PURCHASE          STRIPE PRICE ID                   |
-| [ ] LIFETIME                   [price_...]                       |
-| [ ] SUBSCRIPTION MONTHLY                                         |
-| [ ] SUBSCRIPTION ANNUAL        TEXTO DO BOTAO (CTA)              |
-|                                [Acessar Agora]                   |
-| PRECO DE VENDA (R$) | ORDEM                                      |
-| [R$ 0             ] | [1  ]    URL DE REDIRECIONAMENTO           |
-|                               [/dashboard/ia ou https://...  ]   |
-+------------------------------------------------------------------+
-|                         [Cancelar] [Salvar Produto & Publicar]   |
-+------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────┐
+│ [CreditCard] PRECIFICAÇÃO & TICTO                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ MODELO DE COBRANÇA          STATUS                          │
+│ [One Time Purchase ▾]       [Premium (Requer Compra) ▾]     │
+│                                                             │
+│ PREÇO (R$)      ORDEM       TICTO PRODUCT ID                │
+│ [97.00     ]    [1  ]       [PROD_abc123         ]          │
+│                                                             │
+│ TICTO CHECKOUT URL                                          │
+│ [https://pay.ticto.com.br/checkout/ABC123            ]      │
+│                                                             │
+│ TEXTO DE PREÇO (OPCIONAL)                                   │
+│ [R$ 97 à vista                                        ]     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 Componentes Admin
+### 2.2 Arquivos a Modificar
 
-**Novos Arquivos:**
-- `src/pages/admin/AdminHubServices.tsx` (substitui AdminProducts)
-- `src/components/admin/hub/HubServiceForm.tsx` - Modal de edicao
-- `src/components/admin/hub/ServiceTypeSelector.tsx` - Cards de tipo
-- `src/components/admin/hub/IconSelector.tsx` - Grid de icones Lucide
-
-**Hook Atualizado:**
-- `src/hooks/useAdminHubServices.ts` - CRUD para hub_services
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/types/hub.ts` | Adicionar `ticto_product_id` e `ticto_checkout_url` nos tipos |
+| `src/components/admin/hub/HubServiceForm.tsx` | Novos campos no formulário |
+| `src/hooks/useAdminHubServices.ts` | Salvar novos campos no create/update |
 
 ---
 
-## PARTE 3: STUDENT HUB - REDESIGN DINAMICO
+## PARTE 3: LÓGICA DE CHECKOUT NO HUB
 
-### 3.1 Logica de Exibicao
+### 3.1 Arquivo: `src/components/hub/HubServiceCard.tsx`
 
-```typescript
-// Buscar servicos da tabela hub_services (nao hardcoded)
-const { data: services } = useHubServices(); // is_visible_in_hub = true
-const { data: userAccess } = useUserHubAccess(); // user_hub_services
-
-// Separar em secoes
-const activeServices = services?.filter(s => 
-  userAccess.includes(s.id) || s.status === 'available'
-);
-
-const exploreServices = services?.filter(s => 
-  (s.status === 'premium' && !userAccess.includes(s.id)) || 
-  s.status === 'coming_soon'
-);
-```
-
-### 3.2 Card Visual Atualizado
-
-Baseado no design premium:
-
-```
-+---------------------------------------------+
-| [RIBBON: POPULAR]              [Badge: IA]  |
-|                                             |
-|         [Icon 48px - FileCheck]             |
-|                                             |
-|      Curriculo USA AI [Sparkles]            |
-|      CARREIRA                               |
-|                                             |
-|   Valide se seu curriculo passa nos         |
-|   robos (ATS) das empresas americanas...    |
-|                                             |
-|   [ R$ 97,00 / unico ]                      |
-|                                             |
-|   [========= Acessar Agora -> =========]    |
-|   ou                                        |
-|   [------ Desbloquear Acesso [Lock] ------] |
-+---------------------------------------------+
-```
-
-**Logica de Botoes:**
+**Função `handleUnlock` atualizada:**
 
 ```typescript
-if (hasAccess) {
-  // Botao primario cheio
-  return (
-    <Button className="bg-primary text-white">
-      {service.cta_text || 'Acessar Agora'} <ArrowRight />
-    </Button>
-  );
-  // Acao: navigate(service.redirect_url || service.route)
-} else if (service.status === 'coming_soon') {
-  // Botao desabilitado
-  return <Button disabled>Em Breve</Button>;
-} else {
-  // Botao outline com cadeado
-  return (
-    <Button variant="outline">
-      <Lock /> Desbloquear Acesso
-    </Button>
-  );
-  // Acao: Stripe Checkout ou redirect para pagina de vendas
+const handleUnlock = () => {
+  // Verificar se tem URL de checkout da Ticto configurada
+  if (service.ticto_checkout_url) {
+    // Anexar email do usuário logado para pré-preencher checkout
+    const checkoutUrl = new URL(service.ticto_checkout_url);
+    if (user?.email) {
+      checkoutUrl.searchParams.set('email', user.email);
+    }
+    // Abrir em nova aba
+    window.open(checkoutUrl.toString(), '_blank');
+  } else if (service.redirect_url) {
+    // Fallback para URL genérica
+    window.open(service.redirect_url, '_blank');
+  } else {
+    toast.error('Checkout não configurado para este produto');
+  }
+};
+```
+
+### 3.2 Passar Contexto do Usuário
+
+O `HubServiceCard` precisa receber o email do usuário:
+
+```typescript
+// Em StudentHub.tsx
+const { user } = useAuth();
+
+// Passar para o card
+<HubServiceCard 
+  service={service} 
+  hasAccess={...} 
+  userEmail={user?.email}
+/>
+```
+
+---
+
+## PARTE 4: EDGE FUNCTION - WEBHOOK RECEIVER
+
+### 4.1 Nova Edge Function: `ticto-webhook`
+
+**Arquivo:** `supabase/functions/ticto-webhook/index.ts`
+
+**Responsabilidades:**
+1. Validar token de autenticação
+2. Processar evento "Venda Realizada" (status autorizado)
+3. Localizar usuário pelo email
+4. Localizar produto pelo `ticto_product_id`
+5. Inserir/atualizar registro em `user_hub_services`
+6. Logar transação em `payment_logs`
+
+**Estrutura do Payload da Ticto (baseado na documentação):**
+
+```typescript
+interface TictoWebhookPayload {
+  event: string; // 'venda_realizada', 'reembolso', etc
+  transaction_id: string;
+  product: {
+    id: string;
+    name: string;
+  };
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  payment: {
+    status: string;
+    method: string;
+    value: number;
+  };
+  // ... outros campos
 }
 ```
 
-### 3.3 Stripe Checkout Integration
+**Fluxo de Processamento:**
 
-**Fluxo de Compra (preparado para Stripe):**
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     TICTO WEBHOOK                            │
+├──────────────────────────────────────────────────────────────┤
+│  1. Receber POST da Ticto                                    │
+│  2. Validar Header 'X-Ticto-Token' ou 'Authorization'        │
+│  3. Parsear payload JSON                                     │
+│                                                              │
+│  4. Se evento = 'venda_realizada':                           │
+│     a. Buscar profile por customer.email                     │
+│     b. Buscar hub_service por ticto_product_id               │
+│     c. Inserir em user_hub_services (status: 'active')       │
+│     d. Logar em payment_logs                                 │
+│                                                              │
+│  5. Se evento = 'reembolso':                                 │
+│     a. Atualizar user_hub_services (status: 'cancelled')     │
+│     b. Logar em payment_logs                                 │
+│                                                              │
+│  6. Retornar 200 OK para confirmar recebimento               │
+└──────────────────────────────────────────────────────────────┘
+```
 
-1. Usuario clica em "Desbloquear Acesso"
-2. Frontend chama edge function com `service.stripe_price_id`
-3. Edge function cria Stripe Checkout Session
-4. Usuario e redirecionado para Stripe
-5. Apos pagamento, Stripe Webhook atualiza `user_hub_services`
+**Código da Edge Function:**
 
-**Nota**: A integracao completa com Stripe sera habilitada quando o usuario ativar o Stripe. O sistema esta "payment ready".
+```typescript
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ticto-token",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // 1. Validar token da Ticto
+    const tictoToken = req.headers.get("X-Ticto-Token");
+    const expectedToken = Deno.env.get("TICTO_SECRET_KEY");
+    
+    if (!tictoToken || tictoToken !== expectedToken) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: corsHeaders,
+      });
+    }
+
+    // 2. Parsear payload
+    const payload = await req.json();
+    const event = payload.event || payload.status;
+    
+    // Admin client para escrita
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 3. Processar evento de venda
+    if (event === "venda_realizada" || event === "authorized" || event === "approved") {
+      const customerEmail = payload.customer?.email;
+      const productId = payload.product?.id || payload.offer_id;
+
+      // Buscar usuário pelo email
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", customerEmail)
+        .maybeSingle();
+
+      // Buscar serviço pelo ticto_product_id
+      const { data: service } = await supabase
+        .from("hub_services")
+        .select("id")
+        .eq("ticto_product_id", productId)
+        .maybeSingle();
+
+      if (profile && service) {
+        // Liberar acesso ao serviço
+        await supabase.from("user_hub_services").upsert({
+          user_id: profile.id,
+          service_id: service.id,
+          status: "active",
+          started_at: new Date().toISOString(),
+        }, { onConflict: "user_id,service_id" });
+      }
+
+      // Logar transação
+      await supabase.from("payment_logs").insert({
+        user_id: profile?.id,
+        service_id: service?.id,
+        transaction_id: payload.transaction_id,
+        event_type: event,
+        payload: payload,
+        status: "processed",
+        processed_at: new Date().toISOString(),
+      });
+    }
+
+    // 4. Processar reembolso
+    if (event === "reembolso" || event === "refunded") {
+      // Revogar acesso
+      // ... lógica similar
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: corsHeaders,
+    });
+
+  } catch (error) {
+    console.error("Webhook error:", error);
+    return new Response(JSON.stringify({ error: "Internal error" }), {
+      status: 500,
+      headers: corsHeaders,
+    });
+  }
+});
+```
+
+### 4.2 Configuração TOML
+
+```toml
+[functions.ticto-webhook]
+verify_jwt = false
+```
 
 ---
 
-## PARTE 4: TIPOS E HOOKS
+## PARTE 5: SECRET NECESSÁRIO
 
-### 4.1 Tipo Atualizado
+Você mencionou que já gerou a API da Ticto. Precisarei que adicione o seguinte secret:
 
-```typescript
-// src/types/hub.ts
-export type ServiceType = 'ai_tool' | 'live_mentoring' | 'recorded_course' | 'consulting';
-export type ServiceStatus = 'available' | 'premium' | 'coming_soon';
-export type ProductType = 'one_time' | 'lifetime' | 'subscription_monthly' | 'subscription_annual';
+| Nome do Secret | Descrição |
+|----------------|-----------|
+| `TICTO_SECRET_KEY` | Token de validação do Postback (encontrado no painel Ticto em TICTOOLS > WEBHOOK) |
 
-export interface HubService {
-  id: string;
-  name: string;
-  description: string | null;
-  icon_name: string;
-  status: ServiceStatus;
-  service_type: ServiceType;
-  ribbon: string | null; // 'NOVO', 'POPULAR', 'EXCLUSIVO'
-  category: string | null;
-  route: string | null;
-  redirect_url: string | null;
-  cta_text: string;
-  
-  // Display
-  is_visible_in_hub: boolean;
-  is_highlighted: boolean;
-  display_order: number;
-  accent_color: string | null;
-  
-  // Pricing
-  price: number;
-  price_display: string | null;
-  currency: string;
-  product_type: ProductType;
-  stripe_price_id: string | null;
-  
-  created_at: string;
-  updated_at: string;
-}
-```
-
-### 4.2 Hooks Atualizados
-
-```typescript
-// src/hooks/useAdminHubServices.ts
-export function useAdminHubServices() { ... } // CRUD completo (sem filtro is_visible)
-export function useCreateHubService() { ... }
-export function useUpdateHubService() { ... }
-export function useDeleteHubService() { ... }
-
-// src/hooks/useHubServices.ts (update)
-// Ja existe, apenas garantir que retorna todos os campos
-```
+Quando você clicar para adicionar, um modal aparecerá para inserir o valor.
 
 ---
 
-## PARTE 5: RESUMO DE ARQUIVOS
+## PARTE 6: CONFIGURAÇÃO NA TICTO
+
+Após deploy da Edge Function, você precisará configurar no painel da Ticto:
+
+1. Acesse **TICTOOLS > WEBHOOK**
+2. Clique em **+ADICIONAR**
+3. Selecione o **PRODUTO**
+4. No campo **URL**, cole: `https://buslxdknzogtgdnietow.supabase.co/functions/v1/ticto-webhook`
+5. Selecione eventos: **Venda Realizada** e **Reembolso**
+
+---
+
+## RESUMO DE ARQUIVOS
 
 ### Criar:
-| Arquivo | Descricao |
+| Arquivo | Descrição |
 |---------|-----------|
-| `src/pages/admin/AdminHubServices.tsx` | Nova pagina de gestao |
-| `src/components/admin/hub/HubServiceForm.tsx` | Modal de edicao completo |
-| `src/components/admin/hub/ServiceTypeSelector.tsx` | Selector visual de tipo |
-| `src/components/admin/hub/IconSelector.tsx` | Grid de icones Lucide |
-| `src/hooks/useAdminHubServices.ts` | Hooks CRUD para admin |
-| `src/types/hub.ts` | Tipos TypeScript |
+| `supabase/functions/ticto-webhook/index.ts` | Edge Function webhook receiver |
+| Migração SQL | Campos Ticto + tabela payment_logs |
 
 ### Modificar:
-| Arquivo | Descricao |
+| Arquivo | Alteração |
 |---------|-----------|
-| `src/components/hub/HubServiceCard.tsx` | Novo design com ribbon/tipo |
-| `src/pages/hub/StudentHub.tsx` | Usar dados dinamicos |
-| `src/hooks/useHubServices.ts` | Retornar campos adicionais |
-| `src/App.tsx` | Atualizar rota /admin/produtos |
-| `src/components/layouts/DashboardLayout.tsx` | Menu label |
-| Migracao SQL | Novos campos em hub_services |
-
-### Deprecar:
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/admin/AdminProducts.tsx` | Substituir por AdminHubServices |
-| `src/hooks/useAdminProducts.ts` | Migrar para useAdminHubServices |
+| `src/types/hub.ts` | Adicionar tipos Ticto |
+| `src/components/admin/hub/HubServiceForm.tsx` | Campos Ticto no form |
+| `src/hooks/useAdminHubServices.ts` | Persistir campos Ticto |
+| `src/components/hub/HubServiceCard.tsx` | Checkout redirect com email |
+| `src/pages/hub/StudentHub.tsx` | Passar email para cards |
+| `supabase/config.toml` | Configurar ticto-webhook |
 
 ---
 
-## PARTE 6: DESIGN SYSTEM APLICADO
+## ORDEM DE IMPLEMENTAÇÃO
 
-### Paleta de Cores
-- Background pagina: `#F5F5F7` (`bg-muted/30`)
-- Cards: `#FFFFFF` (`bg-card`)
-- Primary: `#2563EB` (`text-primary`)
-- Text: `#1F2937` (`text-foreground`)
-- Muted: `#6B7280` (`text-muted-foreground`)
-
-### Componentes
-- Cards: `rounded-[32px]` ou `rounded-[40px]`
-- Shadows: `shadow-sm` base, `shadow-md` hover
-- Transicoes: `transition-all duration-300 hover:-translate-y-1`
-- Badges de Tipo:
-  - AI TOOL: `bg-primary/10 text-primary`
-  - LIVE MENTORING: `bg-green-100 text-green-700`
-  - RECORDED COURSE: `bg-purple-100 text-purple-700`
-  - CONSULTING: `bg-orange-100 text-orange-700`
-
-### Icones Disponiveis no Selector
-```typescript
-const availableIcons = [
-  'FileCheck', 'GraduationCap', 'Award', 'Monitor', 
-  'Globe', 'Building2', 'Sparkles', 'Briefcase',
-  'BookOpen', 'Mic', 'Video', 'Users', 'Rocket'
-];
-```
-
----
-
-## PARTE 7: RESPONSIVIDADE
-
-- **Mobile (< 768px)**: 1 coluna, cards full width
-- **Tablet (768px - 1024px)**: 2 colunas
-- **Desktop (> 1024px)**: 3 colunas
-- **Modal**: Full screen em mobile, `max-w-2xl` centered em desktop
-- **Tabela Admin**: Scroll horizontal em mobile
-
----
-
-## ORDEM DE IMPLEMENTACAO
-
-1. **Migracao SQL** - Adicionar campos a hub_services
-2. **Tipos TypeScript** - Criar src/types/hub.ts
-3. **Hooks Admin** - useAdminHubServices.ts
-4. **Componentes Admin** - Form, Selectors
-5. **AdminHubServices Page** - Tabela + Modal
-6. **Atualizar HubServiceCard** - Design premium
-7. **Atualizar StudentHub** - Logica dinamica
-8. **Atualizar Rotas** - App.tsx e DashboardLayout
-9. **Testar fluxo completo**
+1. Adicionar Secret `TICTO_SECRET_KEY`
+2. Migração SQL (campos + tabela logs)
+3. Atualizar tipos TypeScript
+4. Atualizar formulário Admin
+5. Atualizar hooks
+6. Criar Edge Function
+7. Atualizar HubServiceCard e StudentHub
+8. Configurar webhook no painel Ticto
