@@ -11,10 +11,23 @@ import {
   Lock,
   ArrowRight,
   Sparkles,
+  Brain,
+  Briefcase,
+  BookOpen,
+  Mic,
+  Video,
+  Users,
+  Rocket,
+  Target,
+  TrendingUp,
+  Zap,
+  Crown,
+  Star,
+  Heart,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { HubService } from '@/hooks/useHubServices';
+import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
 
 interface HubServiceCardProps {
   service: HubService;
@@ -28,6 +41,20 @@ const iconMap: Record<string, LucideIcon> = {
   Monitor,
   Globe,
   Building2,
+  Sparkles,
+  Brain,
+  Briefcase,
+  BookOpen,
+  Mic,
+  Video,
+  Users,
+  Rocket,
+  Target,
+  TrendingUp,
+  Zap,
+  Crown,
+  Star,
+  Heart,
 };
 
 const statusConfig = {
@@ -45,16 +72,44 @@ const statusConfig = {
   },
 };
 
+const serviceTypeConfig: Record<ServiceType, { color: string }> = {
+  ai_tool: { color: 'bg-primary/10 text-primary' },
+  live_mentoring: { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  recorded_course: { color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  consulting: { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+};
+
 export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
   const Icon = iconMap[service.icon_name] || FileCheck;
-  const config = statusConfig[service.status];
+  const config = statusConfig[service.status] || statusConfig.available;
   const isLocked = service.status === 'premium' && !hasAccess;
   const isComingSoon = service.status === 'coming_soon';
+  const serviceType = (service.service_type as ServiceType) || 'ai_tool';
+  const typeConf = serviceTypeConfig[serviceType] || serviceTypeConfig.ai_tool;
+
+  const formatPrice = (price: number, currency: string) => {
+    if (!price || price === 0) return null;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency || 'BRL',
+    }).format(price);
+  };
+
+  const displayPrice = service.price_display || formatPrice(service.price, service.currency);
+
+  const handleUnlock = () => {
+    // If there's a Stripe price ID, this would trigger Stripe Checkout
+    // For now, redirect to a contact or sales page
+    if (service.stripe_price_id) {
+      // TODO: Implement Stripe Checkout when enabled
+      console.log('Stripe checkout for:', service.stripe_price_id);
+    }
+  };
 
   return (
     <div
       className={cn(
-        'group relative rounded-[32px] border bg-card p-6 transition-all duration-300',
+        'group relative flex flex-col rounded-[32px] border bg-card p-6 transition-all duration-300',
         service.is_highlighted
           ? 'border-primary/30 shadow-lg shadow-primary/5'
           : 'border-border/50 hover:border-border',
@@ -62,8 +117,27 @@ export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
         isComingSoon && 'opacity-70'
       )}
     >
-      {/* Status Badge */}
-      <div className="absolute right-4 top-4">
+      {/* Ribbon Badge */}
+      {service.ribbon && (
+        <div className="absolute -right-2 -top-2">
+          <Badge 
+            className={cn(
+              'rounded-full px-3 py-1 text-[10px] font-bold shadow-md',
+              service.ribbon === 'POPULAR' && 'bg-secondary text-secondary-foreground',
+              service.ribbon === 'NOVO' && 'bg-primary text-primary-foreground',
+              service.ribbon === 'EXCLUSIVO' && 'bg-accent text-accent-foreground'
+            )}
+          >
+            {service.ribbon}
+          </Badge>
+        </div>
+      )}
+
+      {/* Status & Type Badges */}
+      <div className="mb-4 flex items-center justify-between">
+        <Badge variant="outline" className={cn('text-[10px] font-medium', typeConf.color)}>
+          {SERVICE_TYPE_LABELS[serviceType]}
+        </Badge>
         <Badge variant="outline" className={cn('text-[10px] font-semibold', config.badgeClass)}>
           {config.badge}
         </Badge>
@@ -71,7 +145,7 @@ export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
 
       {/* Category */}
       {service.category && (
-        <span className="mb-3 inline-block text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+        <span className="mb-2 inline-block text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
           {service.category}
         </span>
       )}
@@ -95,43 +169,55 @@ export function HubServiceCard({ service, hasAccess }: HubServiceCardProps) {
       </h3>
 
       {/* Description */}
-      <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{service.description}</p>
+      <p className="mb-4 line-clamp-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+        {service.description}
+      </p>
 
       {/* Price Display */}
-      {service.price_display && (
-        <p className="mb-4 text-xs font-medium text-muted-foreground">{service.price_display}</p>
+      {displayPrice && (
+        <p className="mb-4 text-sm font-semibold text-foreground">{displayPrice}</p>
       )}
 
       {/* Action Button */}
-      {isComingSoon ? (
-        <Button variant="outline" disabled className="w-full rounded-xl">
-          Em Breve
-        </Button>
-      ) : isLocked ? (
-        <Button variant="outline" className="w-full rounded-xl">
-          <Lock className="mr-2 h-4 w-4" />
-          Upgrade para Acessar
-        </Button>
-      ) : service.route ? (
-        <Link to={service.route}>
-          <Button
-            className={cn(
-              'w-full rounded-xl',
-              service.is_highlighted
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-foreground text-background hover:bg-foreground/90'
-            )}
+      <div className="mt-auto">
+        {isComingSoon ? (
+          <Button variant="outline" disabled className="w-full rounded-xl">
+            Em Breve
+          </Button>
+        ) : isLocked ? (
+          <Button 
+            variant="outline" 
+            className="w-full rounded-xl border-2 border-primary text-primary hover:bg-primary/5"
+            onClick={handleUnlock}
           >
-            Acessar Agora
+            <Lock className="mr-2 h-4 w-4" />
+            Desbloquear Acesso
+          </Button>
+        ) : service.route ? (
+          <Link to={service.redirect_url || service.route}>
+            <Button
+              className={cn(
+                'w-full rounded-xl',
+                service.is_highlighted
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-foreground text-background hover:bg-foreground/90'
+              )}
+            >
+              {service.cta_text || 'Acessar Agora'}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        ) : (
+          <Button 
+            variant="outline" 
+            className="w-full rounded-xl"
+            onClick={handleUnlock}
+          >
+            {service.cta_text || 'Ver Detalhes'}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        </Link>
-      ) : (
-        <Button variant="outline" className="w-full rounded-xl">
-          Ver Detalhes
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      )}
+        )}
+      </div>
     </div>
   );
 }

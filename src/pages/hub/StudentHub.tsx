@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useHubServices, useUserHubAccess } from '@/hooks/useHubServices';
 import { HubServiceCard } from '@/components/hub/HubServiceCard';
 import { Loader2, LayoutGrid, Sparkles } from 'lucide-react';
+import { HubService } from '@/types/hub';
 
 export default function StudentHub() {
   const { data: services, isLoading } = useHubServices();
@@ -59,7 +60,7 @@ export default function StudentHub() {
                 {activeServices.map((service) => (
                   <HubServiceCard
                     key={service.id}
-                    service={service}
+                    service={service as HubService}
                     hasAccess={userAccess.includes(service.id) || service.status === 'available'}
                   />
                 ))}
@@ -78,12 +79,25 @@ export default function StudentHub() {
                 {exploreServices.map((service) => (
                   <HubServiceCard
                     key={service.id}
-                    service={service}
+                    service={service as HubService}
                     hasAccess={false}
                   />
                 ))}
               </div>
             </section>
+          )}
+
+          {/* Empty State */}
+          {!activeServices.length && !exploreServices.length && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <LayoutGrid className="mb-4 h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mb-2 text-lg font-semibold text-foreground">
+                Nenhum serviço disponível
+              </h3>
+              <p className="text-muted-foreground">
+                Novos serviços serão exibidos aqui em breve.
+              </p>
+            </div>
           )}
         </div>
       </div>
