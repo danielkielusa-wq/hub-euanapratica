@@ -49,7 +49,9 @@ import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
+import { ServiceGuard } from "./components/guards/ServiceGuard";
 
 const queryClient = new QueryClient();
 
@@ -326,15 +328,26 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      {/* Currículo USA - accessible by students, mentors, and admins */}
+      {/* Payment Success - post-checkout redirect */}
+      <Route path="/payment-success" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <PaymentSuccess />
+        </ProtectedRoute>
+      } />
+
+      {/* Currículo USA - protected by ServiceGuard */}
       <Route path="/curriculo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <CurriculoUSA />
+          <ServiceGuard serviceRoute="/curriculo">
+            <CurriculoUSA />
+          </ServiceGuard>
         </ProtectedRoute>
       } />
       <Route path="/curriculo/resultado" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <CurriculoReport />
+          <ServiceGuard serviceRoute="/curriculo">
+            <CurriculoReport />
+          </ServiceGuard>
         </ProtectedRoute>
       } />
       
