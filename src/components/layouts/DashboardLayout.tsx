@@ -20,7 +20,10 @@ import {
   Settings,
   FileCheck,
   CreditCard,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ShoppingBag,
+  Receipt,
+  Webhook
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
@@ -52,6 +55,13 @@ const roleNavSections: Record<string, NavSection[]> = {
         { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
         { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
         { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
+        { label: 'Biblioteca', href: '/biblioteca', icon: Library },
+      ],
+    },
+    {
+      label: 'MINHA CONTA',
+      items: [
+        { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag },
       ],
     },
     {
@@ -74,6 +84,12 @@ const roleNavSections: Record<string, NavSection[]> = {
       ],
     },
     {
+      label: 'MINHA CONTA',
+      items: [
+        { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag },
+      ],
+    },
+    {
       label: 'CONFIGURAÇÕES',
       items: [
         { label: 'Perfil', href: '/perfil', icon: Settings },
@@ -93,12 +109,24 @@ const roleNavSections: Record<string, NavSection[]> = {
       ],
     },
     {
+      label: 'FINANCEIRO',
+      items: [
+        { label: 'Histórico de Compras', href: '/admin/pedidos', icon: Receipt },
+        { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
+      ],
+    },
+    {
       label: 'RELATÓRIOS',
       items: [
         { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
         { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
-        { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
         { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
+      ],
+    },
+    {
+      label: 'FERRAMENTAS',
+      items: [
+        { label: 'Simulador Ticto', href: '/admin/ticto-simulator', icon: Webhook },
       ],
     },
     {
