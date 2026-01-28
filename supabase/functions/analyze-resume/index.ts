@@ -467,10 +467,9 @@ serve(async (req) => {
 
     const result = JSON.parse(toolCall.function.arguments);
 
-    // ========== RECORD USAGE: Log successful analysis ==========
-    const { error: logError } = await supabase.from("usage_logs").insert({
-      user_id: userId,
-      app_id: "curriculo_usa",
+    // ========== RECORD USAGE: Log successful analysis via RPC (bypasses RLS) ==========
+    const { error: logError } = await supabase.rpc('record_curriculo_usage', {
+      p_user_id: userId,
     });
 
     if (logError) {
