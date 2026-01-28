@@ -1,376 +1,349 @@
 
-# Plano: Redesign Completo da Landing Page "EUA Na Pratica"
+# Plano: Redesign Landing Page, Onboarding e Nova Pagina Meu Hub
 
-## Visao Geral
+Este plano abrange tres areas principais de mudancas:
+1. **Landing Page**: Ajustes pontuais de links, redes sociais e elementos visuais
+2. **Onboarding**: Redesign completo com stepper horizontal no topo e layout centralizado
+3. **Meu Hub**: Nova pagina de catalogo de servicos como landing pos-login
 
-Transformar a landing page atual em uma experiencia "Elite SaaS" inspirada em Linear, Apple e Stripe, com foco em alta conversao, autoridade e minimalismo moderno.
+---
 
-## Arquitetura de Componentes
+## PARTE 1: LANDING PAGE (Ajustes Pontuais)
 
-Criar uma estrutura modular de componentes para a landing page:
+### 1.1 Navbar.tsx
+**Alteracoes:**
+- Remover completamente a `<nav>` com links "Curriculo AI", "Servicos", "Metodologia"
+- Manter apenas: Logo (esquerda) + Botoes "Entrar" e "Acessar Hub" (direita)
+- Todos os botoes devem apontar para `/login` ou `/cadastro`
 
-```text
-src/
-  components/
-    landing/
-      Navbar.tsx              # Sticky navbar com glassmorphism
-      HeroSection.tsx         # Hero com floating widgets e prova social
-      TrustLogos.tsx          # Logos de empresas em grayscale
-      BentoGrid.tsx           # Grid de servicos estilo Bento
-      AIPreview.tsx           # Widget interativo Antes/Depois com typewriter
-      SuccessPath.tsx         # Grid de 6 passos numerados
-      WaitlistSection.tsx     # CTA com formulario glassmorphism
-      Footer.tsx              # Footer com links e redes sociais
-  pages/
-    Index.tsx                 # Orquestra todos os componentes
+### 1.2 Footer.tsx
+**Alteracoes:**
+- Trocar Twitter por YouTube (icone `Youtube` do Lucide)
+- Atualizar URLs das redes sociais:
+  - Instagram: `https://instagram.com/euanapratica` (ou URL real se conhecida)
+  - LinkedIn: `https://linkedin.com/company/euanapratica`
+  - YouTube: `https://youtube.com/@euanapratica`
+- Alterar copyright de "2025" para "2026"
+- Todos os links de navegacao devem apontar para `/login`
+
+### 1.3 WaitlistSection.tsx
+**Alteracoes:**
+- Badge "VAGAS LIMITADAS PARA O BETA": mudar cor do texto e icone para branco (`text-white`)
+- Icone Rocket: `text-white`
+- Span do texto: `text-white`
+
+### 1.4 HeroSection.tsx
+**Alteracoes:**
+- Substituir circulos roxos por miniaturas de pessoas geradas por AI
+- Usar a funcionalidade de geracao de imagem do Lovable AI (google/gemini-2.5-flash-image) para gerar 5 fotos de perfil profissionais
+- Alternativa: usar URLs de avatares placeholder (randomuser.me ou similar)
+- Usar logos do projeto existente (`logo-horizontal.png`) no lugar de logos ficticios
+
+### 1.5 BentoGrid.tsx
+**Alteracoes:**
+- Card "Curriculo USA AI": Link "Testar Agora Gratis" → `/login` (em vez de `/curriculo-usa`)
+- Cards secundarios: todos os links "EXPLORAR" → `/login`
+
+### 1.6 SuccessPath.tsx
+**Alteracoes:**
+- Botao CTA "Conheca nossa metodologia completa" → `/login`
+
+---
+
+## PARTE 2: ONBOARDING (Redesign Completo)
+
+### 2.1 Novo Layout Visual
+
+**Estrutura baseada nas imagens de referencia:**
+
+```
++------------------------------------------------------------------+
+|  [EP] EUA Na Pratica   (1)----(2)----(3)----(4)----(5)----(6)  [?] Ajuda |
+|                        INICIO PERFIL CONTATO CARREIRA DESTINO FINAL     |
++------------------------------------------------------------------+
+|                                                                    |
+|    +----------------------------------------------------------+   |
+|    |                                                          |   |
+|    |                  [ICONE GRANDE AZUL]                     |   |
+|    |                                                          |   |
+|    |                 Prepare-se para decolar                  |   |
+|    |      Sua jornada internacional comeca com um perfil     |   |
+|    |                    bem configurado.                      |   |
+|    |                                                          |   |
+|    |   [IA de Curriculos]      [Comunidade Elite]             |   |
+|    |   [Foco em Vistos]        [Trilhas de Carreira]          |   |
+|    |                                                          |   |
+|    |            [  Configurar meu Perfil  ->  ]               |   |
+|    |                                                          |   |
+|    +----------------------------------------------------------+   |
+|                                                                    |
+|   SUA SEGURANCA E NOSSA PRIORIDADE. DADOS PROTEGIDOS POR CRIPT.   |
++------------------------------------------------------------------+
 ```
 
-## Detalhamento por Secao
+### 2.2 Componentes a Criar/Modificar
 
-### 1. Atualizacao do Design System (index.css e tailwind.config.ts)
+**Novos Componentes:**
+- `OnboardingHorizontalStepper.tsx` - Stepper horizontal no topo com linha de progresso
 
-**Novas variaveis CSS:**
-- `--brand-blue`: 221 83% 53% (Blue Corporate #2563EB)
-- `--navy-dark`: 224 76% 33% (#1e3a8a)
-- `--bg-apple`: 240 5% 96% (#F5F5F7)
-- `--indigo`: 239 84% 67% (#4F46E5)
-- `--emerald-success`: 160 84% 39%
+**Modificar:**
+- `OnboardingLayout.tsx` - Remover sidebar vertical, usar layout centralizado
+- `OnboardingSidebar.tsx` - Substituir por header com stepper horizontal
+- `WelcomeStep.tsx` - Redesign com icone de foguete e grid de beneficios
+- `PersonalInfoStep.tsx` - Inputs estilo Stripe (bg-gray-50, sem bordas)
+- `ContactStep.tsx` - Layout de telefone com seletor de pais e checkbox WhatsApp
+- `LinkedInResumeStep.tsx` - Campo LinkedIn com icone + zona de drag-and-drop
+- `LocationStep.tsx` - Selectors + cards visuais de destino (EUA vs Canada)
+- `ConfirmationStep.tsx` - Icone check verde, card de recursos desbloqueados
 
-**Novas animacoes no Tailwind:**
-- `typewriter`: Efeito de digitacao letra por letra
-- `shimmer`: Brilho que percorre o botao
-- `ping-slow`: Pulsacao suave para CTAs
-- `float`: Flutuacao sutil para widgets
+### 2.3 Especificacoes de Estilo
 
-**Novos border-radius:**
-- `rounded-[40px]`: Cards principais
-- `rounded-3xl`: Elementos internos
+**Card Central:**
+- `max-w-2xl`
+- `rounded-[40px]`
+- `shadow-[0_10px_40px_rgba(0,0,0,0.03)]`
+- Fundo branco (`bg-white`)
+
+**Stepper Horizontal:**
+- Linha fina conectando circulos
+- Passos concluidos: Check icon em circulo azul
+- Passo atual: Numero em circulo azul com ring
+- Passos futuros: Numero em circulo cinza claro
+- Labels: INICIO, PERFIL, CONTATO, CARREIRA, DESTINO, FINAL
+
+**Inputs (Estilo Stripe):**
+- `bg-gray-50 border-0`
+- Focus: `ring-2 ring-blue-500/50 border-blue-500 bg-white`
+- Labels: `text-[10px] font-black tracking-[0.2em] uppercase text-gray-500`
+
+**Botoes de Navegacao:**
+- "Voltar": Discreto, cinza, sem fundo
+- "Proximo >": Azul primario (`bg-blue-600`), rounded-xl, icone seta
+
+**Footer de Seguranca:**
+- Texto pequeno cinza: "SUA SEGURANCA E NOSSA PRIORIDADE. DADOS PROTEGIDOS POR CRIPTOGRAFIA."
 
 ---
 
-### 2. Navbar.tsx
+## PARTE 3: NOVA PAGINA MEU HUB
 
-**Especificacao Visual:**
-- Fundo: `bg-white/80 backdrop-blur-md`
-- Sticky top-0 com z-50
-- Altura: h-16
-- Sombra sutil no scroll
+### 3.1 Estrutura da Pagina
 
-**Logo:**
-- Badge navy escuro (`bg-[#1e3a8a]`) com "USA" em branco
-- Texto "Na Pratica" em peso semibold
-
-**Botoes:**
-- "Entrar": Ghost, cor navy
-- "Acessar Hub": Preto solido com hover suave
-
----
-
-### 3. HeroSection.tsx
+**Rota:** `/dashboard/hub` ou `/hub` (substitui ou precede o dashboard atual)
 
 **Layout:**
-- Background: `#F5F5F7` com mesh gradient sutil
-- Container centralizado max-w-4xl
-
-**Badge Topo:**
-- Pill verde com icone de raio
-- Texto: "PLATAFORMA 2.0: NOVAS FERRAMENTAS DE IA DISPONIVEIS"
-
-**Titulo:**
-```text
-Construa sua carreira
-nos Estados Unidos.
 ```
-- "nos Estados Unidos" com gradiente azul para indigo
-- Fonte: Inter Black (900), text-5xl a text-7xl
-
-**Floating Widgets (posicao absoluta):**
-- Esquerda: Card branco com icone $ verde, "SALARIO MEDIO", "$110k/ano"
-- Direita: Card branco com icone grafico azul, "JOBS ABERTOS", "+452 Novas"
-
-**Subtitulo:**
-- Texto muted-foreground, max-w-2xl, text-lg
-
-**CTAs:**
-- "Acessar o Hub": Preto solido com seta, rounded-xl
-- "Ver Mentorias": Outline preto
-
-**Prova Social:**
-- 4-5 avatares sobrepostos (stacked circles)
-- Badge "+2k" azul
-- 5 estrelas douradas
-- Texto: "Junte-se a milhares de brasileiros de sucesso"
-
----
-
-### 4. TrustLogos.tsx
-
-**Especificacao:**
-- Label superior: "NOSSOS ALUNOS ESTAO NAS MAIORES TECHS E CONSULTORIAS DOS EUA"
-- Logos em texto (nao imagens): Google, amazon, Meta, Microsoft, Deloitte., SAP
-- Estilo: text-gray-400 com hover:text-gray-700 transition
-- Grid responsivo com gap-8 a gap-16
-
----
-
-### 5. BentoGrid.tsx (Secao de Servicos)
-
-**Titulo:**
-- "Um ecossistema completo para sua jornada americana"
-- Subtitulo: "Nao e apenas um curso..."
-- Link: "Ver todos os servicos" com seta
-
-**Grid Layout (3 colunas):**
-
-**Card Principal (col-span-2, row-span-2):**
-- Fundo: `bg-[#111827]` (navy escuro)
-- Badge: "RECOMENDADO" verde no topo
-- Icone: FileCheck em azul
-- Titulo: "Curriculo USA **AI**" (AI em azul)
-- Descricao: "Nossa inteligencia artificial analisa seu CV..."
-- CTA: "Testar Agora Gratis" botao branco
-- Visual: Mockup de documento processado (gradiente)
-
-**Cards Secundarios:**
-1. **Portal do Aluno:**
-   - Fundo branco, borda sutil
-   - Icone: GraduationCap azul
-   - Link: "EXPLORAR ->"
-
-2. **Hot Seats & Mastermind:**
-   - Fundo branco
-   - Icone: Mic/Link azul
-   - Descricao: "Encontros mensais exclusivos com Daniel Kiel..."
-   - Link: "EXPLORAR ->"
-
-3. **Cursos EUA Na Pratica:**
-   - Badge: Cadeado "EM DESENVOLVIMENTO"
-   - Icone: BookOpen
-
-4. **Expert Marketplace:**
-   - Badge: Cadeado "EM DESENVOLVIMENTO"
-   - Icone: Users
-
----
-
-### 6. AIPreview.tsx (Secao Interativa)
-
-**Header:**
-- Badge: "TECNOLOGIA PROPRIETARIA" com icone de lapis
-- Titulo: "Nao apenas traduzimos. **Maximizamos seu impacto.**"
-- Subtitulo: Framework STAR, resultados quantificaveis
-
-**Widget Interativo (2 colunas):**
-
-**Coluna Esquerda - Card Escuro:**
-```text
-Estado 1 (Input):
-- Label: "PADRAO COMUM (BRASIL)" com dot laranja
-- Texto em portugues italico opaco:
-  "Fui responsavel por cuidar dos servidores e migrar o sistema para a nuvem."
-
-Botao Central:
-- Icone Zap em circulo azul
-- Efeito de pulsacao (animate-ping)
-
-Estado 2 (Output - apos clique):
-- Label: "PADRAO HIGH-IMPACT (USA AI)" com dot azul
-- Efeito typewriter no texto:
-  "Spearheaded a cloud migration project for 50+ microservices, 
-   reducing operational latency by 35% and saving $120k in annual 
-   infrastructure costs."
-- Cursor piscando durante digitacao
-- Badges ao final: "POWER VERBS", "METRICS INCLUDED"
++--------+------------------------------------------------+
+|        |  [Busca]                    [Notif] [Avatar] |
+|  Menu  |-----------------------------------------------|
+|  Lado  |                                               |
+|        |  Meu Hub de Servicos                          |
+|        |  Centralize sua carreira internacional...     |
+|        |                                               |
+|        |  (V) Meus Servicos Ativos                     |
+|        |  +----------+ +----------+ +----------+       |
+|        |  | Portal   | | Curriculo | | Certific.|      |
+|        |  | do Aluno | | USA [*]   | | ados     |      |
+|        |  +----------+ +----------+ +----------+       |
+|        |                                               |
+|        |  [*] Explorar & Contratar                     |
+|        |  +----------+ +----------+ +----------+       |
+|        |  | Mock     | | Visa     | | Job      |       |
+|        |  | Interview| | Journey  | | Hunter   |       |
+|        |  +----------+ +----------+ +----------+       |
++--------+-----------------------------------------------+
 ```
 
-**Coluna Direita - Lista de Beneficios:**
-1. **Verbos de Poder** (icone Zap)
-   - "Substituimos termos passivos por verbos de acao agressivos..."
+### 3.2 Banco de Dados
 
-2. **Quantificacao de Dados** (icone ArrowRight)
-   - "Tudo nos EUA e sobre numeros..."
+**Nova Tabela: `hub_services`**
+```sql
+CREATE TABLE public.hub_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  icon_name TEXT NOT NULL, -- Ex: "GraduationCap", "FileCheck", "Globe"
+  status TEXT NOT NULL DEFAULT 'available', -- 'available', 'premium', 'coming_soon'
+  route TEXT, -- Rota interna como "/curriculo"
+  category TEXT, -- "Carreira", "Educacao", "Imigracao"
+  is_visible_in_hub BOOLEAN DEFAULT true,
+  is_highlighted BOOLEAN DEFAULT false,
+  display_order INTEGER DEFAULT 0,
+  
+  -- Campos Stripe (para futura integracao)
+  stripe_price_id TEXT,
+  product_type TEXT DEFAULT 'subscription', -- 'subscription' ou 'one_time'
+  price_display TEXT, -- "Gratis", "R$47/mes", "Premium"
+  currency TEXT DEFAULT 'BRL',
+  
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-3. **ATS Friendly** (icone Check)
-   - "Garantimos que seu documento seja legivel..."
+-- Tabela para rastrear quais servicos cada usuario tem acesso
+CREATE TABLE public.user_hub_services (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  service_id UUID NOT NULL REFERENCES public.hub_services(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'active', -- 'active', 'expired', 'cancelled'
+  started_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  UNIQUE(user_id, service_id)
+);
+```
 
----
+**Seed Data:**
+```sql
+INSERT INTO public.hub_services (name, description, icon_name, status, route, category, is_highlighted) VALUES
+('Portal do Aluno', 'Acesse suas mentorias, aulas gravadas, atividades e conecte-se com sua turma.', 'GraduationCap', 'available', '/dashboard', 'Educacao', false),
+('Curriculo USA', 'Valide se seu curriculo passa nos robos (ATS) das empresas americanas com nossa IA.', 'FileCheck', 'available', '/curriculo', 'Carreira', true),
+('Certificados', 'Centralize e valide seus certificados e diplomas traduzidos para aplicacao.', 'Award', 'available', '/certificados', 'Educacao', false),
+('Mock Interview AI', 'Treine para entrevistas em ingles com um recrutador virtual e receba feedback instantaneo.', 'Monitor', 'premium', NULL, 'Carreira', false),
+('Visa Journey', 'Organize documentos, prazos e etapas do seu processo de visto O-1 ou EB-2 NIW.', 'Globe', 'coming_soon', NULL, 'Imigracao', false),
+('Job Hunter', 'Concierge de vagas "escondidas" no mercado americano curadas para brasileiros.', 'Building2', 'coming_soon', NULL, 'Carreira', false);
+```
 
-### 7. SuccessPath.tsx (Trilha de Sucesso)
+### 3.3 Componentes do Hub
 
-**Header:**
-- Badge: "JORNADA COMPLETA" com icone Zap azul
-- Titulo: "Sua trilha para o sucesso."
-- Subtitulo: "Um plano executavel de 6 etapas..."
+**Nova Pagina:** `src/pages/hub/StudentHub.tsx`
 
-**Grid 3x2 de Cards:**
+**Componentes:**
+- `HubServiceCard.tsx` - Card individual de servico
+- `HubServiceGrid.tsx` - Grid de cards com secoes
+- `HubHeader.tsx` - Titulo e subtitulo da pagina
 
-| Passo | Icone | Cor Fundo | Titulo | Descricao |
-|-------|-------|-----------|--------|-----------|
-| 01 | Grid | Azul | Acesso ao Hub | Ganhe acesso ao HUB EUA Na Pratica... |
-| 02 | BookOpen | Azul | Recursos Gratuitos | Comece sua jornada aprendendo... |
-| 03 | FileCheck | Verde | Validacao IA | Ajuste seu curriculo para os padroes... |
-| 04 | Link | Laranja | Hot Seats & Network | Networking de elite e sessoes ao vivo... |
-| 05 | Send | Rosa | Mentoria e Educacao | Aprofunde seus conhecimentos... |
-| 06 | Plane | Indigo | Sua Carreira USA | Visto aprovado, contrato assinado... |
+**Card Visual:**
+- `rounded-[32px]`
+- `border border-gray-100`
+- `shadow-sm`
+- Hover: `-translate-y-1 shadow-md`
+- Badge status: "DISPONIVEL" (verde), "PREMIUM" (roxo), "EM BREVE" (cinza)
+- Icone em quadrado arredondado colorido
+- Botao: "Acessar Agora ->" ou "Upgrade para Acessar" ou "Em Breve"
 
-**Estilo dos Cards:**
-- Fundo: `bg-[#F8F9FA]` com borda sutil
-- Icone em circulo colorido (pastel)
-- Label "PASSO 0X" em azul
-- Hover: `-translate-y-1` com sombra
+**Destaque Curriculo USA:**
+- Borda azul leve
+- Icone Sparkles ao lado do nome
+- Botao azul primario
 
-**CTA Final:**
-- Botao outline: "Conheca nossa metodologia completa"
+### 3.4 Ajustes no Menu Lateral (Sidebar)
 
----
+**Modificar `DashboardLayout.tsx`:**
+- Adicionar "Meu Hub" como primeiro item do menu (acima de Dashboard)
+- Icone: `Home` ou `LayoutGrid`
+- Rota: `/dashboard/hub`
 
-### 8. WaitlistSection.tsx (CTA Final)
+**Nova Estrutura do Menu Student:**
+```typescript
+{
+  label: 'OVERVIEW',
+  items: [
+    { label: 'Meu Hub', href: '/dashboard/hub', icon: Home },       // NOVO
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Meus Espacos', href: '/dashboard/espacos', icon: GraduationCap },
+    { label: 'Curriculo USA', href: '/curriculo', icon: FileCheck, badge: 'IA' }, // Badge
+    { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+    { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
+  ],
+},
+```
 
-**Container:**
-- Fundo escuro `bg-[#0f172a]` a `bg-[#1e1b4b]` (mesh gradient)
-- Cantos arredondados: `rounded-[40px]`
-- Padding generoso (py-20)
+### 3.5 Hooks e Queries
 
-**Conteudo:**
-- Badge: "VAGAS LIMITADAS PARA O BETA" com icone de foguete
-- Titulo: "Seja o primeiro a **dominar o mercado USA.**"
-- Subtitulo: "As ferramentas de IA e o Concierge de Vagas estao em fase final..."
-
-**Formulario:**
-- Input grande com icone de email
-- Placeholder: "Seu melhor e-mail corporativo"
-- Botao: "Garantir Acesso" azul com icone Zap
-- Efeito shimmer no botao
-
-**Trust Badges:**
-- "PRIVACIDADE GARANTIDA" com icone escudo
-- "ZERO SPAM" com icone X
-- "ACESSO IMEDIATO AO HUB FREE" com icone check
-
----
-
-### 9. Footer.tsx
-
-**Layout:**
-- Fundo branco
-- 4 colunas: Logo | Plataforma | Empresa | Social
-
-**Coluna 1 - Logo:**
-- Badge "USA" + "Na Pratica"
-- Tagline: "Transformando o sonho americano em um plano de carreira solido..."
-
-**Coluna 2 - Plataforma:**
-- Portal do Aluno
-- Cursos
-- Mentores
-
-**Coluna 3 - Empresa:**
-- Sobre Nos
-- Carreiras
-- Imprensa
-
-**Coluna 4 - Social:**
-- Icones: Instagram, LinkedIn, Twitter
-
-**Rodape:**
-- Linha divisoria
-- Copyright 2025
-
----
-
-## Animacoes Detalhadas
-
-### Typewriter Effect (AIPreview)
-```css
-@keyframes typewriter {
-  from { width: 0; }
-  to { width: 100%; }
+**Novo Hook:** `useHubServices.ts`
+```typescript
+export function useHubServices() {
+  return useQuery({
+    queryKey: ['hub-services'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('hub_services')
+        .select('*')
+        .eq('is_visible_in_hub', true)
+        .order('display_order');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 }
 
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
-.typewriter-text {
-  overflow: hidden;
-  white-space: nowrap;
-  animation: typewriter 3s steps(80) forwards;
-}
-
-.cursor {
-  animation: blink 1s step-end infinite;
+export function useUserHubAccess() {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['user-hub-access', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('user_hub_services')
+        .select('service_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return data.map(d => d.service_id);
+    },
+    enabled: !!user?.id,
+  });
 }
 ```
 
-### Shimmer Effect (Botoes)
-```css
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+---
 
-.shimmer {
-  background: linear-gradient(
-    90deg, 
-    transparent 25%, 
-    rgba(255,255,255,0.3) 50%, 
-    transparent 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
-```
+## RESUMO DE ARQUIVOS A MODIFICAR/CRIAR
 
-### Entrada no Viewport
-- Usar `animate-fade-slide-up` com delays escalonados
-- `hover:-translate-y-1 transition-transform duration-300`
+### Modificar:
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/landing/Navbar.tsx` | Remover nav links, manter apenas logo + botoes |
+| `src/components/landing/Footer.tsx` | YouTube, URLs reais, copyright 2026 |
+| `src/components/landing/WaitlistSection.tsx` | Badge em branco |
+| `src/components/landing/HeroSection.tsx` | Avatares com fotos |
+| `src/components/landing/BentoGrid.tsx` | Links para /login |
+| `src/components/landing/SuccessPath.tsx` | CTA para /login |
+| `src/components/onboarding/OnboardingLayout.tsx` | Layout centralizado |
+| `src/components/onboarding/OnboardingSidebar.tsx` | Substituir por header horizontal |
+| `src/components/onboarding/steps/*.tsx` | Redesign de cada etapa |
+| `src/components/layouts/DashboardLayout.tsx` | Adicionar Meu Hub no menu |
+| `src/App.tsx` | Adicionar rota /dashboard/hub |
+
+### Criar:
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/onboarding/OnboardingHorizontalStepper.tsx` | Stepper horizontal |
+| `src/pages/hub/StudentHub.tsx` | Pagina principal do Hub |
+| `src/components/hub/HubServiceCard.tsx` | Card de servico |
+| `src/components/hub/HubServiceGrid.tsx` | Grid de servicos |
+| `src/hooks/useHubServices.ts` | Hooks para buscar servicos |
+| Migracao SQL | Tabelas hub_services e user_hub_services |
+
+### Geracao de Imagem (AI):
+- Gerar 5 avatares profissionais para o Hero usando Lovable AI ou usar placeholders
 
 ---
 
-## Arquivos a Criar/Modificar
+## ORDEM DE IMPLEMENTACAO
 
-| Arquivo | Acao | Descricao |
-|---------|------|-----------|
-| `src/index.css` | Modificar | Adicionar variaveis CSS e animacoes |
-| `tailwind.config.ts` | Modificar | Adicionar keyframes e cores |
-| `src/components/landing/Navbar.tsx` | Criar | Navbar sticky com glassmorphism |
-| `src/components/landing/HeroSection.tsx` | Criar | Hero com widgets flutuantes |
-| `src/components/landing/TrustLogos.tsx` | Criar | Logos de empresas |
-| `src/components/landing/BentoGrid.tsx` | Criar | Grid de servicos |
-| `src/components/landing/AIPreview.tsx` | Criar | Widget interativo com typewriter |
-| `src/components/landing/SuccessPath.tsx` | Criar | Trilha de 6 passos |
-| `src/components/landing/WaitlistSection.tsx` | Criar | CTA com formulario |
-| `src/components/landing/Footer.tsx` | Criar | Footer completo |
-| `src/components/landing/index.ts` | Criar | Barrel exports |
-| `src/pages/Index.tsx` | Reescrever | Orquestrar novos componentes |
+1. **Migracao de Banco de Dados** - Criar tabelas hub_services e user_hub_services
+2. **Landing Page Ajustes** - Rapido, poucas linhas de codigo
+3. **Pagina Meu Hub** - Componentes + hooks + rota
+4. **Onboarding Redesign** - Mais complexo, manter funcionalidade existente
 
 ---
 
-## Dependencias
+## NOTAS TECNICAS
 
-Nenhuma dependencia adicional necessaria. Utilizaremos:
-- React + TypeScript
-- Tailwind CSS (ja instalado)
-- Lucide React para icones (ja instalado)
-- Fonte Inter (ja configurada)
+### Seguranca (RLS)
+- hub_services: Leitura publica para usuarios autenticados
+- user_hub_services: Usuarios so veem seus proprios acessos, admins veem todos
 
----
+### Responsividade
+- Hub: Grid 1 coluna mobile, 3 colunas desktop
+- Onboarding: Stepper horizontal esconde labels em mobile, mostra apenas numeros
 
-## Consideracoes de Performance
-
-1. **Lazy Loading**: Usar `React.lazy()` para secoes abaixo da dobra
-2. **Intersection Observer**: Disparar animacoes apenas quando visiveis
-3. **Sem Imagens Externas**: Usar texto/CSS para logos e mockups
-4. **CSS Nativo**: Preferir animacoes CSS sobre JavaScript
-
----
-
-## Verificacao Final
-
-Apos implementacao, verificar:
-1. Responsividade em mobile, tablet e desktop
-2. Animacao de typewriter funcionando corretamente
-3. Hover effects em todos os cards
-4. Formulario de waitlist funcional (integracao futura)
-5. Links de navegacao corretos (/login, /cadastro, /dashboard)
-6. Acessibilidade (contraste, focus states)
+### Animacoes
+- Todos os cards: `transition-all duration-300 hover:-translate-y-1`
+- Entrada nas secoes: `animate-fade-in`
+- Botoes shimmer no Hub para servicos AI
