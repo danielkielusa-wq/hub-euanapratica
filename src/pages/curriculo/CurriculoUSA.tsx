@@ -1,13 +1,22 @@
-import { Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, Lock } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   CurriculoHeader,
   ResumeUploadCard,
   JobDescriptionCard,
   AnalyzingLoader,
 } from '@/components/curriculo';
+import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useCurriculoAnalysis } from '@/hooks/useCurriculoAnalysis';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export default function CurriculoUSA() {
   const {
@@ -19,8 +28,38 @@ export default function CurriculoUSA() {
     analyze,
     canAnalyze,
   } = useCurriculoAnalysis();
+  
+  const { quota } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const isAnalyzing = status === 'uploading' || status === 'analyzing';
+  const hasCredits = quota ? quota.remaining > 0 : true;
+  const hasRequiredFields = !!uploadedFile && !!jobDescription.trim();
+
+  // Dynamic button configuration based on credit state
+  const getButtonConfig = () => {
+    if (!hasCredits) {
+      return {
+        text: 'Limite Mensal Atingido - Faça Upgrade',
+        icon: Lock,
+        variant: 'secondary' as const,
+        disabled: false, // Allow click to open modal
+        onClick: () => setShowUpgradeModal(true),
+        tooltip: `Você já usou seu limite de ${quota?.monthlyLimit} análise(s) este mês no plano ${quota?.planName}.`,
+      };
+    }
+    return {
+      text: status === 'error' ? 'Tentar Novamente' : 'Analisar Compatibilidade Agora',
+      icon: Sparkles,
+      variant: 'default' as const,
+      disabled: !hasRequiredFields,
+      onClick: analyze,
+      tooltip: null,
+    };
+  };
+
+  const buttonConfig = getButtonConfig();
+  const ButtonIcon = buttonConfig.icon;
 
   return (
     <DashboardLayout>
@@ -51,25 +90,56 @@ export default function CurriculoUSA() {
 
               {/* Input Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ResumeUploadCard file={uploadedFile} onFileChange={setFile} />
+                <ResumeUploadCard 
+                  file={uploadedFile} 
+                  onFileChange={setFile}
+                  disabled={!hasCredits}
+                  onBlockedAction={() => setShowUpgradeModal(true)}
+                />
                 <JobDescriptionCard value={jobDescription} onChange={setJobDescription} />
               </div>
 
               {/* CTA Button */}
               <div className="flex justify-center pt-4">
-                <Button
-                  onClick={analyze}
-                  disabled={!canAnalyze}
-                  className="rounded-[20px] py-6 px-12 text-base font-semibold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all duration-200 gap-2"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  {status === 'error' ? 'Tentar Novamente' : 'Analisar Compatibilidade Agora'}
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button
+                          onClick={buttonConfig.onClick}
+                          disabled={buttonConfig.disabled}
+                          variant={buttonConfig.variant}
+                          className={`rounded-[20px] py-6 px-12 text-base font-semibold gap-2 transition-all duration-200 ${
+                            hasCredits 
+                              ? 'shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40' 
+                              : 'opacity-90 hover:opacity-100'
+                          }`}
+                        >
+                          <ButtonIcon className="w-5 h-5" />
+                          {buttonConfig.text}
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {buttonConfig.tooltip && (
+                      <TooltipContent side="bottom" className="max-w-xs text-center">
+                        <p>{buttonConfig.tooltip}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </>
           )}
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        currentPlanId={quota?.planId}
+        reason="limit_reached"
+      />
     </DashboardLayout>
   );
 }
