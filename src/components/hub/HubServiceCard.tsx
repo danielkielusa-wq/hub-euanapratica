@@ -83,8 +83,9 @@ const serviceTypeConfig: Record<ServiceType, { color: string }> = {
 export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCardProps) {
   const Icon = iconMap[service.icon_name] || FileCheck;
   const config = statusConfig[service.status] || statusConfig.available;
-  const isLocked = service.status === 'premium' && !hasAccess;
   const isComingSoon = service.status === 'coming_soon';
+  // User has access if: status is 'available' (free) OR hasAccess prop is true (paid/unlocked)
+  const canAccess = service.status === 'available' || hasAccess;
   const serviceType = (service.service_type as ServiceType) || 'ai_tool';
   const typeConf = serviceTypeConfig[serviceType] || serviceTypeConfig.ai_tool;
 
@@ -198,17 +199,9 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
           <Button variant="outline" disabled className="w-full rounded-xl">
             Em Breve
           </Button>
-        ) : isLocked ? (
-          <Button 
-            variant="outline" 
-            className="w-full rounded-xl border-2 border-primary text-primary hover:bg-primary/5"
-            onClick={handleUnlock}
-          >
-            <Lock className="mr-2 h-4 w-4" />
-            Desbloquear Acesso
-          </Button>
-        ) : service.route ? (
-          <Link to={service.redirect_url || service.route}>
+        ) : canAccess && service.route ? (
+          // User HAS access - navigate to internal route
+          <Link to={service.route}>
             <Button
               className={cn(
                 'w-full rounded-xl',
@@ -221,7 +214,18 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-        ) : (
+        ) : service.ticto_checkout_url ? (
+          // User does NOT have access - redirect to Ticto checkout
+          <Button 
+            variant="outline" 
+            className="w-full rounded-xl border-2 border-primary text-primary hover:bg-primary/5"
+            onClick={handleUnlock}
+          >
+            <Lock className="mr-2 h-4 w-4" />
+            Desbloquear Acesso
+          </Button>
+        ) : service.redirect_url ? (
+          // Fallback to redirect URL if no checkout configured
           <Button 
             variant="outline" 
             className="w-full rounded-xl"
@@ -230,7 +234,7 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
             {service.cta_text || 'Ver Detalhes'}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );
