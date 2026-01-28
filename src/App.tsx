@@ -50,6 +50,8 @@ import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import MyOrders from "./pages/orders/MyOrders";
+import AdminOrders from "./pages/admin/AdminOrders";
 import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
 
@@ -327,11 +329,23 @@ function AppRoutes() {
           <AdminPlans />
         </ProtectedRoute>
       } />
+      <Route path="/admin/pedidos" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminOrders />
+        </ProtectedRoute>
+      } />
       
       {/* Payment Success - post-checkout redirect */}
       <Route path="/payment-success" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <PaymentSuccess />
+        </ProtectedRoute>
+      } />
+      
+      {/* Meus Pedidos - user order history */}
+      <Route path="/meus-pedidos" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <MyOrders />
         </ProtectedRoute>
       } />
 
