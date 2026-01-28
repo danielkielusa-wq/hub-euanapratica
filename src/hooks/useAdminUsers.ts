@@ -54,7 +54,10 @@ export function useAdminUsers(filters: UserFilters = {}) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching admin users:', error);
+        throw error;
+      }
 
       // Transform data to expected format
       return (data || []).map((user: any) => ({
