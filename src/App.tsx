@@ -45,6 +45,7 @@ import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminPlans from "./pages/admin/AdminPlans";
+import AdminTictoSimulator from "./pages/admin/AdminTictoSimulator";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
@@ -332,6 +333,11 @@ function AppRoutes() {
       <Route path="/admin/pedidos" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminOrders />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/ticto-simulator" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminTictoSimulator />
         </ProtectedRoute>
       } />
       

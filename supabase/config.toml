@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.ticto-webhook]
 verify_jwt = false
+
+[functions.simulate-ticto-callback]
+verify_jwt = false
