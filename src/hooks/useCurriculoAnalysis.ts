@@ -198,6 +198,9 @@ export function useCurriculoAnalysis() {
         error: errorMessage,
       }));
       
+      // Always refetch quota on error to sync state with server
+      await refetchQuota();
+      
       toast({
         title: 'Erro na análise',
         description: errorMessage || 'Não foi possível analisar seu currículo. Tente novamente.',
