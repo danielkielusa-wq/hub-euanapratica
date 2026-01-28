@@ -1,5 +1,4 @@
-import { Target, Users, BookOpen, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Rocket, Sparkles, Users, Target, GraduationCap } from 'lucide-react';
 
 interface WelcomeStepProps {
   onStart: () => void;
@@ -7,71 +6,66 @@ interface WelcomeStepProps {
 
 const benefits = [
   {
-    icon: Target,
-    title: 'Oportunidades personalizadas',
-    description: 'Vagas e mentorias alinhadas ao seu perfil profissional.',
+    icon: Sparkles,
+    title: 'IA de Currículos',
+    description: 'Valide seu CV para o padrão USA',
   },
   {
     icon: Users,
-    title: 'Networking estratégico',
-    description: 'Conecte-se com profissionais brasileiros nos EUA.',
+    title: 'Comunidade Elite',
+    description: 'Networking com brasileiros nos EUA',
   },
   {
-    icon: BookOpen,
-    title: 'Conteúdo exclusivo',
-    description: 'Materiais e ferramentas selecionadas para você.',
+    icon: Target,
+    title: 'Foco em Vistos',
+    description: 'Trilhas para O-1 e EB-2 NIW',
+  },
+  {
+    icon: GraduationCap,
+    title: 'Trilhas de Carreira',
+    description: 'Mentorias e conteúdos exclusivos',
   },
 ];
 
 export function WelcomeStep({ onStart }: WelcomeStepProps) {
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="flex flex-col items-center text-center animate-in fade-in duration-300">
+      {/* Icon */}
+      <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
+        <Rocket className="h-10 w-10 text-primary" />
+      </div>
+
       {/* Title */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
-          Bem-vindo(a) ao EUA Na Prática
-        </h1>
-        <p className="text-muted-foreground text-base">
-          Em poucos passos vamos preparar seu perfil para acelerar sua carreira internacional.
-        </p>
-      </div>
+      <h1 className="mb-3 text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+        Prepare-se para decolar
+      </h1>
+      <p className="mb-10 max-w-md text-muted-foreground">
+        Sua jornada internacional começa com um perfil bem configurado. Em poucos passos você terá
+        acesso ao ecossistema completo.
+      </p>
 
-      {/* Benefits */}
-      <div className="grid gap-4">
+      {/* Benefits Grid */}
+      <div className="mb-10 grid w-full grid-cols-2 gap-4">
         {benefits.map((benefit) => (
-          <Card
+          <div
             key={benefit.title}
-            className="border-0 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20"
+            className="flex flex-col items-center rounded-2xl border border-border/50 bg-muted/30 p-4 transition-all hover:border-primary/30 hover:bg-muted/50"
           >
-            <CardContent className="flex items-start gap-4 p-5">
-              <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                <benefit.icon className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground mb-1">
-                  {benefit.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {benefit.description}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <benefit.icon className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">{benefit.title}</p>
+            <p className="text-xs text-muted-foreground">{benefit.description}</p>
+          </div>
         ))}
-      </div>
-
-      {/* Time Estimate */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock className="h-4 w-4" />
-        <span>Leva cerca de 3–5 minutos</span>
       </div>
 
       {/* CTA Button */}
       <button
         onClick={onStart}
-        className="w-full py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200"
+        className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90"
       >
-        Começar meu onboarding
+        Configurar meu Perfil →
       </button>
     </div>
   );

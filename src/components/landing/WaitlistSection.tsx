@@ -36,9 +36,9 @@ export function WaitlistSection() {
 
           <div className="relative z-10 mx-auto max-w-2xl text-center">
             {/* Badge */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/20 px-4 py-2">
-              <Rocket className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">VAGAS LIMITADAS PARA O BETA</span>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+              <Rocket className="h-4 w-4 text-white" />
+              <span className="text-sm font-medium text-white">VAGAS LIMITADAS PARA O BETA</span>
             </div>
 
             {/* Title */}

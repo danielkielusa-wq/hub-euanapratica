@@ -53,7 +53,7 @@ export function BentoGrid() {
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Link to="/curriculo-usa">
+                <Link to="/login">
                   <Button size="lg" className="rounded-xl bg-background text-foreground hover:bg-background/90">
                     <Sparkles className="mr-2 h-4 w-4" />
                     Testar Agora Grátis

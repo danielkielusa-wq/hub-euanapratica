@@ -46,7 +46,8 @@ const roleNavSections: Record<string, NavSection[]> = {
     {
       label: 'OVERVIEW',
       items: [
-        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'Meu Hub', href: '/dashboard/hub', icon: LayoutDashboard },
+        { label: 'Dashboard', href: '/dashboard', icon: Users },
         { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
         { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
         { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
