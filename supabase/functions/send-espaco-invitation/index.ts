@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     let emailSent = false;
     const origin = req.headers.get("origin") || "https://enphub.lovable.app";
     const inviteLink = invitation?.token 
-      ? `${origin}/register?token=${invitation.token}&espaco_id=${espaco_id}`
+      ? `${origin}/cadastro?token=${invitation.token}&espaco_id=${espaco_id}`
       : null;
 
     console.log("Invitation created for:", email);
