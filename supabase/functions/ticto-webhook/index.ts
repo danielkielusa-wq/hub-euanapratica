@@ -164,16 +164,26 @@ serve(async (req) => {
         });
       }
 
-      // Log transaction
-      await supabase.from("payment_logs").insert({
-        user_id: profile?.id || null,
-        service_id: service?.id || null,
-        transaction_id: transactionId,
-        event_type: eventStatus,
-        payload: payload,
-        status: profile && service ? "processed" : "partial",
-        processed_at: new Date().toISOString(),
-      });
+      // Log transaction (upsert to prevent duplicates on webhook retries)
+      const { error: logError } = await supabase.from("payment_logs").upsert(
+        {
+          user_id: profile?.id || null,
+          service_id: service?.id || null,
+          transaction_id: transactionId,
+          event_type: eventStatus,
+          payload: payload,
+          status: profile && service ? "processed" : "partial",
+          processed_at: new Date().toISOString(),
+        },
+        { 
+          onConflict: 'transaction_id,event_type',
+          ignoreDuplicates: false // Update existing record
+        }
+      );
+
+      if (logError) {
+        console.warn("Error logging payment:", logError);
+      }
     }
 
     // 6. Process refund event
@@ -207,16 +217,22 @@ serve(async (req) => {
           console.log("Access revoked:", { userId: profile.id, serviceId: service.id });
         }
 
-        // Log transaction
-        await supabase.from("payment_logs").insert({
-          user_id: profile?.id || null,
-          service_id: service?.id || null,
-          transaction_id: transactionId,
-          event_type: eventStatus,
-          payload: payload,
-          status: "processed",
-          processed_at: new Date().toISOString(),
-        });
+        // Log transaction (upsert to prevent duplicates on webhook retries)
+        await supabase.from("payment_logs").upsert(
+          {
+            user_id: profile?.id || null,
+            service_id: service?.id || null,
+            transaction_id: transactionId,
+            event_type: eventStatus,
+            payload: payload,
+            status: "processed",
+            processed_at: new Date().toISOString(),
+          },
+          { 
+            onConflict: 'transaction_id,event_type',
+            ignoreDuplicates: false
+          }
+        );
       }
     }
 
@@ -235,14 +251,20 @@ serve(async (req) => {
         userId = profile?.id;
       }
 
-      await supabase.from("payment_logs").insert({
-        user_id: userId,
-        transaction_id: transactionId,
-        event_type: eventStatus,
-        payload: payload,
-        status: "logged",
-        created_at: new Date().toISOString(),
-      });
+      await supabase.from("payment_logs").upsert(
+        {
+          user_id: userId,
+          transaction_id: transactionId,
+          event_type: eventStatus,
+          payload: payload,
+          status: "logged",
+          created_at: new Date().toISOString(),
+        },
+        { 
+          onConflict: 'transaction_id,event_type',
+          ignoreDuplicates: true // Just skip if duplicate
+        }
+      );
     }
 
     return new Response(JSON.stringify({ success: true, status: eventStatus }), {
