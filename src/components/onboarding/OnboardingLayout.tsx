@@ -72,15 +72,17 @@ export function OnboardingLayout({
               ) : null}
             </div>
 
-            {/* Next Button */}
-            <button
-              onClick={onNext}
-              disabled={!canGoNext}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {nextLabel || (isLastStep ? 'Ir para meu painel' : 'Próximo')}
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            {/* Next Button - Hide on step 1 since WelcomeStep has its own CTA */}
+            {currentStep !== 1 && (
+              <button
+                onClick={onNext}
+                disabled={!canGoNext}
+                className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {nextLabel || (isLastStep ? 'Acessar Meu Hub' : 'Próximo')}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* Security Footer */}

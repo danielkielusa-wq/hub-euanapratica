@@ -3,6 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OnboardingProfile } from '@/types/onboarding';
 import { useResumeUpload } from '@/hooks/useOnboarding';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Upload, FileText, X, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
@@ -14,21 +16,32 @@ interface LinkedInResumeStepProps {
 }
 
 export function LinkedInResumeStep({ data, onChange, errors }: LinkedInResumeStepProps) {
+  const { user } = useAuth();
   const { uploadResume, isUploading, error: uploadError } = useResumeUpload();
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (!file) return;
+    if (!file || !user?.id) return;
 
     setUploadedFileName(file.name);
     const path = await uploadResume(file);
     if (path) {
       onChange('resume_url', path);
+      
+      // Save immediately to profile
+      try {
+        await supabase
+          .from('profiles')
+          .update({ resume_url: path })
+          .eq('id', user.id);
+      } catch (error) {
+        console.error('Error saving resume to profile:', error);
+      }
     } else {
       setUploadedFileName(null);
     }
-  }, [uploadResume, onChange]);
+  }, [uploadResume, onChange, user?.id]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

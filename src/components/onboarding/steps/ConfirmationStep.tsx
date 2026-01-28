@@ -65,7 +65,7 @@ export function ConfirmationStep({ onComplete, isCompleting }: ConfirmationStepP
         disabled={isCompleting}
         className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50"
       >
-        {isCompleting ? 'Finalizando...' : 'Acessar Dashboard →'}
+        {isCompleting ? 'Finalizando...' : 'Acessar Meu Hub →'}
       </button>
     </div>
   );

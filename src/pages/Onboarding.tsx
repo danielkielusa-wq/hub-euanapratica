@@ -12,6 +12,7 @@ import { ConfirmationStep } from '@/components/onboarding/steps/ConfirmationStep
 import { OnboardingStep, OnboardingProfile } from '@/types/onboarding';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 type FormData = Partial<OnboardingProfile>;
 
@@ -72,7 +73,7 @@ export default function Onboarding() {
       case 'mentor':
         return '/mentor/dashboard';
       default:
-        return '/dashboard';
+        return '/dashboard/hub';
     }
   }, [user?.role]);
 
@@ -88,7 +89,7 @@ export default function Onboarding() {
     }
   }, [errors]);
 
-  const validateStep = useCallback((step: OnboardingStep): boolean => {
+  const validateStep = useCallback(async (step: OnboardingStep): Promise<boolean> => {
     const newErrors: Record<string, string> = {};
 
     if (step === 2) {
@@ -103,6 +104,19 @@ export default function Onboarding() {
     if (step === 3) {
       if (!formData.phone?.trim() || formData.phone.trim().length < 8) {
         newErrors.phone = 'Telefone é obrigatório (mínimo 8 dígitos)';
+      } else {
+        // Check for duplicate phone number
+        const { data: isAvailable, error } = await supabase.rpc('is_phone_available', {
+          p_country_code: formData.phone_country_code || '+55',
+          p_phone: formData.phone,
+          p_user_id: user?.id
+        });
+        
+        if (error) {
+          console.error('Error checking phone:', error);
+        } else if (!isAvailable) {
+          newErrors.phone = 'Este número de telefone já está cadastrado no sistema.';
+        }
       }
       if (formData.alternative_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.alternative_email)) {
         newErrors.alternative_email = 'Email inválido';
@@ -126,7 +140,7 @@ export default function Onboarding() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, user?.id]);
 
   const saveProgress = useCallback(async () => {
     if (currentStep === 1 || currentStep === 6) return;
@@ -155,8 +169,9 @@ export default function Onboarding() {
       return;
     }
 
-    // Validate current step
-    if (!validateStep(currentStep)) {
+    // Validate current step (async for phone validation)
+    const isValid = await validateStep(currentStep);
+    if (!isValid) {
       return;
     }
 
