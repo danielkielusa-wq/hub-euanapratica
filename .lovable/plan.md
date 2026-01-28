@@ -1,226 +1,152 @@
 
-# Plano: Atualização dos Menus de Navegação por Role
+# Plano: Correção do Simulador Ticto - Logs de Pagamento
 
 ## Problema Identificado
 
-O menu lateral (`DashboardLayout.tsx`) está desatualizado. Várias páginas foram criadas e registradas no `App.tsx`, mas nunca foram adicionadas aos menus das respectivas roles.
+A simulação está funcionando corretamente (acesso é liberado), porém os **logs não estão sendo salvos** na tabela `payment_logs` devido a um erro de constraint:
 
-## Páginas Faltando por Role
+```
+Error logging payment: {
+  code: "42P10",
+  message: "there is no unique or exclusion constraint matching the ON CONFLICT specification"
+}
+```
 
-### Student (estudante)
-| Página | Rota | Ícone Sugerido |
-|--------|------|----------------|
-| Meus Pedidos | `/meus-pedidos` | `ShoppingBag` |
-| Biblioteca | `/biblioteca` | `Library` |
-
-### Mentor
-| Página | Rota | Ícone Sugerido |
-|--------|------|----------------|
-| Meus Pedidos | `/meus-pedidos` | `ShoppingBag` |
-
-### Admin
-| Página | Rota | Ícone Sugerido |
-|--------|------|----------------|
-| Histórico de Compras | `/admin/pedidos` | `Receipt` |
-| Simulador Ticto | `/admin/ticto-simulator` | `FlaskConical` ou `Webhook` |
+**Causa raiz:** O índice único `payment_logs_transaction_event_unique` é um índice **parcial** (`WHERE transaction_id IS NOT NULL`). O PostgREST do Supabase não consegue usar índices parciais com `onConflict` - ele precisa de uma **constraint nomeada** ou um índice **não-parcial**.
 
 ---
 
-## Mudanças no Arquivo
+## Solução
 
-**Arquivo:** `src/components/layouts/DashboardLayout.tsx`
+### 1. Migração SQL: Substituir Índice por Constraint
 
-### 1. Importar novos ícones
+Remover o índice parcial e criar uma constraint única não-parcial:
 
-Adicionar ao import existente:
-```typescript
-import { 
-  // ... ícones existentes
-  ShoppingBag,  // Para "Meus Pedidos"
-  Receipt,      // Para "Histórico de Compras" (admin)
-  Webhook       // Para "Simulador Ticto" (admin)
-} from 'lucide-react';
+```sql
+-- Remover índice parcial que não funciona com upsert
+DROP INDEX IF EXISTS payment_logs_transaction_event_unique;
+
+-- Criar constraint única (funciona com onConflict)
+-- Primeiro, garantir que não há duplicatas
+DELETE FROM payment_logs a USING payment_logs b
+WHERE a.transaction_id = b.transaction_id 
+  AND a.event_type = b.event_type 
+  AND a.created_at < b.created_at
+  AND a.transaction_id IS NOT NULL;
+
+-- Tratar transaction_id NULL (manter apenas um por event_type)
+DELETE FROM payment_logs a USING payment_logs b
+WHERE a.transaction_id IS NULL 
+  AND b.transaction_id IS NULL 
+  AND a.event_type = b.event_type 
+  AND a.created_at < b.created_at;
+
+-- Agora criar a constraint
+-- Para valores NULL, usamos COALESCE para gerar um valor único
+ALTER TABLE payment_logs ADD CONSTRAINT payment_logs_transaction_event_key 
+UNIQUE (transaction_id, event_type);
 ```
 
-### 2. Atualizar menu do Student
+**Nota:** Se `transaction_id` pode ser NULL, o PostgreSQL permite múltiplas linhas com NULL na constraint UNIQUE. Para evitar isso, garantimos que transaction_id sempre tenha valor no webhook.
+
+### 2. Atualização da Edge Function `ticto-webhook`
+
+Garantir que `transaction_id` nunca seja NULL e usar insert com fallback:
 
 ```typescript
-student: [
-  {
-    label: 'OVERVIEW',
-    items: [
-      { label: 'Meu Hub', href: '/dashboard/hub', icon: LayoutDashboard },
-      { label: 'Dashboard', href: '/dashboard', icon: Users },
-      { label: 'Meus Espaços', href: '/dashboard/espacos', icon: GraduationCap },
-      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
-      { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
-      { label: 'Biblioteca', href: '/biblioteca', icon: Library }, // NOVO
-    ],
-  },
-  {
-    label: 'MINHA CONTA',  // Nova seção
-    items: [
-      { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag }, // NOVO
-    ],
-  },
-  {
-    label: 'SOCIAL',
-    items: [
-      { label: 'Suporte', href: '/dashboard/suporte', icon: MessageCircle },
-    ],
-  },
-],
+// Garantir transaction_id sempre existe
+const transactionId = payload.order?.hash || 
+                      payload.transaction_id || 
+                      `GEN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 ```
 
-### 3. Atualizar menu do Mentor
+### 3. Atualização da Edge Function `simulate-ticto-callback`
+
+Garantir que o `order.hash` simulado seja único e sempre presente (já está correto).
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `supabase/migrations/xxx.sql` | Criar | Substituir índice por constraint |
+| `supabase/functions/ticto-webhook/index.ts` | Modificar | Garantir transaction_id nunca NULL + fallback para insert |
+
+---
+
+## Detalhes Técnicos
+
+### Webhook: Mudança no Upsert
+
+O problema é que o PostgREST precisa de uma constraint **nomeada** para `onConflict`. Após a migração, o código existente funcionará porque teremos `payment_logs_transaction_event_key` como constraint.
+
+Se ainda houver problemas, faremos fallback para `insert` simples quando `upsert` falhar:
 
 ```typescript
-mentor: [
+// Tentar upsert primeiro
+const { error: logError } = await supabase.from("payment_logs").upsert(
   {
-    label: 'OVERVIEW',
-    items: [
-      { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
-      { label: 'Meus Espaços', href: '/mentor/espacos', icon: GraduationCap },
-      { label: 'Currículo USA', href: '/curriculo', icon: FileCheck },
-      { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
-      { label: 'Biblioteca', href: '/biblioteca', icon: Library },
-      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
-    ],
+    user_id: profile?.id || null,
+    service_id: service?.id || null,
+    transaction_id: transactionId,
+    event_type: eventStatus,
+    payload: payload,
+    status: profile && service ? "processed" : "partial",
+    processed_at: new Date().toISOString(),
   },
-  {
-    label: 'MINHA CONTA',  // Nova seção
-    items: [
-      { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag }, // NOVO
-    ],
-  },
-  {
-    label: 'CONFIGURAÇÕES',
-    items: [
-      { label: 'Perfil', href: '/perfil', icon: Settings },
-    ],
-  },
-],
-```
+  { onConflict: 'transaction_id,event_type' }
+);
 
-### 4. Atualizar menu do Admin
-
-```typescript
-admin: [
-  {
-    label: 'OVERVIEW',
-    items: [
-      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-      { label: 'Espaços', href: '/admin/espacos', icon: GraduationCap },
-      { label: 'Biblioteca', href: '/biblioteca', icon: Library },
-      { label: 'Usuários', href: '/admin/usuarios', icon: Users },
-      { label: 'Produtos', href: '/admin/produtos', icon: BookOpen },
-      { label: 'Matrículas', href: '/admin/matriculas', icon: ClipboardList },
-    ],
-  },
-  {
-    label: 'FINANCEIRO',  // Nova seção
-    items: [
-      { label: 'Histórico de Compras', href: '/admin/pedidos', icon: Receipt }, // NOVO
-      { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard }, // Movido de RELATÓRIOS
-    ],
-  },
-  {
-    label: 'RELATÓRIOS',
-    items: [
-      { label: 'Relatórios', href: '/admin/relatorios', icon: UserCog },
-      { label: 'Feedback', href: '/admin/feedback', icon: MessageSquarePlus },
-      { label: 'Testes E2E', href: '/admin/testes-e2e', icon: FlaskConical },
-    ],
-  },
-  {
-    label: 'FERRAMENTAS',  // Nova seção
-    items: [
-      { label: 'Simulador Ticto', href: '/admin/ticto-simulator', icon: Webhook }, // NOVO
-    ],
-  },
-  {
-    label: 'CONFIGURAÇÕES',
-    items: [
-      { label: 'Configurar Planos', href: '/admin/planos', icon: SlidersHorizontal },
-      { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
-    ],
-  },
-],
+// Se falhar, tentar insert (pode ser constraint não existe ainda)
+if (logError) {
+  console.warn("Upsert failed, trying insert:", logError);
+  const { error: insertError } = await supabase.from("payment_logs").insert({
+    user_id: profile?.id || null,
+    service_id: service?.id || null,
+    transaction_id: transactionId,
+    event_type: eventStatus,
+    payload: payload,
+    status: profile && service ? "processed" : "partial",
+    processed_at: new Date().toISOString(),
+  });
+  
+  if (insertError) {
+    console.error("Insert also failed:", insertError);
+  }
+}
 ```
 
 ---
 
-## Resumo das Mudanças
+## Fluxo Esperado Após Correção
 
-| Role | Itens Adicionados | Seções Novas |
-|------|-------------------|--------------|
-| Student | Biblioteca, Meus Pedidos | MINHA CONTA |
-| Mentor | Meus Pedidos | MINHA CONTA |
-| Admin | Histórico de Compras, Simulador Ticto | FINANCEIRO, FERRAMENTAS |
+```text
+Admin simula callback no /admin/ticto-simulator
+            │
+            ▼
+simulate-ticto-callback monta payload
+            │
+            ▼
+ticto-webhook processa:
+  1. Encontra usuário pelo email ✓
+  2. Encontra serviço pelo ticto_product_id ✓
+  3. Libera acesso em user_hub_services ✓
+  4. Grava log em payment_logs ✓  <-- CORRIGIDO
+            │
+            ▼
+Admin vê transação em /admin/pedidos ✓
+            │
+            ▼
+Usuário vê transação em /meus-pedidos ✓
+```
 
 ---
 
-## Estrutura Final dos Menus
+## Verificação Pós-Implementação
 
-### Student
-```
-OVERVIEW
-├── Meu Hub
-├── Dashboard
-├── Meus Espaços
-├── Currículo USA
-├── Agenda
-├── Tarefas
-└── Biblioteca
-
-MINHA CONTA
-└── Meus Pedidos
-
-SOCIAL
-└── Suporte
-```
-
-### Mentor
-```
-OVERVIEW
-├── Dashboard
-├── Meus Espaços
-├── Currículo USA
-├── Agenda
-├── Biblioteca
-└── Tarefas
-
-MINHA CONTA
-└── Meus Pedidos
-
-CONFIGURAÇÕES
-└── Perfil
-```
-
-### Admin
-```
-OVERVIEW
-├── Dashboard
-├── Espaços
-├── Biblioteca
-├── Usuários
-├── Produtos
-└── Matrículas
-
-FINANCEIRO
-├── Histórico de Compras
-└── Assinaturas
-
-RELATÓRIOS
-├── Relatórios
-├── Feedback
-└── Testes E2E
-
-FERRAMENTAS
-└── Simulador Ticto
-
-CONFIGURAÇÕES
-├── Configurar Planos
-└── Configurações
-```
+1. Executar simulação via `/admin/ticto-simulator`
+2. Verificar nos logs da edge function que não há erro `42P10`
+3. Acessar `/admin/pedidos` e confirmar que a transação simulada aparece
+4. Acessar `/meus-pedidos` como usuário alvo e confirmar visibilidade
+5. Verificar que `transaction_id` começa com `SIM_` para transações simuladas
