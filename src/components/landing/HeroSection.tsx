@@ -83,12 +83,20 @@ export function HeroSection() {
 
           {/* Social Proof */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            {/* Stacked Avatars */}
+            {/* Stacked Avatars with real photos */}
             <div className="flex -space-x-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
+              {[
+                'https://randomuser.me/api/portraits/women/44.jpg',
+                'https://randomuser.me/api/portraits/men/32.jpg',
+                'https://randomuser.me/api/portraits/women/68.jpg',
+                'https://randomuser.me/api/portraits/men/75.jpg',
+                'https://randomuser.me/api/portraits/women/17.jpg',
+              ].map((src, i) => (
+                <img
                   key={i}
-                  className="h-10 w-10 rounded-full border-2 border-background bg-gradient-to-br from-primary to-secondary"
+                  src={src}
+                  alt={`User ${i + 1}`}
+                  className="h-10 w-10 rounded-full border-2 border-background object-cover"
                   style={{ zIndex: 5 - i }}
                 />
               ))}

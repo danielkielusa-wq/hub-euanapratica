@@ -1,6 +1,5 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { OnboardingProfile } from '@/types/onboarding';
+import { User } from 'lucide-react';
 
 interface PersonalInfoStepProps {
   data: Partial<OnboardingProfile>;
@@ -10,13 +9,16 @@ interface PersonalInfoStepProps {
 
 export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepProps) {
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
+    <div className="animate-in fade-in duration-300">
+      {/* Icon & Title */}
+      <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+          <User className="h-8 w-8 text-primary" />
+        </div>
+        <h1 className="mb-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
           Sobre você
         </h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-muted-foreground">
           Essas informações ajudam a personalizar sua jornada.
         </p>
       </div>
@@ -25,16 +27,17 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
       <div className="space-y-6">
         {/* Full Name */}
         <div className="space-y-2">
-          <Label htmlFor="full_name" className="text-sm font-medium">
-            Nome completo <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="full_name"
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+            NOME COMPLETO <span className="text-destructive">*</span>
+          </label>
+          <input
             type="text"
             value={data.full_name || ''}
             onChange={(e) => onChange('full_name', e.target.value)}
             placeholder="Seu nome completo"
-            className={errors.full_name ? 'border-destructive' : ''}
+            className={`w-full rounded-xl border-0 bg-muted/50 px-4 py-3.5 text-foreground placeholder:text-muted-foreground/60 focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+              errors.full_name ? 'ring-2 ring-destructive' : ''
+            }`}
           />
           {errors.full_name && (
             <p className="text-xs text-destructive">{errors.full_name}</p>
@@ -43,15 +46,15 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
 
         {/* Preferred Name */}
         <div className="space-y-2">
-          <Label htmlFor="preferred_name" className="text-sm font-medium">
-            Como você gostaria de ser chamado(a)?
-          </Label>
-          <Input
-            id="preferred_name"
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+            COMO GOSTARIA DE SER CHAMADO(A)?
+          </label>
+          <input
             type="text"
             value={data.preferred_name || ''}
             onChange={(e) => onChange('preferred_name', e.target.value)}
             placeholder="Apelido ou nome preferido"
+            className="w-full rounded-xl border-0 bg-muted/50 px-4 py-3.5 text-foreground placeholder:text-muted-foreground/60 focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
           <p className="text-xs text-muted-foreground">
             Usaremos este nome em nossas comunicações.
@@ -60,15 +63,16 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
 
         {/* Birth Date */}
         <div className="space-y-2">
-          <Label htmlFor="birth_date" className="text-sm font-medium">
-            Data de nascimento <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="birth_date"
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+            DATA DE NASCIMENTO <span className="text-destructive">*</span>
+          </label>
+          <input
             type="date"
             value={data.birth_date || ''}
             onChange={(e) => onChange('birth_date', e.target.value)}
-            className={errors.birth_date ? 'border-destructive' : ''}
+            className={`w-full rounded-xl border-0 bg-muted/50 px-4 py-3.5 text-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+              errors.birth_date ? 'ring-2 ring-destructive' : ''
+            }`}
           />
           {errors.birth_date && (
             <p className="text-xs text-destructive">{errors.birth_date}</p>

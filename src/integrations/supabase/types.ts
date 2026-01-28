@@ -509,6 +509,63 @@ export type Database = {
           },
         ]
       }
+      hub_services: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          display_order: number | null
+          icon_name: string
+          id: string
+          is_highlighted: boolean | null
+          is_visible_in_hub: boolean | null
+          name: string
+          price_display: string | null
+          product_type: string | null
+          route: string | null
+          status: string
+          stripe_price_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon_name: string
+          id?: string
+          is_highlighted?: boolean | null
+          is_visible_in_hub?: boolean | null
+          name: string
+          price_display?: string | null
+          product_type?: string | null
+          route?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon_name?: string
+          id?: string
+          is_highlighted?: boolean | null
+          is_visible_in_hub?: boolean | null
+          name?: string
+          price_display?: string | null
+          product_type?: string | null
+          route?: string | null
+          status?: string
+          stripe_price_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       material_downloads: {
         Row: {
           downloaded_at: string | null
@@ -1268,6 +1325,48 @@ export type Database = {
             columns: ["material_id"]
             isOneToOne: false
             referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_hub_services: {
+        Row: {
+          expires_at: string | null
+          id: string
+          service_id: string
+          started_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          service_id: string
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          service_id?: string
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hub_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hub_services_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -48,6 +48,7 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
+import StudentHub from "./pages/hub/StudentHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -131,6 +132,11 @@ function AppRoutes() {
       } />
       
       {/* Student routes */}
+      <Route path="/dashboard/hub" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentHub />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentDashboard />

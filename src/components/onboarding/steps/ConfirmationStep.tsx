@@ -1,6 +1,4 @@
-import { CheckCircle2, BookOpen, MessageSquare, Sparkles } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, BookOpen, MessageSquare, Sparkles, Rocket } from 'lucide-react';
 
 interface ConfirmationStepProps {
   onComplete: () => void;
@@ -9,83 +7,66 @@ interface ConfirmationStepProps {
 
 const nextSteps = [
   {
-    icon: BookOpen,
-    text: 'Acesso aos seus Espaços e conteúdos exclusivos.',
+    icon: Sparkles,
+    text: 'Acesso à IA de Currículos para validação ATS',
   },
   {
-    icon: Sparkles,
-    text: 'Recomendações mais assertivas nas mentorias.',
+    icon: BookOpen,
+    text: 'Conteúdos exclusivos e trilhas de carreira',
   },
   {
     icon: MessageSquare,
-    text: 'Comunicação mais eficiente por email e WhatsApp.',
+    text: 'Comunicação direta com mentores',
   },
 ];
 
 export function ConfirmationStep({ onComplete, isCompleting }: ConfirmationStepProps) {
-  const navigate = useNavigate();
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="flex flex-col items-center text-center animate-in fade-in duration-300">
       {/* Success Icon */}
-      <div className="flex justify-center">
-        <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center animate-in zoom-in duration-500">
-          <CheckCircle2 className="h-10 w-10 text-green-600" />
-        </div>
+      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-accent/10 animate-in zoom-in duration-500">
+        <CheckCircle2 className="h-10 w-10 text-accent" />
       </div>
 
       {/* Title */}
-      <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
-          Seu perfil está configurado com sucesso
-        </h1>
-        <p className="text-muted-foreground text-base">
-          Agora você está pronto para avançar na sua jornada internacional com o EUA Na Prática.
-        </p>
+      <h1 className="mb-3 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+        Perfil configurado com sucesso!
+      </h1>
+      <p className="mb-8 max-w-md text-muted-foreground">
+        Agora você está pronto para acelerar sua jornada internacional.
+      </p>
+
+      {/* Resources Unlocked Card */}
+      <div className="mb-8 w-full rounded-2xl bg-foreground p-6 text-left">
+        <div className="mb-4 flex items-center gap-2">
+          <Rocket className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-background">Recursos Desbloqueados</h3>
+        </div>
+        <ul className="space-y-3">
+          {nextSteps.map((step, index) => (
+            <li key={index} className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+                <step.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm text-background/80">{step.text}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* What happens next */}
-      <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20">
-        <CardContent className="p-6">
-          <h3 className="font-semibold text-foreground mb-4">
-            O que acontece agora?
-          </h3>
-          <ul className="space-y-4">
-            {nextSteps.map((step, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <step.icon className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm text-foreground pt-1.5">
-                  {step.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-
       {/* Note */}
-      <p className="text-sm text-muted-foreground text-center">
+      <p className="mb-6 text-xs text-muted-foreground">
         Você pode alterar seus dados a qualquer momento no seu Perfil.
       </p>
 
-      {/* Actions */}
-      <div className="flex flex-col gap-3">
-        <button
-          onClick={onComplete}
-          disabled={isCompleting}
-          className="w-full py-4 text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200 disabled:opacity-50"
-        >
-          {isCompleting ? 'Finalizando...' : 'Ir para meu painel'}
-        </button>
-        <button
-          onClick={() => navigate('/perfil')}
-          className="w-full py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Ver meu perfil
-        </button>
-      </div>
+      {/* CTA */}
+      <button
+        onClick={onComplete}
+        disabled={isCompleting}
+        className="w-full rounded-xl bg-primary py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 disabled:opacity-50"
+      >
+        {isCompleting ? 'Finalizando...' : 'Acessar Dashboard →'}
+      </button>
     </div>
   );
 }

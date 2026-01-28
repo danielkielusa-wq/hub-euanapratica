@@ -90,7 +90,7 @@ export function SuccessPath() {
 
         {/* CTA */}
         <div className="text-center">
-          <Link to="/cadastro">
+          <Link to="/login">
             <Button variant="outline" size="lg" className="rounded-xl">
               Conheça nossa metodologia completa
             </Button>
