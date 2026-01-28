@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -76,30 +77,58 @@ export function HubServiceForm({
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: service?.name || '',
-      description: service?.description || '',
-      icon_name: service?.icon_name || 'FileCheck',
-      status: (service?.status as ServiceStatus) || 'available',
-      service_type: service?.service_type || 'ai_tool',
-      ribbon: service?.ribbon || null,
-      category: service?.category || '',
-      route: service?.route || '',
-      redirect_url: service?.redirect_url || '',
-      cta_text: service?.cta_text || 'Acessar Agora',
-      is_visible_in_hub: service?.is_visible_in_hub ?? true,
-      is_highlighted: service?.is_highlighted ?? false,
-      display_order: service?.display_order || 0,
-      price: service?.price || 0,
-      price_display: service?.price_display || '',
-      currency: service?.currency || 'BRL',
-      product_type: (service?.product_type as ProductType) || 'one_time',
-      stripe_price_id: service?.stripe_price_id || '',
-      accent_color: service?.accent_color || '',
-      // Ticto fields
-      ticto_product_id: service?.ticto_product_id || '',
-      ticto_checkout_url: service?.ticto_checkout_url || '',
+      name: '',
+      description: '',
+      icon_name: 'FileCheck',
+      status: 'available',
+      service_type: 'ai_tool',
+      ribbon: null,
+      category: '',
+      route: '',
+      redirect_url: '',
+      cta_text: 'Acessar Agora',
+      is_visible_in_hub: true,
+      is_highlighted: false,
+      display_order: 0,
+      price: 0,
+      price_display: '',
+      currency: 'BRL',
+      product_type: 'one_time',
+      stripe_price_id: '',
+      accent_color: '',
+      ticto_product_id: '',
+      ticto_checkout_url: '',
     },
   });
+
+  // Reset form when service changes (e.g., editing a different service)
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: service?.name || '',
+        description: service?.description || '',
+        icon_name: service?.icon_name || 'FileCheck',
+        status: (service?.status as ServiceStatus) || 'available',
+        service_type: service?.service_type || 'ai_tool',
+        ribbon: service?.ribbon || null,
+        category: service?.category || '',
+        route: service?.route || '',
+        redirect_url: service?.redirect_url || '',
+        cta_text: service?.cta_text || 'Acessar Agora',
+        is_visible_in_hub: service?.is_visible_in_hub ?? true,
+        is_highlighted: service?.is_highlighted ?? false,
+        display_order: service?.display_order || 0,
+        price: service?.price || 0,
+        price_display: service?.price_display || '',
+        currency: service?.currency || 'BRL',
+        product_type: (service?.product_type as ProductType) || 'one_time',
+        stripe_price_id: service?.stripe_price_id || '',
+        accent_color: service?.accent_color || '',
+        ticto_product_id: service?.ticto_product_id || '',
+        ticto_checkout_url: service?.ticto_checkout_url || '',
+      });
+    }
+  }, [service, open, form]);
 
   const handleSubmit = (data: FormData) => {
     onSubmit(data);
