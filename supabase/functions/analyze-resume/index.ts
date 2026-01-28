@@ -20,10 +20,17 @@ serve(async (req) => {
       });
     }
 
+    // User client for reading data with user's permissions
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Admin client for reliable usage recording (bypasses RLS)
+    const adminSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     const token = authHeader.replace("Bearer ", "");
@@ -467,14 +474,46 @@ serve(async (req) => {
 
     const result = JSON.parse(toolCall.function.arguments);
 
-    // ========== RECORD USAGE: Log successful analysis via RPC (bypasses RLS) ==========
-    const { error: logError } = await supabase.rpc('record_curriculo_usage', {
-      p_user_id: userId,
-    });
+    // ========== RECORD USAGE: Reliable recording with retry logic ==========
+    // CRITICAL: Usage MUST be recorded BEFORE returning the result
+    // If recording fails after retries, the request fails to prevent abuse
+    
+    const recordUsageWithRetry = async (uid: string, maxRetries = 3): Promise<boolean> => {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const { error } = await adminSupabase
+            .from('usage_logs')
+            .insert({ user_id: uid, app_id: 'curriculo_usa' });
+          
+          if (!error) {
+            console.log(`Usage recorded successfully for user ${uid} on attempt ${attempt + 1}`);
+            return true;
+          }
+          
+          console.error(`Usage recording attempt ${attempt + 1} failed:`, error);
+        } catch (err) {
+          console.error(`Usage recording attempt ${attempt + 1} threw:`, err);
+        }
+        
+        // Exponential backoff: 200ms, 400ms, 800ms
+        if (attempt < maxRetries - 1) {
+          await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
+        }
+      }
+      return false;
+    };
 
-    if (logError) {
-      console.error("Error logging usage:", logError);
-      // Don't fail the request, just log the error
+    const usageRecorded = await recordUsageWithRetry(userId);
+    
+    if (!usageRecorded) {
+      console.error("CRITICAL: Failed to record usage after all retries for user:", userId);
+      return new Response(
+        JSON.stringify({
+          error: 'Falha ao registrar uso. Por favor, tente novamente.',
+          error_code: 'USAGE_RECORDING_FAILED',
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     // ========== END RECORD USAGE ==========
 
