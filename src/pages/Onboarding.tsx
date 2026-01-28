@@ -59,6 +59,13 @@ export default function Onboarding() {
   }, [profile?.has_completed_onboarding, navigate]);
 
   const getDashboardPath = useCallback(() => {
+    // Check if there's a pending espaco_id from invitation flow
+    const pendingEspacoId = localStorage.getItem('pending_espaco_id');
+    if (pendingEspacoId) {
+      localStorage.removeItem('pending_espaco_id');
+      return `/dashboard/espacos/${pendingEspacoId}`;
+    }
+    
     switch (user?.role) {
       case 'admin':
         return '/admin/dashboard';

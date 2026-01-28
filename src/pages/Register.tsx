@@ -41,12 +41,15 @@ export default function Register() {
     }
   }, [invitation]);
 
-  // Store invitation token in localStorage for processing after registration
+  // Store invitation token and espaco_id in localStorage for processing after registration
   useEffect(() => {
     if (invitationToken) {
       localStorage.setItem('invitation_token', invitationToken);
     }
-  }, [invitationToken]);
+    if (espacoIdParam) {
+      localStorage.setItem('pending_espaco_id', espacoIdParam);
+    }
+  }, [invitationToken, espacoIdParam]);
   
   const passwordChecks = {
     length: formData.password.length >= 8,
