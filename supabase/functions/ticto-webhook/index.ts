@@ -83,7 +83,10 @@ serve(async (req) => {
     const eventStatus = (payload.status || payload.event || "").toLowerCase();
     const customerEmail = payload.customer?.email?.toLowerCase();
     const productId = String(payload.item?.product_id || payload.item?.offer_id || "");
-    const transactionId = payload.order?.hash || payload.transaction_id;
+    // Garantir que transaction_id nunca seja NULL para evitar problemas com constraint
+    const transactionId = payload.order?.hash || 
+                          payload.transaction_id || 
+                          `GEN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     console.log("Parsed data:", { eventStatus, customerEmail, productId, transactionId });
 
@@ -165,24 +168,32 @@ serve(async (req) => {
       }
 
       // Log transaction (upsert to prevent duplicates on webhook retries)
+      const logData = {
+        user_id: profile?.id || null,
+        service_id: service?.id || null,
+        transaction_id: transactionId,
+        event_type: eventStatus,
+        payload: payload,
+        status: profile && service ? "processed" : "partial",
+        processed_at: new Date().toISOString(),
+      };
+
       const { error: logError } = await supabase.from("payment_logs").upsert(
-        {
-          user_id: profile?.id || null,
-          service_id: service?.id || null,
-          transaction_id: transactionId,
-          event_type: eventStatus,
-          payload: payload,
-          status: profile && service ? "processed" : "partial",
-          processed_at: new Date().toISOString(),
-        },
-        { 
-          onConflict: 'transaction_id,event_type',
-          ignoreDuplicates: false // Update existing record
-        }
+        logData,
+        { onConflict: 'transaction_id,event_type' }
       );
 
+      // Fallback para insert se upsert falhar
       if (logError) {
-        console.warn("Error logging payment:", logError);
+        console.warn("Upsert failed, trying insert:", logError);
+        const { error: insertError } = await supabase.from("payment_logs").insert(logData);
+        if (insertError) {
+          console.error("Insert also failed:", insertError);
+        } else {
+          console.log("Payment logged via insert fallback");
+        }
+      } else {
+        console.log("Payment logged successfully:", { transactionId, eventStatus });
       }
     }
 
@@ -217,22 +228,26 @@ serve(async (req) => {
           console.log("Access revoked:", { userId: profile.id, serviceId: service.id });
         }
 
-        // Log transaction (upsert to prevent duplicates on webhook retries)
-        await supabase.from("payment_logs").upsert(
-          {
-            user_id: profile?.id || null,
-            service_id: service?.id || null,
-            transaction_id: transactionId,
-            event_type: eventStatus,
-            payload: payload,
-            status: "processed",
-            processed_at: new Date().toISOString(),
-          },
-          { 
-            onConflict: 'transaction_id,event_type',
-            ignoreDuplicates: false
-          }
+        // Log refund transaction
+        const refundLogData = {
+          user_id: profile?.id || null,
+          service_id: service?.id || null,
+          transaction_id: transactionId,
+          event_type: eventStatus,
+          payload: payload,
+          status: "processed",
+          processed_at: new Date().toISOString(),
+        };
+
+        const { error: refundLogError } = await supabase.from("payment_logs").upsert(
+          refundLogData,
+          { onConflict: 'transaction_id,event_type' }
         );
+
+        if (refundLogError) {
+          console.warn("Refund upsert failed, trying insert:", refundLogError);
+          await supabase.from("payment_logs").insert(refundLogData);
+        }
       }
     }
 
@@ -251,20 +266,24 @@ serve(async (req) => {
         userId = profile?.id;
       }
 
-      await supabase.from("payment_logs").upsert(
-        {
-          user_id: userId,
-          transaction_id: transactionId,
-          event_type: eventStatus,
-          payload: payload,
-          status: "logged",
-          created_at: new Date().toISOString(),
-        },
-        { 
-          onConflict: 'transaction_id,event_type',
-          ignoreDuplicates: true // Just skip if duplicate
-        }
+      const otherLogData = {
+        user_id: userId,
+        transaction_id: transactionId,
+        event_type: eventStatus,
+        payload: payload,
+        status: "logged",
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: otherLogError } = await supabase.from("payment_logs").upsert(
+        otherLogData,
+        { onConflict: 'transaction_id,event_type' }
       );
+
+      if (otherLogError) {
+        // Para eventos não-acionáveis, apenas tenta insert se upsert falhar
+        await supabase.from("payment_logs").insert(otherLogData);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, status: eventStatus }), {
