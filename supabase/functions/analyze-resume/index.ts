@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -188,41 +189,62 @@ serve(async (req) => {
       pdfBase64 = btoa(binaryString);
       resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
     } else if (isDocx) {
-      // For DOCX, extract text content from the XML
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const textDecoder = new TextDecoder("utf-8");
-      
-      // DOCX is a ZIP file - we need to extract document.xml
-      // For simplicity, we'll try to find readable text patterns
-      const rawContent = textDecoder.decode(uint8Array);
-      
-      // Extract text between XML tags (simplified extraction)
-      const textMatches = rawContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-      const extractedText = textMatches
-        .map(match => match.replace(/<[^>]+>/g, ''))
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      if (!extractedText || extractedText.length < 50) {
-        // Fallback: try to extract any readable text
-        const cleanText = rawContent
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/[^\x20-\x7E\xA0-\xFF\u0100-\u017F]/g, ' ')
+      // DOCX is a ZIP archive - properly unzip it using zip.js
+      try {
+        const blob = new Blob([arrayBuffer]);
+        const zipReader = new ZipReader(new BlobReader(blob));
+        const entries = await zipReader.getEntries();
+        
+        // Find word/document.xml (main content)
+        const documentEntry = entries.find((e: { filename: string }) => e.filename === "word/document.xml");
+        
+        if (!documentEntry || !documentEntry.getData) {
+          await zipReader.close();
+          return new Response(
+            JSON.stringify({
+              error_code: "EXTRACTION_FAILED",
+              error: "Arquivo corrompido",
+              error_message: "O arquivo DOCX parece estar corrompido. Por favor, abra no Word, salve novamente e tente.",
+              parsing_error: true,
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Extract document.xml content
+        const documentBlob = await documentEntry.getData(new BlobWriter());
+        const documentXml = await documentBlob.text();
+        await zipReader.close();
+        
+        // Extract text from <w:t> tags
+        const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+        const extractedText = textMatches
+          .map((match: string) => match.replace(/<[^>]+>/g, ''))
+          .join(' ')
           .replace(/\s+/g, ' ')
           .trim();
-        resumeContent = cleanText.slice(0, 15000);
-      } else {
+        
+        if (extractedText.length < 100) {
+          return new Response(
+            JSON.stringify({
+              error_code: "INSUFFICIENT_CONTENT",
+              error: "Conteúdo insuficiente",
+              error_message: "O currículo contém muito pouco texto. Certifique-se de que o arquivo não está vazio ou protegido.",
+              parsing_error: true,
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         resumeContent = extractedText.slice(0, 15000);
-      }
-      
-      // Validate content quality
-      if (resumeContent.length < 100) {
+        
+      } catch (zipError) {
+        console.error("DOCX extraction error:", zipError);
         return new Response(
           JSON.stringify({
             error_code: "EXTRACTION_FAILED",
-            error: "Falha na extração de texto",
-            error_message: "Não foi possível extrair texto legível do seu currículo. Por favor, salve como PDF e tente novamente.",
+            error: "Falha na extração",
+            error_message: "Não foi possível ler o arquivo DOCX. Por favor, converta para PDF e tente novamente.",
             parsing_error: true,
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
