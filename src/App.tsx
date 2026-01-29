@@ -50,6 +50,7 @@ import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
+import ServiceCatalog from "./pages/hub/ServiceCatalog";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyOrders from "./pages/orders/MyOrders";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -180,6 +181,11 @@ function AppRoutes() {
       <Route path="/dashboard/suporte" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentSuporte />
+        </ProtectedRoute>
+      } />
+      <Route path="/catalogo" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceCatalog />
         </ProtectedRoute>
       } />
       
