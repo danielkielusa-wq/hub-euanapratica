@@ -46,10 +46,12 @@ interface UserWithUsage {
 export default function AdminSubscriptions() {
   const { 
     users, 
+    plans,
     isLoading, 
     error, 
     fetchUsers, 
     fetchPlans, 
+    changePlan,
     resetUsage 
   } = useAdminSubscriptions();
   
@@ -57,6 +59,7 @@ export default function AdminSubscriptions() {
   const [selectedUser, setSelectedUser] = useState<UserWithUsage | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isChangingPlan, setIsChangingPlan] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -69,6 +72,24 @@ export default function AdminSubscriptions() {
     setIsResetting(false);
     if (success && selectedUser) {
       setSelectedUser({ ...selectedUser, used_this_month: 0 });
+    }
+    return success;
+  };
+
+  const handleChangePlan = async (userId: string, newPlanId: string): Promise<boolean> => {
+    setIsChangingPlan(true);
+    const success = await changePlan(userId, newPlanId);
+    setIsChangingPlan(false);
+    if (success && selectedUser) {
+      const newPlan = plans.find(p => p.id === newPlanId);
+      if (newPlan) {
+        setSelectedUser({ 
+          ...selectedUser, 
+          plan_id: newPlanId, 
+          plan_name: newPlan.name,
+          monthly_limit: newPlan.monthly_limit
+        });
+      }
     }
     return success;
   };
@@ -278,6 +299,9 @@ export default function AdminSubscriptions() {
         onOpenChange={setDrawerOpen}
         onResetUsage={handleResetUsage}
         isResetting={isResetting}
+        plans={plans}
+        onChangePlan={handleChangePlan}
+        isChangingPlan={isChangingPlan}
       />
     </DashboardLayout>
   );

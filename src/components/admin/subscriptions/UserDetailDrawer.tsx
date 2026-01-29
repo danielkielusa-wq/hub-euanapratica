@@ -8,7 +8,11 @@ import {
   History, 
   RotateCcw,
   UserX,
-  Loader2
+  Loader2,
+  Crown,
+  Zap,
+  Sparkles,
+  Pencil
 } from 'lucide-react';
 import {
   Sheet,
@@ -19,6 +23,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
 import { PlanBadge } from './PlanBadge';
 import { AppConsumptionCard } from './AppConsumptionCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,12 +51,22 @@ interface ActivityLog {
   created_at: string;
 }
 
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  monthly_limit: number;
+}
+
 interface UserDetailDrawerProps {
   user: UserWithUsage | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onResetUsage: (userId: string) => Promise<boolean>;
   isResetting?: boolean;
+  plans?: Plan[];
+  onChangePlan?: (userId: string, planId: string) => Promise<boolean>;
+  isChangingPlan?: boolean;
 }
 
 export function UserDetailDrawer({
@@ -55,6 +75,9 @@ export function UserDetailDrawer({
   onOpenChange,
   onResetUsage,
   isResetting = false,
+  plans = [],
+  onChangePlan,
+  isChangingPlan = false,
 }: UserDetailDrawerProps) {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
@@ -146,7 +169,39 @@ export function UserDetailDrawer({
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
                   Plano Atual
                 </p>
-                <PlanBadge planId={user.plan_id} planName={user.plan_name} size="lg" />
+                <div className="flex items-center gap-2">
+                  <PlanBadge planId={user.plan_id} planName={user.plan_name} size="lg" />
+                  {plans.length > 0 && onChangePlan && (
+                    <Select
+                      value={user.plan_id}
+                      onValueChange={(value) => onChangePlan(user.user_id, value)}
+                      disabled={isChangingPlan}
+                    >
+                      <SelectTrigger className="w-auto h-8 px-2 border-dashed border-slate-300 bg-transparent">
+                        {isChangingPlan ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Pencil className="w-3 h-3 text-slate-500" />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {plans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            <div className="flex items-center gap-2">
+                              {plan.id === 'vip' && <Crown className="w-4 h-4 text-amber-500" />}
+                              {plan.id === 'pro' && <Zap className="w-4 h-4 text-purple-500" />}
+                              {plan.id === 'basic' && <Sparkles className="w-4 h-4 text-gray-500" />}
+                              <span>{plan.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({plan.monthly_limit === 999 ? '∞' : plan.monthly_limit}/mês)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
               <div className="bg-gray-50 rounded-2xl p-4">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
