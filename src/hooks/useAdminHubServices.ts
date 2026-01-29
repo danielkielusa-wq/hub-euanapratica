@@ -72,6 +72,14 @@ export function useUpdateHubService() {
 
   return useMutation({
     mutationFn: async ({ id, ...formData }: Partial<HubServiceFormData> & { id: string }) => {
+      // If setting is_highlighted to true, first unset all others
+      if (formData.is_highlighted === true) {
+        await supabase
+          .from('hub_services')
+          .update({ is_highlighted: false })
+          .neq('id', id);
+      }
+
       const { data, error } = await supabase
         .from('hub_services')
         .update({
