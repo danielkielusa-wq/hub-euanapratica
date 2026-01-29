@@ -1,122 +1,187 @@
 
-# Plano: Correção do Acesso ao Currículo USA
+# Plano: Corrigir Extração de Texto DOCX no Currículo USA
 
 ## Problema Identificado
 
-O usuário está sendo redirecionado de `/curriculo` para `/dashboard/hub` porque:
+O erro "Erro no processamento - Não foi possível processar seu currículo" ocorre porque a **extração de texto de arquivos DOCX está falhando**.
 
-1. **Não existe serviço cadastrado** na tabela `hub_services` com `route = '/curriculo'`
-2. O `ServiceGuard` busca um serviço pela rota e, como não encontra, `hasAccess` retorna `false`
-3. O usuário não tem nenhuma entrada em `user_hub_services`
+### Causa Raiz
 
-**Porém**, conforme a arquitetura documentada, o Currículo USA é uma **ferramenta do plano de assinatura** (Basic/Pro/VIP), não um serviço avulso que precisa ser comprado separadamente. Todos os assinantes devem ter acesso (com limites de créditos diferentes por plano).
+O código atual tenta ler o DOCX como se fosse texto simples:
 
----
-
-## Análise da Lógica de Acesso
-
-### Lógica Atual (ServiceGuard)
 ```typescript
-// useServiceAccess.ts
-const hasAccess =
-  service?.status === 'available' ||
-  (service && userAccess?.includes(service.id));
+const rawContent = textDecoder.decode(uint8Array);
+const textMatches = rawContent.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
 ```
 
-Esta lógica é correta para **serviços avulsos** (consultorias, mentorias), mas o Currículo USA é diferente:
-- Faz parte do **plano de assinatura**
-- Todo usuário com assinatura ativa deveria ter acesso
-- Os limites são controlados por créditos mensais (`useSubscription`)
+**Problema**: DOCX é um arquivo **ZIP comprimido** contendo XMLs. Decodificar os bytes brutos como texto não funciona porque o conteúdo está comprimido. A regex `<w:t>` pode encontrar padrões aleatórios nos bytes binários, mas não extrai o texto real do documento.
+
+### Por Que Funcionou Antes?
+
+O código pode ter funcionado parcialmente para alguns arquivos onde a compressão produziu bytes que coincidiam com os padrões XML, mas é fundamentalmente incorreto e falha para a maioria dos arquivos DOCX.
 
 ---
 
 ## Solução
 
-### Opção Recomendada: Modificar o ServiceGuard para Considerar Assinaturas
+Usar a biblioteca **zip.js** (compatível com Deno) para:
+1. Descompactar o arquivo DOCX
+2. Extrair o arquivo `word/document.xml` de dentro do ZIP
+3. Parsear o XML e extrair o texto dos elementos `<w:t>`
 
-O `ServiceGuard` deve verificar também se o usuário tem uma **assinatura ativa** para serviços marcados como "incluídos no plano".
+---
 
-### Mudanças Necessárias
+## Mudanças Técnicas
 
-#### 1. Atualizar `useServiceAccess.ts`
+### Arquivo: `supabase/functions/analyze-resume/index.ts`
 
-Adicionar verificação de assinatura para ferramentas do plano:
+#### 1. Adicionar Import do zip.js
 
 ```typescript
-import { useHubServices, useUserHubAccess } from '@/hooks/useHubServices';
-import { useSubscription } from '@/hooks/useSubscription';
+import { BlobReader, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
+```
 
-// Rotas que são ferramentas incluídas em qualquer assinatura
-const SUBSCRIPTION_INCLUDED_ROUTES = ['/curriculo'];
+#### 2. Substituir Lógica de Extração DOCX
 
-export function useServiceAccess(serviceRoute: string) {
-  const { data: services, isLoading: servicesLoading } = useHubServices();
-  const { data: userAccess, isLoading: accessLoading } = useUserHubAccess();
-  const { quota, isLoading: subscriptionLoading } = useSubscription();
-
-  const service = services?.find((s) => s.route === serviceRoute);
-  
-  // Verifica se é uma ferramenta incluída na assinatura
-  const isSubscriptionTool = SUBSCRIPTION_INCLUDED_ROUTES.includes(serviceRoute);
-  const hasActiveSubscription = quota?.planId != null;
-
-  // User has access if:
-  // 1. É uma ferramenta de assinatura E o usuário tem plano ativo
-  // 2. Service status is 'available' (free for all)
-  // 3. User has an active entry in user_hub_services for this service
-  const hasAccess =
-    (isSubscriptionTool && hasActiveSubscription) ||
-    service?.status === 'available' ||
-    (service && userAccess?.includes(service.id));
-
-  return {
-    hasAccess: !!hasAccess,
-    service,
-    isLoading: servicesLoading || accessLoading || subscriptionLoading,
-  };
+**Código Atual (linhas 190-230)**:
+```typescript
+} else if (isDocx) {
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const textDecoder = new TextDecoder("utf-8");
+  const rawContent = textDecoder.decode(uint8Array);
+  // ... regex extraction que falha
 }
 ```
 
----
+**Código Novo**:
+```typescript
+} else if (isDocx) {
+  try {
+    // DOCX is a ZIP archive - properly unzip it
+    const blob = new Blob([arrayBuffer]);
+    const zipReader = new ZipReader(new BlobReader(blob));
+    const entries = await zipReader.getEntries();
+    
+    // Find word/document.xml (main content)
+    const documentEntry = entries.find(e => e.filename === "word/document.xml");
+    
+    if (!documentEntry || !documentEntry.getData) {
+      await zipReader.close();
+      return new Response(
+        JSON.stringify({
+          error_code: "EXTRACTION_FAILED",
+          error: "Arquivo corrompido",
+          error_message: "O arquivo DOCX parece estar corrompido. Por favor, abra no Word, salve novamente e tente.",
+          parsing_error: true,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Extract document.xml content
+    const documentBlob = await documentEntry.getData(new BlobWriter());
+    const documentXml = await documentBlob.text();
+    await zipReader.close();
+    
+    // Extract text from <w:t> tags
+    const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    const extractedText = textMatches
+      .map(match => match.replace(/<[^>]+>/g, ''))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    if (extractedText.length < 100) {
+      return new Response(
+        JSON.stringify({
+          error_code: "INSUFFICIENT_CONTENT",
+          error: "Conteúdo insuficiente",
+          error_message: "O currículo contém muito pouco texto. Certifique-se de que o arquivo não está vazio ou protegido.",
+          parsing_error: true,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    resumeContent = extractedText.slice(0, 15000);
+    
+  } catch (zipError) {
+    console.error("DOCX extraction error:", zipError);
+    return new Response(
+      JSON.stringify({
+        error_code: "EXTRACTION_FAILED",
+        error: "Falha na extração",
+        error_message: "Não foi possível ler o arquivo DOCX. Por favor, converta para PDF e tente novamente.",
+        parsing_error: true,
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+```
 
-## Arquivos a Modificar
+#### 3. Adicionar Import do BlobWriter
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/hooks/useServiceAccess.ts` | Adicionar verificação de assinatura para rotas específicas |
-
----
-
-## Lógica de Negócio
-
-```text
-Usuário acessa /curriculo
-        │
-        ▼
-ServiceGuard verifica acesso
-        │
-        ├── É rota de assinatura? (/curriculo)
-        │         │
-        │         ├── SIM + Tem assinatura? → ACESSO PERMITIDO ✓
-        │         │
-        │         └── SIM + Sem assinatura → Redireciona para Hub
-        │
-        ├── Serviço está 'available'? → ACESSO PERMITIDO ✓
-        │
-        └── Usuário comprou o serviço? → ACESSO PERMITIDO ✓
+```typescript
+import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
 ```
 
 ---
 
-## Verificação do `useSubscription`
+## Fluxo Corrigido
 
-Preciso confirmar que o hook `useSubscription` retorna os dados corretos para este usuário. Vou verificar o estado atual da assinatura do usuário.
+```text
+Upload DOCX
+     │
+     ▼
+Criar Blob do arrayBuffer
+     │
+     ▼
+ZipReader abre o arquivo como ZIP
+     │
+     ▼
+Buscar entry "word/document.xml"
+     │
+     ├── Não encontrou? → Erro "Arquivo corrompido"
+     │
+     ▼
+Extrair conteúdo XML do entry
+     │
+     ▼
+Regex extrai texto dos <w:t> tags
+     │
+     ├── Texto < 100 chars? → Erro "Conteúdo insuficiente"
+     │
+     ▼
+Enviar para Gemini AI
+     │
+     ▼
+Retornar análise completa ✓
+```
 
 ---
 
-## Verificação Pós-Implementação
+## Arquivo a Modificar
 
-1. Acessar `/curriculo` como `kiel.daniel@gmail.com`
-2. Confirmar que a página carrega sem redirecionamento
-3. Verificar que o widget de créditos exibe corretamente
-4. Testar com usuário SEM assinatura → deve redirecionar para Hub com mensagem apropriada
+| Arquivo | Mudança |
+|---------|---------|
+| `supabase/functions/analyze-resume/index.ts` | Adicionar zip.js e corrigir extração DOCX |
+
+---
+
+## Benefícios
+
+1. **Funciona Corretamente**: Descompacta o ZIP e lê o XML real
+2. **Mensagens de Erro Claras**: Diferencia entre "corrompido", "vazio" e "falha de extração"
+3. **Compatibilidade**: zip.js é uma biblioteca madura e testada
+4. **Fallback Seguro**: Sugere conversão para PDF se tudo falhar
+
+---
+
+## Testes Recomendados
+
+Após implementação, testar com:
+1. Arquivo DOCX normal (como o do usuário: CV_Wagner_Sabino.docx)
+2. Arquivo PDF (verificar que não quebrou)
+3. Arquivo DOCX vazio
+4. Arquivo DOCX protegido por senha
