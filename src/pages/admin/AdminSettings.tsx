@@ -4,36 +4,55 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Save, Settings, FileCheck } from 'lucide-react';
+import { Save, Settings, FileCheck, Users } from 'lucide-react';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function AdminSettings() {
   const { configs, isLoading, isSaving, updateConfig, getConfigValue } = useAppConfigs();
+  
+  // Resume analyzer prompt state
   const [resumePrompt, setResumePrompt] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
+  const [hasResumeChanges, setHasResumeChanges] = useState(false);
 
-  // Initialize prompt from configs
+  // Lead report formatter prompt state
+  const [leadPrompt, setLeadPrompt] = useState('');
+  const [hasLeadChanges, setHasLeadChanges] = useState(false);
+
+  // Initialize prompts from configs
   useEffect(() => {
-    const value = getConfigValue('resume_analyzer_prompt');
-    if (value) {
-      setResumePrompt(value);
-    }
+    const resumeValue = getConfigValue('resume_analyzer_prompt');
+    if (resumeValue) setResumePrompt(resumeValue);
+    
+    const leadValue = getConfigValue('lead_report_formatter_prompt');
+    if (leadValue) setLeadPrompt(leadValue);
   }, [configs]);
 
-  // Track changes
+  // Track changes for resume prompt
   useEffect(() => {
     const originalValue = getConfigValue('resume_analyzer_prompt');
-    setHasChanges(resumePrompt !== originalValue && resumePrompt !== '');
+    setHasResumeChanges(resumePrompt !== originalValue && resumePrompt !== '');
   }, [resumePrompt, configs]);
 
-  const handleSave = async () => {
+  // Track changes for lead prompt
+  useEffect(() => {
+    const originalValue = getConfigValue('lead_report_formatter_prompt');
+    setHasLeadChanges(leadPrompt !== originalValue && leadPrompt !== '');
+  }, [leadPrompt, configs]);
+
+  const handleSaveResume = async () => {
     await updateConfig('resume_analyzer_prompt', resumePrompt);
-    setHasChanges(false);
+    setHasResumeChanges(false);
+  };
+
+  const handleSaveLead = async () => {
+    await updateConfig('lead_report_formatter_prompt', leadPrompt);
+    setHasLeadChanges(false);
   };
 
   const resumeConfig = configs.find(c => c.key === 'resume_analyzer_prompt');
+  const leadConfig = configs.find(c => c.key === 'lead_report_formatter_prompt');
 
   return (
     <DashboardLayout>
@@ -84,8 +103,56 @@ export default function AdminSettings() {
 
                 <div className="flex justify-end">
                   <Button
-                    onClick={handleSave}
-                    disabled={!hasChanges || isSaving}
+                    onClick={handleSaveResume}
+                    disabled={!hasResumeChanges || isSaving}
+                    className="rounded-[12px] gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Lead Report Formatter Prompt Card */}
+        <Card className="rounded-[24px]">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              <CardTitle>Formatador de Relatórios de Leads - Prompt de IA</CardTitle>
+            </div>
+            <CardDescription>
+              Este prompt é usado pela IA para formatar os relatórios de diagnóstico de carreira 
+              dos leads importados via CSV.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-64 w-full rounded-xl" />
+                <Skeleton className="h-4 w-48" />
+              </>
+            ) : (
+              <>
+                <Textarea
+                  value={leadPrompt}
+                  onChange={(e) => setLeadPrompt(e.target.value)}
+                  placeholder="Digite o prompt de IA para formatação de relatórios..."
+                  className="min-h-[300px] font-mono text-sm rounded-xl"
+                />
+                
+                {leadConfig?.updated_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Última atualização: {format(new Date(leadConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveLead}
+                    disabled={!hasLeadChanges || isSaving}
                     className="rounded-[12px] gap-2"
                   >
                     <Save className="w-4 h-4" />

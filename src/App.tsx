@@ -54,6 +54,8 @@ import ServiceCatalog from "./pages/hub/ServiceCatalog";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyOrders from "./pages/orders/MyOrders";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminLeadsImport from "./pages/admin/AdminLeadsImport";
+import PublicReport from "./pages/report/PublicReport";
 import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
 
@@ -346,6 +348,14 @@ function AppRoutes() {
           <AdminTictoSimulator />
         </ProtectedRoute>
       } />
+      <Route path="/admin/leads" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLeadsImport />
+        </ProtectedRoute>
+      } />
+      
+      {/* Public Report Access (no auth required) */}
+      <Route path="/report/:token" element={<PublicReport />} />
       
       {/* Payment Success - post-checkout redirect */}
       <Route path="/payment-success" element={
