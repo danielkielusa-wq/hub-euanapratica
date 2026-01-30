@@ -145,6 +145,117 @@ export type Database = {
           },
         ]
       }
+      career_evaluations: {
+        Row: {
+          access_count: number | null
+          access_token: string
+          area: string | null
+          atuacao: string | null
+          created_at: string | null
+          email: string
+          english_level: string | null
+          experiencia: string | null
+          family_status: string | null
+          first_accessed_at: string | null
+          formatted_at: string | null
+          formatted_report: string | null
+          id: string
+          impediment: string | null
+          impediment_other: string | null
+          import_batch_id: string | null
+          imported_by: string | null
+          income_range: string | null
+          investment_range: string | null
+          main_concern: string | null
+          name: string
+          objetivo: string | null
+          phone: string | null
+          report_content: string
+          timeline: string | null
+          trabalha_internacional: boolean | null
+          updated_at: string | null
+          user_id: string
+          visa_status: string | null
+        }
+        Insert: {
+          access_count?: number | null
+          access_token?: string
+          area?: string | null
+          atuacao?: string | null
+          created_at?: string | null
+          email: string
+          english_level?: string | null
+          experiencia?: string | null
+          family_status?: string | null
+          first_accessed_at?: string | null
+          formatted_at?: string | null
+          formatted_report?: string | null
+          id?: string
+          impediment?: string | null
+          impediment_other?: string | null
+          import_batch_id?: string | null
+          imported_by?: string | null
+          income_range?: string | null
+          investment_range?: string | null
+          main_concern?: string | null
+          name: string
+          objetivo?: string | null
+          phone?: string | null
+          report_content: string
+          timeline?: string | null
+          trabalha_internacional?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          visa_status?: string | null
+        }
+        Update: {
+          access_count?: number | null
+          access_token?: string
+          area?: string | null
+          atuacao?: string | null
+          created_at?: string | null
+          email?: string
+          english_level?: string | null
+          experiencia?: string | null
+          family_status?: string | null
+          first_accessed_at?: string | null
+          formatted_at?: string | null
+          formatted_report?: string | null
+          id?: string
+          impediment?: string | null
+          impediment_other?: string | null
+          import_batch_id?: string | null
+          imported_by?: string | null
+          income_range?: string | null
+          investment_range?: string | null
+          main_concern?: string | null
+          name?: string
+          objetivo?: string | null
+          phone?: string | null
+          report_content?: string
+          timeline?: string | null
+          trabalha_internacional?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          visa_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_evaluations_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_evaluations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       e2e_test_results: {
         Row: {
           created_at: string | null

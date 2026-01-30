@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.simulate-ticto-callback]
 verify_jwt = false
+
+[functions.verify-report-access]
+verify_jwt = false
+
+[functions.format-lead-report]
+verify_jwt = false
+
+[functions.create-lead-user]
+verify_jwt = false
