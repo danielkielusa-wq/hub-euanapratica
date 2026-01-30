@@ -10,6 +10,7 @@ export default function PublicReport() {
   const { token } = useParams<{ token: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(false);
   const [error, setError] = useState<string>('');
   const [evaluation, setEvaluation] = useState<CareerEvaluation | null>(null);
   const [formattedContent, setFormattedContent] = useState<string>('');
@@ -64,21 +65,34 @@ export default function PublicReport() {
       }
 
       setEvaluation(data.evaluation);
+      setIsVerifying(false);
       
-      // Try to get formatted content if available
+      // Check if we have cached formatted content
       if (data.evaluation.formatted_report) {
         setFormattedContent(data.evaluation.formatted_report);
       } else {
         // Request AI formatting
-        const { data: formatted } = await supabase.functions.invoke('format-lead-report', {
-          body: { evaluationId: data.evaluation.id }
-        });
-        if (formatted?.content) {
-          setFormattedContent(formatted.content);
+        setIsFormatting(true);
+        try {
+          const { data: formatted, error: formatError } = await supabase.functions.invoke('format-lead-report', {
+            body: { evaluationId: data.evaluation.id }
+          });
+          
+          if (!formatError && formatted?.content) {
+            // Store as JSON string for the component to parse
+            setFormattedContent(
+              typeof formatted.content === 'string' 
+                ? formatted.content 
+                : JSON.stringify(formatted.content)
+            );
+          }
+        } catch (formatErr) {
+          console.error('Error formatting report:', formatErr);
+          // Will show fallback with raw content
         }
+        setIsFormatting(false);
       }
 
-      setIsVerifying(false);
       return true;
     } catch (err) {
       setError('Erro de conexão. Tente novamente.');
@@ -107,7 +121,13 @@ export default function PublicReport() {
   }
 
   if (evaluation) {
-    return <FormattedReport evaluation={evaluation} formattedContent={formattedContent} />;
+    return (
+      <FormattedReport 
+        evaluation={evaluation} 
+        formattedContent={formattedContent}
+        isLoading={isFormatting}
+      />
+    );
   }
 
   return (

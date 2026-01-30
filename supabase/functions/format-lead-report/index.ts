@@ -41,11 +41,26 @@ serve(async (req) => {
       );
     }
 
-    // Check if already formatted
+    // Check if already formatted as JSON
     if (evaluation.formatted_report) {
+      try {
+        const cached = JSON.parse(evaluation.formatted_report);
+        if (cached.greeting && cached.diagnostic) {
+          return new Response(
+            JSON.stringify({ content: cached, cached: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch {
+        // Not valid JSON, regenerate
+      }
+    }
+
+    // Return raw content if no AI key
+    if (!lovableApiKey) {
       return new Response(
-        JSON.stringify({ content: evaluation.formatted_report }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "AI não configurada" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -56,7 +71,19 @@ serve(async (req) => {
       .eq("key", "lead_report_formatter_prompt")
       .single();
 
-    const systemPrompt = config?.value || "Formate o relatório de diagnóstico de carreira de forma profissional.";
+    const systemPrompt = config?.value || `Você é um especialista em carreiras internacionais da equipe EUA na Prática, liderada por Daniel Kiel.
+
+Analise os dados do lead e estruture um relatório de diagnóstico de carreira personalizado usando o Método ROTA EUA™.
+
+O Método ROTA EUA™ tem 4 fases:
+- R (Reconhecimento): Autoconhecimento e análise de perfil
+- O (Organização): Preparação de documentos, inglês e networking
+- T (Transição): Busca ativa de oportunidades e aplicações
+- A (Ação): Entrevistas, negociação e relocação
+
+Baseado no perfil do lead, determine em qual fase ele está e forneça orientação específica.
+
+Seja acolhedor, use emojis apropriados e mantenha um tom profissional mas amigável.`;
 
     // Build user context
     const userContext = `
@@ -78,19 +105,12 @@ DADOS DO LEAD:
 - Outro Impedimento: ${evaluation.impediment_other || 'Nenhum'}
 - Principal Preocupação: ${evaluation.main_concern || 'Não informado'}
 
-CONTEÚDO DO RELATÓRIO ORIGINAL:
+CONTEÚDO DO RELATÓRIO ORIGINAL (use como base para enriquecer a análise):
 ${evaluation.report_content}
-`;
 
-    // Call Lovable AI
-    if (!lovableApiKey) {
-      // Return raw content if no AI key
-      return new Response(
-        JSON.stringify({ content: evaluation.report_content }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+Estruture o relatório com todas as seções necessárias, sendo específico e personalizado para este lead.`;
 
+    // Tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -103,44 +123,166 @@ ${evaluation.report_content}
           { role: "system", content: systemPrompt },
           { role: "user", content: userContext }
         ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "format_career_report",
+            description: "Estrutura os dados do relatório de carreira em seções organizadas para exibição premium",
+            parameters: {
+              type: "object",
+              properties: {
+                greeting: {
+                  type: "object",
+                  description: "Saudação personalizada para o lead",
+                  properties: {
+                    title: { type: "string", description: "Título de saudação com nome do lead e emoji" },
+                    subtitle: { type: "string", description: "Mensagem de boas-vindas da equipe EUA na Prática" },
+                    phase_highlight: { type: "string", description: "Nome da fase atual no método ROTA (ex: 'Fase de Organização')" },
+                    phase_description: { type: "string", description: "Descrição detalhada do que significa estar nesta fase e próximos passos" }
+                  },
+                  required: ["title", "subtitle", "phase_highlight", "phase_description"]
+                },
+                diagnostic: {
+                  type: "object",
+                  description: "Grid de diagnóstico com 4 métricas principais",
+                  properties: {
+                    english: { 
+                      type: "object", 
+                      properties: { 
+                        level: { type: "string", description: "Nível resumido (ex: 'Intermediário')" }, 
+                        description: { type: "string", description: "Análise do impacto do nível de inglês" } 
+                      },
+                      required: ["level", "description"]
+                    },
+                    experience: { 
+                      type: "object", 
+                      properties: { 
+                        summary: { type: "string", description: "Resumo da experiência (ex: '+10 anos PM')" }, 
+                        details: { type: "string", description: "Análise do perfil profissional" } 
+                      },
+                      required: ["summary", "details"]
+                    },
+                    objective: { 
+                      type: "object", 
+                      properties: { 
+                        goal: { type: "string", description: "Objetivo principal (ex: 'Remoto em dólar')" }, 
+                        timeline: { type: "string", description: "Timeline desejada" } 
+                      },
+                      required: ["goal", "timeline"]
+                    },
+                    financial: { 
+                      type: "object", 
+                      properties: { 
+                        income: { type: "string", description: "Faixa de renda atual" }, 
+                        investment: { type: "string", description: "Capacidade de investimento" } 
+                      },
+                      required: ["income", "investment"]
+                    }
+                  },
+                  required: ["english", "experience", "objective", "financial"]
+                },
+                rota_method: {
+                  type: "object",
+                  description: "Análise do Método ROTA EUA™",
+                  properties: {
+                    current_phase: { 
+                      type: "string", 
+                      enum: ["R", "O", "T", "A"],
+                      description: "Letra da fase atual: R=Reconhecimento, O=Organização, T=Transição, A=Ação"
+                    },
+                    phase_analysis: { 
+                      type: "string", 
+                      description: "Análise detalhada do momento atual e o que precisa focar nesta fase" 
+                    }
+                  },
+                  required: ["current_phase", "phase_analysis"]
+                },
+                action_plan: {
+                  type: "array",
+                  description: "Plano de ação com 3 passos prioritários",
+                  items: {
+                    type: "object",
+                    properties: {
+                      step: { type: "number", description: "Número do passo (1, 2 ou 3)" },
+                      title: { type: "string", description: "Título curto da ação" },
+                      description: { type: "string", description: "Descrição detalhada do que fazer e por que é importante" }
+                    },
+                    required: ["step", "title", "description"]
+                  }
+                },
+                resources: {
+                  type: "array",
+                  description: "Recursos recomendados para o lead",
+                  items: {
+                    type: "object",
+                    properties: {
+                      type: { 
+                        type: "string", 
+                        enum: ["youtube", "instagram", "guide", "articles", "ebook"],
+                        description: "Tipo do recurso"
+                      },
+                      label: { type: "string", description: "Nome/título do recurso" },
+                      url: { type: "string", description: "URL do recurso (opcional)" }
+                    },
+                    required: ["type", "label"]
+                  }
+                },
+                whatsapp_keyword: { 
+                  type: "string", 
+                  description: "Palavra-chave para enviar no WhatsApp para receber material exclusivo (ex: 'EBOOKENP')" 
+                }
+              },
+              required: ["greeting", "diagnostic", "rota_method", "action_plan", "resources", "whatsapp_keyword"]
+            }
+          }
+        }],
+        tool_choice: { type: "function", function: { name: "format_career_report" } }
       }),
     });
 
     if (!aiResponse.ok) {
-      console.error("AI Error:", await aiResponse.text());
+      const errorText = await aiResponse.text();
+      console.error("AI Error:", aiResponse.status, errorText);
       return new Response(
-        JSON.stringify({ content: evaluation.report_content }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Erro ao processar relatório" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const aiData = await aiResponse.json();
-    const formattedContent = aiData.choices?.[0]?.message?.content || evaluation.report_content;
+    
+    // Extract the tool call arguments
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== "format_career_report") {
+      console.error("No valid tool call in response:", aiData);
+      return new Response(
+        JSON.stringify({ error: "Resposta inválida da IA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Convert markdown to HTML (simple conversion)
-    const htmlContent = formattedContent
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-6 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-8 mb-3">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/(<li.*<\/li>)\n(?=<li)/g, '$1')
-      .replace(/(<li.*<\/li>)(?!\n<li)/g, '<ul class="list-disc space-y-1 my-3">$1</ul>')
-      .replace(/\n\n/g, '</p><p class="my-3">')
-      .replace(/\n/g, '<br/>');
+    let formattedReport;
+    try {
+      formattedReport = JSON.parse(toolCall.function.arguments);
+    } catch (parseError) {
+      console.error("Failed to parse tool call arguments:", toolCall.function.arguments);
+      return new Response(
+        JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Cache the formatted report
+    // Cache the formatted report as JSON string
     await supabase
       .from("career_evaluations")
       .update({
-        formatted_report: htmlContent,
+        formatted_report: JSON.stringify(formattedReport),
         formatted_at: new Date().toISOString()
       })
       .eq("id", evaluationId);
 
     return new Response(
-      JSON.stringify({ content: htmlContent }),
+      JSON.stringify({ content: formattedReport, cached: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

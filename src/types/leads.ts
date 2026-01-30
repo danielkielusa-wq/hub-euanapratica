@@ -51,6 +51,36 @@ export interface CareerEvaluation {
   updated_at: string;
 }
 
+export interface FormattedReportData {
+  greeting: {
+    title: string;
+    subtitle: string;
+    phase_highlight: string;
+    phase_description: string;
+  };
+  diagnostic: {
+    english: { level: string; description: string };
+    experience: { summary: string; details: string };
+    objective: { goal: string; timeline: string };
+    financial: { income: string; investment: string };
+  };
+  rota_method: {
+    current_phase: 'R' | 'O' | 'T' | 'A';
+    phase_analysis: string;
+  };
+  action_plan: Array<{
+    step: number;
+    title: string;
+    description: string;
+  }>;
+  resources: Array<{
+    type: 'youtube' | 'instagram' | 'guide' | 'articles' | 'ebook';
+    label: string;
+    url?: string;
+  }>;
+  whatsapp_keyword: string;
+}
+
 export interface ImportResult {
   totalRows: number;
   newUsersCreated: number;
