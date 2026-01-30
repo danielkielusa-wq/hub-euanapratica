@@ -6,37 +6,72 @@ import type { LeadCSVRow, ParsedLead, ImportResult, ImportError } from '@/types/
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parseCSV(text: string): LeadCSVRow[] {
-  const lines = text.split('\n').filter(line => line.trim());
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const rows: LeadCSVRow[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values: string[] = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (const char of lines[i]) {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+  
+  // Normaliza quebras de linha
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized[i];
+    const nextChar = normalized[i + 1];
+    
+    if (inQuotes) {
       if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
+        if (nextChar === '"') {
+          // Aspas escapadas
+          currentField += '"';
+          i++;
+        } else {
+          // Fim do campo entre aspas
+          inQuotes = false;
+        }
       } else {
-        current += char;
+        // Incluir qualquer caractere (inclusive \n) dentro de aspas
+        currentField += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        currentRow.push(currentField.trim());
+        currentField = '';
+      } else if (char === '\n') {
+        currentRow.push(currentField.trim());
+        if (currentRow.length > 0) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+      } else {
+        currentField += char;
       }
     }
-    values.push(current.trim());
-
+  }
+  
+  // Última linha
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    rows.push(currentRow);
+  }
+  
+  // Primeira linha são os headers
+  if (rows.length < 2) return [];
+  
+  const headers = rows[0].map(h => h.replace(/^\uFEFF/, '')); // Remove BOM
+  const result: LeadCSVRow[] = [];
+  
+  for (let i = 1; i < rows.length; i++) {
     const row: Record<string, string> = {};
     headers.forEach((header, index) => {
-      row[header] = values[index]?.replace(/^"|"$/g, '') || '';
+      row[header] = rows[i][index] || '';
     });
-    rows.push(row as unknown as LeadCSVRow);
+    result.push(row as unknown as LeadCSVRow);
   }
-
-  return rows;
+  
+  return result;
 }
 
 function validateLead(lead: LeadCSVRow, rowIndex: number): ParsedLead {
