@@ -1,155 +1,255 @@
 
-# Plano: Página de Thank You para Consultoria ROTA 60min
+# Plano: Página Thank You para Currículo e LinkedIn Magnético
 
 ## Objetivo
 
-Criar uma página de agradecimento pós-pagamento em `/thank-you/rota60min` baseada no template fornecido, além de adicionar um ícone de preview na configuração de produtos para o campo "URL de Redirecionamento".
+Criar uma nova página de agradecimento pós-pagamento em `/thank-you/curriculo` baseada no template fornecido, mantendo o design consistente com a `ThankYouRota60.tsx` já existente.
 
 ---
 
-## Análise do Template
+## Diferenças do Template vs Rota60
 
-O componente fornecido (`ThankYouPage.tsx`) usa classes `brand-*` que não existem no projeto atual. Vou mapear:
-- `brand-50` → `primary/5` ou `blue-50`
-- `brand-100` → `primary/10`
-- `brand-300` → `primary/40`
-- `brand-500` → `primary`
-- `brand-600` → `primary` (222, 83%, 53% = Navy)
-- `brand-900` → `#1e3a8a` (Navy Dark - já definido no CSS)
+| Aspecto | Rota60 (existente) | Currículo (novo) |
+|---------|-------------------|------------------|
+| Título | "Sua vaga na Consultoria está garantida!" | "Currículo & LinkedIn Magnéticos Garantidos!" |
+| Ícone do produto | Calendar | Linkedin |
+| Nome do produto | "Sessão de Direção ROTA EUA™" | "Consultoria – Currículo e LinkedIn Magnético" |
+| Duração | "60 minutos individuais" | "Sessão prática de 60 minutos individuais" |
+| Título bônus | "Bônus Exclusivo de Crédito" | "Upgrade Inteligente" |
+| Texto bônus | Reversão do valor em desconto | 100% convertido em crédito para Mentoria |
+| URL agendamento | tidycal.com/.../direcao-60-minutos | tidycal.com/.../curriculo |
+| Ícone Preparação | Zap | FileText |
+| Texto Preparação | "Enviaremos formulário pré-sessão..." | "Envie seu currículo atual e LinkedIn para daniel@..." |
+| Ícone Agendamento | Clock | Calendar |
 
 ---
 
 ## Arquivos a Criar/Modificar
 
-| Ação | Arquivo | Descrição |
-|------|---------|-----------|
-| Criar | `src/pages/thankyou/ThankYouRota60.tsx` | Página de Thank You adaptada |
-| Modificar | `src/App.tsx` | Adicionar rota `/thank-you/rota60min` |
-| Modificar | `src/components/admin/hub/HubServiceForm.tsx` | Adicionar ícone de preview no campo redirect_url |
+| Ação | Arquivo |
+|------|---------|
+| Criar | `src/pages/thankyou/ThankYouCurriculo.tsx` |
+| Modificar | `src/App.tsx` (adicionar rota) |
 
 ---
 
-## 1. Nova Página: `ThankYouRota60.tsx`
+## 1. Nova Página: `ThankYouCurriculo.tsx`
 
-Estrutura baseada no template:
+Estrutura baseada no template fornecido, adaptada para o design system do projeto:
 
-### Header
-- Botão "Voltar ao Hub" com seta animada
+### Mapeamento de Classes (brand-* → design tokens)
 
-### Card Principal (rounded-[48px])
-- Ícone de sucesso animado (CheckCircle2)
-- Badge "CONFIRMADO" verde
-- Título: "Sua vaga na Consultoria está garantida! 🇺🇸"
-- Subtítulo descritivo
-- Box com resumo do produto (ícone calendário + "Sessão de Direção ROTA EUA™")
-- Botões de ação: "Agendar minha Sessão" + "Email Suporte"
+```
+brand-50 → bg-primary/5
+brand-100 → text-blue-100
+brand-300 → text-blue-300
+brand-500/5 → shadow-primary/5
+brand-600 → text-primary ou from-primary
+brand-900 → bg-[#1e3a8a]
+gray-400 → text-muted-foreground
+gray-500 → text-muted-foreground
+gray-900 → text-foreground
+gray-100 → border-border
+gray-50 → bg-muted
+white → bg-card
+```
 
-### Card de Bônus (fundo Navy)
-- Ícone Gift animado
-- "Bônus Exclusivo de Crédito"
-- Texto sobre reversão do valor
-- Badge "Válido por 7 Dias"
+### Componentes Específicos
 
-### Seção "O que acontece agora?"
-- Grid 2 colunas com cards:
-  - Agendamento (Clock icon)
-  - Preparação (Zap icon)
+#### Header
+- Título: "Currículo & LinkedIn Magnéticos Garantidos! 🇺🇸"
+- Subtítulo: Texto sobre transformar posicionamento
+
+#### Product Summary Box
+- Ícone: `Linkedin` (azul)
+- Nome: "Consultoria – Currículo e LinkedIn Magnético"
+- Duração: "Sessão prática de 60 minutos individuais"
+
+#### Card de Bônus (Navy)
+- Título: "Upgrade Inteligente"
+- Texto: "100% do valor desta sessão será convertido em crédito caso você entre na Mentoria em Grupo ou na Mentoria Individual em até 7 dias..."
+
+#### Seção "O que acontece agora?"
+- **Agendamento** (Calendar icon): Texto sobre escolher horário
+- **Preparação** (FileText icon): "Envie seu currículo atual e o link do seu LinkedIn para daniel@euanapratica.com com no máximo 5 dias de antecedência..."
 
 ---
 
 ## 2. Rota no App.tsx
 
 ```typescript
-// Nova rota pública (sem auth necessário)
-<Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />
-```
+import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
 
-A página será pública para funcionar como URL de retorno da Ticto.
+// Nova rota pública
+<Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
+```
 
 ---
 
-## 3. Ícone de Preview no Formulário de Produto
-
-No campo "URL de Redirecionamento" do `HubServiceForm.tsx`:
+## Código do Componente
 
 ```tsx
-<div className="flex gap-2">
-  <Input placeholder="https://..." {...field} className="flex-1" />
-  {field.value && (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      onClick={() => window.open(field.value, '_blank')}
-      title="Abrir URL em nova aba"
-    >
-      <ExternalLink className="h-4 w-4" />
-    </Button>
-  )}
-</div>
+import {
+  CheckCircle2,
+  Calendar,
+  ArrowRight,
+  Mail,
+  Sparkles,
+  ArrowLeft,
+  Gift,
+  ShieldCheck,
+  Linkedin,
+  FileText,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+
+const ThankYouCurriculo = () => {
+  const navigate = useNavigate();
+  const scheduleUrl = "https://tidycal.com/euanapratica/curriculo";
+
+  return (
+    <div className="animate-fade-in-up min-h-screen pb-20 max-w-5xl mx-auto px-4 sm:px-6 bg-background">
+      {/* Top Navigation */}
+      <div className="pt-8 pb-12">
+        <button
+          onClick={() => navigate("/dashboard/hub")}
+          className="group flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold text-sm transition-all"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          Voltar ao Hub
+        </button>
+      </div>
+
+      {/* Main Success Card */}
+      <div className="bg-card rounded-[48px] shadow-2xl shadow-primary/5 border border-border overflow-hidden relative">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 opacity-60"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 opacity-40"></div>
+
+        <div className="relative z-10 px-8 py-16 md:p-20 text-center">
+          {/* Animated Success Icon */}
+          <div
+            className="w-24 h-24 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-emerald-500/10 animate-bounce"
+            style={{ animationDuration: "3s" }}
+          >
+            <CheckCircle2 size={48} strokeWidth={3} />
+          </div>
+
+          <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6">
+            <Sparkles size={14} className="animate-pulse" /> Confirmado
+          </div>
+
+          <h1 className="text-4xl md:text-6xl font-black text-foreground mb-6 tracking-tight leading-[1.1]">
+            Currículo & LinkedIn <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
+              Magnéticos Garantidos! 🇺🇸
+            </span>
+          </h1>
+
+          <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
+            Prepare-se para transformar seu posicionamento. Vamos ajustar cada detalhe para que você seja visto como o profissional de elite que o mercado americano busca.
+          </p>
+
+          {/* Product Summary Box - LinkedIn icon */}
+          <div className="max-w-xl mx-auto bg-muted/50 border border-border rounded-3xl p-8 mb-12 text-left">
+            <div className="flex items-start gap-5">
+              <div className="w-14 h-14 bg-card rounded-2xl flex items-center justify-center text-primary shadow-sm border border-border flex-shrink-0">
+                <Linkedin size={28} />
+              </div>
+              <div>
+                <h3 className="font-black text-foreground text-lg">Consultoria – Currículo e LinkedIn Magnético</h3>
+                <p className="text-sm text-muted-foreground">Sessão prática de 60 minutos individuais</p>
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs mt-2 uppercase tracking-widest">
+                  <ShieldCheck size={14} /> Reserva Confirmada
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button
+              onClick={() => window.open(scheduleUrl, "_blank")}
+              size="lg"
+              className="w-full sm:w-auto px-10 py-6 bg-foreground hover:bg-foreground/90 text-background font-black rounded-[24px] shadow-2xl shadow-foreground/20 transition-all hover:-translate-y-1 flex items-center justify-center gap-3 text-lg h-auto"
+            >
+              Agendar minha Sessão <ArrowRight size={20} />
+            </Button>
+            <a
+              href="mailto:contato@euanapratica.com"
+              className="w-full sm:w-auto px-10 py-5 bg-card hover:bg-muted text-foreground border border-border font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 text-lg"
+            >
+              <Mail size={20} className="text-primary" /> Email Suporte
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Credit Incentive Card - Upgrade Inteligente */}
+      <div className="mt-8 bg-[#1e3a8a] rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-[#1e3a8a]/20 group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary opacity-20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-30 transition-opacity"></div>
+        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+          <div className="w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[28px] flex items-center justify-center flex-shrink-0 animate-pulse">
+            <Gift size={36} className="text-blue-300" />
+          </div>
+          <div className="text-center md:text-left flex-1">
+            <h2 className="text-2xl font-black mb-2">Upgrade Inteligente</h2>
+            <p className="text-blue-100 leading-relaxed font-medium">
+              100% do valor desta sessão será convertido em crédito caso você entre na Mentoria em Grupo ou na Mentoria Individual em até 7 dias. Entre em contato através de{" "}
+              <span className="text-white font-bold underline">contato@euanapratica.com</span>.
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Válido por</p>
+              <p className="text-2xl font-black">7 Dias</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* What to expect next */}
+      <div className="mt-20">
+        <h3 className="text-2xl font-black text-foreground mb-10 text-center">O que acontece agora?</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {/* Agendamento */}
+          <div className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow">
+            <div className="w-16 h-16 bg-muted text-primary rounded-3xl flex items-center justify-center mb-6">
+              <Calendar size={32} />
+            </div>
+            <h4 className="font-bold text-foreground text-lg mb-3">Agendamento</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Você precisa clicar no link de agendamento acima para escolher o melhor horário na agenda do Daniel. Escolha um slot que lhe permita preparar o material.
+            </p>
+          </div>
+
+          {/* Preparação */}
+          <div className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow">
+            <div className="w-16 h-16 bg-muted text-primary rounded-3xl flex items-center justify-center mb-6">
+              <FileText size={32} />
+            </div>
+            <h4 className="font-bold text-foreground text-lg mb-3">Preparação</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Envie seu currículo atual e o link do seu LinkedIn para{" "}
+              <span className="text-foreground font-bold">daniel@euanapratica.com</span> com no máximo{" "}
+              <span className="text-primary font-bold">5 dias de antecedência</span> da sessão para torná-la mais produtiva.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ThankYouCurriculo;
 ```
 
 ---
 
-## Mapeamento de Cores
+## Resumo
 
-Para manter consistência com o design system existente:
-
-| Template | Projeto |
-|----------|---------|
-| `brand-50` | `bg-primary/5` |
-| `brand-100` | `bg-primary/10` |
-| `brand-300` | `text-primary/60` |
-| `brand-500/5` | `shadow-primary/5` |
-| `brand-600` | `text-primary` ou `from-primary` |
-| `brand-900` | `bg-[#1e3a8a]` (Navy Dark) |
-| `gray-*` | Manter como está (Tailwind padrão) |
-| `emerald-*` | Manter como está |
-
----
-
-## Fluxo de Uso
-
-```text
-Usuário completa pagamento na Ticto
-          │
-          ▼
-Ticto redireciona para /thank-you/rota60min
-          │
-          ▼
-Página exibe confirmação com:
-  ├── Sucesso visual (animação)
-  ├── Resumo do produto comprado
-  ├── CTA para agendar sessão
-  └── Informação sobre bônus de crédito
-          │
-          ▼
-Usuário clica "Voltar ao Hub" → /dashboard/hub
-```
-
----
-
-## Design Adaptações
-
-1. **Animações**: Usar `animate-bounce` com `animationDuration: 3s` para suavidade
-2. **Gradientes**: Usar `from-primary to-indigo-600` (similar ao template)
-3. **Border Radius**: Manter 48px para card principal, 40px para secundários
-4. **Sombras**: `shadow-2xl shadow-primary/5` para efeito premium
-
----
-
-## Responsividade
-
-- Grid de próximos passos: `grid-cols-1 md:grid-cols-2`
-- Botões de ação: `flex-col sm:flex-row`
-- Padding adaptativo: `px-4 sm:px-6`, `p-8 md:p-20`
-
----
-
-## Resumo de Mudanças
-
-| Arquivo | Linhas Afetadas |
-|---------|-----------------|
-| `src/pages/thankyou/ThankYouRota60.tsx` | Novo (150+ linhas) |
-| `src/App.tsx` | +3 linhas (import + rota) |
-| `src/components/admin/hub/HubServiceForm.tsx` | ~15 linhas (campo redirect_url) |
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/thankyou/ThankYouCurriculo.tsx` | Criar novo componente |
+| `src/App.tsx` | Adicionar import + rota `/thank-you/curriculo` |
