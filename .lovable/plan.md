@@ -1,265 +1,128 @@
 
 
-# Plano: CTAs Dinâmicos na Página Pública do Relatório
+# Plano: Corrigir CTAs Não Exibidos na Página Pública de Relatório
 
-## Objetivo
+## Diagnóstico do Problema
 
-Adicionar uma seção de "Próximos Passos" com CTAs dinâmicos baseados em `hub_services` no final da página pública de relatório (`/report/[token]`), reutilizando a lógica já implementada no modal administrativo.
+O lead `diegogferreira@msn.com` **já possui recommendations** no banco de dados:
 
----
-
-## Análise do Estado Atual
-
-| Componente | Situação |
-|------------|----------|
-| Edge function `format-lead-report` | Já gera `recommendations[]` com `service_id`, `type` e `reason` |
-| `FormattedReportData.recommendations` | Tipo já definido em `src/types/leads.ts` |
-| `LeadReportModal.tsx` (admin) | Já renderiza CTAs dinâmicos corretamente |
-| `FormattedReport.tsx` (público) | Não exibe recommendations, apenas `ResourcesPills` |
-
----
-
-## Arquivos a Modificar
-
-| Ação | Arquivo | Descrição |
-|------|---------|-----------|
-| Criar | `src/components/report/RecommendationsCTA.tsx` | Componente de CTAs para público |
-| Modificar | `src/components/report/FormattedReport.tsx` | Integrar o novo componente |
-
----
-
-## 1. Novo Componente: `RecommendationsCTA.tsx`
-
-### Estrutura Visual
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  📍 Próximos Passos Estratégicos                           │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────┐  ┌───────────────┐   │
-│  │  PRIMARY (ocupando 2 colunas)    │  │  SECONDARY    │   │
-│  │  Card escuro com destaque        │  │               │   │
-│  │  Ícone + Nome + Reason           │  │  Nome + CTA   │   │
-│  │  Botão CTA principal             │  ├───────────────┤   │
-│  │                                   │  │  UPGRADE      │   │
-│  │                                   │  │  Card premium │   │
-│  └──────────────────────────────────┘  └───────────────┘   │
-│                                                              │
-│  Garantia de 7 dias | Atendimento exclusivo                 │
-└─────────────────────────────────────────────────────────────┘
+```json
+"recommendations": [
+  { "service_id": "27ab13f3-...", "type": "PRIMARY", "reason": "..." },
+  { "service_id": "872e0a00-...", "type": "SECONDARY", "reason": "..." },
+  { "service_id": "f043b815-...", "type": "UPGRADE", "reason": "..." }
+]
 ```
 
-### Funcionalidade
+**Porém, os CTAs não aparecem porque:**
 
-- Recebe `recommendations` do `reportData`
-- Busca detalhes dos serviços via query à `hub_services` usando os IDs
-- Renderiza cards com:
-  - PRIMARY: Card escuro ocupando 2 colunas, botão de destaque
-  - SECONDARY: Card padrão empilhado
-  - UPGRADE: Card com gradiente premium
-- Links apontam para `ticto_checkout_url` de cada serviço
-
-### Props
-
-```typescript
-interface RecommendationsCTAProps {
-  recommendations: ServiceRecommendation[];
-}
-```
-
----
-
-## 2. Modificar `FormattedReport.tsx`
-
-### Importar o novo componente
-
-```typescript
-import { RecommendationsCTA } from './RecommendationsCTA';
-```
-
-### Renderizar após ActionPlanList
+O componente `RecommendationsCTA.tsx` faz uma query direta ao `hub_services`:
 
 ```tsx
-{/* Action Plan */}
-<ActionPlanList actionPlan={reportData.action_plan} />
+supabase
+  .from('hub_services')
+  .select('id, name, ...')
+  .in('id', serviceIds)
+```
 
-{/* Service Recommendations CTAs */}
-{reportData.recommendations && reportData.recommendations.length > 0 && (
-  <RecommendationsCTA recommendations={reportData.recommendations} />
-)}
+A RLS do `hub_services` **bloqueia usuários não autenticados**:
 
-{/* Resources */}
-<ResourcesPills ... />
+```sql
+Policy: "Authenticated users can view visible hub services"
+Using Expression: (is_visible_in_hub = true) AND (auth.role() = 'authenticated')
+```
+
+Como visitantes da página pública `/report/[token]` **não estão logados**, a query retorna **vazio** e os CTAs não são renderizados.
+
+---
+
+## Solução Proposta
+
+### Abordagem: Incluir Detalhes dos Serviços no `formatted_report`
+
+Em vez de buscar os serviços no frontend, a Edge Function já tem acesso via `service role key`. Vamos enriquecer as recommendations com os dados necessários para renderização:
+
+---
+
+## 1. Modificar Edge Function `format-lead-report/index.ts`
+
+### Após receber a resposta da IA, enriquecer recommendations:
+
+```typescript
+// Após parsear formattedReport
+if (formattedReport.recommendations?.length && hubServices?.length) {
+  formattedReport.recommendations = formattedReport.recommendations.map(rec => {
+    const service = hubServices.find(s => s.id === rec.service_id);
+    return {
+      ...rec,
+      // Dados do serviço para renderização frontend
+      service_name: service?.name || null,
+      service_description: service?.description || null,
+      service_price_display: service?.price_display || null,
+      service_cta_text: service?.cta_text || null,
+      service_checkout_url: service?.ticto_checkout_url || null
+    };
+  }).filter(rec => rec.service_name); // Remove se serviço não existe
+}
+```
+
+### Buscar campo adicional `cta_text` e `ticto_checkout_url`:
+
+```typescript
+const { data: hubServices } = await supabase
+  .from("hub_services")
+  .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
+  .eq("status", "available")
+  .eq("is_visible_in_hub", true);
 ```
 
 ---
 
-## 3. Design do Componente
+## 2. Atualizar Tipos em `src/types/leads.ts`
 
-### Mapeamento de cores (consistente com projeto)
-
-| Elemento | Classe |
-|----------|--------|
-| Seção container | `bg-muted/30 rounded-[40px] p-8 md:p-10 border` |
-| PRIMARY card | `bg-foreground dark:bg-slate-800 text-background rounded-[32px]` |
-| PRIMARY botão | `bg-background text-foreground hover:bg-primary/10` |
-| SECONDARY card | `bg-card border rounded-[32px]` |
-| UPGRADE card | `bg-gradient-to-br from-primary/5 to-indigo-500/5 border-primary/20` |
-| Badge PRIMARY | `bg-primary text-primary-foreground` |
-| Badge UPGRADE | `bg-primary` com ícone Crown |
+```typescript
+export interface ServiceRecommendation {
+  service_id: string;
+  type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
+  reason: string;
+  // Dados enriquecidos pela edge function
+  service_name?: string;
+  service_description?: string | null;
+  service_price_display?: string | null;
+  service_cta_text?: string | null;
+  service_checkout_url?: string | null;
+}
+```
 
 ---
 
-## 4. Código do Componente
+## 3. Modificar `RecommendationsCTA.tsx`
+
+### Usar dados inline, sem query ao Supabase:
 
 ```tsx
-// src/components/report/RecommendationsCTA.tsx
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Zap, Sparkles, ArrowRight, Crown, FileText } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { ServiceRecommendation } from '@/types/leads';
-
-interface HubService {
-  id: string;
-  name: string;
-  description: string | null;
-  icon_name: string;
-  price_display: string | null;
-  cta_text: string | null;
-  ticto_checkout_url: string | null;
-}
-
-interface RecommendationsCTAProps {
-  recommendations: ServiceRecommendation[];
-}
-
 export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps) {
-  const [services, setServices] = useState<HubService[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Filtrar apenas recommendations que já vêm com dados do serviço
+  const validRecs = recommendations.filter(r => r.service_name);
+  
+  if (validRecs.length === 0) return null;
 
-  useEffect(() => {
-    const serviceIds = recommendations.map(r => r.service_id);
-    if (serviceIds.length === 0) return;
-
-    supabase
-      .from('hub_services')
-      .select('id, name, description, icon_name, price_display, cta_text, ticto_checkout_url')
-      .in('id', serviceIds)
-      .then(({ data }) => {
-        if (data) setServices(data);
-        setIsLoading(false);
-      });
-  }, [recommendations]);
-
-  const getService = (id: string) => services.find(s => s.id === id);
-
-  if (isLoading || services.length === 0) return null;
-
-  const primary = recommendations.filter(r => r.type === 'PRIMARY');
-  const others = recommendations.filter(r => r.type !== 'PRIMARY');
+  const primary = validRecs.filter(r => r.type === 'PRIMARY');
+  const others = validRecs.filter(r => r.type !== 'PRIMARY');
 
   return (
-    <section className="bg-muted/30 rounded-[40px] p-8 md:p-10 border print:hidden">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2.5 bg-primary text-primary-foreground rounded-xl">
-          <Zap size={22} className="fill-current" />
+    <section className="...">
+      {primary.map((rec) => (
+        <div key={rec.service_id}>
+          <h4>{rec.service_name}</h4>
+          <p>{rec.reason}</p>
+          {rec.service_price_display && <Badge>{rec.service_price_display}</Badge>}
+          <Button onClick={() => rec.service_checkout_url && window.open(rec.service_checkout_url, '_blank')}>
+            {rec.service_cta_text || 'Garantir Minha Vaga'}
+          </Button>
         </div>
-        <h3 className="text-2xl font-black tracking-tight">
-          Próximos Passos Estratégicos
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* PRIMARY */}
-        {primary.map((rec) => {
-          const service = getService(rec.service_id);
-          if (!service) return null;
-          
-          return (
-            <div 
-              key={rec.service_id} 
-              className="lg:col-span-2 bg-foreground dark:bg-slate-800 text-background rounded-[32px] p-8 shadow-xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary rounded-full blur-[80px] opacity-30 -translate-y-1/2 translate-x-1/2" />
-              
-              <div className="relative z-10">
-                <div className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
-                  <Sparkles size={12} className="fill-current" /> Recomendação Para Você
-                </div>
-                
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="p-3 bg-background/10 rounded-2xl border border-background/10">
-                    <FileText size={24} className="text-primary/80" />
-                  </div>
-                  <div>
-                    <h4 className="text-xl font-black mb-1">{service.name}</h4>
-                    <p className="text-primary/60 text-sm">{rec.reason}</p>
-                  </div>
-                </div>
-
-                {service.price_display && (
-                  <Badge variant="secondary" className="mb-4">{service.price_display}</Badge>
-                )}
-
-                <Button 
-                  className="w-full bg-background text-foreground hover:bg-primary/10 font-black py-4 rounded-2xl mt-4 group"
-                  onClick={() => service.ticto_checkout_url && window.open(service.ticto_checkout_url, '_blank')}
-                >
-                  {service.cta_text || 'Garantir Minha Vaga'} 
-                  <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* SECONDARY & UPGRADE */}
-        <div className="flex flex-col gap-6">
-          {others.map((rec) => {
-            const service = getService(rec.service_id);
-            if (!service) return null;
-            
-            return (
-              <div 
-                key={rec.service_id} 
-                className={cn(
-                  "flex-1 rounded-[32px] p-6 border transition-all flex flex-col justify-between",
-                  rec.type === 'UPGRADE' 
-                    ? "bg-gradient-to-br from-primary/5 to-indigo-500/5 border-primary/20" 
-                    : "bg-card"
-                )}
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <Badge variant={rec.type === 'UPGRADE' ? 'default' : 'secondary'} className="text-[9px] uppercase">
-                      {rec.type === 'UPGRADE' ? 'Acompanhamento' : 'Estratégia'}
-                    </Badge>
-                    {rec.type === 'UPGRADE' && <Crown size={16} className="text-primary" />}
-                  </div>
-                  <h4 className="font-bold text-sm mb-2">{service.name}</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">{rec.reason}</p>
-                </div>
-                
-                <Button 
-                  variant={rec.type === 'UPGRADE' ? 'default' : 'outline'}
-                  className="w-full rounded-xl text-xs font-bold"
-                  onClick={() => service.ticto_checkout_url && window.open(service.ticto_checkout_url, '_blank')}
-                >
-                  {service.cta_text || 'Saiba mais'}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      <p className="text-center text-xs text-muted-foreground mt-8 font-medium">
-        Todos os serviços contam com garantia de satisfação de 7 dias.
-      </p>
+      ))}
+      {/* ... */}
     </section>
   );
 }
@@ -267,36 +130,52 @@ export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps)
 
 ---
 
-## 5. Fluxo Completo
+## 4. Forçar Regeneração de Relatórios Existentes
+
+Como o lead `diegogferreira@msn.com` já tem `formatted_report` cacheado **sem os dados enriquecidos**, precisamos:
+
+1. Usar o botão "Refresh" na tabela de leads (admin)
+2. Ou limpar `formatted_report` para forçar regeneração
+
+---
+
+## Arquivos a Modificar
+
+| Ação | Arquivo | Descrição |
+|------|---------|-----------|
+| Modificar | `supabase/functions/format-lead-report/index.ts` | Enriquecer recommendations com dados do serviço |
+| Modificar | `src/types/leads.ts` | Adicionar campos opcionais de serviço |
+| Modificar | `src/components/report/RecommendationsCTA.tsx` | Remover query Supabase, usar dados inline |
+
+---
+
+## Fluxo Após Correção
 
 ```text
-Usuário acessa /report/[token]
-         │
-         ▼
-Verifica email → Carrega evaluation
-         │
-         ▼
-Chama format-lead-report (se necessário)
-         │
-         ▼
-Retorna JSON com `recommendations[]`
-         │
-         ▼
-FormattedReport parseia e passa para RecommendationsCTA
-         │
-         ▼
-RecommendationsCTA busca detalhes dos services via ID
-         │
-         ▼
-Renderiza cards com CTAs (links para ticto_checkout_url)
+Prompt AI executa
+        │
+        ▼
+Edge function recebe recommendations com service_id
+        │
+        ▼
+Edge function busca detalhes dos services (via service role - ignora RLS)
+        │
+        ▼
+Enriquece recommendations com name, price, cta_text, checkout_url
+        │
+        ▼
+Salva formatted_report com dados completos
+        │
+        ▼
+Frontend renderiza CTAs sem precisar query adicional ✅
 ```
 
 ---
 
-## Resumo de Mudanças
+## Garantia: CTAs SEMPRE aparecem
 
-| Arquivo | Linhas Estimadas |
-|---------|------------------|
-| `src/components/report/RecommendationsCTA.tsx` | ~140 linhas (novo) |
-| `src/components/report/FormattedReport.tsx` | ~5 linhas modificadas |
+Com esta abordagem:
+- A Edge Function **sempre** injeta os dados dos serviços
+- O frontend **não depende de RLS** para exibir
+- Mesmo relatórios antigos podem ser regenerados via "Refresh"
 
