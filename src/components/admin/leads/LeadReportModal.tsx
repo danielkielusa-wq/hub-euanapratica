@@ -176,7 +176,7 @@ export function LeadReportModal({ isOpen, onClose, evaluation }: LeadReportModal
                 <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-6 ml-2">
                   Diagnóstico de Prontidão
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min">
                   {diagnosticConfig.map((item) => {
                     const Icon = item.icon;
                     const values = getDiagnosticValue(item.key);

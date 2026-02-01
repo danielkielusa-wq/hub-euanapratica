@@ -78,30 +78,67 @@ export function LeadsTable() {
   };
 
   const downloadCSV = () => {
-    const headers = ['Nome', 'Email', 'Área', 'Inglês', 'Acessos', 'Importado em', 'URL Relatório'];
+    // Headers no mesmo formato do input + URL
+    const headers = [
+      'Nome', 'email', 'telefone', 'Area', 'Atuação', 
+      'trabalha internacional', 'experiencia', 'Englishlevel',
+      'objetivo', 'VisaStatus', 'timeline', 'FamilyStatus',
+      'incomerange', 'investment range', 'impediment', 
+      'impedmentother', 'main concern', 'relatorio', 'URL Relatório'
+    ];
     
-    const rows = evaluations.map(e => [
+    // Deduplicar por email, mantendo mais recente (já ordenado por created_at desc)
+    const uniqueByEmail = new Map<string, CareerEvaluation>();
+    evaluations.forEach(e => {
+      if (!uniqueByEmail.has(e.email)) {
+        uniqueByEmail.set(e.email, e);
+      }
+    });
+    const dedupedEvaluations = Array.from(uniqueByEmail.values());
+    
+    const rows = dedupedEvaluations.map(e => [
       e.name,
       e.email,
+      e.phone || '',
       e.area || '',
+      e.atuacao || '',
+      e.trabalha_internacional ? 'Sim' : 'Não',
+      e.experiencia || '',
       e.english_level || '',
-      e.access_count.toString(),
-      format(new Date(e.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      e.objetivo || '',
+      e.visa_status || '',
+      e.timeline || '',
+      e.family_status || '',
+      e.income_range || '',
+      e.investment_range || '',
+      e.impediment || '',
+      e.impediment_other || '',
+      e.main_concern || '',
+      e.report_content || '',
       `${window.location.origin}/report/${e.access_token}`
     ]);
     
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Adicionar BOM UTF-8 para Excel interpretar corretamente
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `leads-exportados-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
     
-    toast({ title: 'CSV exportado!', description: `${evaluations.length} leads exportados.` });
+    const duplicatesRemoved = evaluations.length - dedupedEvaluations.length;
+    toast({ 
+      title: 'CSV exportado!', 
+      description: duplicatesRemoved > 0 
+        ? `${dedupedEvaluations.length} leads únicos exportados (${duplicatesRemoved} duplicatas removidas).`
+        : `${dedupedEvaluations.length} leads exportados.`
+    });
   };
 
   const copyReportUrl = (token: string) => {
