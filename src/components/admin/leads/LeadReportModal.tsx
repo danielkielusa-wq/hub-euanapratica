@@ -183,15 +183,15 @@ export function LeadReportModal({ isOpen, onClose, evaluation }: LeadReportModal
                     return (
                       <div 
                         key={item.key} 
-                        className="bg-background p-6 rounded-[28px] border shadow-sm hover:shadow-md transition-all flex gap-4 items-start"
+                        className="bg-background p-6 rounded-[28px] border shadow-sm hover:shadow-md transition-all flex gap-4 items-start min-h-fit"
                       >
                         <div className={cn("w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center", item.bgColor, item.iconColor)}>
                           <Icon size={24} />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">{item.label}</p>
                           <p className="text-sm text-foreground font-bold leading-relaxed">{values.primary}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{values.secondary}</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{values.secondary}</p>
                         </div>
                       </div>
                     );
