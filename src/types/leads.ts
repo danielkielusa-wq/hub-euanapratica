@@ -55,6 +55,12 @@ export interface ServiceRecommendation {
   service_id: string;
   type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
   reason: string;
+  // Enriched by edge function for frontend rendering
+  service_name?: string;
+  service_description?: string | null;
+  service_price_display?: string | null;
+  service_cta_text?: string | null;
+  service_checkout_url?: string | null;
 }
 
 export interface FormattedReportData {

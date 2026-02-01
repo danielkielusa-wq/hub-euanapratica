@@ -67,7 +67,7 @@ serve(async (req) => {
     // Fetch available hub services for recommendations
     const { data: hubServices } = await supabase
       .from("hub_services")
-      .select("id, name, description, category, service_type, price, price_display")
+      .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
       .eq("status", "available")
       .eq("is_visible_in_hub", true);
 
@@ -306,6 +306,21 @@ Estruture o relatório com todas as seções necessárias, sendo específico e p
         JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Enrich recommendations with service details for frontend rendering
+    if (formattedReport.recommendations?.length && hubServices?.length) {
+      formattedReport.recommendations = formattedReport.recommendations.map((rec: { service_id: string; type: string; reason: string }) => {
+        const service = hubServices.find(s => s.id === rec.service_id);
+        return {
+          ...rec,
+          service_name: service?.name || null,
+          service_description: service?.description || null,
+          service_price_display: service?.price_display || null,
+          service_cta_text: service?.cta_text || null,
+          service_checkout_url: service?.ticto_checkout_url || null
+        };
+      }).filter((rec: { service_name: string | null }) => rec.service_name);
     }
 
     // Cache the formatted report as JSON string
