@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ReportHeader } from './ReportHeader';
 import { GreetingCard } from './GreetingCard';
 import { DiagnosticGrid } from './DiagnosticGrid';
@@ -6,6 +5,7 @@ import { RotaMethodSection } from './RotaMethodSection';
 import { ActionPlanList } from './ActionPlanList';
 import { ResourcesPills } from './ResourcesPills';
 import { ReportFooter } from './ReportFooter';
+import { RecommendationsCTA } from './RecommendationsCTA';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import type { CareerEvaluation, FormattedReportData } from '@/types/leads';
@@ -98,6 +98,11 @@ export function FormattedReport({ evaluation, formattedContent, isLoading }: For
         
         {/* Action Plan */}
         <ActionPlanList actionPlan={reportData.action_plan} />
+        
+        {/* Service Recommendations CTAs */}
+        {reportData.recommendations && reportData.recommendations.length > 0 && (
+          <RecommendationsCTA recommendations={reportData.recommendations} />
+        )}
         
         {/* Resources */}
         <ResourcesPills 
