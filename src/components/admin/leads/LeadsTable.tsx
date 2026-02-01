@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Copy, ExternalLink, Eye, RefreshCw } from 'lucide-react';
+import { Copy, Download, ExternalLink, Eye, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -77,6 +77,33 @@ export function LeadsTable() {
     setIsModalOpen(true);
   };
 
+  const downloadCSV = () => {
+    const headers = ['Nome', 'Email', 'Área', 'Inglês', 'Acessos', 'Importado em', 'URL Relatório'];
+    
+    const rows = evaluations.map(e => [
+      e.name,
+      e.email,
+      e.area || '',
+      e.english_level || '',
+      e.access_count.toString(),
+      format(new Date(e.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      `${window.location.origin}/report/${e.access_token}`
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `leads-exportados-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    
+    toast({ title: 'CSV exportado!', description: `${evaluations.length} leads exportados.` });
+  };
+
   const copyReportUrl = (token: string) => {
     const url = `${window.location.origin}/report/${token}`;
     navigator.clipboard.writeText(url);
@@ -103,6 +130,13 @@ export function LeadsTable() {
 
   return (
     <>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-muted-foreground">{evaluations.length} leads encontrados</p>
+        <Button variant="outline" onClick={downloadCSV} className="gap-2 rounded-[12px]">
+          <Download className="w-4 h-4" />
+          Exportar CSV
+        </Button>
+      </div>
       <div className="rounded-[16px] border overflow-hidden">
         <Table>
           <TableHeader>
