@@ -77,10 +77,10 @@ export function DiagnosticGrid({ diagnostic }: DiagnosticGridProps) {
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
                       {item.label}
                     </p>
-                    <p className="font-bold text-foreground text-base truncate">
+                    <p className="font-bold text-foreground text-base">
                       {item.getValue(diagnostic)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                       {item.getDescription(diagnostic)}
                     </p>
                   </div>
