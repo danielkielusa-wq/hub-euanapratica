@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { evaluationId } = await req.json();
+    const { evaluationId, forceRefresh = false } = await req.json();
 
     if (!evaluationId) {
       return new Response(
@@ -41,8 +41,8 @@ serve(async (req) => {
       );
     }
 
-    // Check if already formatted as JSON
-    if (evaluation.formatted_report) {
+    // Check if already formatted as JSON (unless forceRefresh)
+    if (!forceRefresh && evaluation.formatted_report) {
       try {
         const cached = JSON.parse(evaluation.formatted_report);
         if (cached.greeting && cached.diagnostic) {
@@ -63,6 +63,23 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Fetch available hub services for recommendations
+    const { data: hubServices } = await supabase
+      .from("hub_services")
+      .select("id, name, description, category, service_type, price, price_display")
+      .eq("status", "available")
+      .eq("is_visible_in_hub", true);
+
+    const servicesContext = hubServices?.length ? `
+SERVIÇOS DISPONÍVEIS PARA RECOMENDAR:
+${hubServices.map(s => `- ID: ${s.id} | Nome: ${s.name} | Tipo: ${s.service_type} | Preço: ${s.price_display || s.price || 'Consultar'} | Descrição: ${s.description || 'N/A'}`).join('\n')}
+
+Com base no perfil do lead, selecione até 3 serviços para recomendar:
+- PRIMARY: O serviço mais urgente/relevante para o momento atual do lead
+- SECONDARY: Um serviço complementar
+- UPGRADE: Um serviço de acompanhamento premium (mentoria, etc)
+` : '';
 
     // Get formatter prompt from config
     const { data: config } = await supabase
@@ -107,6 +124,8 @@ DADOS DO LEAD:
 
 CONTEÚDO DO RELATÓRIO ORIGINAL (use como base para enriquecer a análise):
 ${evaluation.report_content}
+
+${servicesContext}
 
 Estruture o relatório com todas as seções necessárias, sendo específico e personalizado para este lead.`;
 
@@ -230,6 +249,23 @@ Estruture o relatório com todas as seções necessárias, sendo específico e p
                 whatsapp_keyword: { 
                   type: "string", 
                   description: "Palavra-chave para enviar no WhatsApp para receber material exclusivo (ex: 'EBOOKENP')" 
+                },
+                recommendations: {
+                  type: "array",
+                  description: "Serviços recomendados para o lead com base no perfil",
+                  items: {
+                    type: "object",
+                    properties: {
+                      service_id: { type: "string", description: "ID do serviço (use os IDs fornecidos na lista de serviços)" },
+                      type: { 
+                        type: "string", 
+                        enum: ["PRIMARY", "SECONDARY", "UPGRADE"],
+                        description: "Tipo da recomendação: PRIMARY (mais urgente), SECONDARY (complementar), UPGRADE (premium)" 
+                      },
+                      reason: { type: "string", description: "Justificativa personalizada de por que este serviço é relevante para o lead" }
+                    },
+                    required: ["service_id", "type", "reason"]
+                  }
                 }
               },
               required: ["greeting", "diagnostic", "rota_method", "action_plan", "resources", "whatsapp_keyword"]
