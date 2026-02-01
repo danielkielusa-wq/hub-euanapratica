@@ -1,264 +1,155 @@
 
-# Plano: Redesign do Relatório de Leads com Visual Premium
+# Plano: Página de Thank You para Consultoria ROTA 60min
 
-## Problema Atual
+## Objetivo
 
-O relatório está sendo exibido como HTML bruto com formatação genérica. A IA retorna Markdown que é convertido para HTML simples, sem o visual premium desejado com:
-- Grid de Diagnóstico (4 cards coloridos)
-- Seção do Método ROTA EUA™ (banner escuro com stepper visual)
-- Plano de Ação (3 passos com numeração verde)
-- Recursos Recomendados (pills com ícones)
-
-## Solução
-
-Alterar a arquitetura para que a **IA retorne dados estruturados em JSON**, permitindo que componentes React renderizem o design premium de forma consistente.
+Criar uma página de agradecimento pós-pagamento em `/thank-you/rota60min` baseada no template fornecido, além de adicionar um ícone de preview na configuração de produtos para o campo "URL de Redirecionamento".
 
 ---
 
-## Mudanças Técnicas
+## Análise do Template
 
-### 1. Edge Function: `format-lead-report/index.ts`
+O componente fornecido (`ThankYouPage.tsx`) usa classes `brand-*` que não existem no projeto atual. Vou mapear:
+- `brand-50` → `primary/5` ou `blue-50`
+- `brand-100` → `primary/10`
+- `brand-300` → `primary/40`
+- `brand-500` → `primary`
+- `brand-600` → `primary` (222, 83%, 53% = Navy)
+- `brand-900` → `#1e3a8a` (Navy Dark - já definido no CSS)
 
-**Alterar para usar Tool Calling** (extração estruturada):
+---
+
+## Arquivos a Criar/Modificar
+
+| Ação | Arquivo | Descrição |
+|------|---------|-----------|
+| Criar | `src/pages/thankyou/ThankYouRota60.tsx` | Página de Thank You adaptada |
+| Modificar | `src/App.tsx` | Adicionar rota `/thank-you/rota60min` |
+| Modificar | `src/components/admin/hub/HubServiceForm.tsx` | Adicionar ícone de preview no campo redirect_url |
+
+---
+
+## 1. Nova Página: `ThankYouRota60.tsx`
+
+Estrutura baseada no template:
+
+### Header
+- Botão "Voltar ao Hub" com seta animada
+
+### Card Principal (rounded-[48px])
+- Ícone de sucesso animado (CheckCircle2)
+- Badge "CONFIRMADO" verde
+- Título: "Sua vaga na Consultoria está garantida! 🇺🇸"
+- Subtítulo descritivo
+- Box com resumo do produto (ícone calendário + "Sessão de Direção ROTA EUA™")
+- Botões de ação: "Agendar minha Sessão" + "Email Suporte"
+
+### Card de Bônus (fundo Navy)
+- Ícone Gift animado
+- "Bônus Exclusivo de Crédito"
+- Texto sobre reversão do valor
+- Badge "Válido por 7 Dias"
+
+### Seção "O que acontece agora?"
+- Grid 2 colunas com cards:
+  - Agendamento (Clock icon)
+  - Preparação (Zap icon)
+
+---
+
+## 2. Rota no App.tsx
 
 ```typescript
-// Usar tool calling para obter JSON estruturado
-body.tools = [{
-  type: "function",
-  function: {
-    name: "format_career_report",
-    description: "Estrutura os dados do relatório de carreira em seções organizadas",
-    parameters: {
-      type: "object",
-      properties: {
-        greeting: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            subtitle: { type: "string" },
-            phase_highlight: { type: "string" },
-            phase_description: { type: "string" }
-          }
-        },
-        diagnostic: {
-          type: "object",
-          properties: {
-            english: { type: "object", properties: { level: {}, description: {} }},
-            experience: { type: "object", properties: { summary: {}, details: {} }},
-            objective: { type: "object", properties: { goal: {}, timeline: {} }},
-            financial: { type: "object", properties: { income: {}, investment: {} }}
-          }
-        },
-        rota_method: {
-          type: "object",
-          properties: {
-            current_phase: { type: "string", enum: ["R", "O", "T", "A"] },
-            phase_analysis: { type: "string" }
-          }
-        },
-        action_plan: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              step: { type: "number" },
-              title: { type: "string" },
-              description: { type: "string" }
-            }
-          }
-        },
-        resources: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["youtube", "instagram", "guide", "articles", "ebook"] },
-              label: { type: "string" },
-              url: { type: "string" }
-            }
-          }
-        },
-        whatsapp_keyword: { type: "string" }
-      }
-    }
-  }
-}];
-body.tool_choice = { type: "function", function: { name: "format_career_report" } };
+// Nova rota pública (sem auth necessário)
+<Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />
 ```
 
-**Saída**: Retorna JSON estruturado em vez de HTML
+A página será pública para funcionar como URL de retorno da Ticto.
 
 ---
 
-### 2. Tipo: `src/types/leads.ts`
+## 3. Ícone de Preview no Formulário de Produto
 
-Adicionar interface para o relatório estruturado:
+No campo "URL de Redirecionamento" do `HubServiceForm.tsx`:
 
-```typescript
-export interface FormattedReportData {
-  greeting: {
-    title: string;
-    subtitle: string;
-    phase_highlight: string;
-    phase_description: string;
-  };
-  diagnostic: {
-    english: { level: string; description: string };
-    experience: { summary: string; details: string };
-    objective: { goal: string; timeline: string };
-    financial: { income: string; investment: string };
-  };
-  rota_method: {
-    current_phase: 'R' | 'O' | 'T' | 'A';
-    phase_analysis: string;
-  };
-  action_plan: Array<{
-    step: number;
-    title: string;
-    description: string;
-  }>;
-  resources: Array<{
-    type: 'youtube' | 'instagram' | 'guide' | 'articles' | 'ebook';
-    label: string;
-    url?: string;
-  }>;
-  whatsapp_keyword: string;
-}
+```tsx
+<div className="flex gap-2">
+  <Input placeholder="https://..." {...field} className="flex-1" />
+  {field.value && (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      onClick={() => window.open(field.value, '_blank')}
+      title="Abrir URL em nova aba"
+    >
+      <ExternalLink className="h-4 w-4" />
+    </Button>
+  )}
+</div>
 ```
 
 ---
 
-### 3. Componente: `src/components/report/FormattedReport.tsx`
+## Mapeamento de Cores
 
-**Redesign completo** com seções visuais premium:
+Para manter consistência com o design system existente:
 
-#### Header Glassmorphism
-- Ícone de Globo + "Relatório Individual"
-- Botões Imprimir/Fechar
-
-#### Saudação Personalizada
-- Card com gradiente sutil
-- Nome do lead em destaque
-- Box informativo sobre a fase atual
-
-#### Grid de Diagnóstico (2x2)
-- 4 cards com ícones coloridos:
-  - Inglês (azul) - Languages icon
-  - Experiência (indigo) - Briefcase icon
-  - Objetivo (purple) - Target icon
-  - Financeiro (amber) - DollarSign icon
-- Labels uppercase, valores em negrito
-- Border radius 40px, sombras suaves
-
-#### Seção Método ROTA EUA™
-- Banner escuro (Navy #1e3a8a)
-- Stepper horizontal R-O-T-A
-- Fase atual destacada com background azul elétrico
-- Texto de análise em box translúcido abaixo
-
-#### Plano de Ação (3 Passos)
-- Lista vertical de cards brancos
-- Números em círculos verdes (1, 2, 3)
-- Título + descrição para cada passo
-- Espaçamento generoso
-
-#### Recursos Recomendados
-- Pills/chips com ícones (YouTube, Instagram, etc.)
-- Destaque verde esmeralda para palavra-chave WhatsApp
-- Ícone de WhatsApp
-
-#### Rodapé
-- Data de geração
-- CTA "Baixar PDF Completo"
+| Template | Projeto |
+|----------|---------|
+| `brand-50` | `bg-primary/5` |
+| `brand-100` | `bg-primary/10` |
+| `brand-300` | `text-primary/60` |
+| `brand-500/5` | `shadow-primary/5` |
+| `brand-600` | `text-primary` ou `from-primary` |
+| `brand-900` | `bg-[#1e3a8a]` (Navy Dark) |
+| `gray-*` | Manter como está (Tailwind padrão) |
+| `emerald-*` | Manter como está |
 
 ---
 
-### 4. Novos Componentes Auxiliares
-
-Criar em `src/components/report/`:
-
-| Componente | Função |
-|------------|--------|
-| `ReportHeader.tsx` | Header glassmorphism com ações |
-| `GreetingCard.tsx` | Saudação + fase atual |
-| `DiagnosticGrid.tsx` | 4 cards de métricas |
-| `RotaMethodSection.tsx` | Banner ROTA com stepper |
-| `ActionPlanList.tsx` | 3 passos numerados |
-| `ResourcesPills.tsx` | Pills de recursos + WhatsApp |
-| `ReportFooter.tsx` | Data + CTA download |
-
----
-
-### 5. App Config: Atualizar Prompt
-
-Ajustar o prompt no banco para instruir a IA a retornar os dados de forma compatível com a estrutura JSON (o tool calling força isso, mas o prompt guia a qualidade do conteúdo).
-
----
-
-## Fluxo Atualizado
+## Fluxo de Uso
 
 ```text
-Usuário acessa /report/:token
-         │
-         ▼
-Verifica email (gatekeeper)
-         │
-         ▼
-Carrega dados da career_evaluation
-         │
-         ▼
-Edge function format-lead-report
-    ├── Envia dados para Lovable AI com tool calling
-    ├── Recebe JSON estruturado
-    └── Cacheia no banco (formatted_report como JSON string)
-         │
-         ▼
-React renderiza componentes visuais premium
-    ├── ReportHeader
-    ├── GreetingCard
-    ├── DiagnosticGrid
-    ├── RotaMethodSection
-    ├── ActionPlanList
-    ├── ResourcesPills
-    └── ReportFooter
+Usuário completa pagamento na Ticto
+          │
+          ▼
+Ticto redireciona para /thank-you/rota60min
+          │
+          ▼
+Página exibe confirmação com:
+  ├── Sucesso visual (animação)
+  ├── Resumo do produto comprado
+  ├── CTA para agendar sessão
+  └── Informação sobre bônus de crédito
+          │
+          ▼
+Usuário clica "Voltar ao Hub" → /dashboard/hub
 ```
 
 ---
 
-## Design Guidelines
+## Design Adaptações
 
-- **Border Radius**: 40px para cards principais, 24px para secundários, 12px para botões
-- **Cores**: Navy (#1e3a8a), Azul Elétrico (#2563EB), Verde Esmeralda (#059669)
-- **Tipografia**: Inter, weights 400/500/600/700
-- **Sombras**: `shadow-sm` e `shadow-md` sutis
-- **Glassmorphism**: `backdrop-blur-md` + `bg-white/80`
-- **Espaçamento**: padding 24-32px entre seções
-- **Responsivo**: Grid 2x2 → 1x4 em mobile
+1. **Animações**: Usar `animate-bounce` com `animationDuration: 3s` para suavidade
+2. **Gradientes**: Usar `from-primary to-indigo-600` (similar ao template)
+3. **Border Radius**: Manter 48px para card principal, 40px para secundários
+4. **Sombras**: `shadow-2xl shadow-primary/5` para efeito premium
 
 ---
 
-## Arquivos a Modificar/Criar
+## Responsividade
 
-| Ação | Arquivo |
-|------|---------|
-| Modificar | `supabase/functions/format-lead-report/index.ts` |
-| Modificar | `src/types/leads.ts` |
-| Reescrever | `src/components/report/FormattedReport.tsx` |
-| Criar | `src/components/report/ReportHeader.tsx` |
-| Criar | `src/components/report/GreetingCard.tsx` |
-| Criar | `src/components/report/DiagnosticGrid.tsx` |
-| Criar | `src/components/report/RotaMethodSection.tsx` |
-| Criar | `src/components/report/ActionPlanList.tsx` |
-| Criar | `src/components/report/ResourcesPills.tsx` |
-| Criar | `src/components/report/ReportFooter.tsx` |
-| Modificar | `src/pages/report/PublicReport.tsx` |
+- Grid de próximos passos: `grid-cols-1 md:grid-cols-2`
+- Botões de ação: `flex-col sm:flex-row`
+- Padding adaptativo: `px-4 sm:px-6`, `p-8 md:p-20`
 
 ---
 
-## Benefícios
+## Resumo de Mudanças
 
-1. **Consistência Visual**: Mesma aparência premium para todos os relatórios
-2. **Manutenibilidade**: Componentes modulares e reutilizáveis
-3. **Qualidade de IA**: Tool calling garante estrutura válida
-4. **Performance**: JSON é menor que HTML, cacheável
-5. **Design System**: Segue os padrões "Elite SaaS" da plataforma
+| Arquivo | Linhas Afetadas |
+|---------|-----------------|
+| `src/pages/thankyou/ThankYouRota60.tsx` | Novo (150+ linhas) |
+| `src/App.tsx` | +3 linhas (import + rota) |
+| `src/components/admin/hub/HubServiceForm.tsx` | ~15 linhas (campo redirect_url) |
