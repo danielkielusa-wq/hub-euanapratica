@@ -1,181 +1,113 @@
 
+# Plano: Correção de Truncamento e Exportação CSV
 
-# Plano: Corrigir CTAs Não Exibidos na Página Pública de Relatório
+## Problemas Identificados
 
-## Diagnóstico do Problema
+1. **Cards Truncados**: Os cards de diagnóstico no modal têm texto cortado porque não permitem expansão flexível do conteúdo
+2. **Falta Exportação**: Não existe opção para baixar a tabela de leads com URLs dos relatórios
 
-O lead `diegogferreira@msn.com` **já possui recommendations** no banco de dados:
+---
 
-```json
-"recommendations": [
-  { "service_id": "27ab13f3-...", "type": "PRIMARY", "reason": "..." },
-  { "service_id": "872e0a00-...", "type": "SECONDARY", "reason": "..." },
-  { "service_id": "f043b815-...", "type": "UPGRADE", "reason": "..." }
-]
+## 1. Corrigir Truncamento nos Diagnostic Cards
+
+### Arquivo: `src/components/admin/leads/LeadReportModal.tsx`
+
+**Problema atual (linha ~194)**:
+```tsx
+<p className="text-xs text-muted-foreground mt-1">{values.secondary}</p>
 ```
+O texto secundário não tem espaço para expansão.
 
-**Porém, os CTAs não aparecem porque:**
-
-O componente `RecommendationsCTA.tsx` faz uma query direta ao `hub_services`:
+**Solução**:
+- Remover altura fixa implícita
+- Adicionar `min-h-0` e `flex-1` no container do texto
+- Garantir que o card cresça com o conteúdo
 
 ```tsx
-supabase
-  .from('hub_services')
-  .select('id, name, ...')
-  .in('id', serviceIds)
-```
-
-A RLS do `hub_services` **bloqueia usuários não autenticados**:
-
-```sql
-Policy: "Authenticated users can view visible hub services"
-Using Expression: (is_visible_in_hub = true) AND (auth.role() = 'authenticated')
-```
-
-Como visitantes da página pública `/report/[token]` **não estão logados**, a query retorna **vazio** e os CTAs não são renderizados.
-
----
-
-## Solução Proposta
-
-### Abordagem: Incluir Detalhes dos Serviços no `formatted_report`
-
-Em vez de buscar os serviços no frontend, a Edge Function já tem acesso via `service role key`. Vamos enriquecer as recommendations com os dados necessários para renderização:
-
----
-
-## 1. Modificar Edge Function `format-lead-report/index.ts`
-
-### Após receber a resposta da IA, enriquecer recommendations:
-
-```typescript
-// Após parsear formattedReport
-if (formattedReport.recommendations?.length && hubServices?.length) {
-  formattedReport.recommendations = formattedReport.recommendations.map(rec => {
-    const service = hubServices.find(s => s.id === rec.service_id);
-    return {
-      ...rec,
-      // Dados do serviço para renderização frontend
-      service_name: service?.name || null,
-      service_description: service?.description || null,
-      service_price_display: service?.price_display || null,
-      service_cta_text: service?.cta_text || null,
-      service_checkout_url: service?.ticto_checkout_url || null
-    };
-  }).filter(rec => rec.service_name); // Remove se serviço não existe
-}
-```
-
-### Buscar campo adicional `cta_text` e `ticto_checkout_url`:
-
-```typescript
-const { data: hubServices } = await supabase
-  .from("hub_services")
-  .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
-  .eq("status", "available")
-  .eq("is_visible_in_hub", true);
+<div 
+  key={item.key} 
+  className="bg-background p-6 rounded-[28px] border shadow-sm hover:shadow-md transition-all flex gap-4 items-start min-h-fit"
+>
+  <div className={cn("w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center", item.bgColor, item.iconColor)}>
+    <Icon size={24} />
+  </div>
+  <div className="flex-1 min-w-0">
+    <p className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">{item.label}</p>
+    <p className="text-sm text-foreground font-bold leading-relaxed">{values.primary}</p>
+    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{values.secondary}</p>
+  </div>
+</div>
 ```
 
 ---
 
-## 2. Atualizar Tipos em `src/types/leads.ts`
+## 2. Adicionar Botão de Download CSV
 
-```typescript
-export interface ServiceRecommendation {
-  service_id: string;
-  type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
-  reason: string;
-  // Dados enriquecidos pela edge function
-  service_name?: string;
-  service_description?: string | null;
-  service_price_display?: string | null;
-  service_cta_text?: string | null;
-  service_checkout_url?: string | null;
-}
-```
+### Arquivo: `src/components/admin/leads/LeadsTable.tsx`
 
----
+**Modificações**:
 
-## 3. Modificar `RecommendationsCTA.tsx`
+1. Adicionar botão "Exportar CSV" acima da tabela
+2. Criar função `downloadCSV()` que:
+   - Gera CSV com colunas: Nome, Email, Área, Inglês, Acessos, Data, URL do Relatório
+   - Usa `access_token` para montar a URL completa do relatório
+   - Faz download automático do arquivo
 
-### Usar dados inline, sem query ao Supabase:
+**Novo código**:
 
 ```tsx
-export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps) {
-  // Filtrar apenas recommendations que já vêm com dados do serviço
-  const validRecs = recommendations.filter(r => r.service_name);
+import { Download } from 'lucide-react';
+
+// Dentro do componente:
+const downloadCSV = () => {
+  const headers = ['Nome', 'Email', 'Área', 'Inglês', 'Acessos', 'Importado em', 'URL Relatório'];
   
-  if (validRecs.length === 0) return null;
+  const rows = evaluations.map(e => [
+    e.name,
+    e.email,
+    e.area || '',
+    e.english_level || '',
+    e.access_count.toString(),
+    format(new Date(e.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+    `${window.location.origin}/report/${e.access_token}`
+  ]);
+  
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `leads-exportados-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  link.click();
+  
+  toast({ title: 'CSV exportado!', description: `${evaluations.length} leads exportados.` });
+};
 
-  const primary = validRecs.filter(r => r.type === 'PRIMARY');
-  const others = validRecs.filter(r => r.type !== 'PRIMARY');
-
-  return (
-    <section className="...">
-      {primary.map((rec) => (
-        <div key={rec.service_id}>
-          <h4>{rec.service_name}</h4>
-          <p>{rec.reason}</p>
-          {rec.service_price_display && <Badge>{rec.service_price_display}</Badge>}
-          <Button onClick={() => rec.service_checkout_url && window.open(rec.service_checkout_url, '_blank')}>
-            {rec.service_cta_text || 'Garantir Minha Vaga'}
-          </Button>
-        </div>
-      ))}
-      {/* ... */}
-    </section>
-  );
-}
+// No JSX, antes da tabela:
+<div className="flex justify-between items-center mb-4">
+  <p className="text-sm text-muted-foreground">{evaluations.length} leads encontrados</p>
+  <Button variant="outline" onClick={downloadCSV} className="gap-2 rounded-[12px]">
+    <Download className="w-4 h-4" />
+    Exportar CSV
+  </Button>
+</div>
 ```
 
 ---
 
-## 4. Forçar Regeneração de Relatórios Existentes
+## Resumo de Mudanças
 
-Como o lead `diegogferreira@msn.com` já tem `formatted_report` cacheado **sem os dados enriquecidos**, precisamos:
-
-1. Usar o botão "Refresh" na tabela de leads (admin)
-2. Ou limpar `formatted_report` para forçar regeneração
-
----
-
-## Arquivos a Modificar
-
-| Ação | Arquivo | Descrição |
-|------|---------|-----------|
-| Modificar | `supabase/functions/format-lead-report/index.ts` | Enriquecer recommendations com dados do serviço |
-| Modificar | `src/types/leads.ts` | Adicionar campos opcionais de serviço |
-| Modificar | `src/components/report/RecommendationsCTA.tsx` | Remover query Supabase, usar dados inline |
+| Arquivo | Modificação |
+|---------|-------------|
+| `LeadReportModal.tsx` | Adicionar `min-h-fit`, `flex-1`, `min-w-0` e `leading-relaxed` nos cards |
+| `LeadsTable.tsx` | Adicionar função `downloadCSV()` e botão de exportação |
 
 ---
 
-## Fluxo Após Correção
+## Resultado Esperado
 
-```text
-Prompt AI executa
-        │
-        ▼
-Edge function recebe recommendations com service_id
-        │
-        ▼
-Edge function busca detalhes dos services (via service role - ignora RLS)
-        │
-        ▼
-Enriquece recommendations com name, price, cta_text, checkout_url
-        │
-        ▼
-Salva formatted_report com dados completos
-        │
-        ▼
-Frontend renderiza CTAs sem precisar query adicional ✅
-```
-
----
-
-## Garantia: CTAs SEMPRE aparecem
-
-Com esta abordagem:
-- A Edge Function **sempre** injeta os dados dos serviços
-- O frontend **não depende de RLS** para exibir
-- Mesmo relatórios antigos podem ser regenerados via "Refresh"
-
+1. **Cards**: Texto completo visível, cards expandem conforme necessário
+2. **Exportação**: Botão "Exportar CSV" gera arquivo com todos os dados + URLs dos relatórios
