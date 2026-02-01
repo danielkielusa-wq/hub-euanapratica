@@ -1,113 +1,129 @@
 
-# Plano: Correção de Truncamento e Exportação CSV
+# Plano: Correção do Truncamento de Cards e Exportação CSV
 
 ## Problemas Identificados
 
-1. **Cards Truncados**: Os cards de diagnóstico no modal têm texto cortado porque não permitem expansão flexível do conteúdo
-2. **Falta Exportação**: Não existe opção para baixar a tabela de leads com URLs dos relatórios
+### 1. Cards Truncados
+O grid 2x2 força altura uniforme entre os cards. Como o texto varia muito de tamanho (ex: "Não informado" vs descrições longas), os cards maiores são cortados.
+
+**Solução**: Usar CSS Grid com `auto-rows: min-content` ou mudar para Flexbox com wrap para permitir altura variável.
+
+### 2. Exportação CSV
+| Problema | Causa | Solução |
+|----------|-------|---------|
+| Formato diferente do input | Exporta apenas 7 colunas vs ~18 do input | Exportar todas as colunas do `LeadCSVRow` + URL |
+| Caracteres especiais | Falta BOM UTF-8 | Adicionar `\uFEFF` no início do CSV |
+| Duplicatas por email | Sem filtro | Agrupar por email e manter mais recente |
 
 ---
 
-## 1. Corrigir Truncamento nos Diagnostic Cards
+## Mudanças Necessárias
 
-### Arquivo: `src/components/admin/leads/LeadReportModal.tsx`
+### 1. `LeadReportModal.tsx` - Corrigir Truncamento
 
-**Problema atual (linha ~194)**:
+**Problema atual (linha ~179):**
 ```tsx
-<p className="text-xs text-muted-foreground mt-1">{values.secondary}</p>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 ```
-O texto secundário não tem espaço para expansão.
 
-**Solução**:
-- Remover altura fixa implícita
-- Adicionar `min-h-0` e `flex-1` no container do texto
-- Garantir que o card cresça com o conteúdo
+O grid padrão iguala alturas dos itens na mesma linha.
 
+**Solução - Usar auto-rows:**
 ```tsx
-<div 
-  key={item.key} 
-  className="bg-background p-6 rounded-[28px] border shadow-sm hover:shadow-md transition-all flex gap-4 items-start min-h-fit"
->
-  <div className={cn("w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center", item.bgColor, item.iconColor)}>
-    <Icon size={24} />
-  </div>
-  <div className="flex-1 min-w-0">
-    <p className="text-xs font-black text-muted-foreground uppercase tracking-wider mb-1">{item.label}</p>
-    <p className="text-sm text-foreground font-bold leading-relaxed">{values.primary}</p>
-    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{values.secondary}</p>
-  </div>
-</div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-min">
+```
+
+Ou usar Masonry-style com flexbox:
+```tsx
+<div className="columns-1 md:columns-2 gap-4 space-y-4">
+  {diagnosticConfig.map((item) => (
+    <div key={item.key} className="break-inside-avoid bg-background p-6 ...">
 ```
 
 ---
 
-## 2. Adicionar Botão de Download CSV
+### 2. `LeadsTable.tsx` - Corrigir Exportação CSV
 
-### Arquivo: `src/components/admin/leads/LeadsTable.tsx`
+**Novo código do `downloadCSV()`:**
 
-**Modificações**:
-
-1. Adicionar botão "Exportar CSV" acima da tabela
-2. Criar função `downloadCSV()` que:
-   - Gera CSV com colunas: Nome, Email, Área, Inglês, Acessos, Data, URL do Relatório
-   - Usa `access_token` para montar a URL completa do relatório
-   - Faz download automático do arquivo
-
-**Novo código**:
-
-```tsx
-import { Download } from 'lucide-react';
-
-// Dentro do componente:
+```typescript
 const downloadCSV = () => {
-  const headers = ['Nome', 'Email', 'Área', 'Inglês', 'Acessos', 'Importado em', 'URL Relatório'];
+  // Headers no mesmo formato do input + URL
+  const headers = [
+    'Nome', 'email', 'telefone', 'Area', 'Atuação', 
+    'trabalha internacional', 'experiencia', 'Englishlevel',
+    'objetivo', 'VisaStatus', 'timeline', 'FamilyStatus',
+    'incomerange', 'investment range', 'impediment', 
+    'impedmentother', 'main concern', 'relatorio', 'URL Relatório'
+  ];
   
-  const rows = evaluations.map(e => [
+  // Deduplicar por email, mantendo mais recente (já ordenado por created_at desc)
+  const uniqueByEmail = new Map<string, CareerEvaluation>();
+  evaluations.forEach(e => {
+    if (!uniqueByEmail.has(e.email)) {
+      uniqueByEmail.set(e.email, e);
+    }
+  });
+  const dedupedEvaluations = Array.from(uniqueByEmail.values());
+  
+  const rows = dedupedEvaluations.map(e => [
     e.name,
     e.email,
+    e.phone || '',
     e.area || '',
+    e.atuacao || '',
+    e.trabalha_internacional ? 'Sim' : 'Não',
+    e.experiencia || '',
     e.english_level || '',
-    e.access_count.toString(),
-    format(new Date(e.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+    e.objetivo || '',
+    e.visa_status || '',
+    e.timeline || '',
+    e.family_status || '',
+    e.income_range || '',
+    e.investment_range || '',
+    e.impediment || '',
+    e.impediment_other || '',
+    e.main_concern || '',
+    e.report_content || '',
     `${window.location.origin}/report/${e.access_token}`
   ]);
   
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
   ].join('\n');
   
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Adicionar BOM UTF-8 para Excel interpretar corretamente
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `leads-exportados-${format(new Date(), 'yyyy-MM-dd')}.csv`;
   link.click();
   
-  toast({ title: 'CSV exportado!', description: `${evaluations.length} leads exportados.` });
+  toast({ 
+    title: 'CSV exportado!', 
+    description: `${dedupedEvaluations.length} leads únicos exportados (${evaluations.length - dedupedEvaluations.length} duplicatas removidas).` 
+  });
 };
-
-// No JSX, antes da tabela:
-<div className="flex justify-between items-center mb-4">
-  <p className="text-sm text-muted-foreground">{evaluations.length} leads encontrados</p>
-  <Button variant="outline" onClick={downloadCSV} className="gap-2 rounded-[12px]">
-    <Download className="w-4 h-4" />
-    Exportar CSV
-  </Button>
-</div>
 ```
 
 ---
 
-## Resumo de Mudanças
+## Arquivos a Modificar
 
-| Arquivo | Modificação |
-|---------|-------------|
-| `LeadReportModal.tsx` | Adicionar `min-h-fit`, `flex-1`, `min-w-0` e `leading-relaxed` nos cards |
-| `LeadsTable.tsx` | Adicionar função `downloadCSV()` e botão de exportação |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/admin/leads/LeadReportModal.tsx` | Adicionar `auto-rows-min` ao grid dos diagnostic cards |
+| `src/components/admin/leads/LeadsTable.tsx` | Reescrever `downloadCSV()` com formato completo, BOM e deduplicação |
 
 ---
 
 ## Resultado Esperado
 
-1. **Cards**: Texto completo visível, cards expandem conforme necessário
-2. **Exportação**: Botão "Exportar CSV" gera arquivo com todos os dados + URLs dos relatórios
+1. **Cards**: Cada card expande para mostrar todo o texto, sem cortes
+2. **CSV**: 
+   - Mesmo formato do input + coluna URL
+   - Caracteres especiais preservados (ç, ã, é, etc.)
+   - Apenas o registro mais recente por email
