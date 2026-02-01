@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Tag, Palette, CreditCard, MousePointerClick } from 'lucide-react';
+import { Loader2, Tag, Palette, CreditCard, MousePointerClick, ExternalLink } from 'lucide-react';
 import { IconSelector } from './IconSelector';
 import { ServiceTypeSelector } from './ServiceTypeSelector';
 import { HubService, RIBBON_OPTIONS, PRODUCT_TYPE_LABELS, ProductType, ServiceStatus } from '@/types/hub';
@@ -499,9 +499,22 @@ export function HubServiceForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>URL de Redirecionamento</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://..." {...field} />
-                    </FormControl>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input placeholder="https://..." {...field} className="flex-1" />
+                      </FormControl>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => window.open(field.value, '_blank')}
+                          title="Abrir URL em nova aba"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
