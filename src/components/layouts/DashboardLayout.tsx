@@ -23,7 +23,8 @@ import {
   SlidersHorizontal,
   ShoppingBag,
   Receipt,
-  Webhook
+  Webhook,
+  FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
@@ -126,6 +127,7 @@ const roleNavSections: Record<string, NavSection[]> = {
     {
       label: 'FERRAMENTAS',
       items: [
+        { label: 'Leads Importados', href: '/admin/leads', icon: FileSpreadsheet },
         { label: 'Simulador Ticto', href: '/admin/ticto-simulator', icon: Webhook },
       ],
     },

@@ -51,6 +51,12 @@ export interface CareerEvaluation {
   updated_at: string;
 }
 
+export interface ServiceRecommendation {
+  service_id: string;
+  type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
+  reason: string;
+}
+
 export interface FormattedReportData {
   greeting: {
     title: string;
@@ -79,6 +85,7 @@ export interface FormattedReportData {
     url?: string;
   }>;
   whatsapp_keyword: string;
+  recommendations?: ServiceRecommendation[];
 }
 
 export interface ImportResult {
