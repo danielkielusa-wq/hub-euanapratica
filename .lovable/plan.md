@@ -1,241 +1,295 @@
 
-# Plano: Sistema de Leads Avançado com CTAs Dinâmicos
 
-## Visão Geral
+# Plano: CTAs Dinâmicos na Página Pública do Relatório
 
-Implementar três melhorias no sistema de leads:
-1. Adicionar opção "Leads Importados" no menu admin
-2. Botão de refresh na tabela para regenerar relatório via IA
-3. CTAs dinâmicos baseados em serviços configurados no hub_services
-4. Novo modal de visualização do relatório seguindo o design anexado
+## Objetivo
+
+Adicionar uma seção de "Próximos Passos" com CTAs dinâmicos baseados em `hub_services` no final da página pública de relatório (`/report/[token]`), reutilizando a lógica já implementada no modal administrativo.
 
 ---
 
-## 1. Adicionar ao Menu de Navegação
+## Análise do Estado Atual
 
-### Arquivo: `src/components/layouts/DashboardLayout.tsx`
-
-Adicionar item na seção "FERRAMENTAS" do admin:
-
-| Ação | Descrição |
-|------|-----------|
-| Import | Adicionar `FileSpreadsheet` icon |
-| Nav Item | `{ label: 'Leads Importados', href: '/admin/leads', icon: FileSpreadsheet }` |
+| Componente | Situação |
+|------------|----------|
+| Edge function `format-lead-report` | Já gera `recommendations[]` com `service_id`, `type` e `reason` |
+| `FormattedReportData.recommendations` | Tipo já definido em `src/types/leads.ts` |
+| `LeadReportModal.tsx` (admin) | Já renderiza CTAs dinâmicos corretamente |
+| `FormattedReport.tsx` (público) | Não exibe recommendations, apenas `ResourcesPills` |
 
 ---
 
-## 2. Botão de Refresh na Tabela
-
-### Arquivo: `src/components/admin/leads/LeadsTable.tsx`
-
-Modificações:
-- Adicionar botão de refresh (`RefreshCw` icon) em cada row
-- Ao clicar, chamar edge function `format-lead-report` com `forceRefresh: true`
-- Mostrar estado de loading durante regeneração
-- Atualizar a row na tabela após sucesso
-- Adicionar botão "Ver Relatório" que abre modal interno
-
-Novo componente de ação:
-```tsx
-<Button
-  variant="ghost"
-  size="icon"
-  onClick={() => handleRefresh(evaluation.id)}
-  disabled={refreshingId === evaluation.id}
-  title="Regenerar relatório"
->
-  <RefreshCw className={cn("w-4 h-4", refreshingId === evaluation.id && "animate-spin")} />
-</Button>
-```
-
-### Edge Function: `supabase/functions/format-lead-report/index.ts`
-
-Modificar para aceitar parâmetro `forceRefresh`:
-- Se `forceRefresh: true`, ignorar cache e regenerar
-- Limpar `formatted_report` antes de chamar IA
-- Retornar novo conteúdo formatado
-
----
-
-## 3. CTAs Dinâmicos Baseados em Hub Services
-
-### Edge Function: `format-lead-report/index.ts`
-
-Modificar o prompt de IA para:
-
-1. **Buscar serviços disponíveis** do `hub_services` onde `status = 'available'`
-2. **Passar lista de serviços** no contexto do prompt
-3. **Adicionar campo `recommendations`** no schema de tool calling
-
-Novo schema para recommendations:
-```typescript
-recommendations: {
-  type: "array",
-  items: {
-    type: "object",
-    properties: {
-      service_id: { type: "string", description: "ID do serviço recomendado" },
-      type: { type: "string", enum: ["PRIMARY", "SECONDARY", "UPGRADE"] },
-      reason: { type: "string", description: "Por que este serviço é recomendado para o lead" }
-    }
-  }
-}
-```
-
-### Atualizar tipo `FormattedReportData` em `src/types/leads.ts`:
-
-```typescript
-recommendations?: Array<{
-  service_id: string;
-  type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
-  reason: string;
-}>;
-```
-
----
-
-## 4. Modal de Visualização do Relatório (Admin)
-
-### Novo Componente: `src/components/admin/leads/LeadReportModal.tsx`
-
-Seguindo o layout do template `AdminUserReportModal.tsx`:
-
-#### Estrutura Visual
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Header: Globe Icon + "Relatório Individual" + Print/Close  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Greeting Card (com fase destacada)                   │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
-│  │ Inglês   │ │Experiênc.│ │ Objetivo │ │Financeiro│        │
-│  │ Badge    │ │  Badge   │ │  Badge   │ │  Badge   │        │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  ROTA EUA Section (Dark - R O T A grid)              │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Plano de Ação (3 passos numerados)                  │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  PRÓXIMOS PASSOS ESTRATÉGICOS (CTAs)                 │   │
-│  │  ┌─────────────────────┐ ┌─────────┐                 │   │
-│  │  │  PRIMARY (2 cols)   │ │SECONDARY│                 │   │
-│  │  │  Dark card          │ │ + UPGRADE│                 │   │
-│  │  └─────────────────────┘ └─────────┘                 │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-├─────────────────────────────────────────────────────────────┤
-│  Footer: Status indicator + "Baixar PDF" button             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### Componentes Reutilizáveis
-
-- **DiagnosticCard**: Grid 2x2 com métricas
-- **RotaSection**: Seção dark com as 4 fases
-- **ActionPlanCard**: Lista numerada de ações
-- **RecommendationCards**: Grid de CTAs (PRIMARY em 2 cols, resto empilhado)
-
-#### Mapeamento de Cores (brand-* → design tokens)
-
-| Template | Projeto |
-|----------|---------|
-| `brand-50` | `bg-primary/5` |
-| `brand-100` | `text-blue-100` |
-| `brand-600` | `text-primary` |
-| `brand-900` | `bg-[#1e3a8a]` |
-| `gray-900` | `text-foreground` |
-| `gray-50` | `bg-muted` |
-
----
-
-## 5. Integração na LeadsTable
-
-### Modificar `LeadsTable.tsx`:
-
-```tsx
-// Estados
-const [selectedEvaluation, setSelectedEvaluation] = useState<CareerEvaluation | null>(null);
-const [isModalOpen, setIsModalOpen] = useState(false);
-const [refreshingId, setRefreshingId] = useState<string | null>(null);
-
-// Funções
-const handleViewReport = (evaluation: CareerEvaluation) => {
-  setSelectedEvaluation(evaluation);
-  setIsModalOpen(true);
-};
-
-const handleRefresh = async (id: string) => {
-  setRefreshingId(id);
-  const { data, error } = await supabase.functions.invoke('format-lead-report', {
-    body: { evaluationId: id, forceRefresh: true }
-  });
-  if (!error && data?.content) {
-    // Atualizar a lista local
-    setEvaluations(prev => prev.map(e => 
-      e.id === id 
-        ? { ...e, formatted_report: JSON.stringify(data.content), formatted_at: new Date().toISOString() }
-        : e
-    ));
-    toast({ title: 'Relatório regenerado!' });
-  }
-  setRefreshingId(null);
-};
-```
-
----
-
-## 6. Arquivos a Modificar/Criar
+## Arquivos a Modificar
 
 | Ação | Arquivo | Descrição |
 |------|---------|-----------|
-| Modificar | `src/components/layouts/DashboardLayout.tsx` | Adicionar menu item |
-| Modificar | `src/components/admin/leads/LeadsTable.tsx` | Botões refresh e view |
-| Criar | `src/components/admin/leads/LeadReportModal.tsx` | Modal de visualização |
-| Modificar | `supabase/functions/format-lead-report/index.ts` | forceRefresh + recommendations |
-| Modificar | `src/types/leads.ts` | Adicionar campo recommendations |
+| Criar | `src/components/report/RecommendationsCTA.tsx` | Componente de CTAs para público |
+| Modificar | `src/components/report/FormattedReport.tsx` | Integrar o novo componente |
 
 ---
 
-## 7. Fluxo do Usuário
+## 1. Novo Componente: `RecommendationsCTA.tsx`
+
+### Estrutura Visual
 
 ```text
-Admin navega para Leads Importados (via menu)
-          │
-          ▼
-Visualiza tabela com leads importados
-          │
-          ├── Clica em "Ver" → Abre LeadReportModal com relatório formatado
-          │                     └── Exibe CTAs dinâmicos baseados em hub_services
-          │
-          ├── Clica em "Refresh" → Edge function regenera relatório
-          │                        └── Atualiza row na tabela
-          │
-          └── Clica em "Copy" → Copia URL pública do relatório
+┌─────────────────────────────────────────────────────────────┐
+│  📍 Próximos Passos Estratégicos                           │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────┐  ┌───────────────┐   │
+│  │  PRIMARY (ocupando 2 colunas)    │  │  SECONDARY    │   │
+│  │  Card escuro com destaque        │  │               │   │
+│  │  Ícone + Nome + Reason           │  │  Nome + CTA   │   │
+│  │  Botão CTA principal             │  ├───────────────┤   │
+│  │                                   │  │  UPGRADE      │   │
+│  │                                   │  │  Card premium │   │
+│  └──────────────────────────────────┘  └───────────────┘   │
+│                                                              │
+│  Garantia de 7 dias | Atendimento exclusivo                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Funcionalidade
+
+- Recebe `recommendations` do `reportData`
+- Busca detalhes dos serviços via query à `hub_services` usando os IDs
+- Renderiza cards com:
+  - PRIMARY: Card escuro ocupando 2 colunas, botão de destaque
+  - SECONDARY: Card padrão empilhado
+  - UPGRADE: Card com gradiente premium
+- Links apontam para `ticto_checkout_url` de cada serviço
+
+### Props
+
+```typescript
+interface RecommendationsCTAProps {
+  recommendations: ServiceRecommendation[];
+}
 ```
 
 ---
 
-## 8. CTAs Dinâmicos - Lógica de Matching
+## 2. Modificar `FormattedReport.tsx`
 
-A IA receberá a lista de serviços disponíveis:
-- **Currículo e LinkedIn Magnético** → Recomendado se fase = "O"
-- **Sessão de Direção ROTA EUA** → Recomendado se fase = "R"
-- **Mentoria em Grupo** → Recomendado como UPGRADE
-- **Mentoria Individual** → Recomendado como UPGRADE premium
+### Importar o novo componente
 
-O prompt instruirá a IA a:
-1. Analisar a fase atual do lead (R, O, T, A)
-2. Selecionar até 3 serviços relevantes
-3. Classificar como PRIMARY, SECONDARY ou UPGRADE
-4. Explicar o motivo da recomendação
+```typescript
+import { RecommendationsCTA } from './RecommendationsCTA';
+```
+
+### Renderizar após ActionPlanList
+
+```tsx
+{/* Action Plan */}
+<ActionPlanList actionPlan={reportData.action_plan} />
+
+{/* Service Recommendations CTAs */}
+{reportData.recommendations && reportData.recommendations.length > 0 && (
+  <RecommendationsCTA recommendations={reportData.recommendations} />
+)}
+
+{/* Resources */}
+<ResourcesPills ... />
+```
+
+---
+
+## 3. Design do Componente
+
+### Mapeamento de cores (consistente com projeto)
+
+| Elemento | Classe |
+|----------|--------|
+| Seção container | `bg-muted/30 rounded-[40px] p-8 md:p-10 border` |
+| PRIMARY card | `bg-foreground dark:bg-slate-800 text-background rounded-[32px]` |
+| PRIMARY botão | `bg-background text-foreground hover:bg-primary/10` |
+| SECONDARY card | `bg-card border rounded-[32px]` |
+| UPGRADE card | `bg-gradient-to-br from-primary/5 to-indigo-500/5 border-primary/20` |
+| Badge PRIMARY | `bg-primary text-primary-foreground` |
+| Badge UPGRADE | `bg-primary` com ícone Crown |
+
+---
+
+## 4. Código do Componente
+
+```tsx
+// src/components/report/RecommendationsCTA.tsx
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Zap, Sparkles, ArrowRight, Crown, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { ServiceRecommendation } from '@/types/leads';
+
+interface HubService {
+  id: string;
+  name: string;
+  description: string | null;
+  icon_name: string;
+  price_display: string | null;
+  cta_text: string | null;
+  ticto_checkout_url: string | null;
+}
+
+interface RecommendationsCTAProps {
+  recommendations: ServiceRecommendation[];
+}
+
+export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps) {
+  const [services, setServices] = useState<HubService[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const serviceIds = recommendations.map(r => r.service_id);
+    if (serviceIds.length === 0) return;
+
+    supabase
+      .from('hub_services')
+      .select('id, name, description, icon_name, price_display, cta_text, ticto_checkout_url')
+      .in('id', serviceIds)
+      .then(({ data }) => {
+        if (data) setServices(data);
+        setIsLoading(false);
+      });
+  }, [recommendations]);
+
+  const getService = (id: string) => services.find(s => s.id === id);
+
+  if (isLoading || services.length === 0) return null;
+
+  const primary = recommendations.filter(r => r.type === 'PRIMARY');
+  const others = recommendations.filter(r => r.type !== 'PRIMARY');
+
+  return (
+    <section className="bg-muted/30 rounded-[40px] p-8 md:p-10 border print:hidden">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-2.5 bg-primary text-primary-foreground rounded-xl">
+          <Zap size={22} className="fill-current" />
+        </div>
+        <h3 className="text-2xl font-black tracking-tight">
+          Próximos Passos Estratégicos
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* PRIMARY */}
+        {primary.map((rec) => {
+          const service = getService(rec.service_id);
+          if (!service) return null;
+          
+          return (
+            <div 
+              key={rec.service_id} 
+              className="lg:col-span-2 bg-foreground dark:bg-slate-800 text-background rounded-[32px] p-8 shadow-xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary rounded-full blur-[80px] opacity-30 -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="relative z-10">
+                <div className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
+                  <Sparkles size={12} className="fill-current" /> Recomendação Para Você
+                </div>
+                
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="p-3 bg-background/10 rounded-2xl border border-background/10">
+                    <FileText size={24} className="text-primary/80" />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black mb-1">{service.name}</h4>
+                    <p className="text-primary/60 text-sm">{rec.reason}</p>
+                  </div>
+                </div>
+
+                {service.price_display && (
+                  <Badge variant="secondary" className="mb-4">{service.price_display}</Badge>
+                )}
+
+                <Button 
+                  className="w-full bg-background text-foreground hover:bg-primary/10 font-black py-4 rounded-2xl mt-4 group"
+                  onClick={() => service.ticto_checkout_url && window.open(service.ticto_checkout_url, '_blank')}
+                >
+                  {service.cta_text || 'Garantir Minha Vaga'} 
+                  <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* SECONDARY & UPGRADE */}
+        <div className="flex flex-col gap-6">
+          {others.map((rec) => {
+            const service = getService(rec.service_id);
+            if (!service) return null;
+            
+            return (
+              <div 
+                key={rec.service_id} 
+                className={cn(
+                  "flex-1 rounded-[32px] p-6 border transition-all flex flex-col justify-between",
+                  rec.type === 'UPGRADE' 
+                    ? "bg-gradient-to-br from-primary/5 to-indigo-500/5 border-primary/20" 
+                    : "bg-card"
+                )}
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <Badge variant={rec.type === 'UPGRADE' ? 'default' : 'secondary'} className="text-[9px] uppercase">
+                      {rec.type === 'UPGRADE' ? 'Acompanhamento' : 'Estratégia'}
+                    </Badge>
+                    {rec.type === 'UPGRADE' && <Crown size={16} className="text-primary" />}
+                  </div>
+                  <h4 className="font-bold text-sm mb-2">{service.name}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">{rec.reason}</p>
+                </div>
+                
+                <Button 
+                  variant={rec.type === 'UPGRADE' ? 'default' : 'outline'}
+                  className="w-full rounded-xl text-xs font-bold"
+                  onClick={() => service.ticto_checkout_url && window.open(service.ticto_checkout_url, '_blank')}
+                >
+                  {service.cta_text || 'Saiba mais'}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      <p className="text-center text-xs text-muted-foreground mt-8 font-medium">
+        Todos os serviços contam com garantia de satisfação de 7 dias.
+      </p>
+    </section>
+  );
+}
+```
+
+---
+
+## 5. Fluxo Completo
+
+```text
+Usuário acessa /report/[token]
+         │
+         ▼
+Verifica email → Carrega evaluation
+         │
+         ▼
+Chama format-lead-report (se necessário)
+         │
+         ▼
+Retorna JSON com `recommendations[]`
+         │
+         ▼
+FormattedReport parseia e passa para RecommendationsCTA
+         │
+         ▼
+RecommendationsCTA busca detalhes dos services via ID
+         │
+         ▼
+Renderiza cards com CTAs (links para ticto_checkout_url)
+```
 
 ---
 
@@ -243,9 +297,6 @@ O prompt instruirá a IA a:
 
 | Arquivo | Linhas Estimadas |
 |---------|------------------|
-| `DashboardLayout.tsx` | +2 linhas |
-| `LeadsTable.tsx` | ~80 linhas modificadas |
-| `LeadReportModal.tsx` | ~350 linhas (novo) |
-| `format-lead-report/index.ts` | ~60 linhas modificadas |
-| `types/leads.ts` | ~10 linhas |
+| `src/components/report/RecommendationsCTA.tsx` | ~140 linhas (novo) |
+| `src/components/report/FormattedReport.tsx` | ~5 linhas modificadas |
 
