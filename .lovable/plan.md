@@ -1,255 +1,251 @@
 
-# Plano: Página Thank You para Currículo e LinkedIn Magnético
+# Plano: Sistema de Leads Avançado com CTAs Dinâmicos
 
-## Objetivo
+## Visão Geral
 
-Criar uma nova página de agradecimento pós-pagamento em `/thank-you/curriculo` baseada no template fornecido, mantendo o design consistente com a `ThankYouRota60.tsx` já existente.
-
----
-
-## Diferenças do Template vs Rota60
-
-| Aspecto | Rota60 (existente) | Currículo (novo) |
-|---------|-------------------|------------------|
-| Título | "Sua vaga na Consultoria está garantida!" | "Currículo & LinkedIn Magnéticos Garantidos!" |
-| Ícone do produto | Calendar | Linkedin |
-| Nome do produto | "Sessão de Direção ROTA EUA™" | "Consultoria – Currículo e LinkedIn Magnético" |
-| Duração | "60 minutos individuais" | "Sessão prática de 60 minutos individuais" |
-| Título bônus | "Bônus Exclusivo de Crédito" | "Upgrade Inteligente" |
-| Texto bônus | Reversão do valor em desconto | 100% convertido em crédito para Mentoria |
-| URL agendamento | tidycal.com/.../direcao-60-minutos | tidycal.com/.../curriculo |
-| Ícone Preparação | Zap | FileText |
-| Texto Preparação | "Enviaremos formulário pré-sessão..." | "Envie seu currículo atual e LinkedIn para daniel@..." |
-| Ícone Agendamento | Clock | Calendar |
+Implementar três melhorias no sistema de leads:
+1. Adicionar opção "Leads Importados" no menu admin
+2. Botão de refresh na tabela para regenerar relatório via IA
+3. CTAs dinâmicos baseados em serviços configurados no hub_services
+4. Novo modal de visualização do relatório seguindo o design anexado
 
 ---
 
-## Arquivos a Criar/Modificar
+## 1. Adicionar ao Menu de Navegação
 
-| Ação | Arquivo |
-|------|---------|
-| Criar | `src/pages/thankyou/ThankYouCurriculo.tsx` |
-| Modificar | `src/App.tsx` (adicionar rota) |
+### Arquivo: `src/components/layouts/DashboardLayout.tsx`
+
+Adicionar item na seção "FERRAMENTAS" do admin:
+
+| Ação | Descrição |
+|------|-----------|
+| Import | Adicionar `FileSpreadsheet` icon |
+| Nav Item | `{ label: 'Leads Importados', href: '/admin/leads', icon: FileSpreadsheet }` |
 
 ---
 
-## 1. Nova Página: `ThankYouCurriculo.tsx`
+## 2. Botão de Refresh na Tabela
 
-Estrutura baseada no template fornecido, adaptada para o design system do projeto:
+### Arquivo: `src/components/admin/leads/LeadsTable.tsx`
 
-### Mapeamento de Classes (brand-* → design tokens)
+Modificações:
+- Adicionar botão de refresh (`RefreshCw` icon) em cada row
+- Ao clicar, chamar edge function `format-lead-report` com `forceRefresh: true`
+- Mostrar estado de loading durante regeneração
+- Atualizar a row na tabela após sucesso
+- Adicionar botão "Ver Relatório" que abre modal interno
 
-```
-brand-50 → bg-primary/5
-brand-100 → text-blue-100
-brand-300 → text-blue-300
-brand-500/5 → shadow-primary/5
-brand-600 → text-primary ou from-primary
-brand-900 → bg-[#1e3a8a]
-gray-400 → text-muted-foreground
-gray-500 → text-muted-foreground
-gray-900 → text-foreground
-gray-100 → border-border
-gray-50 → bg-muted
-white → bg-card
+Novo componente de ação:
+```tsx
+<Button
+  variant="ghost"
+  size="icon"
+  onClick={() => handleRefresh(evaluation.id)}
+  disabled={refreshingId === evaluation.id}
+  title="Regenerar relatório"
+>
+  <RefreshCw className={cn("w-4 h-4", refreshingId === evaluation.id && "animate-spin")} />
+</Button>
 ```
 
-### Componentes Específicos
+### Edge Function: `supabase/functions/format-lead-report/index.ts`
 
-#### Header
-- Título: "Currículo & LinkedIn Magnéticos Garantidos! 🇺🇸"
-- Subtítulo: Texto sobre transformar posicionamento
-
-#### Product Summary Box
-- Ícone: `Linkedin` (azul)
-- Nome: "Consultoria – Currículo e LinkedIn Magnético"
-- Duração: "Sessão prática de 60 minutos individuais"
-
-#### Card de Bônus (Navy)
-- Título: "Upgrade Inteligente"
-- Texto: "100% do valor desta sessão será convertido em crédito caso você entre na Mentoria em Grupo ou na Mentoria Individual em até 7 dias..."
-
-#### Seção "O que acontece agora?"
-- **Agendamento** (Calendar icon): Texto sobre escolher horário
-- **Preparação** (FileText icon): "Envie seu currículo atual e o link do seu LinkedIn para daniel@euanapratica.com com no máximo 5 dias de antecedência..."
+Modificar para aceitar parâmetro `forceRefresh`:
+- Se `forceRefresh: true`, ignorar cache e regenerar
+- Limpar `formatted_report` antes de chamar IA
+- Retornar novo conteúdo formatado
 
 ---
 
-## 2. Rota no App.tsx
+## 3. CTAs Dinâmicos Baseados em Hub Services
+
+### Edge Function: `format-lead-report/index.ts`
+
+Modificar o prompt de IA para:
+
+1. **Buscar serviços disponíveis** do `hub_services` onde `status = 'available'`
+2. **Passar lista de serviços** no contexto do prompt
+3. **Adicionar campo `recommendations`** no schema de tool calling
+
+Novo schema para recommendations:
+```typescript
+recommendations: {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      service_id: { type: "string", description: "ID do serviço recomendado" },
+      type: { type: "string", enum: ["PRIMARY", "SECONDARY", "UPGRADE"] },
+      reason: { type: "string", description: "Por que este serviço é recomendado para o lead" }
+    }
+  }
+}
+```
+
+### Atualizar tipo `FormattedReportData` em `src/types/leads.ts`:
 
 ```typescript
-import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
-
-// Nova rota pública
-<Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
+recommendations?: Array<{
+  service_id: string;
+  type: 'PRIMARY' | 'SECONDARY' | 'UPGRADE';
+  reason: string;
+}>;
 ```
 
 ---
 
-## Código do Componente
+## 4. Modal de Visualização do Relatório (Admin)
+
+### Novo Componente: `src/components/admin/leads/LeadReportModal.tsx`
+
+Seguindo o layout do template `AdminUserReportModal.tsx`:
+
+#### Estrutura Visual
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Header: Globe Icon + "Relatório Individual" + Print/Close  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Greeting Card (com fase destacada)                   │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│  │ Inglês   │ │Experiênc.│ │ Objetivo │ │Financeiro│        │
+│  │ Badge    │ │  Badge   │ │  Badge   │ │  Badge   │        │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  ROTA EUA Section (Dark - R O T A grid)              │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Plano de Ação (3 passos numerados)                  │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  PRÓXIMOS PASSOS ESTRATÉGICOS (CTAs)                 │   │
+│  │  ┌─────────────────────┐ ┌─────────┐                 │   │
+│  │  │  PRIMARY (2 cols)   │ │SECONDARY│                 │   │
+│  │  │  Dark card          │ │ + UPGRADE│                 │   │
+│  │  └─────────────────────┘ └─────────┘                 │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│  Footer: Status indicator + "Baixar PDF" button             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Componentes Reutilizáveis
+
+- **DiagnosticCard**: Grid 2x2 com métricas
+- **RotaSection**: Seção dark com as 4 fases
+- **ActionPlanCard**: Lista numerada de ações
+- **RecommendationCards**: Grid de CTAs (PRIMARY em 2 cols, resto empilhado)
+
+#### Mapeamento de Cores (brand-* → design tokens)
+
+| Template | Projeto |
+|----------|---------|
+| `brand-50` | `bg-primary/5` |
+| `brand-100` | `text-blue-100` |
+| `brand-600` | `text-primary` |
+| `brand-900` | `bg-[#1e3a8a]` |
+| `gray-900` | `text-foreground` |
+| `gray-50` | `bg-muted` |
+
+---
+
+## 5. Integração na LeadsTable
+
+### Modificar `LeadsTable.tsx`:
 
 ```tsx
-import {
-  CheckCircle2,
-  Calendar,
-  ArrowRight,
-  Mail,
-  Sparkles,
-  ArrowLeft,
-  Gift,
-  ShieldCheck,
-  Linkedin,
-  FileText,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+// Estados
+const [selectedEvaluation, setSelectedEvaluation] = useState<CareerEvaluation | null>(null);
+const [isModalOpen, setIsModalOpen] = useState(false);
+const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
-const ThankYouCurriculo = () => {
-  const navigate = useNavigate();
-  const scheduleUrl = "https://tidycal.com/euanapratica/curriculo";
-
-  return (
-    <div className="animate-fade-in-up min-h-screen pb-20 max-w-5xl mx-auto px-4 sm:px-6 bg-background">
-      {/* Top Navigation */}
-      <div className="pt-8 pb-12">
-        <button
-          onClick={() => navigate("/dashboard/hub")}
-          className="group flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold text-sm transition-all"
-        >
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          Voltar ao Hub
-        </button>
-      </div>
-
-      {/* Main Success Card */}
-      <div className="bg-card rounded-[48px] shadow-2xl shadow-primary/5 border border-border overflow-hidden relative">
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 opacity-60"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 opacity-40"></div>
-
-        <div className="relative z-10 px-8 py-16 md:p-20 text-center">
-          {/* Animated Success Icon */}
-          <div
-            className="w-24 h-24 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-emerald-500/10 animate-bounce"
-            style={{ animationDuration: "3s" }}
-          >
-            <CheckCircle2 size={48} strokeWidth={3} />
-          </div>
-
-          <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-6">
-            <Sparkles size={14} className="animate-pulse" /> Confirmado
-          </div>
-
-          <h1 className="text-4xl md:text-6xl font-black text-foreground mb-6 tracking-tight leading-[1.1]">
-            Currículo & LinkedIn <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
-              Magnéticos Garantidos! 🇺🇸
-            </span>
-          </h1>
-
-          <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
-            Prepare-se para transformar seu posicionamento. Vamos ajustar cada detalhe para que você seja visto como o profissional de elite que o mercado americano busca.
-          </p>
-
-          {/* Product Summary Box - LinkedIn icon */}
-          <div className="max-w-xl mx-auto bg-muted/50 border border-border rounded-3xl p-8 mb-12 text-left">
-            <div className="flex items-start gap-5">
-              <div className="w-14 h-14 bg-card rounded-2xl flex items-center justify-center text-primary shadow-sm border border-border flex-shrink-0">
-                <Linkedin size={28} />
-              </div>
-              <div>
-                <h3 className="font-black text-foreground text-lg">Consultoria – Currículo e LinkedIn Magnético</h3>
-                <p className="text-sm text-muted-foreground">Sessão prática de 60 minutos individuais</p>
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs mt-2 uppercase tracking-widest">
-                  <ShieldCheck size={14} /> Reserva Confirmada
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button
-              onClick={() => window.open(scheduleUrl, "_blank")}
-              size="lg"
-              className="w-full sm:w-auto px-10 py-6 bg-foreground hover:bg-foreground/90 text-background font-black rounded-[24px] shadow-2xl shadow-foreground/20 transition-all hover:-translate-y-1 flex items-center justify-center gap-3 text-lg h-auto"
-            >
-              Agendar minha Sessão <ArrowRight size={20} />
-            </Button>
-            <a
-              href="mailto:contato@euanapratica.com"
-              className="w-full sm:w-auto px-10 py-5 bg-card hover:bg-muted text-foreground border border-border font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 text-lg"
-            >
-              <Mail size={20} className="text-primary" /> Email Suporte
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Credit Incentive Card - Upgrade Inteligente */}
-      <div className="mt-8 bg-[#1e3a8a] rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-[#1e3a8a]/20 group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary opacity-20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-30 transition-opacity"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-          <div className="w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-[28px] flex items-center justify-center flex-shrink-0 animate-pulse">
-            <Gift size={36} className="text-blue-300" />
-          </div>
-          <div className="text-center md:text-left flex-1">
-            <h2 className="text-2xl font-black mb-2">Upgrade Inteligente</h2>
-            <p className="text-blue-100 leading-relaxed font-medium">
-              100% do valor desta sessão será convertido em crédito caso você entre na Mentoria em Grupo ou na Mentoria Individual em até 7 dias. Entre em contato através de{" "}
-              <span className="text-white font-bold underline">contato@euanapratica.com</span>.
-            </p>
-          </div>
-          <div className="flex-shrink-0">
-            <div className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Válido por</p>
-              <p className="text-2xl font-black">7 Dias</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* What to expect next */}
-      <div className="mt-20">
-        <h3 className="text-2xl font-black text-foreground mb-10 text-center">O que acontece agora?</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Agendamento */}
-          <div className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-16 h-16 bg-muted text-primary rounded-3xl flex items-center justify-center mb-6">
-              <Calendar size={32} />
-            </div>
-            <h4 className="font-bold text-foreground text-lg mb-3">Agendamento</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Você precisa clicar no link de agendamento acima para escolher o melhor horário na agenda do Daniel. Escolha um slot que lhe permita preparar o material.
-            </p>
-          </div>
-
-          {/* Preparação */}
-          <div className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow">
-            <div className="w-16 h-16 bg-muted text-primary rounded-3xl flex items-center justify-center mb-6">
-              <FileText size={32} />
-            </div>
-            <h4 className="font-bold text-foreground text-lg mb-3">Preparação</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Envie seu currículo atual e o link do seu LinkedIn para{" "}
-              <span className="text-foreground font-bold">daniel@euanapratica.com</span> com no máximo{" "}
-              <span className="text-primary font-bold">5 dias de antecedência</span> da sessão para torná-la mais produtiva.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+// Funções
+const handleViewReport = (evaluation: CareerEvaluation) => {
+  setSelectedEvaluation(evaluation);
+  setIsModalOpen(true);
 };
 
-export default ThankYouCurriculo;
+const handleRefresh = async (id: string) => {
+  setRefreshingId(id);
+  const { data, error } = await supabase.functions.invoke('format-lead-report', {
+    body: { evaluationId: id, forceRefresh: true }
+  });
+  if (!error && data?.content) {
+    // Atualizar a lista local
+    setEvaluations(prev => prev.map(e => 
+      e.id === id 
+        ? { ...e, formatted_report: JSON.stringify(data.content), formatted_at: new Date().toISOString() }
+        : e
+    ));
+    toast({ title: 'Relatório regenerado!' });
+  }
+  setRefreshingId(null);
+};
 ```
 
 ---
 
-## Resumo
+## 6. Arquivos a Modificar/Criar
 
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/thankyou/ThankYouCurriculo.tsx` | Criar novo componente |
-| `src/App.tsx` | Adicionar import + rota `/thank-you/curriculo` |
+| Ação | Arquivo | Descrição |
+|------|---------|-----------|
+| Modificar | `src/components/layouts/DashboardLayout.tsx` | Adicionar menu item |
+| Modificar | `src/components/admin/leads/LeadsTable.tsx` | Botões refresh e view |
+| Criar | `src/components/admin/leads/LeadReportModal.tsx` | Modal de visualização |
+| Modificar | `supabase/functions/format-lead-report/index.ts` | forceRefresh + recommendations |
+| Modificar | `src/types/leads.ts` | Adicionar campo recommendations |
+
+---
+
+## 7. Fluxo do Usuário
+
+```text
+Admin navega para Leads Importados (via menu)
+          │
+          ▼
+Visualiza tabela com leads importados
+          │
+          ├── Clica em "Ver" → Abre LeadReportModal com relatório formatado
+          │                     └── Exibe CTAs dinâmicos baseados em hub_services
+          │
+          ├── Clica em "Refresh" → Edge function regenera relatório
+          │                        └── Atualiza row na tabela
+          │
+          └── Clica em "Copy" → Copia URL pública do relatório
+```
+
+---
+
+## 8. CTAs Dinâmicos - Lógica de Matching
+
+A IA receberá a lista de serviços disponíveis:
+- **Currículo e LinkedIn Magnético** → Recomendado se fase = "O"
+- **Sessão de Direção ROTA EUA** → Recomendado se fase = "R"
+- **Mentoria em Grupo** → Recomendado como UPGRADE
+- **Mentoria Individual** → Recomendado como UPGRADE premium
+
+O prompt instruirá a IA a:
+1. Analisar a fase atual do lead (R, O, T, A)
+2. Selecionar até 3 serviços relevantes
+3. Classificar como PRIMARY, SECONDARY ou UPGRADE
+4. Explicar o motivo da recomendação
+
+---
+
+## Resumo de Mudanças
+
+| Arquivo | Linhas Estimadas |
+|---------|------------------|
+| `DashboardLayout.tsx` | +2 linhas |
+| `LeadsTable.tsx` | ~80 linhas modificadas |
+| `LeadReportModal.tsx` | ~350 linhas (novo) |
+| `format-lead-report/index.ts` | ~60 linhas modificadas |
+| `types/leads.ts` | ~10 linhas |
+
