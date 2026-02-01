@@ -57,6 +57,7 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminLeadsImport from "./pages/admin/AdminLeadsImport";
 import PublicReport from "./pages/report/PublicReport";
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
+import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
 import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
 
@@ -360,6 +361,7 @@ function AppRoutes() {
       
       {/* Thank You Pages (public, post-payment redirects) */}
       <Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />
+      <Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
       
       {/* Payment Success - post-checkout redirect */}
       <Route path="/payment-success" element={
