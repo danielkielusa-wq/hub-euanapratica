@@ -1,32 +1,32 @@
-import { 
-  CheckCircle2, 
-  Calendar, 
-  ArrowRight, 
-  Mail, 
-  Sparkles, 
-  Zap, 
-  Clock, 
+import {
+  CheckCircle2,
+  Calendar,
+  ArrowRight,
+  Mail,
+  Sparkles,
+  Zap,
+  Clock,
   ArrowLeft,
   Gift,
-  ShieldCheck
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+  ShieldCheck,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const ThankYouRota60 = () => {
   const navigate = useNavigate();
 
   const handleScheduleClick = () => {
     // TODO: Update with actual Calendly or booking link
-    window.open('https://calendly.com/danielkiel', '_blank');
+    window.open("https://tidycal.com/euanapratica/direcao-60-minutos", "_blank");
   };
 
   return (
     <div className="animate-fade-in-up min-h-screen pb-20 max-w-5xl mx-auto px-4 sm:px-6 bg-background">
       {/* Top Navigation */}
       <div className="pt-8 pb-12">
-        <button 
-          onClick={() => navigate('/dashboard/hub')}
+        <button
+          onClick={() => navigate("/dashboard/hub")}
           className="group flex items-center gap-2 text-muted-foreground hover:text-foreground font-bold text-sm transition-all"
         >
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
@@ -42,9 +42,9 @@ const ThankYouRota60 = () => {
 
         <div className="relative z-10 px-8 py-16 md:p-20 text-center">
           {/* Animated Success Icon */}
-          <div 
-            className="w-24 h-24 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-emerald-500/10 animate-bounce" 
-            style={{ animationDuration: '3s' }}
+          <div
+            className="w-24 h-24 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto mb-10 shadow-lg shadow-emerald-500/10 animate-bounce"
+            style={{ animationDuration: "3s" }}
           >
             <CheckCircle2 size={48} strokeWidth={3} />
           </div>
@@ -55,11 +55,14 @@ const ThankYouRota60 = () => {
 
           <h1 className="text-4xl md:text-6xl font-black text-foreground mb-6 tracking-tight leading-[1.1]">
             Sua vaga na Consultoria <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">está garantida! 🇺🇸</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
+              está garantida! 🇺🇸
+            </span>
           </h1>
 
           <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
-            Você acaba de dar o passo mais importante para sua carreira internacional. Prepare seu currículo e suas dúvidas, nossa sessão será transformadora.
+            Você acaba de dar o passo mais importante para sua carreira internacional. Prepare seu currículo e suas
+            dúvidas, nossa sessão será transformadora.
           </p>
 
           {/* Product Summary Box */}
@@ -80,14 +83,14 @@ const ThankYouRota60 = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button 
+            <Button
               onClick={handleScheduleClick}
               size="lg"
               className="w-full sm:w-auto px-10 py-6 bg-foreground hover:bg-foreground/90 text-background font-black rounded-[24px] shadow-2xl shadow-foreground/20 transition-all hover:-translate-y-1 flex items-center justify-center gap-3 text-lg h-auto"
             >
               Agendar minha Sessão <ArrowRight size={20} />
             </Button>
-            <a 
+            <a
               href="mailto:contato@euanapratica.com"
               className="w-full sm:w-auto px-10 py-5 bg-card hover:bg-muted text-foreground border border-border font-bold rounded-[24px] transition-all flex items-center justify-center gap-3 text-lg"
             >
@@ -107,7 +110,9 @@ const ThankYouRota60 = () => {
           <div className="text-center md:text-left flex-1">
             <h2 className="text-2xl font-black mb-2">Bônus Exclusivo de Crédito</h2>
             <p className="text-blue-100 leading-relaxed font-medium">
-              Você poderá entrar em contato através de <span className="text-white font-bold underline">contato@euanapratica.com</span> e reverter o valor pago nesta sessão em desconto para nossa Mentoria em Grupo ou Individual.
+              Você poderá entrar em contato através de{" "}
+              <span className="text-white font-bold underline">contato@euanapratica.com</span> e reverter o valor pago
+              nesta sessão em desconto para nossa Mentoria em Grupo ou Individual.
             </p>
           </div>
           <div className="flex-shrink-0">
@@ -124,18 +129,21 @@ const ThankYouRota60 = () => {
         <h3 className="text-2xl font-black text-foreground mb-10 text-center">O que acontece agora?</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {[
-            { 
-              icon: Clock, 
-              title: "Agendamento", 
-              desc: "Você precisa clicar no link de agendamento acima para escolher o melhor horário na agenda do Daniel." 
+            {
+              icon: Clock,
+              title: "Agendamento",
+              desc: "Você precisa clicar no link de agendamento acima para escolher o melhor horário na agenda do Daniel.",
             },
-            { 
-              icon: Zap, 
-              title: "Preparação", 
-              desc: "Enviaremos um formulário pré-sessão para que possamos focar direto na solução durante nosso tempo juntos." 
-            }
+            {
+              icon: Zap,
+              title: "Preparação",
+              desc: "Enviaremos um formulário pré-sessão para que possamos focar direto na solução durante nosso tempo juntos.",
+            },
           ].map((item, i) => (
-            <div key={i} className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow">
+            <div
+              key={i}
+              className="bg-card p-10 rounded-[40px] border border-border shadow-sm text-center flex flex-col items-center hover:shadow-md transition-shadow"
+            >
               <div className="w-16 h-16 bg-muted text-primary rounded-3xl flex items-center justify-center mb-6">
                 <item.icon size={32} />
               </div>
