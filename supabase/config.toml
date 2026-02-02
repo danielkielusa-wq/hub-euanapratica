@@ -26,6 +26,3 @@ verify_jwt = false
 
 [functions.create-lead-user]
 verify_jwt = false
-
-[functions.get-secrets]
-verify_jwt = false
