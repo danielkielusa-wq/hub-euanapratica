@@ -89,7 +89,7 @@ function ProtectedRoute({ children, allowedRoles, skipOnboardingCheck }: { child
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
     const routes: Record<string, string> = {
-      student: '/dashboard',
+      student: '/dashboard/hub',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
     };
@@ -114,7 +114,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   
   if (isAuthenticated && user) {
     const routes: Record<string, string> = {
-      student: '/dashboard',
+      student: '/dashboard/hub',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
     };
