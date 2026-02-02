@@ -60,6 +60,7 @@ import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
 import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
+import { ImpersonationBanner } from "./components/impersonation/ImpersonationBanner";
 
 const queryClient = new QueryClient();
 
@@ -406,6 +407,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ImpersonationBanner />
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
