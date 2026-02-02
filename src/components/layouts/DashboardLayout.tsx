@@ -142,7 +142,7 @@ const roleNavSections: Record<string, NavSection[]> = {
 };
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isImpersonating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -252,7 +252,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
       
       {/* Main content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+      <main className={cn(
+        "lg:ml-64 pt-16 lg:pt-0 min-h-screen",
+        isImpersonating && "pt-24 lg:pt-10"
+      )}>
         {children}
       </main>
 

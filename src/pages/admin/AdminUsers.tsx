@@ -37,10 +37,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus, useDeleteUser } from '@/hooks/useAdminUsers';
+import { useAuth } from '@/contexts/AuthContext';
 import type { UserFilters } from '@/types/admin';
-import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck, Trash2, AlertTriangle, Eye } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -85,6 +87,19 @@ export default function AdminUsers() {
   const updateRoleMutation = useUpdateUserRole();
   const updateStatusMutation = useUpdateUserStatus();
   const deleteUserMutation = useDeleteUser();
+  const { impersonate } = useAuth();
+  const navigate = useNavigate();
+
+  const handleImpersonate = async (userId: string, userRole: string) => {
+    await impersonate(userId);
+    // Redirect based on impersonated user's role
+    const routes: Record<string, string> = {
+      student: '/dashboard/hub',
+      mentor: '/mentor/dashboard',
+      admin: '/admin/dashboard',
+    };
+    navigate(routes[userRole] || '/dashboard/hub');
+  };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -263,6 +278,11 @@ export default function AdminUsers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleImpersonate(user.id, user.role)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver como Usuário
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleEditRole(user)}>
                             <UserCog className="mr-2 h-4 w-4" />
                             Alterar Papel

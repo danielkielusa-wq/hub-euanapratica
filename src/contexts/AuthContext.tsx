@@ -8,13 +8,17 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   register: (data: { full_name: string; email: string; password: string }) => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Impersonation
+  impersonate: (userId: string) => Promise<void>;
+  stopImpersonation: () => void;
+  isImpersonating: boolean;
+  realUser: UserWithRole | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRole | null> {
   try {
-    // Buscar profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -26,14 +30,12 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       return null;
     }
 
-    // Check if user is inactive
     if (profile.status === 'inactive') {
       console.error('User is inactive');
       await supabase.auth.signOut();
       return null;
     }
 
-    // Buscar role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
@@ -67,7 +69,6 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
   }
 }
 
-// Update last login timestamp
 async function updateLastLogin(userId: string): Promise<void> {
   try {
     await supabase
@@ -75,7 +76,6 @@ async function updateLastLogin(userId: string): Promise<void> {
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', userId);
     
-    // Log the login
     await supabase.from('user_audit_logs').insert({
       user_id: userId,
       action: 'login',
@@ -92,14 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     isLoading: true,
   });
+  
+  // Impersonation state
+  const [impersonatedUser, setImpersonatedUser] = useState<UserWithRole | null>(null);
 
-  // Set up auth state listener BEFORE getting session
   useEffect(() => {
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
             const userWithRole = await fetchUserWithRole(session.user);
             setAuthState({
@@ -114,11 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: false,
             isLoading: false,
           });
+          // Clear impersonation on logout
+          setImpersonatedUser(null);
         }
       }
     );
 
-    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const userWithRole = await fetchUserWithRole(session.user);
@@ -154,20 +155,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    // Update last login
     if (data.user) {
       await updateLastLogin(data.user.id);
     }
-    // Auth state will be updated by the listener
   }, []);
 
   const logout = useCallback(async () => {
+    setImpersonatedUser(null); // Clear impersonation on logout
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);
       throw error;
     }
-    // Auth state will be updated by the listener
   }, []);
 
   const register = useCallback(async (data: { full_name: string; email: string; password: string }) => {
@@ -188,7 +187,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       throw error;
     }
-    // Auth state will be updated by the listener (auto-confirm is enabled)
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -203,8 +201,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Impersonation functions
+  const impersonate = useCallback(async (userId: string) => {
+    // Only admins can impersonate (checked by caller, but double-check here)
+    if (authState.user?.role !== 'admin') {
+      console.error('Only admins can impersonate users');
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Error fetching user profile for impersonation:', profileError);
+      return;
+    }
+
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error('Error fetching user role for impersonation:', roleError);
+      return;
+    }
+
+    const impersonated: UserWithRole = {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      phone: profile.phone ?? undefined,
+      phone_country_code: profile.phone_country_code ?? '+55',
+      is_whatsapp: profile.is_whatsapp ?? false,
+      profile_photo_url: profile.profile_photo_url ?? undefined,
+      timezone: profile.timezone ?? 'America/Sao_Paulo',
+      status: (profile.status as 'active' | 'inactive') ?? 'active',
+      last_login_at: profile.last_login_at ?? undefined,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+      role: roleData.role as UserRole,
+      has_completed_onboarding: profile.has_completed_onboarding ?? false,
+    };
+
+    // Log impersonation start
+    await supabase.from('user_audit_logs').insert({
+      user_id: userId,
+      changed_by_user_id: authState.user?.id,
+      action: 'impersonation_started',
+      new_values: { impersonated_by: authState.user?.email }
+    });
+
+    setImpersonatedUser(impersonated);
+  }, [authState.user]);
+
+  const stopImpersonation = useCallback(() => {
+    setImpersonatedUser(null);
+  }, []);
+
+  // Compute effective user (impersonated or real)
+  const effectiveUser = impersonatedUser || authState.user;
+  const isImpersonating = !!impersonatedUser;
+  const realUser = authState.user;
+
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, register, refreshUser }}>
+    <AuthContext.Provider value={{ 
+      ...authState,
+      user: effectiveUser,
+      login, 
+      logout, 
+      register, 
+      refreshUser,
+      impersonate,
+      stopImpersonation,
+      isImpersonating,
+      realUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );
