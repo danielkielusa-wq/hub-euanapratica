@@ -1,156 +1,242 @@
 
 
-# Plano: Meu Hub como Pagina Inicial + Redesign Inspirado em StudentApps
+# Plano: Impersonacao de Usuario para Administradores
 
 ## Objetivo
 
-Implementar duas mudancas principais:
-1. **Redirecionar estudantes para `/dashboard/hub`** apos login (em vez de `/dashboard`)
-2. **Redesenhar a pagina StudentHub** seguindo o layout do arquivo `StudentApps.tsx`, focando primeiro nos recursos gratuitos da assinatura e depois nos servicos pagos
+Permitir que administradores visualizem a plataforma exatamente como um usuario especifico veria, sem alterar a sessao real do Supabase Auth. Quando em modo de impersonacao, um botao flutuante permite retornar ao acesso de admin.
+
+---
+
+## Arquitetura de Seguranca
+
+A implementacao usa uma abordagem de **sobreposicao visual** (overlay), nao uma impersonacao real:
+
+```text
++------------------------------------------+
+| Admin Real (Supabase Auth)               |
+| - Mantem sessao original                 |
+| - Mantem permissoes de admin no backend  |
++------------------------------------------+
+           |
+           v
++------------------------------------------+
+| Estado de Impersonacao (React Context)   |
+| - Armazena dados do usuario visualizado  |
+| - Sobrescreve `user` no AuthContext      |
+| - Permite ver UI como aquele usuario     |
++------------------------------------------+
+```
+
+**Importante**: O backend continua usando o token real do admin. Apenas a UI reflete a experiencia do usuario impersonado.
 
 ---
 
 ## Mudancas Necessarias
 
-### 1. Alterar Rota Padrao de Login para Estudantes
+### 1. Atualizar AuthContext
+
+| Acao | Descricao |
+|------|-----------|
+| Adicionar estado `impersonatedUser` | Armazena dados do usuario sendo visualizado |
+| Adicionar funcao `impersonate(userId)` | Inicia a impersonacao |
+| Adicionar funcao `stopImpersonation()` | Encerra a impersonacao |
+| Expor `isImpersonating` | Flag booleana para UI |
+| Expor `realUser` | Dados do admin real (para o botao voltar) |
+
+**Codigo:**
+```typescript
+// Estado adicional
+const [impersonatedUser, setImpersonatedUser] = useState<UserWithRole | null>(null);
+
+// Nova propriedade computada
+const effectiveUser = impersonatedUser || authState.user;
+const isImpersonating = !!impersonatedUser;
+const realUser = authState.user;
+
+// Funcao para iniciar impersonacao
+const impersonate = async (userId: string) => {
+  // Buscar dados do usuario alvo
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  const { data: roleData } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .single();
+  
+  setImpersonatedUser({ ...profile, role: roleData.role });
+};
+
+// Funcao para encerrar
+const stopImpersonation = () => setImpersonatedUser(null);
+```
+
+---
+
+### 2. Criar Botao de Impersonacao na Tabela de Usuarios
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/App.tsx` | Alterar `PublicRoute` para redirecionar estudantes para `/dashboard/hub` |
+| `src/pages/admin/AdminUsers.tsx` | Adicionar item "Ver como Usuario" no DropdownMenu |
 
-**Codigo Atual (linha 116-121):**
-```typescript
-const routes: Record<string, string> = {
-  student: '/dashboard',
-  mentor: '/mentor/dashboard',
-  admin: '/admin/dashboard',
-};
-```
-
-**Codigo Novo:**
-```typescript
-const routes: Record<string, string> = {
-  student: '/dashboard/hub',  // <- Mudanca aqui
-  mentor: '/mentor/dashboard',
-  admin: '/admin/dashboard',
-};
-```
-
-Tambem alterar em `ProtectedRoute` (linhas 91-96):
-```typescript
-const routes: Record<string, string> = {
-  student: '/dashboard/hub',  // <- Mudanca aqui
-  ...
-};
+**Codigo do novo item:**
+```tsx
+<DropdownMenuItem onClick={() => handleImpersonate(user.id)}>
+  <Eye className="mr-2 h-4 w-4" />
+  Ver como Usuário
+</DropdownMenuItem>
 ```
 
 ---
 
-### 2. Redesenhar StudentHub Inspirado em StudentApps.tsx
+### 3. Criar Botao Flutuante de Retorno
 
-O novo layout tera a seguinte hierarquia visual:
+| Arquivo | Acao |
+|---------|------|
+| `src/components/impersonation/ImpersonationBanner.tsx` | **NOVO** - Botao flutuante com nome do usuario e botao "Voltar" |
+
+**Design:**
+```text
++--------------------------------------------------+
+| Visualizando como: João Silva  | [Voltar Admin] |
++--------------------------------------------------+
+```
+
+**Posicionamento:** Fixed no topo da tela (nao no bottom para evitar conflito com FeedbackFloatingButton)
+
+**Codigo:**
+```tsx
+export function ImpersonationBanner() {
+  const { isImpersonating, user, stopImpersonation } = useAuth();
+  const navigate = useNavigate();
+
+  if (!isImpersonating) return null;
+
+  const handleExit = () => {
+    stopImpersonation();
+    navigate('/admin/usuarios');
+  };
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-amber-950 py-2 px-4 flex items-center justify-center gap-4 shadow-md">
+      <Eye className="h-4 w-4" />
+      <span className="font-medium">
+        Visualizando como: <strong>{user?.full_name}</strong>
+      </span>
+      <Button 
+        size="sm" 
+        variant="outline" 
+        onClick={handleExit}
+        className="bg-white hover:bg-amber-100"
+      >
+        <ArrowLeft className="h-4 w-4 mr-1" />
+        Voltar ao Admin
+      </Button>
+    </div>
+  );
+}
+```
+
+---
+
+### 4. Integrar Banner no Layout
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/App.tsx` | Adicionar `<ImpersonationBanner />` dentro do BrowserRouter |
+
+---
+
+### 5. Ajustar Layout para Acomodar Banner
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/layouts/DashboardLayout.tsx` | Adicionar padding-top quando `isImpersonating` |
+
+**Codigo:**
+```tsx
+// No main content
+<main className={cn(
+  "lg:ml-64 pt-16 lg:pt-0 min-h-screen",
+  isImpersonating && "pt-24 lg:pt-8" // Espaco extra para o banner
+)}>
+```
+
+---
+
+## Fluxo de Uso
 
 ```text
-+-----------------------------------------------+
-| HEADER: "Seu Hub" + Badge do Plano            |
-| Subtitulo contextual baseado no plano         |
-+-----------------------------------------------+
-
-+-----------------------------------------------+
-| FREE TIER VALUE (Grid 2 colunas)              |
-| +-------------------+ +---------------------+ |
-| | ResumePass AI     | | Aula Base           | |
-| | (Creditos disp.)  | | (Masterclass Free)  | |
-| +-------------------+ +---------------------+ |
-+-----------------------------------------------+
-
-+-----------------------------------------------+
-| UPSELL BANNER (ROTA EUA) - Dark Gradient      |
-| Preco + CTA + Garantia                        |
-+-----------------------------------------------+
-
-+-----------------------------------------------+
-| OUTROS SERVICOS (Grid 3 colunas)              |
-| Cards menores com preco e CTA                 |
-+-----------------------------------------------+
+1. Admin acessa /admin/usuarios
+2. Clica no menu de acoes (tres pontinhos) de um usuario
+3. Seleciona "Ver como Usuario"
+4. Sistema:
+   a. Busca dados do usuario (profile + role)
+   b. Armazena em impersonatedUser
+   c. Redireciona para dashboard do usuario (/dashboard/hub)
+5. Admin navega pela plataforma vendo tudo como o usuario
+6. Banner amarelo no topo mostra "Visualizando como: Nome"
+7. Ao clicar "Voltar ao Admin":
+   a. Limpa impersonatedUser
+   b. Redireciona para /admin/usuarios
 ```
 
 ---
 
-### 3. Componentes a Criar/Modificar
-
-| Componente | Acao |
-|------------|------|
-| `src/pages/hub/StudentHub.tsx` | Reescrever completamente com novo layout |
-| `src/components/hub/FreeToolsSection.tsx` | **NOVO** - Grid com ferramentas gratuitas do plano |
-| `src/components/hub/UpsellBanner.tsx` | **NOVO** - Banner escuro para ROTA EUA |
-| `src/components/hub/SecondaryServicesGrid.tsx` | **NOVO** - Grid de servicos secundarios |
-
----
-
-### 4. Novo Fluxo de Dados
-
-O novo StudentHub ira:
-
-1. **Buscar quota do usuario** (`useSubscription`) para exibir:
-   - Nome do plano (Starter/Pro/VIP)
-   - Creditos disponiveis
-   
-2. **Exibir ferramentas FREE primeiro**:
-   - ResumePass AI (com creditos)
-   - Aula Base (link externo)
-   
-3. **Mostrar upsell principal** (servico `is_highlighted = true` da tabela `hub_services`)
-
-4. **Listar servicos secundarios** (demais servicos high-touch)
-
----
-
-## Detalhes Tecnicos
-
-### Cores e Estilos do StudentApps.tsx
-
-| Elemento | Estilo |
-|----------|--------|
-| Cards principais | `rounded-[32px] p-8 border border-gray-100 shadow-sm hover:shadow-xl` |
-| Blur decorativo | `blur-2xl` em cantos |
-| Banner upsell | `bg-[#0F172A]` (slate-900) com gradientes |
-| Botao CTA | `bg-brand-600 hover:bg-brand-500 rounded-2xl` |
-| Cards secundarios | `rounded-[24px] p-6` |
-
-### Integracao com Dados Existentes
-
-```typescript
-// Usar hooks existentes
-import { useSubscription } from '@/hooks/useSubscription';
-import { useHubServices } from '@/hooks/useHubServices';
-
-// Logica de exibicao
-const isFreePlan = quota?.planId === 'basic';
-const featuredService = services?.find(s => s.is_highlighted);
-const secondaryServices = services?.filter(s => 
-  s.service_type === 'consulting' || s.service_type === 'live_mentoring'
-);
-```
-
----
-
-## Arquivos Afetados
+## Arquivos a Criar/Modificar
 
 | Arquivo | Acao | Descricao |
 |---------|------|-----------|
-| `src/App.tsx` | Editar | Mudar rota padrao de estudantes para `/dashboard/hub` |
-| `src/pages/hub/StudentHub.tsx` | Reescrever | Layout completo inspirado em StudentApps |
-| `src/components/hub/FreeToolsSection.tsx` | Criar | Grid de ferramentas gratuitas |
-| `src/components/hub/UpsellBanner.tsx` | Criar | Banner de upsell ROTA EUA |
-| `src/components/hub/SecondaryServicesGrid.tsx` | Criar | Grid de servicos secundarios |
+| `src/contexts/AuthContext.tsx` | Modificar | Adicionar estado e funcoes de impersonacao |
+| `src/types/auth.ts` | Modificar | Adicionar tipos para impersonacao no AuthContextType |
+| `src/pages/admin/AdminUsers.tsx` | Modificar | Adicionar botao "Ver como Usuario" |
+| `src/components/impersonation/ImpersonationBanner.tsx` | **Criar** | Banner flutuante de retorno |
+| `src/components/layouts/DashboardLayout.tsx` | Modificar | Ajustar padding quando impersonando |
+| `src/App.tsx` | Modificar | Adicionar ImpersonationBanner global |
+
+---
+
+## Secao Tecnica: Tipos
+
+```typescript
+interface AuthContextType extends AuthState {
+  // Existentes
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  
+  // Novos
+  impersonate: (userId: string) => Promise<void>;
+  stopImpersonation: () => void;
+  isImpersonating: boolean;
+  realUser: UserWithRole | null; // Admin real
+}
+```
+
+---
+
+## Consideracoes de Seguranca
+
+| Aspecto | Abordagem |
+|---------|-----------|
+| Autenticacao real | Nao e alterada - admin mantem seu token |
+| Backend calls | Continuam usando token do admin (tem permissoes) |
+| Somente UI | A impersonacao e puramente visual |
+| Apenas admins | Botao so aparece na tela de AdminUsers |
+| Audit log | Podemos logar quando admin inicia/encerra impersonacao |
 
 ---
 
 ## Resultado Final
 
-- Estudantes serao redirecionados para o Hub ao fazer login
-- Layout mais limpo e focado em conversao
-- Hierarquia visual: Gratuito primeiro -> Upsell principal -> Servicos pagos
-- Design moderno com cards arredondados e efeitos de blur
+- Administradores podem visualizar a plataforma exatamente como qualquer usuario
+- Interface clara indica quando esta em modo de impersonacao
+- Retorno facil ao acesso de admin com um clique
+- Seguranca mantida - autenticacao real nao e alterada
 
