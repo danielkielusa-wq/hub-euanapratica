@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PlanFeatures {
   allow_pdf: boolean;
@@ -49,6 +50,7 @@ const DEFAULT_FEATURES: PlanFeatures = {
 };
 
 export function useSubscription(): UseSubscriptionReturn {
+  const { user } = useAuth(); // Uses effective user (impersonated or real)
   const [quota, setQuota] = useState<UserQuota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +60,7 @@ export function useSubscription(): UseSubscriptionReturn {
       setIsLoading(true);
       setError(null);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!user?.id) {
         setQuota(null);
         return;
       }
@@ -115,7 +116,7 @@ export function useSubscription(): UseSubscriptionReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const recordUsage = useCallback(async (): Promise<boolean> => {
     try {
