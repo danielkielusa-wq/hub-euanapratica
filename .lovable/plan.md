@@ -1,242 +1,239 @@
 
+# Plano: Sincronizacao de Assinatura e Hot Seats
 
-# Plano: Impersonacao de Usuario para Administradores
+## Problema Identificado
 
-## Objetivo
+### Bug #1: Estado do Plano Nao Atualiza no "Meu Hub"
 
-Permitir que administradores visualizem a plataforma exatamente como um usuario especifico veria, sem alterar a sessao real do Supabase Auth. Quando em modo de impersonacao, um botao flutuante permite retornar ao acesso de admin.
+**Causa Raiz**: O hook `useSubscription` (linha 61-65) usa `supabase.auth.getUser()` para obter o ID do usuario:
 
----
-
-## Arquitetura de Seguranca
-
-A implementacao usa uma abordagem de **sobreposicao visual** (overlay), nao uma impersonacao real:
-
-```text
-+------------------------------------------+
-| Admin Real (Supabase Auth)               |
-| - Mantem sessao original                 |
-| - Mantem permissoes de admin no backend  |
-+------------------------------------------+
-           |
-           v
-+------------------------------------------+
-| Estado de Impersonacao (React Context)   |
-| - Armazena dados do usuario visualizado  |
-| - Sobrescreve `user` no AuthContext      |
-| - Permite ver UI como aquele usuario     |
-+------------------------------------------+
-```
-
-**Importante**: O backend continua usando o token real do admin. Apenas a UI reflete a experiencia do usuario impersonado.
-
----
-
-## Mudancas Necessarias
-
-### 1. Atualizar AuthContext
-
-| Acao | Descricao |
-|------|-----------|
-| Adicionar estado `impersonatedUser` | Armazena dados do usuario sendo visualizado |
-| Adicionar funcao `impersonate(userId)` | Inicia a impersonacao |
-| Adicionar funcao `stopImpersonation()` | Encerra a impersonacao |
-| Expor `isImpersonating` | Flag booleana para UI |
-| Expor `realUser` | Dados do admin real (para o botao voltar) |
-
-**Codigo:**
 ```typescript
-// Estado adicional
-const [impersonatedUser, setImpersonatedUser] = useState<UserWithRole | null>(null);
-
-// Nova propriedade computada
-const effectiveUser = impersonatedUser || authState.user;
-const isImpersonating = !!impersonatedUser;
-const realUser = authState.user;
-
-// Funcao para iniciar impersonacao
-const impersonate = async (userId: string) => {
-  // Buscar dados do usuario alvo
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .single();
-  
-  setImpersonatedUser({ ...profile, role: roleData.role });
-};
-
-// Funcao para encerrar
-const stopImpersonation = () => setImpersonatedUser(null);
-```
-
----
-
-### 2. Criar Botao de Impersonacao na Tabela de Usuarios
-
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/pages/admin/AdminUsers.tsx` | Adicionar item "Ver como Usuario" no DropdownMenu |
-
-**Codigo do novo item:**
-```tsx
-<DropdownMenuItem onClick={() => handleImpersonate(user.id)}>
-  <Eye className="mr-2 h-4 w-4" />
-  Ver como Usuário
-</DropdownMenuItem>
-```
-
----
-
-### 3. Criar Botao Flutuante de Retorno
-
-| Arquivo | Acao |
-|---------|------|
-| `src/components/impersonation/ImpersonationBanner.tsx` | **NOVO** - Botao flutuante com nome do usuario e botao "Voltar" |
-
-**Design:**
-```text
-+--------------------------------------------------+
-| Visualizando como: João Silva  | [Voltar Admin] |
-+--------------------------------------------------+
-```
-
-**Posicionamento:** Fixed no topo da tela (nao no bottom para evitar conflito com FeedbackFloatingButton)
-
-**Codigo:**
-```tsx
-export function ImpersonationBanner() {
-  const { isImpersonating, user, stopImpersonation } = useAuth();
-  const navigate = useNavigate();
-
-  if (!isImpersonating) return null;
-
-  const handleExit = () => {
-    stopImpersonation();
-    navigate('/admin/usuarios');
-  };
-
-  return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-amber-950 py-2 px-4 flex items-center justify-center gap-4 shadow-md">
-      <Eye className="h-4 w-4" />
-      <span className="font-medium">
-        Visualizando como: <strong>{user?.full_name}</strong>
-      </span>
-      <Button 
-        size="sm" 
-        variant="outline" 
-        onClick={handleExit}
-        className="bg-white hover:bg-amber-100"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" />
-        Voltar ao Admin
-      </Button>
-    </div>
-  );
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) {
+  setQuota(null);
+  return;
 }
 ```
 
+Isso retorna o usuario **real** autenticado (admin), nao o usuario impersonado. O contexto de impersonacao (`AuthContext`) nao e utilizado.
+
+### Feature #1: Membros de Hot Seats Baseado no Plano
+
+**Situacao Atual**:
+- Hot Seats existe: `667b04c4-431f-4a6c-9799-b5b82e770b4b` (status: active, category: workshop)
+- Nenhum usuario esta matriculado automaticamente
+- Nao existe trigger para sincronizar membros com plano
+
 ---
 
-### 4. Integrar Banner no Layout
+## Solucao Proposta
+
+### Parte 1: Corrigir useSubscription para Suportar Impersonacao
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/App.tsx` | Adicionar `<ImpersonationBanner />` dentro do BrowserRouter |
+| `src/hooks/useSubscription.ts` | Usar `userId` do `AuthContext` em vez de `supabase.auth.getUser()` |
+
+**Codigo Atual:**
+```typescript
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) { ... }
+const { data } = await supabase.rpc('get_user_quota', { p_user_id: user.id });
+```
+
+**Codigo Novo:**
+```typescript
+import { useAuth } from '@/contexts/AuthContext';
+
+export function useSubscription(): UseSubscriptionReturn {
+  const { user } = useAuth(); // Usa usuario efetivo (impersonado ou real)
+  
+  const fetchQuota = useCallback(async () => {
+    if (!user?.id) {
+      setQuota(null);
+      return;
+    }
+    const { data } = await supabase.rpc('get_user_quota', { p_user_id: user.id });
+    // ...
+  }, [user?.id]); // Dependencia no user.id
+}
+```
+
+**Impacto**: Quando admin inicia impersonacao, o `user.id` muda para o usuario impersonado, e `fetchQuota` e re-executado automaticamente.
 
 ---
 
-### 5. Ajustar Layout para Acomodar Banner
+### Parte 2: Refetch Automatico na Impersonacao
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/layouts/DashboardLayout.tsx` | Adicionar padding-top quando `isImpersonating` |
+| `src/hooks/useSubscription.ts` | Adicionar `user?.id` como dependencia do useEffect |
 
-**Codigo:**
-```tsx
-// No main content
-<main className={cn(
-  "lg:ml-64 pt-16 lg:pt-0 min-h-screen",
-  isImpersonating && "pt-24 lg:pt-8" // Espaco extra para o banner
-)}>
+**Logica:**
+```typescript
+useEffect(() => {
+  fetchQuota();
+}, [fetchQuota, user?.id]); // Refetch quando user muda
+```
+
+Isso garante que ao iniciar/encerrar impersonacao, os dados de quota sao buscados novamente.
+
+---
+
+### Parte 3: Atualizar useHubEvents para Contexto de Usuario
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/hooks/useHubEvents.ts` | Usar `user` do AuthContext diretamente (ja usa, mas precisa refetch) |
+
+O hook ja usa `useAuth()`, mas precisa invalidar a query quando o usuario muda:
+
+```typescript
+return useQuery({
+  queryKey: ['hub-events', user?.id, limit],
+  // ...
+});
+```
+
+Isso ja esta correto - a queryKey inclui `user?.id`, entao quando o user muda, a query e refetched.
+
+---
+
+### Parte 4: Database Trigger para Hot Seats
+
+Criar trigger no PostgreSQL que:
+1. **ON INSERT/UPDATE** em `user_subscriptions`:
+   - Se `plan_id IN ('pro', 'vip')` → Adicionar usuario ao Hot Seats
+   - Se `plan_id = 'basic'` → Remover usuario do Hot Seats
+
+2. **Definir constante** para Hot Seats ID (ou usar uma tabela de config)
+
+**SQL Migration:**
+
+```sql
+-- Funcao para sincronizar Hot Seats baseado no plano
+CREATE OR REPLACE FUNCTION sync_hot_seats_membership()
+RETURNS TRIGGER AS $$
+DECLARE
+  hot_seats_id UUID := '667b04c4-431f-4a6c-9799-b5b82e770b4b';
+  is_premium BOOLEAN;
+BEGIN
+  -- Determinar se o plano e premium (pro ou vip)
+  is_premium := NEW.plan_id IN ('pro', 'vip') AND NEW.status = 'active';
+  
+  IF is_premium THEN
+    -- Adicionar ao Hot Seats se nao estiver
+    INSERT INTO public.user_espacos (user_id, espaco_id, status, enrolled_by)
+    VALUES (NEW.user_id, hot_seats_id, 'active', NULL)
+    ON CONFLICT (user_id, espaco_id) DO UPDATE SET status = 'active';
+  ELSE
+    -- Remover do Hot Seats
+    UPDATE public.user_espacos 
+    SET status = 'cancelled'
+    WHERE user_id = NEW.user_id AND espaco_id = hot_seats_id;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger
+CREATE TRIGGER trg_sync_hot_seats_on_subscription
+AFTER INSERT OR UPDATE ON public.user_subscriptions
+FOR EACH ROW
+EXECUTE FUNCTION sync_hot_seats_membership();
+
+-- Adicionar constraint de unicidade se nao existir
+ALTER TABLE public.user_espacos 
+ADD CONSTRAINT user_espacos_user_espaco_unique 
+UNIQUE (user_id, espaco_id);
 ```
 
 ---
 
-## Fluxo de Uso
+### Parte 5: Migrar Usuarios Existentes
 
-```text
-1. Admin acessa /admin/usuarios
-2. Clica no menu de acoes (tres pontinhos) de um usuario
-3. Seleciona "Ver como Usuario"
-4. Sistema:
-   a. Busca dados do usuario (profile + role)
-   b. Armazena em impersonatedUser
-   c. Redireciona para dashboard do usuario (/dashboard/hub)
-5. Admin navega pela plataforma vendo tudo como o usuario
-6. Banner amarelo no topo mostra "Visualizando como: Nome"
-7. Ao clicar "Voltar ao Admin":
-   a. Limpa impersonatedUser
-   b. Redireciona para /admin/usuarios
+Executar script unico para sincronizar usuarios atuais:
+
+```sql
+-- Adicionar usuarios PRO/VIP existentes ao Hot Seats
+INSERT INTO public.user_espacos (user_id, espaco_id, status)
+SELECT 
+  us.user_id,
+  '667b04c4-431f-4a6c-9799-b5b82e770b4b' as espaco_id,
+  'active' as status
+FROM public.user_subscriptions us
+WHERE us.plan_id IN ('pro', 'vip') AND us.status = 'active'
+ON CONFLICT (user_id, espaco_id) DO UPDATE SET status = 'active';
+
+-- Remover usuarios FREE do Hot Seats (se houver)
+UPDATE public.user_espacos 
+SET status = 'cancelled'
+WHERE espaco_id = '667b04c4-431f-4a6c-9799-b5b82e770b4b'
+AND user_id NOT IN (
+  SELECT user_id FROM public.user_subscriptions 
+  WHERE plan_id IN ('pro', 'vip') AND status = 'active'
+);
 ```
 
 ---
 
-## Arquivos a Criar/Modificar
+## Arquivos a Modificar
 
 | Arquivo | Acao | Descricao |
 |---------|------|-----------|
-| `src/contexts/AuthContext.tsx` | Modificar | Adicionar estado e funcoes de impersonacao |
-| `src/types/auth.ts` | Modificar | Adicionar tipos para impersonacao no AuthContextType |
-| `src/pages/admin/AdminUsers.tsx` | Modificar | Adicionar botao "Ver como Usuario" |
-| `src/components/impersonation/ImpersonationBanner.tsx` | **Criar** | Banner flutuante de retorno |
-| `src/components/layouts/DashboardLayout.tsx` | Modificar | Ajustar padding quando impersonando |
-| `src/App.tsx` | Modificar | Adicionar ImpersonationBanner global |
+| `src/hooks/useSubscription.ts` | Modificar | Usar `useAuth()` em vez de `supabase.auth.getUser()` |
+| `src/hooks/useHubEvents.ts` | Verificar | Ja usa user.id na queryKey (correto) |
+| Database | Migracao | Criar trigger `sync_hot_seats_membership` |
+| Database | Migracao | Adicionar constraint unique em `user_espacos` |
+| Database | Migracao | Script para sincronizar usuarios existentes |
 
 ---
 
-## Secao Tecnica: Tipos
+## Fluxo Apos Implementacao
 
-```typescript
-interface AuthContextType extends AuthState {
-  // Existentes
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  refreshUser: () => Promise<void>;
-  
-  // Novos
-  impersonate: (userId: string) => Promise<void>;
-  stopImpersonation: () => void;
-  isImpersonating: boolean;
-  realUser: UserWithRole | null; // Admin real
-}
+```text
+Admin muda plano de Wagner → Free para PRO
+    ↓
+Trigger dispara em user_subscriptions
+    ↓
+Funcao sync_hot_seats_membership()
+    ↓
+INSERT/UPDATE em user_espacos (Hot Seats)
+    ↓
+Wagner agora ve Hot Seats na agenda
+
+---
+
+Admin inicia impersonacao de Wagner
+    ↓
+AuthContext.impersonatedUser = Wagner
+    ↓
+useSubscription detecta mudanca em user.id
+    ↓
+fetchQuota() chamado com Wagner.id
+    ↓
+Meu Hub mostra "Plano PRO" + limites corretos
 ```
 
 ---
 
-## Consideracoes de Seguranca
+## Criterios de Aceitacao
 
-| Aspecto | Abordagem |
-|---------|-----------|
-| Autenticacao real | Nao e alterada - admin mantem seu token |
-| Backend calls | Continuam usando token do admin (tem permissoes) |
-| Somente UI | A impersonacao e puramente visual |
-| Apenas admins | Botao so aparece na tela de AdminUsers |
-| Audit log | Podemos logar quando admin inicia/encerra impersonacao |
+| Cenario | Resultado Esperado |
+|---------|-------------------|
+| Admin muda Free → PRO | Hot Seats concedido imediatamente |
+| Admin muda PRO → Free | Hot Seats removido imediatamente |
+| Impersonacao de PRO | Meu Hub mostra "Plano PRO" |
+| Impersonacao de Free | Meu Hub mostra "Plano Free" |
+| ResumePass limites | Atualizam baseado no plano impersonado |
+| Calendario do usuario | Mostra Hot Seats apenas para PRO/VIP |
 
 ---
 
-## Resultado Final
+## Consideracoes Tecnicas
 
-- Administradores podem visualizar a plataforma exatamente como qualquer usuario
-- Interface clara indica quando esta em modo de impersonacao
-- Retorno facil ao acesso de admin com um clique
-- Seguranca mantida - autenticacao real nao e alterada
-
+1. **RLS**: O trigger usa `SECURITY DEFINER` para bypass de RLS, ja que e executado pelo sistema
+2. **Idempotencia**: `ON CONFLICT DO UPDATE` garante que multiplas chamadas nao criam duplicatas
+3. **Performance**: Trigger e leve (uma query INSERT/UPDATE)
+4. **Auditoria**: Enrollment history ja e logado pelo trigger existente `log_enrollment_change`
