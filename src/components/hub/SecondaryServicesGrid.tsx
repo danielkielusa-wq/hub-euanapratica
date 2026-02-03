@@ -1,6 +1,8 @@
 import { MoreHorizontal, FileText, Linkedin, GraduationCap, MessageSquare, Calendar, Map, FileSearch, type LucideIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HubService } from '@/types/hub';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
+import { cn } from '@/lib/utils';
 
 interface SecondaryServicesGridProps {
   services: HubService[];
@@ -32,6 +34,8 @@ function getIconComponent(iconName: string): LucideIcon {
 }
 
 export function SecondaryServicesGrid({ services, isLoading }: SecondaryServicesGridProps) {
+  const { getDiscountForServiceType, getCouponCode, planName, isPremiumPlan } = usePlanAccess();
+
   if (isLoading) {
     return (
       <div>
@@ -50,10 +54,17 @@ export function SecondaryServicesGrid({ services, isLoading }: SecondaryServices
   if (services.length === 0) return null;
 
   const handleServiceClick = (service: HubService) => {
-    if (service.ticto_checkout_url) {
-      window.open(service.ticto_checkout_url, '_blank');
-    } else if (service.redirect_url) {
-      window.open(service.redirect_url, '_blank');
+    let url = service.ticto_checkout_url || service.redirect_url;
+    
+    // Append coupon code if user has one
+    const coupon = getCouponCode();
+    if (url && coupon) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}coupon=${coupon}`;
+    }
+    
+    if (url) {
+      window.open(url, '_blank');
     }
   };
 
@@ -72,7 +83,16 @@ export function SecondaryServicesGrid({ services, isLoading }: SecondaryServices
         {services.map((service) => {
           const colors = colorMap[service.accent_color || 'default'] || colorMap.default;
           const IconComponent = getIconComponent(service.icon_name);
-          const price = service.price_display || (service.price ? `R$ ${service.price}` : 'Sob Consulta');
+          
+          // Calculate discounted price
+          const discount = getDiscountForServiceType(service.service_type || 'default');
+          const originalPrice = service.price || 0;
+          const discountedPrice = originalPrice * (1 - discount / 100);
+          const hasDiscount = discount > 0 && originalPrice > 0;
+
+          const priceDisplay = hasDiscount
+            ? `R$ ${discountedPrice.toFixed(0)}`
+            : (service.price_display || (service.price ? `R$ ${service.price}` : 'Sob Consulta'));
 
           return (
             <div 
@@ -80,14 +100,26 @@ export function SecondaryServicesGrid({ services, isLoading }: SecondaryServices
               className="bg-card p-6 rounded-[24px] border border-border shadow-sm hover:border-primary/20 hover:shadow-md transition-all group flex flex-col cursor-pointer"
               onClick={() => handleServiceClick(service)}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${colors.bg} ${colors.text}`}>
+              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4", colors.bg, colors.text)}>
                 <IconComponent size={24} />
               </div>
               <h4 className="font-bold text-foreground mb-2">{service.name}</h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-6 flex-1">{service.description}</p>
               
               <div className="flex items-center justify-between pt-4 border-t border-border">
-                <span className="text-xs font-bold text-foreground">{price}</span>
+                <div className="flex flex-col">
+                  {hasDiscount && (
+                    <span className="text-[10px] text-muted-foreground line-through">
+                      R$ {originalPrice}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold text-foreground">{priceDisplay}</span>
+                  {hasDiscount && (
+                    <span className="text-[9px] font-bold text-green-600 dark:text-green-400">
+                      Seu desconto {planName}: {discount}% off
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-black text-muted-foreground bg-muted px-3 py-1.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                   {service.cta_text || 'CONTRATAR'}
                 </span>
