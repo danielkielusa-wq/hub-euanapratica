@@ -58,6 +58,8 @@ import AdminLeadsImport from "./pages/admin/AdminLeadsImport";
 import PublicReport from "./pages/report/PublicReport";
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
+import Community from "./pages/community/Community";
+import PostDetail from "./pages/community/PostDetail";
 import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
 import { ImpersonationBanner } from "./components/impersonation/ImpersonationBanner";
@@ -188,6 +190,19 @@ function AppRoutes() {
           <StudentSuporte />
         </ProtectedRoute>
       } />
+      
+      {/* Community routes */}
+      <Route path="/comunidade" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <Community />
+        </ProtectedRoute>
+      } />
+      <Route path="/comunidade/:postId" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <PostDetail />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/catalogo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceCatalog />
