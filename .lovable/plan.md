@@ -1,510 +1,358 @@
 
-# Plano: Sistema de Controle de Acesso Baseado em Planos
+# Plano: Sistema Completo de Comunidade com Admin de Configuracoes
 
 ## Visao Geral
 
-Este plano implementa uma arquitetura completa de controle de acesso por assinatura onde TODAS as funcionalidades da plataforma respeitam dinamicamente as configuracoes de plano definidas pelos administradores.
+Implementar um sistema de comunidade completo baseado na interface visual fornecida (communidade.tsx), incluindo:
+- Forum de discussao com categorias dinamicas
+- Sistema de gamificacao (pontos, niveis, badges)
+- Ranking de membros ativos
+- Integracao com eventos/hot seats
+- Painel admin para configurar categorias e regras de pontuacao
 
 ---
 
-## Analise do Estado Atual
+## Arquitetura de Dados
 
-### O Que Ja Existe
-
-| Componente | Status | Observacoes |
-|------------|--------|-------------|
-| Tabela `plans` | Existe | Contem id, name, price, monthly_limit, features (JSONB) |
-| Tabela `user_subscriptions` | Existe | Contem user_id, plan_id, status, starts_at, expires_at |
-| Hook `useSubscription` | Existe | Retorna quota do usuario (planId, remaining, features) |
-| Trigger Hot Seats | Existe | Sincroniza membros PRO/VIP automaticamente |
-| RPC `get_user_quota` | Existe | Retorna limites e uso do mes |
-| `PlanConfigCard` | Existe | UI basica para configurar features Curriculo USA |
-
-### O Que Falta Implementar
-
-1. **Schema de Planos Expandido**: Novos campos para precos anuais, features de acesso, descontos por produto
-2. **Admin UI Redesenhada**: Baseada no arquivo `plan-2.tsx` com secoes completas
-3. **Sistema de Descontos**: Vincular desconto % aos hub_services (produtos)
-4. **Access Control Centralizado**: Hook unificado `usePlanAccess` 
-5. **Navegacao Dinamica**: Sidebar que respeita features do plano
-6. **Job Concierge**: Estrutura preparatoria para futuro
-
----
-
-## Arquitetura Proposta
+### Novas Tabelas Necessarias
 
 ```text
-+-----------------------------------------------+
-|            Database: plans (expandido)        |
-|  - price_monthly, price_annual                |
-|  - features: { hotseats, community, library,  |
-|                masterclass, job_concierge,    |
-|                resume_pass_limit, discounts } |
-+-----------------------------------------------+
-                     |
-                     v
-+-----------------------------------------------+
-|          RPC: get_full_plan_config            |
-|  - Retorna configuracao completa do plano     |
-|  - Inclui descontos por produto               |
-+-----------------------------------------------+
-                     |
-                     v
-+-----------------------------------------------+
-|       Hook: usePlanAccess (centralizado)      |
-|  - hasFeature('hotseats') => boolean          |
-|  - getLimit('resume_pass') => number          |
-|  - getDiscount('consulting') => number        |
-|  - canAccess('/biblioteca') => boolean        |
-+-----------------------------------------------+
-                     |
-         +-----------+-----------+
-         |           |           |
-         v           v           v
-+-------------+ +-------------+ +-------------+
-| DashboardLayout | ServiceGuard | FreeToolsSection |
-| - Menu dinamico | - Paywall   | - Limites UI |
-+-------------+ +-------------+ +-------------+
++--------------------+     +----------------------+     +------------------+
+| community_posts    |     | community_categories |     | user_gamification|
++--------------------+     +----------------------+     +------------------+
+| id (UUID)          |     | id (UUID)            |     | user_id (UUID)   |
+| user_id (FK)       |     | name                 |     | total_points     |
+| category_id (FK)   |     | slug                 |     | level            |
+| title              |     | icon_name            |     | posts_count      |
+| content            |     | display_order        |     | comments_count   |
+| created_at         |     | is_active            |     | likes_received   |
+| updated_at         |     +----------------------+     | last_activity_at |
+| likes_count        |                                  +------------------+
+| comments_count     |
++--------------------+
+          |
+          v
++--------------------+     +---------------------+     +--------------------+
+| community_comments |     | community_likes     |     | user_badges        |
++--------------------+     +---------------------+     +--------------------+
+| id (UUID)          |     | id (UUID)           |     | id (UUID)          |
+| post_id (FK)       |     | user_id (FK)        |     | user_id (FK)       |
+| user_id (FK)       |     | post_id (FK)        |     | badge_id (FK)      |
+| parent_id (FK)     |     | comment_id (FK)     |     | earned_at          |
+| content            |     | created_at          |     +--------------------+
+| created_at         |     +---------------------+
+| likes_count        |
++--------------------+
+          
++---------------------+     +-------------------------+
+| badges              |     | gamification_rules      |
++---------------------+     +-------------------------+
+| id (UUID)           |     | id (UUID)               |
+| name                |     | action_type             |
+| description         |     | points                  |
+| icon_name           |     | description             |
+| condition_type      |     | is_active               |
+| condition_value     |     +-------------------------+
+| is_active           |
++---------------------+
 ```
 
 ---
 
-## Mudancas no Banco de Dados
+## Componentes da Interface
 
-### 1. Expandir Tabela `plans`
+### Pagina Principal da Comunidade (`/comunidade`)
+
+Baseada no design fornecido com:
+
+| Secao | Descricao |
+|-------|-----------|
+| **Header** | Titulo "Comunidade" + Badge XP/Nivel do usuario |
+| **Sidebar Esquerda** | Botao "Nova Discussao" + Lista de categorias dinamicas |
+| **Feed Central** | Campo de post + Filtros (Recentes/Populares/Sem Resposta) + Cards de posts |
+| **Sidebar Direita** | Card "Sugestao" + Ranking "Membros Ativos" + Proximos Eventos |
+
+### Componentes Reutilizaveis
+
+| Componente | Proposito |
+|------------|-----------|
+| `CommunityHeader.tsx` | Badge de nivel/XP do usuario |
+| `CategorySidebar.tsx` | Lista de categorias com contadores |
+| `PostCard.tsx` | Card de post com avatar, titulo, preview, likes, comentarios |
+| `PostComposer.tsx` | Campo para criar novo post |
+| `RankingSidebar.tsx` | Top 10 membros com XP |
+| `EventsWidget.tsx` | Proximos eventos (Hot Seats) |
+| `NewPostModal.tsx` | Modal para criar post com categoria |
+| `PostDetailPage.tsx` | Pagina completa de um post com comentarios |
+| `UserLevelBadge.tsx` | Badge com nivel e barra de progresso |
+
+---
+
+## Admin: Configuracoes da Comunidade
+
+### Nova Secao em `/admin/configuracoes`
+
+Adicionar aba "Comunidade" com:
+
+**1. Gerenciamento de Categorias**
+- Lista editavel de categorias (Vistos & Imigracao, Carreira & Jobs, Networking, Vida nos EUA)
+- Adicionar/remover categorias
+- Reordenar com drag-and-drop
+- Toggle ativo/inativo
+
+**2. Regras de Gamificacao**
+| Acao | Pontos Padrao | Editavel |
+|------|---------------|----------|
+| Criar post | +10 | Sim |
+| Receber like em post | +2 | Sim |
+| Comentar | +5 | Sim |
+| Receber like em comentario | +1 | Sim |
+| Participar de evento | +20 | Sim |
+
+**3. Configuracao de Niveis**
+| Nivel | XP Minimo | Titulo |
+|-------|-----------|--------|
+| 1 | 0 | Iniciante |
+| 2 | 100 | Participante |
+| 3 | 250 | Contribuidor |
+| 4 | 500 | Veterano |
+| 5 | 1000+ | Expert |
+
+**4. Badges Customizaveis**
+- Primeiro Post: Criar primeiro post
+- Social: Receber 10 likes
+- Mentor: Responder 20 posts
+- Top 10: Entrar no ranking
+
+---
+
+## Migracoes de Banco de Dados
+
+### Tabelas Principais
 
 ```sql
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_annual numeric DEFAULT 0;
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS theme text DEFAULT 'gray';
-```
-
-### 2. Atualizar Estrutura JSONB `features`
-
-A coluna `features` sera expandida para incluir:
-
-```jsonb
-{
-  // Limites
-  "resume_pass_limit": 1,
-  "job_concierge_count": 0,
-  
-  // Toggles de Acesso
-  "hotseats": false,
-  "hotseat_priority": false,
-  "hotseat_guaranteed": false,
-  "community": true,
-  "library": false,
-  "masterclass": false,
-  "job_concierge": false,
-  
-  // Features Curriculo USA (existente)
-  "show_improvements": false,
-  "show_power_verbs": false,
-  "show_cheat_sheet": false,
-  "allow_pdf": false,
-  
-  // Descontos por Categoria de Produto
-  "discounts": {
-    "base": 0,
-    "consulting": 0,
-    "curriculum": 0,
-    "mentorship_group": 0,
-    "mentorship_individual": 0
-  },
-  
-  // Cupom aplicado automaticamente
-  "coupon_code": ""
-}
-```
-
-### 3. Criar Tabela de Mapeamento Produto-Desconto (Opcional)
-
-Para vincular descontos diretamente aos produtos em `hub_services`:
-
-```sql
-CREATE TABLE IF NOT EXISTS plan_product_discounts (
+-- Categorias da comunidade (admin-configuravel)
+CREATE TABLE community_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  plan_id TEXT REFERENCES plans(id) ON DELETE CASCADE,
-  hub_service_id UUID REFERENCES hub_services(id) ON DELETE CASCADE,
-  discount_percent INTEGER DEFAULT 0,
-  coupon_code TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(plan_id, hub_service_id)
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  icon_name TEXT DEFAULT 'hash',
+  display_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Posts da comunidade
+CREATE TABLE community_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  category_id UUID REFERENCES community_categories(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  likes_count INTEGER DEFAULT 0,
+  comments_count INTEGER DEFAULT 0,
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Comentarios em posts
+CREATE TABLE community_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES community_comments(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  likes_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Likes (posts e comentarios)
+CREATE TABLE community_likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
+  comment_id UUID REFERENCES community_comments(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, post_id),
+  UNIQUE(user_id, comment_id),
+  CHECK (post_id IS NOT NULL OR comment_id IS NOT NULL)
+);
+
+-- Gamificacao do usuario
+CREATE TABLE user_gamification (
+  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  total_points INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 1,
+  posts_count INTEGER DEFAULT 0,
+  comments_count INTEGER DEFAULT 0,
+  likes_received INTEGER DEFAULT 0,
+  last_activity_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Regras de pontuacao (editavel pelo admin)
+CREATE TABLE gamification_rules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  action_type TEXT NOT NULL UNIQUE,
+  points INTEGER NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- Badges disponíveis
+CREATE TABLE badges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  icon_name TEXT DEFAULT 'award',
+  condition_type TEXT NOT NULL,
+  condition_value INTEGER DEFAULT 1,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- Badges conquistados por usuarios
+CREATE TABLE user_badges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  badge_id UUID NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
+  earned_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, badge_id)
+);
+```
+
+### Triggers para Gamificacao Automatica
+
+```sql
+-- Trigger ao criar post: +10 pontos
+CREATE OR REPLACE FUNCTION update_gamification_on_post()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Incrementar contador e pontos
+  INSERT INTO user_gamification (user_id, total_points, posts_count, last_activity_at)
+  VALUES (NEW.user_id, 10, 1, now())
+  ON CONFLICT (user_id) DO UPDATE SET
+    total_points = user_gamification.total_points + 10,
+    posts_count = user_gamification.posts_count + 1,
+    last_activity_at = now(),
+    level = CASE 
+      WHEN user_gamification.total_points + 10 >= 1000 THEN 5
+      WHEN user_gamification.total_points + 10 >= 500 THEN 4
+      WHEN user_gamification.total_points + 10 >= 250 THEN 3
+      WHEN user_gamification.total_points + 10 >= 100 THEN 2
+      ELSE 1
+    END;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_gamification_post
+AFTER INSERT ON community_posts
+FOR EACH ROW EXECUTE FUNCTION update_gamification_on_post();
 ```
 
 ---
 
 ## Arquivos a Criar
 
-### 1. `src/hooks/usePlanAccess.ts` - Hook Centralizado
-
-```typescript
-interface PlanAccess {
-  // Identidade do Plano
-  planId: string;
-  planName: string;
-  theme: 'gray' | 'blue' | 'purple';
-  
-  // Metodos de Acesso
-  hasFeature: (feature: PlanFeatureKey) => boolean;
-  getLimit: (feature: LimitedFeature) => number;
-  getUsage: (feature: LimitedFeature) => number;
-  getRemaining: (feature: LimitedFeature) => number;
-  getDiscountForProduct: (serviceId: string) => number;
-  getCouponCode: () => string;
-  
-  // Helpers para UI
-  canAccessRoute: (route: string) => boolean;
-  shouldShowUpgrade: (feature: string) => boolean;
-  
-  // Estado
-  isLoading: boolean;
-}
-
-// Mapeamento de rotas para features
-const ROUTE_FEATURES: Record<string, PlanFeatureKey> = {
-  '/biblioteca': 'library',
-  '/comunidade': 'community',
-  '/masterclass': 'masterclass',
-  '/curriculo': 'resume_pass', // Sempre disponivel, mas com limite
-};
-```
-
-### 2. `src/types/plans.ts` - Tipos Centralizados
-
-```typescript
-export type PlanTier = 'basic' | 'pro' | 'vip';
-export type PlanTheme = 'gray' | 'blue' | 'purple';
-
-export interface PlanFeatures {
-  // Limites
-  resume_pass_limit: number;
-  job_concierge_count: number;
-  
-  // Toggles de Acesso
-  hotseats: boolean;
-  hotseat_priority: boolean;
-  hotseat_guaranteed: boolean;
-  community: boolean;
-  library: boolean;
-  masterclass: boolean;
-  job_concierge: boolean;
-  
-  // Features Curriculo USA
-  show_improvements: boolean;
-  show_power_verbs: boolean;
-  show_cheat_sheet: boolean;
-  allow_pdf: boolean;
-  
-  // Descontos
-  discounts: {
-    base: number;
-    consulting: number;
-    curriculum: number;
-    mentorship_group: number;
-    mentorship_individual: number;
-  };
-  
-  coupon_code: string;
-}
-
-export interface FullPlanConfig {
-  id: string;
-  name: string;
-  price_monthly: number;
-  price_annual: number;
-  theme: PlanTheme;
-  is_active: boolean;
-  features: PlanFeatures;
-  display_features: string[];
-}
-```
-
-### 3. `src/components/guards/FeatureGate.tsx` - Wrapper Reutilizavel
-
-```typescript
-interface FeatureGateProps {
-  feature: PlanFeatureKey;
-  children: ReactNode;
-  fallback?: ReactNode; // Mostrar upgrade prompt
-  showLocked?: boolean; // Mostrar com blur + cadeado
-}
-
-export function FeatureGate({ feature, children, fallback, showLocked }: FeatureGateProps) {
-  const { hasFeature, planName } = usePlanAccess();
-  
-  if (!hasFeature(feature)) {
-    if (showLocked) {
-      return (
-        <LockedFeatureOverlay feature={feature}>
-          {children}
-        </LockedFeatureOverlay>
-      );
-    }
-    return fallback || <UpgradePrompt feature={feature} />;
-  }
-  
-  return <>{children}</>;
-}
-```
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/pages/community/Community.tsx` | Pagina principal da comunidade |
+| `src/pages/community/PostDetail.tsx` | Detalhe de um post com comentarios |
+| `src/components/community/CommunityHeader.tsx` | Header com badge de nivel |
+| `src/components/community/CategorySidebar.tsx` | Sidebar com categorias |
+| `src/components/community/PostCard.tsx` | Card de post individual |
+| `src/components/community/PostComposer.tsx` | Campo para criar post |
+| `src/components/community/RankingSidebar.tsx` | Top membros ativos |
+| `src/components/community/NewPostModal.tsx` | Modal de criacao |
+| `src/components/community/CommentThread.tsx` | Thread de comentarios |
+| `src/components/community/UserLevelBadge.tsx` | Badge de nivel/XP |
+| `src/hooks/useCommunityPosts.ts` | Hook para posts |
+| `src/hooks/useCommunityCategories.ts` | Hook para categorias |
+| `src/hooks/useGamification.ts` | Hook para gamificacao |
+| `src/hooks/useCommunityConfig.ts` | Hook para config admin |
+| `src/types/community.ts` | Tipos TypeScript |
+| `src/components/admin/community/CommunitySettings.tsx` | Painel admin |
+| `src/components/admin/community/CategoryManager.tsx` | CRUD de categorias |
+| `src/components/admin/community/GamificationRules.tsx` | Editar pontos |
+| `src/components/admin/community/BadgeManager.tsx` | Gerenciar badges |
 
 ---
 
 ## Arquivos a Modificar
 
-### 1. `src/pages/admin/AdminPlans.tsx` - Nova UI Completa
+| Arquivo | Modificacao |
+|---------|-------------|
+| `src/App.tsx` | Adicionar rotas `/comunidade` e `/comunidade/:postId` |
+| `src/components/layouts/DashboardLayout.tsx` | Adicionar link "Comunidade" no menu |
+| `src/pages/admin/AdminSettings.tsx` | Adicionar aba "Comunidade" com as configuracoes |
+| `src/types/plans.ts` | Ja existe feature `community` - verificar integracao |
+| `src/components/guards/FeatureGate.tsx` | Usar para proteger acesso por plano |
 
-Substituir pela UI do arquivo `plan-2.tsx` com:
+---
 
-- **Header**: Nome do plano editavel, toggle ativo/inativo
-- **Precos**: Campos para mensal e anual com calculo automatico de desconto %
-- **Secao ResumePass AI**: Limite mensal
-- **Secao Features**: Toggles para community, hotseats, library, masterclass
-- **Secao Job Concierge**: Toggle + contador de vagas/mes
-- **Secao Prioridade**: Checkbox para prioridade e garantia de vaga
-- **Secao Descontos**: Cupom + % por categoria de produto
+## Integracao com Plano de Acesso
 
-Design:
-- Cards com `rounded-[32px]`
-- Headers coloridos por tema (gray, blue/brand, purple)
-- Icones Lucide: Zap, Users, Crown, Percent, Briefcase, Ticket
-
-### 2. `src/hooks/useAdminPlans.ts` - Expandir para Novos Campos
+A comunidade respeitara o sistema de planos existente:
 
 ```typescript
-export interface ExpandedPlanConfig {
-  id: string;
-  name: string;
-  theme: 'gray' | 'blue' | 'purple';
-  is_active: boolean;
-  price_monthly: number;
-  price_annual: number;
-  features: PlanFeatures; // Expandido
-  display_features: string[];
+// Em Community.tsx
+const { hasFeature } = usePlanAccess();
+
+if (!hasFeature('community')) {
+  return <UpgradePrompt feature="community" />;
 }
 ```
 
-### 3. `src/components/layouts/DashboardLayout.tsx` - Navegacao Dinamica
-
-```typescript
-// Antes: Menu estatico
-// Depois: Menu que verifica acesso antes de renderizar
-
-const getVisibleNavItems = (section: NavSection, checkAccess: Function) => {
-  return section.items.filter(item => {
-    // Sempre mostrar itens principais
-    if (!item.requiresFeature) return true;
-    
-    // Verificar se feature esta habilitada no plano
-    return checkAccess(item.requiresFeature);
-  });
-};
-
-// Itens que requerem verificacao
-{ label: 'Comunidade', href: '/comunidade', icon: Users, requiresFeature: 'community' },
-{ label: 'Biblioteca', href: '/biblioteca', icon: Library, requiresFeature: 'library' },
-```
-
-Opcoes de comportamento para itens bloqueados:
-1. **Ocultar completamente** (recomendado para simplicidade)
-2. **Mostrar desabilitado** com icone de cadeado e tooltip "Disponivel no PRO"
-
-### 4. `src/components/guards/ServiceGuard.tsx` - Verificar Features do Plano
-
-```typescript
-// Adicionar verificacao de feature alem de servico contratado
-export function ServiceGuard({ serviceRoute, requiredFeature, children }) {
-  const { hasAccess } = useServiceAccess(serviceRoute);
-  const { hasFeature, getRemaining } = usePlanAccess();
-  
-  // Verificar se feature esta habilitada E se tem limite disponivel
-  const featureEnabled = requiredFeature ? hasFeature(requiredFeature) : true;
-  const hasQuota = getRemaining('resume_pass') > 0; // Para features limitadas
-  
-  if (!hasAccess || !featureEnabled) {
-    // Redirecionar com toast apropriado
-  }
-  
-  return <>{children}</>;
-}
-```
-
-### 5. `src/pages/hub/StudentHub.tsx` - Respeitar Features do Plano
-
-Adicionar:
-- Secao de Eventos (Hotseats) apenas se `features.hotseats = true`
-- Badge de plano com cor correta (gray/blue/purple)
-- Indicador de creditos restantes para ResumePass
-- Desconto automatico nos precos exibidos
-
-### 6. `src/components/hub/SecondaryServicesGrid.tsx` - Aplicar Descontos
-
-```typescript
-// Ao exibir preco de um produto
-const { getDiscountForProduct } = usePlanAccess();
-const discount = getDiscountForProduct(service.id);
-const finalPrice = service.price * (1 - discount / 100);
-
-// UI mostra:
-// - Preco original riscado
-// - Preco com desconto
-// - Badge "Seu desconto PRO: 10% off"
-```
+A feature `community` ja existe em `types/plans.ts` e esta configurada como `true` para todos os planos (inclusive basic).
 
 ---
 
-## Fluxo de Dados
-
-### Atualizacao de Plano (Admin)
+## Fluxo de Usuario
 
 ```text
-Admin edita plano no /admin/planos
-    ↓
-Salva em plans.features (JSONB)
-    ↓
-RPC get_user_quota retorna novos valores
-    ↓
-usePlanAccess detecta mudanca
-    ↓
-UI atualiza imediatamente (menus, badges, limites)
-```
-
-### Verificacao de Acesso (Usuario)
-
-```text
-Usuario tenta acessar /biblioteca
-    ↓
-ServiceGuard consulta usePlanAccess
-    ↓
-hasFeature('library') = false?
-    ↓
-Redireciona para /dashboard/hub + toast "Disponivel no PRO"
-```
-
-### Aplicacao de Desconto (Checkout)
-
-```text
-Usuario visualiza produto no Hub
-    ↓
-usePlanAccess.getDiscountForProduct(serviceId)
-    ↓
-UI exibe preco original e descontado
-    ↓
-Cupom automatico aplicado via coupon_code do plano
+Estudante acessa /comunidade
+    |
+    v
+FeatureGate verifica feature 'community'
+    |
+    +--> NAO: Exibe UpgradePrompt
+    |
+    +--> SIM: Renderiza Community.tsx
+              |
+              v
+         +------------------+
+         | Sidebar          | Header (Nivel + XP)
+         | - Categorias     | - Badge nivel
+         | - Nova Discussao | - Barra progresso
+         +------------------+
+              |
+              v
+         +------------------+
+         | Feed Central     | Sidebar Direita
+         | - Filtros        | - Ranking Top 10
+         | - Posts          | - Eventos
+         +------------------+
 ```
 
 ---
 
-## Secao Tecnica: RPC Expandida
+## Design Visual (Referencia)
 
-### Criar `get_full_plan_access`
+Baseado na imagem fornecida:
 
-```sql
-CREATE OR REPLACE FUNCTION get_full_plan_access(p_user_id UUID)
-RETURNS TABLE (
-  plan_id TEXT,
-  plan_name TEXT,
-  theme TEXT,
-  price_monthly NUMERIC,
-  price_annual NUMERIC,
-  features JSONB,
-  used_this_month INTEGER,
-  remaining INTEGER
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    COALESCE(us.plan_id, 'basic'),
-    COALESCE(p.name, 'Básico'),
-    COALESCE(p.theme, 'gray'),
-    COALESCE(p.price, 0),
-    COALESCE(p.price_annual, 0),
-    COALESCE(p.features, '{}'::jsonb),
-    COALESCE((
-      SELECT COUNT(*)::INTEGER 
-      FROM usage_logs ul 
-      WHERE ul.user_id = p_user_id 
-        AND ul.app_id = 'curriculo_usa'
-        AND ul.created_at >= date_trunc('month', now())
-    ), 0),
-    GREATEST(0, COALESCE((p.features->>'resume_pass_limit')::INT, 1) - ...)
-  FROM (SELECT p_user_id AS user_id) u
-  LEFT JOIN user_subscriptions us ON us.user_id = u.user_id AND us.status = 'active'
-  LEFT JOIN plans p ON p.id = COALESCE(us.plan_id, 'basic');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+- **Cards de Post**: `rounded-[24px]`, sombra suave, border-gray-100
+- **Badge de Nivel**: Circular com numero, barra de progresso XP
+- **Categorias**: Prefix `#` com icone, hover state bg-brand-50
+- **Avatar**: Inicial em circulo colorido, badge de nivel pequeno
+- **Tags de Categoria**: `rounded-full px-3 py-1 bg-gray-100 text-xs`
+- **Botoes de Acao**: Like com coracao vermelho, comentario com icone
+- **Sidebar Ranking**: Avatar + Nome + XP + indicador de posicao
 
----
-
-## Migracoes de Dados
-
-### 1. Expandir `features` dos Planos Existentes
-
-```sql
--- Adicionar novos campos aos features existentes
-UPDATE plans SET features = features || jsonb_build_object(
-  'hotseats', CASE WHEN id IN ('pro', 'vip') THEN true ELSE false END,
-  'hotseat_priority', CASE WHEN id = 'vip' THEN true ELSE false END,
-  'hotseat_guaranteed', CASE WHEN id = 'vip' THEN true ELSE false END,
-  'community', true,
-  'library', CASE WHEN id IN ('pro', 'vip') THEN true ELSE false END,
-  'masterclass', CASE WHEN id IN ('pro', 'vip') THEN true ELSE false END,
-  'job_concierge', CASE WHEN id = 'vip' THEN true ELSE false END,
-  'job_concierge_count', CASE WHEN id = 'vip' THEN 20 ELSE 0 END,
-  'resume_pass_limit', monthly_limit,
-  'discounts', jsonb_build_object(
-    'base', CASE id WHEN 'pro' THEN 10 WHEN 'vip' THEN 20 ELSE 0 END,
-    'consulting', CASE id WHEN 'pro' THEN 10 WHEN 'vip' THEN 20 ELSE 0 END,
-    'curriculum', CASE id WHEN 'pro' THEN 10 WHEN 'vip' THEN 20 ELSE 0 END,
-    'mentorship_group', CASE id WHEN 'pro' THEN 5 WHEN 'vip' THEN 15 ELSE 0 END,
-    'mentorship_individual', CASE id WHEN 'vip' THEN 10 ELSE 0 END
-  ),
-  'coupon_code', CASE id WHEN 'pro' THEN 'PRO10OFF' WHEN 'vip' THEN 'VIP20ELITE' ELSE '' END
-)
-WHERE is_active = true;
-```
-
-### 2. Adicionar Coluna `theme` e `price_annual`
-
-```sql
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'gray';
-ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_annual NUMERIC DEFAULT 0;
-
-UPDATE plans SET 
-  theme = CASE id WHEN 'basic' THEN 'gray' WHEN 'pro' THEN 'blue' WHEN 'vip' THEN 'purple' END,
-  price_annual = price * 10 -- 2 meses gratis
-WHERE is_active = true;
-```
-
----
-
-## Lista de Arquivos
-
-| Arquivo | Acao | Descricao |
-|---------|------|-----------|
-| `src/types/plans.ts` | **CRIAR** | Tipos centralizados para planos |
-| `src/hooks/usePlanAccess.ts` | **CRIAR** | Hook unificado de acesso |
-| `src/components/guards/FeatureGate.tsx` | **CRIAR** | Wrapper para gates de feature |
-| `src/pages/admin/AdminPlans.tsx` | **REESCREVER** | Nova UI baseada em plan-2.tsx |
-| `src/hooks/useAdminPlans.ts` | **MODIFICAR** | Suporte a novos campos |
-| `src/components/admin/plans/PlanConfigCard.tsx` | **REESCREVER** | Novo design com todas secoes |
-| `src/components/layouts/DashboardLayout.tsx` | **MODIFICAR** | Navegacao dinamica |
-| `src/components/guards/ServiceGuard.tsx` | **MODIFICAR** | Verificar features do plano |
-| `src/pages/hub/StudentHub.tsx` | **MODIFICAR** | Respeitar features |
-| `src/components/hub/SecondaryServicesGrid.tsx` | **MODIFICAR** | Aplicar descontos |
-| `src/hooks/useSubscription.ts` | **MODIFICAR** | Retornar features expandidas |
-| Database | **MIGRATION** | Expandir schema de plans |
-
----
-
-## Proximos Passos Apos Implementacao
-
-1. **Job Concierge**: Criar tabela de vagas curadas e UI de entrega
-2. **Community**: Implementar forum interno ou integrar chat
-3. **Masterclass**: Sistema de conteudo video com trilhas
-4. **Analytics**: Tracking de conversao em upgrade prompts
+Cores principais:
+- Primary brand: `#5B4CFF` (violeta/brand-600)
+- Destaque VIP: `#9b51e0` (roxo)
+- Fundo cards: `white` com `border-gray-100`
+- XP Badge: `bg-yellow-400` com texto escuro
 
 ---
 
@@ -512,10 +360,11 @@ WHERE is_active = true;
 
 | Criterio | Verificacao |
 |----------|-------------|
-| Zero Hardcoding | Nenhum componente assume disponibilidade de feature |
-| Controle Admin | Todas configuracoes editaveis em /admin/planos |
-| Efeito Imediato | Mudancas em plano refletem instantaneamente |
-| Limites Invioaveis | Usuario nao consegue bypassar limites |
-| UX Transparente | Usuario sempre sabe seu plano, limites e opcoes |
-| Backend Seguro | RPC valida permissoes, frontend nao e confiavel |
-| Performance | Cache de configuracoes, sem queries repetidas |
+| Categorias dinamicas | Admin pode adicionar/remover categorias |
+| Pontuacao editavel | Admin pode alterar pontos por acao |
+| Feed funcional | Posts aparecem com filtros funcionando |
+| Likes em tempo real | Contador atualiza instantaneamente |
+| Ranking atualizado | Top 10 reflete pontuacao atual |
+| Integracao Hot Seats | Eventos aparecem na sidebar |
+| Acesso por plano | Feature respeitada conforme plano |
+| Mobile responsive | Layout funciona em todos tamanhos |
