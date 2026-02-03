@@ -1,4 +1,4 @@
-project_id = "buslxdknzogtgdnietow"
+project_id = "seqgnxynrcylxsdzbloa"
 
 [functions.send-espaco-invitation]
 verify_jwt = false

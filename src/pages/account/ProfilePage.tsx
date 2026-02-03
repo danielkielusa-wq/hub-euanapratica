@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
+import { useProfile, useUpdateProfile, useAvatarUpload } from '@/hooks/useProfile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { PhoneInput } from '@/components/ui/phone-input';
-import { Loader2, Save, User, Mail, Phone, Globe, Shield, Calendar } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Save, User, Mail, Phone, Globe, Shield, Calendar, Camera, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -33,7 +34,9 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
-  
+  const { uploadAvatar, deleteAvatar, isUploading, uploadProgress } = useAvatarUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -63,7 +66,7 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       await updateProfile.mutateAsync({
         full_name: formData.full_name,
@@ -76,6 +79,37 @@ export default function ProfilePage() {
       setHasChanges(false);
     } catch (error) {
       toast.error('Erro ao atualizar perfil');
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await uploadAvatar(file);
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao enviar foto';
+      toast.error(message);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    const success = await deleteAvatar();
+    if (success) {
+      toast.success('Foto removida com sucesso!');
+    } else {
+      toast.error('Erro ao remover foto');
     }
   };
 
@@ -120,18 +154,76 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profile?.profile_photo_url || undefined} alt={profile?.full_name} />
-                <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                  {profile?.full_name ? getInitials(profile.full_name) : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="space-y-2">
-                <Button variant="outline" disabled>
-                  Alterar foto
-                </Button>
+              <div className="relative group">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile?.profile_photo_url || undefined} alt={profile?.full_name} />
+                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                    {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+
+                {/* Overlay for upload */}
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploading}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-6 w-6 text-white" />
+                  )}
+                </button>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleAvatarClick}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Alterar foto
+                      </>
+                    )}
+                  </Button>
+
+                  {profile?.profile_photo_url && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleDeleteAvatar}
+                      disabled={isUploading}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {isUploading && uploadProgress > 0 && (
+                  <Progress value={uploadProgress} className="h-2" />
+                )}
+
                 <p className="text-xs text-muted-foreground">
-                  Em breve você poderá alterar sua foto de perfil
+                  JPEG, PNG, WebP ou GIF. Máximo 5MB.
                 </p>
               </div>
             </CardContent>
@@ -216,8 +308,8 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex justify-end pt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={!hasChanges || updateProfile.isPending}
                   >
                     {updateProfile.isPending ? (
@@ -263,7 +355,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {profile?.created_at 
+                  {profile?.created_at
                     ? format(new Date(profile.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                     : '-'
                   }

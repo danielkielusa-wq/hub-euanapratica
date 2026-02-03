@@ -23,43 +23,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch evaluation
-    const { data: evaluation, error: fetchError } = await supabase
-      .from("career_evaluations")
-      .select("*")
-      .eq("id", evaluationId)
-      .single();
-
-    if (fetchError || !evaluation) {
-      return new Response(
-        JSON.stringify({ error: "Avaliação não encontrada" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check if already formatted as JSON (unless forceRefresh)
-    if (!forceRefresh && evaluation.formatted_report) {
-      try {
-        const cached = JSON.parse(evaluation.formatted_report);
-        if (cached.greeting && cached.diagnostic) {
-          return new Response(
-            JSON.stringify({ content: cached, cached: true }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      } catch {
-        // Not valid JSON, regenerate
-      }
-    }
-
     // Return raw content if no AI key
-    if (!lovableApiKey) {
+    if (!openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: "AI não configurada" }),
+        JSON.stringify({ error: "AI nao configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -72,13 +43,13 @@ serve(async (req) => {
       .eq("is_visible_in_hub", true);
 
     const servicesContext = hubServices?.length ? `
-SERVIÇOS DISPONÍVEIS PARA RECOMENDAR:
-${hubServices.map(s => `- ID: ${s.id} | Nome: ${s.name} | Tipo: ${s.service_type} | Preço: ${s.price_display || s.price || 'Consultar'} | Descrição: ${s.description || 'N/A'}`).join('\n')}
+SERVICOS DISPONIVEIS PARA RECOMENDAR:
+${hubServices.map(s => `- ID: ${s.id} | Nome: ${s.name} | Tipo: ${s.service_type} | Preco: ${s.price_display || s.price || 'Consultar'} | Descricao: ${s.description || 'N/A'}`).join('\n')}
 
-Com base no perfil do lead, selecione até 3 serviços para recomendar:
-- PRIMARY: O serviço mais urgente/relevante para o momento atual do lead
-- SECONDARY: Um serviço complementar
-- UPGRADE: Um serviço de acompanhamento premium (mentoria, etc)
+Com base no perfil do lead, selecione ate 3 servicos para recomendar:
+- PRIMARY: O servico mais urgente/relevante para o momento atual do lead
+- SECONDARY: Um servico complementar
+- UPGRADE: Um servico de acompanhamento premium (mentoria, etc)
 ` : '';
 
     // Get formatter prompt from config
@@ -88,220 +59,267 @@ Com base no perfil do lead, selecione até 3 serviços para recomendar:
       .eq("key", "lead_report_formatter_prompt")
       .single();
 
-    const systemPrompt = config?.value || `Você é um especialista em carreiras internacionais da equipe EUA na Prática, liderada por Daniel Kiel.
+    const systemPrompt = config?.value || `Voce e um especialista em carreiras internacionais da equipe EUA na Pratica, liderada por Daniel Kiel.
 
-Analise os dados do lead e estruture um relatório de diagnóstico de carreira personalizado usando o Método ROTA EUA™.
+Analise os dados do lead e estruture um relatorio de diagnostico de carreira personalizado usando o Metodo ROTA EUA.
 
-O Método ROTA EUA™ tem 4 fases:
-- R (Reconhecimento): Autoconhecimento e análise de perfil
-- O (Organização): Preparação de documentos, inglês e networking
-- T (Transição): Busca ativa de oportunidades e aplicações
-- A (Ação): Entrevistas, negociação e relocação
+O Metodo ROTA EUA tem 4 fases:
+- R (Reconhecimento): Autoconhecimento e analise de perfil
+- O (Organizacao): Preparacao de documentos, ingles e networking
+- T (Transicao): Busca ativa de oportunidades e aplicacoes
+- A (Acao): Entrevistas, negociacao e relocacao
 
-Baseado no perfil do lead, determine em qual fase ele está e forneça orientação específica.
+Baseado no perfil do lead, determine em qual fase ele esta e forneca orientacao especifica.
 
-Seja acolhedor, use emojis apropriados e mantenha um tom profissional mas amigável.`;
+Seja acolhedor, use emojis apropriados e mantenha um tom profissional mas amigavel.`;
 
     // Build user context
     const userContext = `
 DADOS DO LEAD:
 - Nome: ${evaluation.name}
 - Email: ${evaluation.email}
-- Área: ${evaluation.area || 'Não informado'}
-- Atuação: ${evaluation.atuacao || 'Não informado'}
-- Trabalha Internacionalmente: ${evaluation.trabalha_internacional ? 'Sim' : 'Não'}
-- Experiência: ${evaluation.experiencia || 'Não informado'}
-- Nível de Inglês: ${evaluation.english_level || 'Não informado'}
-- Objetivo: ${evaluation.objetivo || 'Não informado'}
-- Status do Visto: ${evaluation.visa_status || 'Não informado'}
-- Timeline: ${evaluation.timeline || 'Não informado'}
-- Status Familiar: ${evaluation.family_status || 'Não informado'}
-- Faixa de Renda: ${evaluation.income_range || 'Não informado'}
-- Faixa de Investimento: ${evaluation.investment_range || 'Não informado'}
+- Area: ${evaluation.area || 'Nao informado'}
+- Atuacao: ${evaluation.atuacao || 'Nao informado'}
+- Trabalha Internacionalmente: ${evaluation.trabalha_internacional ? 'Sim' : 'Nao'}
+- Experiencia: ${evaluation.experiencia || 'Nao informado'}
+- Nivel de Ingles: ${evaluation.english_level || 'Nao informado'}
+- Objetivo: ${evaluation.objetivo || 'Nao informado'}
+- Status do Visto: ${evaluation.visa_status || 'Nao informado'}
+- Timeline: ${evaluation.timeline || 'Nao informado'}
+- Status Familiar: ${evaluation.family_status || 'Nao informado'}
+- Faixa de Renda: ${evaluation.income_range || 'Nao informado'}
+- Faixa de Investimento: ${evaluation.investment_range || 'Nao informado'}
 - Impedimento: ${evaluation.impediment || 'Nenhum'}
 - Outro Impedimento: ${evaluation.impediment_other || 'Nenhum'}
-- Principal Preocupação: ${evaluation.main_concern || 'Não informado'}
+- Principal Preocupacao: ${evaluation.main_concern || 'Nao informado'}
 
-CONTEÚDO DO RELATÓRIO ORIGINAL (use como base para enriquecer a análise):
+CONTEUDO DO RELATORIO ORIGINAL (use como base para enriquecer a analise):
 ${evaluation.report_content}
 
 ${servicesContext}
 
-Estruture o relatório com todas as seções necessárias, sendo específico e personalizado para este lead.`;
+Estruture o relatorio com todas as secoes necessarias, sendo especifico e personalizado para este lead.`;
 
-    // Tool calling for structured output
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const responseSchema = {
+      name: "format_career_report",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          greeting: {
+            type: "object",
+            description: "Saudacao personalizada para o lead",
+            properties: {
+              title: { type: "string", description: "Titulo de saudacao com nome do lead e emoji" },
+              subtitle: { type: "string", description: "Mensagem de boas-vindas da equipe EUA na Pratica" },
+              phase_highlight: { type: "string", description: "Nome da fase atual no metodo ROTA (ex: 'Fase de Organizacao')" },
+              phase_description: { type: "string", description: "Descricao detalhada do que significa estar nesta fase e proximos passos" }
+            },
+            required: ["title", "subtitle", "phase_highlight", "phase_description"],
+            additionalProperties: false
+          },
+          diagnostic: {
+            type: "object",
+            description: "Grid de diagnostico com 4 metricas principais",
+            properties: {
+              english: {
+                type: "object",
+                properties: {
+                  level: { type: "string", description: "Nivel resumido (ex: 'Intermediario')" },
+                  description: { type: "string", description: "Analise do impacto do nivel de ingles" }
+                },
+                required: ["level", "description"],
+                additionalProperties: false
+              },
+              experience: {
+                type: "object",
+                properties: {
+                  summary: { type: "string", description: "Resumo da experiencia (ex: '+10 anos PM')" },
+                  details: { type: "string", description: "Analise do perfil profissional" }
+                },
+                required: ["summary", "details"],
+                additionalProperties: false
+              },
+              objective: {
+                type: "object",
+                properties: {
+                  goal: { type: "string", description: "Objetivo principal (ex: 'Remoto em dolar')" },
+                  timeline: { type: "string", description: "Timeline desejada" }
+                },
+                required: ["goal", "timeline"],
+                additionalProperties: false
+              },
+              financial: {
+                type: "object",
+                properties: {
+                  income: { type: "string", description: "Faixa de renda atual" },
+                  investment: { type: "string", description: "Capacidade de investimento" }
+                },
+                required: ["income", "investment"],
+                additionalProperties: false
+              }
+            },
+            required: ["english", "experience", "objective", "financial"],
+            additionalProperties: false
+          },
+          rota_method: {
+            type: "object",
+            description: "Analise do Metodo ROTA EUA",
+            properties: {
+              current_phase: {
+                type: "string",
+                enum: ["R", "O", "T", "A"],
+                description: "Letra da fase atual: R=Reconhecimento, O=Organizacao, T=Transicao, A=Acao"
+              },
+              phase_analysis: {
+                type: "string",
+                description: "Analise detalhada do momento atual e o que precisa focar nesta fase"
+              }
+            },
+            required: ["current_phase", "phase_analysis"],
+            additionalProperties: false
+          },
+          action_plan: {
+            type: "array",
+            description: "Plano de acao com 3 passos prioritarios",
+            items: {
+              type: "object",
+              properties: {
+                step: { type: "number", description: "Numero do passo (1, 2 ou 3)" },
+                title: { type: "string", description: "Titulo curto da acao" },
+                description: { type: "string", description: "Descricao detalhada do que fazer e por que e importante" }
+              },
+              required: ["step", "title", "description"],
+              additionalProperties: false
+            }
+          },
+          resources: {
+            type: "array",
+            description: "Recursos recomendados para o lead",
+            items: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: ["youtube", "instagram", "guide", "articles", "ebook"],
+                  description: "Tipo do recurso"
+                },
+                label: { type: "string", description: "Nome/titulo do recurso" },
+                url: { type: "string", description: "URL do recurso (pode ser vazio)" }
+              },
+              required: ["type", "label", "url"],
+              additionalProperties: false
+            }
+          },
+          whatsapp_keyword: {
+            type: "string",
+            description: "Palavra-chave para enviar no WhatsApp para receber material exclusivo (ex: 'EBOOKENP')"
+          },
+          recommendations: {
+            type: "array",
+            description: "Servicos recomendados para o lead com base no perfil",
+            items: {
+              type: "object",
+              properties: {
+                service_id: { type: "string", description: "ID do servico (use os IDs fornecidos na lista de servicos)" },
+                type: {
+                  type: "string",
+                  enum: ["PRIMARY", "SECONDARY", "UPGRADE"],
+                  description: "Tipo da recomendacao: PRIMARY (mais urgente), SECONDARY (complementar), UPGRADE (premium)"
+                },
+                reason: { type: "string", description: "Justificativa personalizada de por que este servico e relevante para o lead" }
+              },
+              required: ["service_id", "type", "reason"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: [
+          "greeting",
+          "diagnostic",
+          "rota_method",
+          "action_plan",
+          "resources",
+          "whatsapp_keyword",
+          "recommendations"
+        ],
+        additionalProperties: false
+      }
+    };
+
+    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContext }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "format_career_report",
-            description: "Estrutura os dados do relatório de carreira em seções organizadas para exibição premium",
-            parameters: {
-              type: "object",
-              properties: {
-                greeting: {
-                  type: "object",
-                  description: "Saudação personalizada para o lead",
-                  properties: {
-                    title: { type: "string", description: "Título de saudação com nome do lead e emoji" },
-                    subtitle: { type: "string", description: "Mensagem de boas-vindas da equipe EUA na Prática" },
-                    phase_highlight: { type: "string", description: "Nome da fase atual no método ROTA (ex: 'Fase de Organização')" },
-                    phase_description: { type: "string", description: "Descrição detalhada do que significa estar nesta fase e próximos passos" }
-                  },
-                  required: ["title", "subtitle", "phase_highlight", "phase_description"]
-                },
-                diagnostic: {
-                  type: "object",
-                  description: "Grid de diagnóstico com 4 métricas principais",
-                  properties: {
-                    english: { 
-                      type: "object", 
-                      properties: { 
-                        level: { type: "string", description: "Nível resumido (ex: 'Intermediário')" }, 
-                        description: { type: "string", description: "Análise do impacto do nível de inglês" } 
-                      },
-                      required: ["level", "description"]
-                    },
-                    experience: { 
-                      type: "object", 
-                      properties: { 
-                        summary: { type: "string", description: "Resumo da experiência (ex: '+10 anos PM')" }, 
-                        details: { type: "string", description: "Análise do perfil profissional" } 
-                      },
-                      required: ["summary", "details"]
-                    },
-                    objective: { 
-                      type: "object", 
-                      properties: { 
-                        goal: { type: "string", description: "Objetivo principal (ex: 'Remoto em dólar')" }, 
-                        timeline: { type: "string", description: "Timeline desejada" } 
-                      },
-                      required: ["goal", "timeline"]
-                    },
-                    financial: { 
-                      type: "object", 
-                      properties: { 
-                        income: { type: "string", description: "Faixa de renda atual" }, 
-                        investment: { type: "string", description: "Capacidade de investimento" } 
-                      },
-                      required: ["income", "investment"]
-                    }
-                  },
-                  required: ["english", "experience", "objective", "financial"]
-                },
-                rota_method: {
-                  type: "object",
-                  description: "Análise do Método ROTA EUA™",
-                  properties: {
-                    current_phase: { 
-                      type: "string", 
-                      enum: ["R", "O", "T", "A"],
-                      description: "Letra da fase atual: R=Reconhecimento, O=Organização, T=Transição, A=Ação"
-                    },
-                    phase_analysis: { 
-                      type: "string", 
-                      description: "Análise detalhada do momento atual e o que precisa focar nesta fase" 
-                    }
-                  },
-                  required: ["current_phase", "phase_analysis"]
-                },
-                action_plan: {
-                  type: "array",
-                  description: "Plano de ação com 3 passos prioritários",
-                  items: {
-                    type: "object",
-                    properties: {
-                      step: { type: "number", description: "Número do passo (1, 2 ou 3)" },
-                      title: { type: "string", description: "Título curto da ação" },
-                      description: { type: "string", description: "Descrição detalhada do que fazer e por que é importante" }
-                    },
-                    required: ["step", "title", "description"]
-                  }
-                },
-                resources: {
-                  type: "array",
-                  description: "Recursos recomendados para o lead",
-                  items: {
-                    type: "object",
-                    properties: {
-                      type: { 
-                        type: "string", 
-                        enum: ["youtube", "instagram", "guide", "articles", "ebook"],
-                        description: "Tipo do recurso"
-                      },
-                      label: { type: "string", description: "Nome/título do recurso" },
-                      url: { type: "string", description: "URL do recurso (opcional)" }
-                    },
-                    required: ["type", "label"]
-                  }
-                },
-                whatsapp_keyword: { 
-                  type: "string", 
-                  description: "Palavra-chave para enviar no WhatsApp para receber material exclusivo (ex: 'EBOOKENP')" 
-                },
-                recommendations: {
-                  type: "array",
-                  description: "Serviços recomendados para o lead com base no perfil",
-                  items: {
-                    type: "object",
-                    properties: {
-                      service_id: { type: "string", description: "ID do serviço (use os IDs fornecidos na lista de serviços)" },
-                      type: { 
-                        type: "string", 
-                        enum: ["PRIMARY", "SECONDARY", "UPGRADE"],
-                        description: "Tipo da recomendação: PRIMARY (mais urgente), SECONDARY (complementar), UPGRADE (premium)" 
-                      },
-                      reason: { type: "string", description: "Justificativa personalizada de por que este serviço é relevante para o lead" }
-                    },
-                    required: ["service_id", "type", "reason"]
-                  }
-                }
+        model: "gpt-4.1-mini",
+        instructions: systemPrompt,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: userContext,
               },
-              required: ["greeting", "diagnostic", "rota_method", "action_plan", "resources", "whatsapp_keyword"]
-            }
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "format_career_report" } }
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: responseSchema.name,
+            schema: responseSchema.schema,
+            strict: responseSchema.strict,
+          },
+        },
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI Error:", aiResponse.status, errorText);
+      console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
       return new Response(
-        JSON.stringify({ error: "Erro ao processar relatório" }),
+        JSON.stringify({ error: "Erro ao processar relatorio" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const aiData = await aiResponse.json();
-    
-    // Extract the tool call arguments
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "format_career_report") {
-      console.error("No valid tool call in response:", aiData);
+
+    const extractOutputText = (data: any): string | null => {
+      if (typeof data?.output_text === "string") {
+        return data.output_text;
+      }
+      const items = Array.isArray(data?.output) ? data.output : [];
+      for (const item of items) {
+        if (item?.type === "message" && Array.isArray(item.content)) {
+          for (const part of item.content) {
+            if (part?.type === "output_text" && typeof part.text === "string") {
+              return part.text;
+            }
+          }
+        }
+      }
+      return null;
+    };
+
+    const outputText = extractOutputText(aiData);
+    if (!outputText) {
+      console.error("Unexpected OpenAI response format:", aiData);
       return new Response(
-        JSON.stringify({ error: "Resposta inválida da IA" }),
+        JSON.stringify({ error: "Resposta invalida da IA" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     let formattedReport;
     try {
-      formattedReport = JSON.parse(toolCall.function.arguments);
+      formattedReport = JSON.parse(outputText);
     } catch (parseError) {
-      console.error("Failed to parse tool call arguments:", toolCall.function.arguments);
+      console.error("Failed to parse OpenAI output:", parseError, outputText.slice(0, 1000));
       return new Response(
         JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

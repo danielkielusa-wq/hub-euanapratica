@@ -62,6 +62,59 @@ export function useStudentUpcomingSessions(limit = 3) {
   });
 }
 
+// Hook para buscar todas as sessoes do aluno (via espacos matriculados)
+export function useStudentSessions() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['student-sessions', 'all', user?.id],
+    queryFn: async (): Promise<Session[]> => {
+      // Buscar espacos onde o aluno esta matriculado
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('user_espacos')
+        .select('espaco_id')
+        .eq('user_id', user!.id)
+        .eq('status', 'active');
+
+      if (enrollError) throw enrollError;
+
+      if (!enrollments || enrollments.length === 0) {
+        return [];
+      }
+
+      const espacoIds = enrollments.map(e => e.espaco_id);
+
+      const { data: sessions, error } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          title,
+          datetime,
+          status,
+          meeting_link,
+          espacos (
+            id,
+            name
+          )
+        `)
+        .in('espaco_id', espacoIds)
+        .order('datetime', { ascending: true });
+
+      if (error) throw error;
+
+      return (sessions || []).map(s => ({
+        id: s.id,
+        title: s.title,
+        date: new Date(s.datetime),
+        status: s.status === 'live' ? 'in_progress' : (s.status as 'scheduled' | 'completed' | 'cancelled'),
+        cohortName: s.espacos?.name || 'Sem turma',
+        meetingUrl: s.meeting_link || undefined,
+      }));
+    },
+    enabled: !!user,
+  });
+}
+
 // Hook para buscar progresso por espaço
 export function useStudentProgress() {
   const { user } = useAuth();

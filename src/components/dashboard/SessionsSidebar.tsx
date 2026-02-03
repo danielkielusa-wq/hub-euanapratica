@@ -17,7 +17,7 @@ function LiveSessionCard({ session }: { session: Session }) {
       <div className="flex items-center gap-2 mb-2">
         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
         <span className="text-xs font-medium">
-          {minutesUntil <= 0 ? 'AO VIVO' : `AO VIVO • EM ${minutesUntil} MIN`}
+          {minutesUntil <= 0 ? 'AO VIVO' : `AO VIVO - EM ${minutesUntil} MIN`}
         </span>
       </div>
       <h3 className="font-semibold">{session.title}</h3>
@@ -44,7 +44,7 @@ function SessionItem({ session }: { session: Session }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm text-foreground truncate">{session.title}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {session.cohortName} • {format(sessionDate, 'HH:mm')}
+          {session.cohortName} - {format(sessionDate, "HH:mm")}
         </p>
       </div>
     </div>
@@ -65,30 +65,12 @@ export function SessionsSidebar() {
 
   const otherSessions = sessions?.filter(s => s.id !== liveSession?.id).slice(0, 3) || [];
 
-  // Fallback data
-  const fallbackSessions: Session[] = [
-    { 
-      id: '1', 
-      title: 'Mock Interview Prática', 
-      date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), 
-      status: 'scheduled',
-      cohortName: 'Mentoria Elite'
-    },
-    { 
-      id: '2', 
-      title: 'Career Coaching Session', 
-      date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), 
-      status: 'scheduled',
-      cohortName: 'Elite Track'
-    },
-  ];
-
-  const displaySessions = otherSessions.length > 0 ? otherSessions : fallbackSessions;
+  const displaySessions = otherSessions;
 
   return (
     <Card className="p-4 rounded-[24px] border border-border bg-card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-foreground">Próximas Sessões</h2>
+        <h2 className="font-semibold text-foreground">Proximas Sessoes</h2>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
           <MoreVertical className="h-4 w-4" />
         </Button>
@@ -104,15 +86,15 @@ export function SessionsSidebar() {
         <>
           {liveSession && <LiveSessionCard session={liveSession} />}
           
-          <div className="space-y-1">
-            {displaySessions.map(session => (
-              <SessionItem key={session.id} session={session} />
-            ))}
-          </div>
-
-          {(!sessions || sessions.length === 0) && !liveSession && (
+          {displaySessions.length > 0 ? (
+            <div className="space-y-1">
+              {displaySessions.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))}
+            </div>
+          ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhuma sessão agendada
+              Nenhuma sessao agendada
             </p>
           )}
         </>
@@ -123,7 +105,7 @@ export function SessionsSidebar() {
         className="w-full mt-4 rounded-xl"
         onClick={() => navigate('/dashboard/agenda')}
       >
-        Ver Calendário Completo
+        Ver Calendario Completo
       </Button>
     </Card>
   );

@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
+import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,6 +11,7 @@ interface SidebarUserCardProps {
 
 export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { planName, isVipPlan, isPremiumPlan, theme } = usePlanAccess();
   const navigate = useNavigate();
 
@@ -41,12 +43,20 @@ export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
       {/* User Card */}
       <div className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-xl mb-3">
         {/* Avatar */}
-        <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
-          avatarClasses
-        )}>
-          {initials}
-        </div>
+        {profile?.profile_photo_url ? (
+          <img
+            src={profile.profile_photo_url}
+            alt={user.full_name || 'Avatar'}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
+            avatarClasses
+          )}>
+            {initials}
+          </div>
+        )}
 
         {/* Name and Plan */}
         <div className="flex-1 min-w-0">
@@ -65,7 +75,11 @@ export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
 
         {/* Logout Button */}
         <button
-          onClick={onLogout}
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            onLogout();
+          }}
           className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           title="Sair"
         >

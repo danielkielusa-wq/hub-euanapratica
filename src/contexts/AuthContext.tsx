@@ -162,10 +162,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setImpersonatedUser(null); // Clear impersonation on logout
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-      throw error;
+    setAuthState(prev => ({ ...prev, isLoading: true }));
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        throw error;
+      }
+    } finally {
+      // Ensure local auth state is cleared even if signOut has issues.
+      setAuthState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
     }
   }, []);
 

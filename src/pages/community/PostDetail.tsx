@@ -1,20 +1,114 @@
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { useCommunityPosts } from '@/hooks/useCommunityPosts';
 import { useCommunityComments } from '@/hooks/useCommunityComments';
 import { PostCard } from '@/components/community/PostCard';
 import { CommentThread } from '@/components/community/CommentThread';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { CommunityPost } from '@/types/community';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 export default function PostDetail() {
-  const { postId } = useParams<{ postId: string }>();
-  const { posts, isLoading: postLoading, toggleLike } = useCommunityPosts({ limit: 1 });
+  const { id: postId } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const [post, setPost] = useState<CommunityPost | null>(null);
+  const [postLoading, setPostLoading] = useState(true);
   const { comments, isLoading: commentsLoading, createComment, toggleCommentLike, deleteComment } = useCommunityComments(postId || '');
 
-  // Find the specific post (we'd ideally fetch by ID, but using client-side filter for now)
-  const post = posts.find(p => p.id === postId);
+  const fetchPost = useCallback(async () => {
+    if (!postId) {
+      setPost(null);
+      setPostLoading(false);
+      return;
+    }
+
+    try {
+      setPostLoading(true);
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select(`
+          *,
+          profiles:user_id (id, full_name, profile_photo_url),
+          community_categories:category_id (*)
+        `)
+        .eq('id', postId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (user && data) {
+        const { data: likeRow } = await supabase
+          .from('community_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', data.id)
+          .maybeSingle();
+
+        setPost({ ...data, user_has_liked: Boolean(likeRow) });
+      } else {
+        setPost(data || null);
+      }
+    } catch (err) {
+      console.error('Error fetching post:', err);
+      setPost(null);
+    } finally {
+      setPostLoading(false);
+    }
+  }, [postId, user]);
+
+  useEffect(() => {
+    fetchPost();
+  }, [fetchPost]);
+
+  const toggleLike = async (targetPostId: string) => {
+    if (!user) {
+      toast({ title: 'VocÃª precisa estar logado', variant: 'destructive' });
+      return;
+    }
+
+    if (!post || post.id !== targetPostId) return;
+
+    const isLiked = Boolean(post.user_has_liked);
+    setPost(prev => prev ? {
+      ...prev,
+      user_has_liked: !isLiked,
+      likes_count: isLiked ? prev.likes_count - 1 : prev.likes_count + 1,
+    } : prev);
+
+    try {
+      const { data: existing } = await supabase
+        .from('community_likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('post_id', targetPostId)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('community_likes')
+          .delete()
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('community_likes')
+          .insert({ user_id: user.id, post_id: targetPostId });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+      setPost(prev => prev ? {
+        ...prev,
+        user_has_liked: isLiked,
+        likes_count: isLiked ? prev.likes_count + 1 : prev.likes_count - 1,
+      } : prev);
+      toast({ title: 'Erro ao curtir', variant: 'destructive' });
+    }
+  };
 
   if (postLoading) {
     return (

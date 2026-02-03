@@ -21,9 +21,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   
   if (!user) return null;
   
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
   };
 
   const closeSidebar = () => setSidebarOpen(false);
@@ -61,11 +64,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Header with Logo */}
           <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100/80">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">U</span>
-              </div>
-              <span className="font-bold text-lg text-foreground tracking-tight">USAHUB</span>
+            <Link to="/" className="flex items-center">
+              <img
+                src={logoHorizontal}
+                alt="EUA na Prática"
+                className="h-8 w-auto object-contain"
+              />
             </Link>
             
             {/* Close button - Mobile only */}

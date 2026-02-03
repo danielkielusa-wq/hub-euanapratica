@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -58,11 +57,11 @@ import AdminLeadsImport from "./pages/admin/AdminLeadsImport";
 import PublicReport from "./pages/report/PublicReport";
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
+import NotFound from "./pages/NotFound";
 import Community from "./pages/community/Community";
 import PostDetail from "./pages/community/PostDetail";
-import NotFound from "./pages/NotFound";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
-import { ImpersonationBanner } from "./components/impersonation/ImpersonationBanner";
+
 
 const queryClient = new QueryClient();
 
@@ -190,19 +189,6 @@ function AppRoutes() {
           <StudentSuporte />
         </ProtectedRoute>
       } />
-      
-      {/* Community routes */}
-      <Route path="/comunidade" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <Community />
-        </ProtectedRoute>
-      } />
-      <Route path="/comunidade/:postId" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <PostDetail />
-        </ProtectedRoute>
-      } />
-      
       <Route path="/catalogo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceCatalog />
@@ -393,6 +379,22 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* Comunidade - protected by ServiceGuard */}
+      <Route path="/comunidade" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceGuard serviceRoute="/comunidade">
+            <Community />
+          </ServiceGuard>
+        </ProtectedRoute>
+      } />
+      <Route path="/comunidade/:id" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceGuard serviceRoute="/comunidade">
+            <PostDetail />
+          </ServiceGuard>
+        </ProtectedRoute>
+      } />
+
       {/* Currículo USA - protected by ServiceGuard */}
       <Route path="/curriculo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
@@ -422,12 +424,12 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <ImpersonationBanner />
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
+
 
 export default App;

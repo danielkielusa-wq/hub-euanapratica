@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Compass, 
-  Users, 
-  Calendar, 
-  Search, 
+import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
+import {
+  Compass,
+  Users,
+  Calendar,
+  Search,
   LayoutGrid,
   LayoutDashboard,
   BookOpen,
@@ -11,9 +14,21 @@ import {
   FileSearch,
   User,
   ShoppingBag,
-  LifeBuoy
+  LifeBuoy,
+  Settings,
+  UserCog,
+  CreditCard,
+  BarChart3,
+  MessageSquare,
+  Package,
+  FileText,
+  TestTube,
+  Upload
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useServiceAccess } from '@/hooks/useServiceAccess';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
+import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 
 interface NavItem {
   label: string;
@@ -31,14 +46,15 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
+// Student Navigation
+const studentNavGroups: NavGroup[] = [
   {
     label: 'DISCOVERY',
     items: [
-      { label: 'Início', href: '/dashboard/hub', icon: Compass },
+      { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass },
       { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' } },
       { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-      { label: 'Catálogo', href: '/dashboard/hub', icon: Search, badge: { text: 'NOVO', variant: 'new' } },
+      { label: 'Catálogo', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Meus Espaços', href: '/dashboard/espacos', icon: LayoutGrid },
     ],
   },
@@ -53,12 +69,12 @@ const navGroups: NavGroup[] = [
   {
     label: 'TOOLS & AI',
     items: [
-      { 
-        label: 'ResumePass AI', 
-        href: '/curriculo', 
-        icon: FileSearch, 
+      {
+        label: 'ResumePass AI',
+        href: '/curriculo',
+        icon: FileSearch,
         badge: { text: 'IA', variant: 'ai' },
-        isSpecial: true 
+        isSpecial: true
       },
     ],
   },
@@ -68,6 +84,84 @@ const navGroups: NavGroup[] = [
       { label: 'Perfil', href: '/perfil', icon: User },
       { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag },
       { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy },
+    ],
+  },
+];
+
+// Mentor Navigation
+const mentorNavGroups: NavGroup[] = [
+  {
+    label: 'GESTÃO',
+    items: [
+      { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
+      { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid },
+      { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
+      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
+    ],
+  },
+  {
+    label: 'CONTEÚDO',
+    items: [
+      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
+      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload },
+    ],
+  },
+  {
+    label: 'MINHA CONTA',
+    items: [
+      { label: 'Perfil', href: '/perfil', icon: User },
+      { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy },
+    ],
+  },
+];
+
+// Admin Navigation
+const adminNavGroups: NavGroup[] = [
+  {
+    label: 'VISÃO GERAL',
+    items: [
+      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { label: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'GESTÃO DE USUÁRIOS',
+    items: [
+      { label: 'Usuários', href: '/admin/usuarios', icon: Users },
+      { label: 'Matrículas', href: '/admin/matriculas', icon: UserCog },
+      { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
+      { label: 'Leads', href: '/admin/leads', icon: FileText },
+    ],
+  },
+  {
+    label: 'GESTÃO DE CONTEÚDO',
+    items: [
+      { label: 'Espaços', href: '/admin/espacos', icon: LayoutGrid },
+      { label: 'Produtos', href: '/admin/produtos', icon: Package },
+      { label: 'Planos', href: '/admin/planos', icon: CreditCard },
+      { label: 'Pedidos', href: '/admin/pedidos', icon: ShoppingBag },
+    ],
+  },
+  {
+    label: 'BIBLIOTECA',
+    items: [
+      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
+      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload },
+    ],
+  },
+  {
+    label: 'CONFIGURAÇÕES',
+    items: [
+      { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
+      { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
+      { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
+      { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },
+    ],
+  },
+  {
+    label: 'MINHA CONTA',
+    items: [
+      { label: 'Perfil', href: '/perfil', icon: User },
     ],
   },
 ];
@@ -84,11 +178,33 @@ interface SidebarNavProps {
 
 export function SidebarNav({ onNavigate }: SidebarNavProps) {
   const location = useLocation();
+  const { user } = useAuth();
+  const { data: studentEspacos, isLoading: studentEspacosLoading } = useStudentEspacosWithStats();
+  const { hasAccess: canAccessCommunity, isLoading: communityAccessLoading } = useServiceAccess('/comunidade');
+  const { planId } = usePlanAccess();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Select navigation based on user role
+  const getNavGroups = (): NavGroup[] => {
+    switch (user?.role) {
+      case 'admin':
+        return adminNavGroups;
+      case 'mentor':
+        return mentorNavGroups;
+      default:
+        if (!studentEspacosLoading && (studentEspacos?.length || 0) === 0) {
+          return studentNavGroups.filter(group => group.label !== 'MENTORIA');
+        }
+        return studentNavGroups;
+    }
+  };
+
+  const navGroups = getNavGroups();
 
   const isActive = (href: string) => {
-    // Exact match for dashboard
-    if (href === '/dashboard') {
-      return location.pathname === '/dashboard';
+    // Exact match for dashboard routes
+    if (href === '/dashboard' || href === '/mentor/dashboard' || href === '/admin/dashboard') {
+      return location.pathname === href;
     }
     // For other routes, check if current path starts with href
     return location.pathname === href || location.pathname.startsWith(href + '/');
@@ -102,18 +218,32 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
           <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
             {group.label}
           </p>
-          
+
           {/* Group Items */}
           <ul className="space-y-0.5">
             {group.items.map((item) => {
               const active = isActive(item.href);
               const Icon = item.icon;
-              
+
+              const isCommunityRoute = item.href === '/comunidade';
+              const blockCommunityAccess = isCommunityRoute && !communityAccessLoading && !canAccessCommunity;
+
+              const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+                if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {
+                  event.preventDefault();
+                  if (!communityAccessLoading) {
+                    setShowUpgradeModal(true);
+                  }
+                  return;
+                }
+                onNavigate?.();
+              };
+
               return (
                 <li key={item.href + item.label}>
                   <Link
                     to={item.href}
-                    onClick={onNavigate}
+                    onClick={handleClick}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
                       item.isSpecial
@@ -130,7 +260,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                       item.isSpecial && !active && "text-indigo-500"
                     )} />
                     <span className="flex-1">{item.label}</span>
-                    
+
                     {/* Badge */}
                     {item.badge && (
                       <span className={cn(
@@ -147,6 +277,13 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
           </ul>
         </div>
       ))}
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        currentPlanId={planId}
+        reason="upgrade"
+      />
     </nav>
   );
 }

@@ -63,6 +63,46 @@ export function useSessions(espacoId?: string) {
   });
 }
 
+// Student agenda sessions filtered by enrolled espacos
+export function useStudentAgendaSessions() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['sessions', 'student-agenda', user?.id],
+    queryFn: async () => {
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('user_espacos')
+        .select('espaco_id')
+        .eq('user_id', user!.id)
+        .eq('status', 'active');
+
+      if (enrollError) throw enrollError;
+
+      if (!enrollments || enrollments.length === 0) {
+        return [] as Session[];
+      }
+
+      const espacoIds = enrollments.map(e => e.espaco_id);
+
+      const { data, error } = await supabase
+        .from('sessions')
+        .select(`
+          *,
+          espacos (
+            id,
+            name
+          )
+        `)
+        .in('espaco_id', espacoIds)
+        .order('datetime', { ascending: true });
+
+      if (error) throw error;
+      return data as Session[];
+    },
+    enabled: !!user,
+  });
+}
+
 export function useUpcomingSessions(limit = 3) {
   const { user } = useAuth();
   const now = new Date().toISOString();

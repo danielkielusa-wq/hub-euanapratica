@@ -27,7 +27,7 @@ const typeConfig: Record<ActivityType, { icon: React.ElementType; bgColor: strin
 const statusConfig: Record<ActivityStatus, { label: string; className: string }> = {
   pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/10' },
   in_progress: { label: 'Em andamento', className: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/10' },
-  completed: { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10' },
+  completed: { label: 'Concluido', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10' },
 };
 
 function ActivityCard({ activity }: { activity: Activity }) {
@@ -94,7 +94,7 @@ export function RecentActivities({ onViewAll }: RecentActivitiesProps) {
     let type: ActivityType = 'upload';
     if (assignment.title.toLowerCase().includes('network') || assignment.title.toLowerCase().includes('linkedin')) {
       type = 'networking';
-    } else if (assignment.title.toLowerCase().includes('aula') || assignment.title.toLowerCase().includes('vídeo')) {
+    } else if (assignment.title.toLowerCase().includes('aula') || assignment.title.toLowerCase().includes('video')) {
       type = 'aula';
     }
 
@@ -107,14 +107,7 @@ export function RecentActivities({ onViewAll }: RecentActivitiesProps) {
     };
   });
 
-  // Fallback activities if no real data
-  const fallbackActivities: Activity[] = [
-    { id: '1', title: 'Atualizar Currículo em Inglês', type: 'upload', category: 'Upload', status: 'pending' },
-    { id: '2', title: 'Networking no LinkedIn', type: 'networking', category: 'Networking', status: 'in_progress' },
-    { id: '3', title: 'Aula de Preparação', type: 'aula', category: 'Aula', status: 'completed' },
-  ];
-
-  const displayActivities = activities.length > 0 ? activities : fallbackActivities;
+  const displayActivities = activities;
 
   return (
     <div className="space-y-4">
@@ -136,10 +129,16 @@ export function RecentActivities({ onViewAll }: RecentActivitiesProps) {
             <Skeleton className="h-20 rounded-[20px]" />
             <Skeleton className="h-20 rounded-[20px]" />
           </>
-        ) : (
+        ) : displayActivities.length > 0 ? (
           displayActivities.map(activity => (
             <ActivityCard key={activity.id} activity={activity} />
           ))
+        ) : (
+          <Card className="p-6 rounded-[20px] border border-border bg-card text-center">
+            <p className="text-sm text-muted-foreground">
+              Nenhuma atividade atribuida para voce no momento.
+            </p>
+          </Card>
         )}
       </div>
     </div>

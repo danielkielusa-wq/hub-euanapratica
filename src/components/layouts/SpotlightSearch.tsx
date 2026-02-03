@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FileText, Calendar, ClipboardList, LayoutGrid, Compass, Users, BookOpen, ShoppingBag, User, LifeBuoy, FileSearch } from 'lucide-react';
+import { Search, FileText, Calendar, ClipboardList, LayoutGrid, Compass, Users, BookOpen, ShoppingBag, User, LifeBuoy, FileSearch, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useHubServices } from '@/hooks/useHubServices';
 
 interface SearchResult {
   id: string;
   label: string;
-  category: 'pages' | 'espacos' | 'agenda' | 'tarefas' | 'servicos';
+  category: 'pages' | 'espacos' | 'agenda' | 'tarefas' | 'servicos' | 'comunidade';
   href: string;
   icon: React.ElementType;
+  external?: boolean;
 }
 
 // Static pages for search
@@ -34,6 +37,7 @@ const categoryLabels: Record<string, string> = {
   agenda: 'Agenda',
   tarefas: 'Tarefas',
   servicos: 'Serviços',
+  comunidade: 'Comunidade',
 };
 
 interface SpotlightSearchProps {
@@ -48,21 +52,76 @@ export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: services } = useHubServices();
 
   // Filter results based on query
   useEffect(() => {
-    if (!query.trim()) {
+    let isCancelled = false;
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
       setResults([]);
       setSelectedIndex(0);
-      return;
+      return () => undefined;
     }
 
-    const filtered = staticPages.filter(page =>
-      page.label.toLowerCase().includes(query.toLowerCase())
-    );
-    setResults(filtered);
-    setSelectedIndex(0);
-  }, [query]);
+    const timeout = setTimeout(async () => {
+      const normalizedQuery = trimmedQuery.toLowerCase();
+      const staticMatches = staticPages.filter(page =>
+        page.label.toLowerCase().includes(normalizedQuery)
+      );
+
+      const serviceMatches = (services || [])
+        .filter(service => {
+          if (service.status === 'coming_soon') return false;
+          const nameMatch = service.name.toLowerCase().includes(normalizedQuery);
+          const descriptionMatch = service.description?.toLowerCase().includes(normalizedQuery);
+          const categoryMatch = service.category?.toLowerCase().includes(normalizedQuery);
+          return nameMatch || descriptionMatch || categoryMatch;
+        })
+        .map(service => {
+          const href = service.route || service.redirect_url || service.ticto_checkout_url || '/dashboard/hub';
+          const external = Boolean(service.redirect_url || service.ticto_checkout_url);
+          return {
+            id: `service-${service.id}`,
+            label: service.name,
+            category: 'servicos' as const,
+            href,
+            icon: ShoppingBag,
+            external,
+          };
+        });
+
+      let communityMatches: SearchResult[] = [];
+      if (user && trimmedQuery.length >= 2) {
+        const { data, error } = await supabase
+          .from('community_posts')
+          .select('id, title')
+          .or(`title.ilike.%${trimmedQuery}%,content.ilike.%${trimmedQuery}%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!error && data) {
+          communityMatches = data.map(post => ({
+            id: `community-${post.id}`,
+            label: post.title,
+            category: 'comunidade',
+            href: `/comunidade/${post.id}`,
+            icon: MessageSquare,
+          }));
+        }
+      }
+
+      if (isCancelled) return;
+      setResults([...staticMatches, ...serviceMatches, ...communityMatches]);
+      setSelectedIndex(0);
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [query, services, user]);
 
   // Keyboard shortcut CMD+K / CTRL+K
   useEffect(() => {
@@ -98,7 +157,11 @@ export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
       e.preventDefault();
       const selected = results[selectedIndex];
       if (selected) {
-        navigate(selected.href);
+        if (selected.external && selected.href.startsWith('http')) {
+          window.open(selected.href, '_blank');
+        } else {
+          navigate(selected.href);
+        }
         setQuery('');
         setIsOpen(false);
         onNavigate?.();
@@ -107,7 +170,11 @@ export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
   }, [results, selectedIndex, navigate, onNavigate]);
 
   const handleResultClick = (result: SearchResult) => {
-    navigate(result.href);
+    if (result.external && result.href.startsWith('http')) {
+      window.open(result.href, '_blank');
+    } else {
+      navigate(result.href);
+    }
     setQuery('');
     setIsOpen(false);
     onNavigate?.();
@@ -138,7 +205,7 @@ export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
           className="w-full pl-10 pr-16 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-200 transition-all"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 py-1 bg-gray-100 rounded-md">
-          <span className="text-[10px] font-medium text-gray-500">⌘</span>
+          <span className="text-[10px] font-medium text-gray-500">Ctrl</span>
           <span className="text-[10px] font-medium text-gray-500">K</span>
         </div>
       </div>

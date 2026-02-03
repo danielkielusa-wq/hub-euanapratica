@@ -10,6 +10,17 @@ export function useCommunityComments(postId: string) {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchComments = useCallback(async () => {
+    if (!postId) {
+      setComments([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!postId) {
+      toast({ title: 'Post invÃ¡lido', variant: 'destructive' });
+      return null;
+    }
+
     try {
       setIsLoading(true);
 
@@ -146,6 +157,7 @@ export function useCommunityComments(postId: string) {
   };
 
   const deleteComment = async (commentId: string) => {
+    if (!postId) return;
     try {
       const { error } = await supabase
         .from('community_comments')

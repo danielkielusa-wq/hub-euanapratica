@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 
 interface CommentThreadProps {
   comments: CommunityComment[];
@@ -25,6 +26,7 @@ export function CommentThread({
   isLoading,
 }: CommentThreadProps) {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -158,8 +160,9 @@ export function CommentThread({
       {/* New comment form */}
       <div className="flex gap-3">
         <Avatar className="h-8 w-8">
+          <AvatarImage src={profile?.profile_photo_url || undefined} />
           <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
-            {user?.email?.charAt(0).toUpperCase() || '?'}
+            {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-2">

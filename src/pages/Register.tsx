@@ -134,9 +134,13 @@ export default function Register() {
       
       navigate('/dashboard');
     } catch (error) {
+      const err = error as { message?: string; status?: number };
+      const isRateLimit = err?.status === 429 || (err?.message || '').toLowerCase().includes('rate limit');
       toast({
         title: "Erro",
-        description: "Não foi possível criar sua conta. Tente novamente.",
+        description: isRateLimit
+          ? "Limite de emails atingido. Aguarde alguns minutos e tente novamente."
+          : "N?o foi poss?vel criar sua conta. Tente novamente.",
         variant: "destructive",
       });
     } finally {

@@ -3,6 +3,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
+import logoHorizontal from '@/assets/logo-horizontal.png';
 
 const roleLabels = {
   student: 'Aluno',
@@ -12,6 +14,7 @@ const roleLabels = {
 
 export function DashboardTopHeader() {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
 
   if (!user) return null;
 
@@ -24,13 +27,20 @@ export function DashboardTopHeader() {
 
   return (
     <header className="hidden lg:flex h-16 items-center justify-between px-6 bg-background border-b border-border">
-      {/* Search Bar */}
-      <div className="relative w-96">
+      {/* Left: Logo + Search */}
+      <div className="flex items-center gap-6">
+        <img
+          src={logoHorizontal}
+          alt="EUA na Prática"
+          className="h-7 w-auto object-contain"
+        />
+        <div className="relative w-96">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Pesquise por cursos, mentores..."
           className="pl-10 bg-muted/50 border-none rounded-xl h-10"
         />
+        </div>
       </div>
 
       {/* Right Section */}
@@ -49,7 +59,7 @@ export function DashboardTopHeader() {
             <p className="text-xs text-muted-foreground">{roleLabels[user.role]}</p>
           </div>
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user.profile_photo_url || undefined} />
+            <AvatarImage src={profile?.profile_photo_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
               {initials}
             </AvatarFallback>

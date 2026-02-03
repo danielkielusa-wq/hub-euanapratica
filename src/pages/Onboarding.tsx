@@ -18,7 +18,7 @@ type FormData = Partial<OnboardingProfile>;
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { data: profile, isLoading } = useOnboardingProfile();
   const updateOnboarding = useUpdateOnboarding();
   const completeOnboarding = useCompleteOnboarding();
@@ -52,13 +52,6 @@ export default function Onboarding() {
     }
   }, [profile]);
 
-  // Redirect if already completed onboarding
-  useEffect(() => {
-    if (profile?.has_completed_onboarding) {
-      navigate(getDashboardPath(), { replace: true });
-    }
-  }, [profile?.has_completed_onboarding, navigate]);
-
   const getDashboardPath = useCallback(() => {
     // Check if there's a pending espaco_id from invitation flow
     const pendingEspacoId = localStorage.getItem('pending_espaco_id');
@@ -76,6 +69,13 @@ export default function Onboarding() {
         return '/dashboard/hub';
     }
   }, [user?.role]);
+
+  // Redirect if already completed onboarding
+  useEffect(() => {
+    if (user?.has_completed_onboarding) {
+      navigate(getDashboardPath(), { replace: true });
+    }
+  }, [user?.has_completed_onboarding, navigate, getDashboardPath]);
 
   const handleChange = useCallback((field: keyof OnboardingProfile, value: string | boolean | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -194,6 +194,9 @@ export default function Onboarding() {
     try {
       await saveProgress();
       await completeOnboarding.mutateAsync();
+      if (refreshUser) {
+        await refreshUser();
+      }
       toast.success('Perfil configurado com sucesso!');
       navigate(getDashboardPath(), { replace: true });
     } catch (error) {

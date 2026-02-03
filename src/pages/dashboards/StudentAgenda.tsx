@@ -3,13 +3,13 @@ import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
 import { SessionFilters } from '@/components/sessions/SessionFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSessions, type Session } from '@/hooks/useSessions';
+import { useStudentAgendaSessions, type Session } from '@/hooks/useSessions';
 import { useEspacos } from '@/hooks/useEspacos';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 
 export default function StudentAgenda() {
-  const { data: sessions, isLoading: sessionsLoading } = useSessions();
+  const { data: sessions, isLoading: sessionsLoading } = useStudentAgendaSessions();
   const { data: espacos, isLoading: espacosLoading } = useEspacos();
   
   const [selectedEspacoId, setSelectedEspacoId] = useState<string | null>(null);

@@ -1,5 +1,6 @@
 import { useHubServices, useUserHubAccess } from '@/hooks/useHubServices';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
 
 // Rotas que são ferramentas incluídas em qualquer assinatura ativa
 const SUBSCRIPTION_INCLUDED_ROUTES = ['/curriculo'];
@@ -8,6 +9,7 @@ export function useServiceAccess(serviceRoute: string) {
   const { data: services, isLoading: servicesLoading } = useHubServices();
   const { data: userAccess, isLoading: accessLoading } = useUserHubAccess();
   const { quota, isLoading: subscriptionLoading } = useSubscription();
+  const { canAccessRoute, isLoading: planLoading } = usePlanAccess();
 
   const service = services?.find((s) => s.route === serviceRoute);
 
@@ -22,11 +24,12 @@ export function useServiceAccess(serviceRoute: string) {
   const hasAccess =
     (isSubscriptionTool && hasActiveSubscription) ||
     service?.status === 'available' ||
-    (service && userAccess?.includes(service.id));
+    (service && userAccess?.includes(service.id)) ||
+    canAccessRoute(serviceRoute);
 
   return {
     hasAccess: !!hasAccess,
     service,
-    isLoading: servicesLoading || accessLoading || subscriptionLoading,
+    isLoading: servicesLoading || accessLoading || subscriptionLoading || planLoading,
   };
 }

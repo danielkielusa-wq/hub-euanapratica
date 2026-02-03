@@ -18,6 +18,65 @@ export function useAssignments(filters?: AssignmentFilters) {
   return useQuery({
     queryKey: ['assignments', filters, user?.id],
     queryFn: async (): Promise<AssignmentWithSubmission[]> => {
+      if (!user) {
+        return [];
+      }
+
+      // For students, only fetch assignments from their enrolled espacos
+      if (user.role === 'student') {
+        const { data: enrollments, error: enrollError } = await supabase
+          .from('user_espacos')
+          .select('espaco_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+
+        if (enrollError) throw enrollError;
+
+        if (!enrollments || enrollments.length === 0) {
+          return [];
+        }
+
+        const espacoIds = enrollments.map(e => e.espaco_id);
+
+        // If a specific espaco is requested but user isn't enrolled, return empty
+        if (filters?.espaco_id && !espacoIds.includes(filters.espaco_id)) {
+          return [];
+        }
+
+        let query = supabase
+          .from('assignments')
+          .select(`
+            *,
+            espaco:espacos(name),
+            materials:assignment_materials(*)
+          `)
+          .in('espaco_id', espacoIds)
+          .order('due_date', { ascending: true });
+
+        if (filters?.espaco_id) {
+          query = query.eq('espaco_id', filters.espaco_id);
+        }
+
+        if (filters?.status) {
+          query = query.eq('status', filters.status);
+        }
+
+        const { data: assignments, error } = await query;
+
+        if (error) throw error;
+
+        const { data: submissions } = await supabase
+          .from('submissions')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('assignment_id', (assignments || []).map(a => a.id));
+
+        return (assignments || []).map(assignment => ({
+          ...assignment,
+          my_submission: submissions?.find(s => s.assignment_id === assignment.id) || null
+        })) as AssignmentWithSubmission[];
+      }
+
       let query = supabase
         .from('assignments')
         .select(`

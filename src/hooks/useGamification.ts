@@ -19,9 +19,9 @@ export function useGamification() {
         .from('user_gamification')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== 'PGRST116' && error.status !== 406) {
         console.error('Error fetching user stats:', error);
       }
 
@@ -64,7 +64,9 @@ export function useGamification() {
         `)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116' && error.status !== 406) {
+        throw error;
+      }
 
       setUserBadges(data || []);
     } catch (err) {

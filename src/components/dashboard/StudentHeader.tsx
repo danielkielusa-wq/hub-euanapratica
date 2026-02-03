@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -21,12 +22,16 @@ const navItems = [
 
 export function StudentHeader() {
   const { user, logout } = useAuth();
+  const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
   };
 
   const getInitials = (name: string) => {
@@ -74,7 +79,7 @@ export function StudentHeader() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 pl-2 pr-3">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.profile_photo_url} alt={user?.full_name} />
+              <AvatarImage src={profile?.profile_photo_url || undefined} alt={user?.full_name} />
               <AvatarFallback className="bg-primary/10 text-primary text-sm">
                 {user ? getInitials(user.full_name) : 'U'}
               </AvatarFallback>
