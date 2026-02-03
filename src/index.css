@@ -222,6 +222,16 @@ All colors MUST be HSL.
     animation: shimmer 2s linear infinite;
   }
 
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   @keyframes float {
     0%, 100% {
       transform: translateY(0px);
