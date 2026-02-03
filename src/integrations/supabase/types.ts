@@ -905,6 +905,8 @@ export type Database = {
           monthly_limit: number
           name: string
           price: number
+          price_annual: number | null
+          theme: string | null
         }
         Insert: {
           created_at?: string
@@ -917,6 +919,8 @@ export type Database = {
           monthly_limit?: number
           name: string
           price?: number
+          price_annual?: number | null
+          theme?: string | null
         }
         Update: {
           created_at?: string
@@ -929,6 +933,8 @@ export type Database = {
           monthly_limit?: number
           name?: string
           price?: number
+          price_annual?: number | null
+          theme?: string | null
         }
         Relationships: []
       }
@@ -1692,6 +1698,20 @@ export type Database = {
       can_access_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
+      }
+      get_full_plan_access: {
+        Args: { p_user_id: string }
+        Returns: {
+          features: Json
+          monthly_limit: number
+          plan_id: string
+          plan_name: string
+          price_annual: number
+          price_monthly: number
+          remaining: number
+          theme: string
+          used_this_month: number
+        }[]
       }
       get_invitation_by_token: {
         Args: { _token: string }
