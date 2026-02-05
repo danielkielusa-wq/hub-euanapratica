@@ -58,6 +58,8 @@ import PublicReport from "./pages/report/PublicReport";
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
 import NotFound from "./pages/NotFound";
+import BookingFlow from "./pages/booking/BookingFlow";
+import StudentBookings from "./pages/booking/StudentBookings";
 import Community from "./pages/community/Community";
 import PostDetail from "./pages/community/PostDetail";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
@@ -187,6 +189,16 @@ function AppRoutes() {
       <Route path="/dashboard/suporte" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentSuporte />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/agendamentos" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentBookings />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/agendar/:serviceId" element={
+        <ProtectedRoute allowedRoles={['student']}>
+          <BookingFlow />
         </ProtectedRoute>
       } />
       <Route path="/catalogo" element={
