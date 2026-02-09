@@ -140,11 +140,7 @@ export default function PublicReport() {
       setEvaluation(data.evaluation);
       setIsVerifying(false);
 
-      const formattedAt = data.evaluation.formatted_at ? new Date(data.evaluation.formatted_at).getTime() : 0;
-      const updatedAt = data.evaluation.updated_at ? new Date(data.evaluation.updated_at).getTime() : 0;
-      const isStale = formattedAt > 0 && updatedAt > formattedAt;
-
-      if (data.evaluation.formatted_report && !isStale) {
+      if (data.evaluation.formatted_report) {
         // Pre-processed report available - instant display
         setFormattedContent(data.evaluation.formatted_report);
       } else if (data.evaluation.processing_status === 'processing') {
@@ -152,7 +148,7 @@ export default function PublicReport() {
         startPolling(data.evaluation.id);
       } else {
         // Pending or error - trigger on-demand (fallback)
-        triggerOnDemand(data.evaluation.id, isStale);
+        triggerOnDemand(data.evaluation.id, false);
       }
 
       return true;
