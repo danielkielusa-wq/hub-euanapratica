@@ -28,6 +28,16 @@ export default function StudentHub() {
   const remainingCredits = quota?.remaining ?? 1;
   const userName = user?.full_name?.split(' ')[0] || 'Usuário';
 
+  // Extract internal path from URL (handles both "/path" and "https://our-domain/path")
+  const getInternalPath = (url: string): string | null => {
+    if (url.startsWith('/')) return url;
+    try {
+      const parsed = new URL(url);
+      if (parsed.origin === window.location.origin) return parsed.pathname;
+    } catch {}
+    return null;
+  };
+
   const handleOpenAI = () => {
     navigate('/curriculo');
   };
@@ -38,8 +48,9 @@ export default function StudentHub() {
 
   const handleBuyHighlighted = () => {
     if (highlightedService?.landing_page_url) {
-      if (highlightedService.landing_page_url.startsWith('/')) {
-        navigate(highlightedService.landing_page_url);
+      const internalPath = getInternalPath(highlightedService.landing_page_url);
+      if (internalPath) {
+        navigate(internalPath);
       } else {
         window.open(highlightedService.landing_page_url, '_blank');
       }
@@ -52,8 +63,9 @@ export default function StudentHub() {
 
   const handleServiceAction = (service: { landing_page_url?: string | null; ticto_checkout_url?: string | null; route?: string | null }) => {
     if (service.landing_page_url) {
-      if (service.landing_page_url.startsWith('/')) {
-        navigate(service.landing_page_url);
+      const internalPath = getInternalPath(service.landing_page_url);
+      if (internalPath) {
+        navigate(internalPath);
       } else {
         window.open(service.landing_page_url, '_blank');
       }

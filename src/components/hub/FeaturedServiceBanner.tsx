@@ -14,12 +14,22 @@ export function FeaturedServiceBanner({ service, hasAccess }: FeaturedServiceBan
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const getInternalPath = (url: string): string | null => {
+    if (url.startsWith('/')) return url;
+    try {
+      const parsed = new URL(url);
+      if (parsed.origin === window.location.origin) return parsed.pathname;
+    } catch {}
+    return null;
+  };
+
   const handleAction = () => {
     if (hasAccess && service.route) {
       navigate(service.route);
     } else if (service.landing_page_url) {
-      if (service.landing_page_url.startsWith('/')) {
-        navigate(service.landing_page_url);
+      const internalPath = getInternalPath(service.landing_page_url);
+      if (internalPath) {
+        navigate(internalPath);
       } else {
         window.open(service.landing_page_url, '_blank');
       }
