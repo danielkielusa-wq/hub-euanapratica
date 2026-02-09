@@ -69,6 +69,7 @@ import PrimeJobs from "./pages/jobs/PrimeJobs";
 import JobDetailsPage from "./pages/jobs/JobDetailsPage";
 import JobBookmarks from "./pages/jobs/JobBookmarks";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
+import ServiceDetail from "./pages/services/ServiceDetail";
 
 
 const queryClient = new QueryClient();
@@ -392,7 +393,14 @@ function AppRoutes() {
       {/* Thank You Pages (public, post-payment redirects) */}
       <Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />
       <Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
-      
+
+      {/* Service Landing Pages (in-platform) */}
+      <Route path="/servicos/:slug" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceDetail />
+        </ProtectedRoute>
+      } />
+
       {/* Payment Success - post-checkout redirect */}
       <Route path="/payment-success" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>

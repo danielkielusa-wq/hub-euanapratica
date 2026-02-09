@@ -12,46 +12,109 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_configs: {
         Row: {
-          id: string
-          name: string
           api_key: string
           base_url: string | null
+          created_at: string | null
           credentials: Json | null
-          parameters: Json | null
           description: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          parameters: Json | null
+          updated_at: string | null
           updated_by: string | null
         }
         Insert: {
-          id?: string
-          name: string
           api_key: string
           base_url?: string | null
+          created_at?: string | null
           credentials?: Json | null
-          parameters?: Json | null
           description?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          parameters?: Json | null
+          updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
-          id?: string
-          name?: string
           api_key?: string
           base_url?: string | null
+          created_at?: string | null
           credentials?: Json | null
-          parameters?: Json | null
           description?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          parameters?: Json | null
+          updated_at?: string | null
           updated_by?: string | null
         }
         Relationships: []
@@ -187,6 +250,51 @@ export type Database = {
           },
         ]
       }
+      audit_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           condition_type: string
@@ -219,6 +327,187 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      booking_history: {
+        Row: {
+          action: Database["public"]["Enums"]["booking_action"]
+          booking_id: string
+          created_at: string | null
+          id: string
+          new_datetime: string | null
+          notes: string | null
+          old_datetime: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["booking_action"]
+          booking_id: string
+          created_at?: string | null
+          id?: string
+          new_datetime?: string | null
+          notes?: string | null
+          old_datetime?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["booking_action"]
+          booking_id?: string
+          created_at?: string | null
+          id?: string
+          new_datetime?: string | null
+          notes?: string | null
+          old_datetime?: string | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_policies: {
+        Row: {
+          cancellation_window_hours: number | null
+          created_at: string | null
+          default_duration_minutes: number | null
+          id: string
+          is_active: boolean | null
+          max_advance_days: number | null
+          max_concurrent_bookings: number | null
+          max_reschedules_per_booking: number | null
+          min_notice_hours: number | null
+          service_id: string | null
+          slot_interval_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cancellation_window_hours?: number | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_advance_days?: number | null
+          max_concurrent_bookings?: number | null
+          max_reschedules_per_booking?: number | null
+          min_notice_hours?: number | null
+          service_id?: string | null
+          slot_interval_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cancellation_window_hours?: number | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_advance_days?: number | null
+          max_concurrent_bookings?: number | null
+          max_reschedules_per_booking?: number | null
+          min_notice_hours?: number | null
+          service_id?: string | null
+          slot_interval_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_policies_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          created_at: string | null
+          duration_minutes: number
+          id: string
+          last_rescheduled_at: string | null
+          meeting_link: string | null
+          mentor_id: string | null
+          mentor_notes: string | null
+          mentor_service_id: string | null
+          original_datetime: string | null
+          reschedule_count: number | null
+          scheduled_end: string
+          scheduled_start: string
+          service_id: string
+          status: Database["public"]["Enums"]["booking_status"] | null
+          student_id: string
+          student_notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number
+          id?: string
+          last_rescheduled_at?: string | null
+          meeting_link?: string | null
+          mentor_id?: string | null
+          mentor_notes?: string | null
+          mentor_service_id?: string | null
+          original_datetime?: string | null
+          reschedule_count?: number | null
+          scheduled_end: string
+          scheduled_start: string
+          service_id: string
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          student_id: string
+          student_notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number
+          id?: string
+          last_rescheduled_at?: string | null
+          meeting_link?: string | null
+          mentor_id?: string | null
+          mentor_notes?: string | null
+          mentor_service_id?: string | null
+          original_datetime?: string | null
+          reschedule_count?: number | null
+          scheduled_end?: string
+          scheduled_start?: string
+          service_id?: string
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          student_id?: string
+          student_notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_mentor_service_id_fkey"
+            columns: ["mentor_service_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       career_evaluations: {
         Row: {
@@ -913,10 +1202,14 @@ export type Database = {
           currency: string | null
           description: string | null
           display_order: number | null
+          duration: string | null
           icon_name: string
           id: string
           is_highlighted: boolean | null
           is_visible_in_hub: boolean | null
+          landing_page_data: Record<string, unknown> | null
+          landing_page_url: string | null
+          meeting_type: string | null
           name: string
           price: number | null
           price_display: string | null
@@ -939,10 +1232,14 @@ export type Database = {
           currency?: string | null
           description?: string | null
           display_order?: number | null
+          duration?: string | null
           icon_name: string
           id?: string
           is_highlighted?: boolean | null
           is_visible_in_hub?: boolean | null
+          landing_page_data?: Record<string, unknown> | null
+          landing_page_url?: string | null
+          meeting_type?: string | null
           name: string
           price?: number | null
           price_display?: string | null
@@ -965,10 +1262,14 @@ export type Database = {
           currency?: string | null
           description?: string | null
           display_order?: number | null
+          duration?: string | null
           icon_name?: string
           id?: string
           is_highlighted?: boolean | null
           is_visible_in_hub?: boolean | null
+          landing_page_data?: Record<string, unknown> | null
+          landing_page_url?: string | null
+          meeting_type?: string | null
           name?: string
           price?: number | null
           price_display?: string | null
@@ -985,6 +1286,87 @@ export type Database = {
         }
         Relationships: []
       }
+      job_applications: {
+        Row: {
+          applied_at: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "brazil_friendly_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_bookmarks: {
+        Row: {
+          created_at: string | null
+          id: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_bookmarks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "brazil_friendly_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_bookmarks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           company: string
@@ -993,8 +1375,11 @@ export type Database = {
           employment_type: string | null
           error: string | null
           experience_level: string | null
+          expires_at: string | null
           id: string
+          is_active: boolean | null
           is_brazil_friendly: boolean | null
+          is_featured: boolean | null
           job_category: string | null
           location: string | null
           location_restrictions: string | null
@@ -1020,8 +1405,11 @@ export type Database = {
           employment_type?: string | null
           error?: string | null
           experience_level?: string | null
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_brazil_friendly?: boolean | null
+          is_featured?: boolean | null
           job_category?: string | null
           location?: string | null
           location_restrictions?: string | null
@@ -1047,8 +1435,11 @@ export type Database = {
           employment_type?: string | null
           error?: string | null
           experience_level?: string | null
+          expires_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_brazil_friendly?: boolean | null
+          is_featured?: boolean | null
           job_category?: string | null
           location?: string | null
           location_restrictions?: string | null
@@ -1162,6 +1553,113 @@ export type Database = {
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_availability: {
+        Row: {
+          created_at: string | null
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time: string
+          id: string
+          is_active: boolean | null
+          mentor_id: string
+          start_time: string
+          timezone: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: Database["public"]["Enums"]["day_of_week"]
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          mentor_id: string
+          start_time: string
+          timezone?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: Database["public"]["Enums"]["day_of_week"]
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          mentor_id?: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      mentor_blocked_times: {
+        Row: {
+          created_at: string | null
+          end_datetime: string
+          id: string
+          mentor_id: string
+          reason: string | null
+          start_datetime: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_datetime: string
+          id?: string
+          mentor_id: string
+          reason?: string | null
+          start_datetime: string
+        }
+        Update: {
+          created_at?: string | null
+          end_datetime?: string
+          id?: string
+          mentor_id?: string
+          reason?: string | null
+          start_datetime?: string
+        }
+        Relationships: []
+      }
+      mentor_services: {
+        Row: {
+          buffer_minutes: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          mentor_id: string
+          price_override: number | null
+          service_id: string
+          slot_duration_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          buffer_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          mentor_id: string
+          price_override?: number | null
+          service_id: string
+          slot_duration_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          buffer_minutes?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          mentor_id?: string
+          price_override?: number | null
+          service_id?: string
+          slot_duration_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
             referencedColumns: ["id"]
           },
         ]
@@ -1345,6 +1843,7 @@ export type Database = {
       products: {
         Row: {
           access_duration_days: number | null
+          checkout_url: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1355,6 +1854,7 @@ export type Database = {
         }
         Insert: {
           access_duration_days?: number | null
+          checkout_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1365,6 +1865,7 @@ export type Database = {
         }
         Update: {
           access_duration_days?: number | null
+          checkout_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1779,51 +2280,6 @@ export type Database = {
         }
         Relationships: []
       }
-      audit_events: {
-        Row: {
-          action: string
-          actor_id: string | null
-          created_at: string
-          entity_id: string | null
-          entity_type: string | null
-          id: string
-          idempotency_key: string | null
-          metadata: Json | null
-          new_values: Json | null
-          old_values: Json | null
-          source: string
-          user_id: string
-        }
-        Insert: {
-          action: string
-          actor_id?: string | null
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string | null
-          id?: string
-          idempotency_key?: string | null
-          metadata?: Json | null
-          new_values?: Json | null
-          old_values?: Json | null
-          source: string
-          user_id: string
-        }
-        Update: {
-          action?: string
-          actor_id?: string | null
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string | null
-          id?: string
-          idempotency_key?: string | null
-          metadata?: Json | null
-          new_values?: Json | null
-          old_values?: Json | null
-          source?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_audit_logs: {
         Row: {
           action: string
@@ -2207,36 +2663,6 @@ export type Database = {
       }
     }
     Functions: {
-      admin_update_api_credentials: {
-        Args: { p_api_key: string; p_credentials_json: Json }
-        Returns: undefined
-      }
-      check_api_credentials_status: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          api_key: string
-          name: string
-          has_credentials: boolean
-          is_active: boolean
-        }[]
-      }
-      decrypt_credential: {
-        Args: { encrypted_text: string }
-        Returns: string
-      }
-      encrypt_credential: {
-        Args: { plaintext: string }
-        Returns: string
-      }
-      test_encryption: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          original: string
-          encrypted: string
-          decrypted: string
-          success: boolean
-        }[]
-      }
       admin_change_user_plan: {
         Args: { p_new_plan_id: string; p_user_id: string }
         Returns: boolean
@@ -2256,13 +2682,119 @@ export type Database = {
         }[]
       }
       admin_reset_user_usage: { Args: { p_user_id: string }; Returns: boolean }
+      admin_update_api_credentials: {
+        Args: { p_api_key: string; p_credentials_json: Json }
+        Returns: undefined
+      }
       calculate_level: { Args: { p_points: number }; Returns: number }
       can_access_session: {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_booking: {
+        Args: { p_booking_id: string; p_reason?: string; p_user_id: string }
+        Returns: boolean
+      }
+      check_api_credentials_status: {
+        Args: never
+        Returns: {
+          api_key: string
+          has_credentials: boolean
+          is_active: boolean
+          name: string
+        }[]
+      }
       check_job_exists: { Args: { job_url: string }; Returns: boolean }
+      check_prime_jobs_quota: {
+        Args: { p_user_id: string }
+        Returns: {
+          can_apply: boolean
+          monthly_limit: number
+          plan_id: string
+          remaining: number
+          used_this_month: number
+        }[]
+      }
       cleanup_old_jobs: { Args: never; Returns: Json }
+      complete_booking: {
+        Args: {
+          p_booking_id: string
+          p_mentor_notes?: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      create_booking: {
+        Args: {
+          p_duration_minutes?: number
+          p_scheduled_start: string
+          p_service_id: string
+          p_student_id: string
+          p_student_notes?: string
+        }
+        Returns: string
+      }
+      get_api_config_by_key: {
+        Args: { p_api_key: string }
+        Returns: {
+          api_key: string
+          base_url: string
+          created_at: string
+          credentials: Json
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          parameters: Json
+          updated_at: string
+          updated_by: string
+        }[]
+      }
+      get_api_config_with_credentials: {
+        Args: { p_api_key: string }
+        Returns: {
+          api_key: string
+          base_url: string
+          credentials: Json
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          parameters: Json
+        }[]
+      }
+      get_available_slots: {
+        Args: { p_end_date: string; p_service_id: string; p_start_date: string }
+        Returns: {
+          duration_minutes: number
+          mentor_id: string
+          slot_end: string
+          slot_start: string
+        }[]
+      }
+      get_booking_policy: {
+        Args: { p_service_id: string }
+        Returns: {
+          cancellation_window_hours: number | null
+          created_at: string | null
+          default_duration_minutes: number | null
+          id: string
+          is_active: boolean | null
+          max_advance_days: number | null
+          max_concurrent_bookings: number | null
+          max_reschedules_per_booking: number | null
+          min_notice_hours: number | null
+          service_id: string | null
+          slot_interval_minutes: number | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "booking_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_community_ranking: {
         Args: { p_limit?: number }
         Returns: {
@@ -2304,6 +2836,100 @@ export type Database = {
           status: Database["public"]["Enums"]["invitation_status"]
         }[]
       }
+      get_job_by_id: {
+        Args: { p_job_id: string; p_user_id?: string }
+        Returns: {
+          apply_url: string
+          benefits: string
+          category: string
+          company_logo_url: string
+          company_name: string
+          created_at: string
+          description: string
+          experience_level: string
+          id: string
+          is_applied: boolean
+          is_bookmarked: boolean
+          is_featured: boolean
+          job_type: string
+          location: string
+          remote_type: string
+          requirements: string
+          salary_currency: string
+          salary_max: number
+          salary_min: number
+          tech_stack: string[]
+          title: string
+        }[]
+      }
+      get_job_categories: {
+        Args: never
+        Returns: {
+          category: string
+          count: number
+        }[]
+      }
+      get_jobs_with_user_context: {
+        Args: {
+          p_category?: string
+          p_experience_level?: string
+          p_job_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_remote_type?: string
+          p_salary_min?: number
+          p_search?: string
+          p_user_id: string
+        }
+        Returns: {
+          apply_url: string
+          benefits: string
+          category: string
+          company_logo_url: string
+          company_name: string
+          created_at: string
+          description: string
+          experience_level: string
+          id: string
+          is_applied: boolean
+          is_bookmarked: boolean
+          is_featured: boolean
+          job_type: string
+          location: string
+          remote_type: string
+          requirements: string
+          salary_currency: string
+          salary_max: number
+          salary_min: number
+          tech_stack: string[]
+          title: string
+          total_count: number
+        }[]
+      }
+      get_mentor_for_service: {
+        Args: { p_service_id: string }
+        Returns: string
+      }
+      get_prime_jobs_stats: {
+        Args: never
+        Returns: {
+          avg_salary_min: number
+          new_this_week: number
+          top_category: string
+          total_active_jobs: number
+        }[]
+      }
+      get_student_booking_stats: {
+        Args: { p_student_id: string }
+        Returns: {
+          cancelled_bookings: number
+          completed_bookings: number
+          no_show_bookings: number
+          remaining_slots: number
+          total_bookings: number
+          upcoming_bookings: number
+        }[]
+      }
       get_user_quota: {
         Args: { p_user_id: string }
         Returns: {
@@ -2335,14 +2961,58 @@ export type Database = {
         Args: { p_country_code: string; p_phone: string; p_user_id?: string }
         Returns: boolean
       }
+      record_analytics_event: {
+        Args: {
+          p_entity_id?: string
+          p_entity_type?: string
+          p_event_type: string
+          p_metadata?: Json
+        }
+        Returns: boolean
+      }
       record_curriculo_usage: { Args: { p_user_id: string }; Returns: boolean }
-      record_analytics_event: { Args: { p_event_type: string; p_entity_type?: string | null; p_entity_id?: string | null; p_metadata?: Json | null }; Returns: boolean }
+      record_prime_jobs_application: {
+        Args: { p_job_id: string; p_user_id: string }
+        Returns: {
+          application_id: string
+          message: string
+          success: boolean
+        }[]
+      }
+      reschedule_booking: {
+        Args: { p_booking_id: string; p_new_start: string; p_user_id: string }
+        Returns: boolean
+      }
+      test_encryption: {
+        Args: never
+        Returns: {
+          decrypted: string
+          encrypted: string
+          original: string
+          success: boolean
+        }[]
+      }
     }
     Enums: {
       access_level: "public" | "restricted"
       app_role: "admin" | "mentor" | "student"
       assignment_status: "draft" | "published" | "closed"
       attendance_status: "present" | "absent" | "unmarked"
+      booking_action:
+        | "created"
+        | "rescheduled"
+        | "cancelled"
+        | "completed"
+        | "no_show_marked"
+      booking_status: "confirmed" | "completed" | "cancelled" | "no_show"
+      day_of_week:
+        | "sunday"
+        | "monday"
+        | "tuesday"
+        | "wednesday"
+        | "thursday"
+        | "friday"
+        | "saturday"
       e2e_run_status: "started" | "running" | "passed" | "failed" | "cancelled"
       e2e_test_status: "passed" | "failed" | "skipped" | "pending"
       espaco_category:
@@ -2507,12 +3177,32 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       access_level: ["public", "restricted"],
       app_role: ["admin", "mentor", "student"],
       assignment_status: ["draft", "published", "closed"],
       attendance_status: ["present", "absent", "unmarked"],
+      booking_action: [
+        "created",
+        "rescheduled",
+        "cancelled",
+        "completed",
+        "no_show_marked",
+      ],
+      booking_status: ["confirmed", "completed", "cancelled", "no_show"],
+      day_of_week: [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ],
       e2e_run_status: ["started", "running", "passed", "failed", "cancelled"],
       e2e_test_status: ["passed", "failed", "skipped", "pending"],
       espaco_category: [
@@ -2550,5 +3240,3 @@ export const Constants = {
     },
   },
 } as const
-
-

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock, LucideIcon } from 'lucide-react';
 import * as icons from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,8 @@ const serviceTypeColors: Record<ServiceType, string> = {
 
 export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
   const { user } = useAuth();
-  
+  const navigate = useNavigate();
+
   // Get icon component safely
   const iconName = service.icon_name as keyof typeof icons;
   const Icon = (icons[iconName] as LucideIcon) || icons.FileCheck;
@@ -37,7 +38,16 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
   };
 
   const handleUnlock = () => {
-    if (service.ticto_checkout_url) {
+    // Priority 1: Landing page URL (presentation page)
+    if (service.landing_page_url) {
+      if (service.landing_page_url.startsWith('/')) {
+        navigate(service.landing_page_url);
+      } else {
+        window.open(service.landing_page_url, '_blank');
+      }
+    }
+    // Priority 2: Ticto checkout URL (direct purchase)
+    else if (service.ticto_checkout_url) {
       try {
         const checkoutUrl = new URL(service.ticto_checkout_url);
         if (user?.email) {
@@ -124,9 +134,9 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-        ) : service.ticto_checkout_url ? (
-          <Button 
-            variant="outline" 
+        ) : (service.landing_page_url || service.ticto_checkout_url) ? (
+          <Button
+            variant="outline"
             className="w-full gap-2 rounded-xl border-primary text-primary hover:bg-primary/5"
             onClick={handleUnlock}
           >

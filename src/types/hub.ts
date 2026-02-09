@@ -2,6 +2,32 @@ export type ServiceType = 'ai_tool' | 'live_mentoring' | 'recorded_course' | 'co
 export type ServiceStatus = 'available' | 'premium' | 'coming_soon';
 export type ProductType = 'one_time' | 'lifetime' | 'subscription_monthly' | 'subscription_annual';
 
+export interface ServiceLandingPageData {
+  hero?: {
+    subtitle?: string;
+    tagline?: string;
+  };
+  mentor?: {
+    name: string;
+    initials: string;
+    title: string;
+    quote?: string;
+  };
+  benefits?: Array<{
+    icon: string;
+    title: string;
+    description: string;
+  }>;
+  target_audience?: Array<{
+    title: string;
+    description: string;
+  }>;
+  faq_section?: {
+    title: string;
+    description: string;
+  };
+}
+
 export interface HubService {
   id: string;
   name: string;
@@ -14,24 +40,32 @@ export interface HubService {
   route: string | null;
   redirect_url: string | null;
   cta_text: string;
-  
+
   // Display
   is_visible_in_hub: boolean;
   is_highlighted: boolean;
   display_order: number;
   accent_color: string | null;
-  
+
   // Pricing
   price: number;
   price_display: string | null;
   currency: string;
   product_type: ProductType;
   stripe_price_id: string | null;
-  
+
+  // URLs
+  landing_page_url: string | null;
+
   // Ticto integration
   ticto_product_id: string | null;
   ticto_checkout_url: string | null;
-  
+
+  // Landing page data
+  duration: string | null;
+  meeting_type: string | null;
+  landing_page_data: ServiceLandingPageData | null;
+
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +85,7 @@ export interface HubServiceFormData {
   is_highlighted: boolean;
   display_order: number;
   accent_color: string;
+  landing_page_url: string;
   price: number;
   price_display: string;
   currency: string;
@@ -59,6 +94,10 @@ export interface HubServiceFormData {
   // Ticto fields
   ticto_product_id: string;
   ticto_checkout_url: string;
+  // Landing page fields
+  duration: string;
+  meeting_type: string;
+  landing_page_data: ServiceLandingPageData | null;
 }
 
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
