@@ -38,7 +38,11 @@ export default function StudentHub() {
 
   const handleBuyHighlighted = () => {
     if (highlightedService?.landing_page_url) {
-      window.open(highlightedService.landing_page_url, '_blank');
+      if (highlightedService.landing_page_url.startsWith('/')) {
+        navigate(highlightedService.landing_page_url);
+      } else {
+        window.open(highlightedService.landing_page_url, '_blank');
+      }
     } else if (highlightedService?.ticto_checkout_url) {
       window.open(highlightedService.ticto_checkout_url, '_blank');
     } else {
@@ -48,7 +52,11 @@ export default function StudentHub() {
 
   const handleServiceAction = (service: { landing_page_url?: string | null; ticto_checkout_url?: string | null; route?: string | null }) => {
     if (service.landing_page_url) {
-      window.open(service.landing_page_url, '_blank');
+      if (service.landing_page_url.startsWith('/')) {
+        navigate(service.landing_page_url);
+      } else {
+        window.open(service.landing_page_url, '_blank');
+      }
     } else if (service.ticto_checkout_url) {
       window.open(service.ticto_checkout_url, '_blank');
     } else if (service.route) {
