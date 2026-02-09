@@ -308,7 +308,7 @@ export function HubServiceForm({
       product_type: data.product_type,
       stripe_price_id: data.stripe_price_id,
       accent_color: data.accent_color,
-      landing_page_url: data.landing_page_url,
+      landing_page_url: data.landing_page_url || (data.route ? `/servicos/${data.route}` : null),
       ticto_product_id: data.ticto_product_id,
       ticto_checkout_url: data.ticto_checkout_url,
       duration: data.duration,
