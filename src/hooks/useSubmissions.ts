@@ -107,7 +107,6 @@ export function useSubmitAssignment() {
       toast.success('Tarefa entregue com sucesso!');
     },
     onError: (error) => {
-      console.error('Error submitting assignment:', error);
       toast.error('Erro ao entregar tarefa');
     }
   });
@@ -241,7 +240,6 @@ export function useSubmitFeedback() {
       toast.success('Feedback enviado com sucesso!');
     },
     onError: (error) => {
-      console.error('Error submitting feedback:', error);
       toast.error('Erro ao enviar feedback');
     }
   });
@@ -335,7 +333,6 @@ export function useUploadSubmissionFile() {
       };
     },
     onError: (error) => {
-      console.error('Error uploading file:', error);
       toast.error('Erro ao fazer upload do arquivo');
     }
   });
@@ -361,14 +358,12 @@ export function useDownloadSubmissionFile() {
         .createSignedUrl(path, 60 * 60); // 1 hour
 
       if (error) {
-        console.error('Error creating signed URL:', error);
         throw new Error('Não foi possível gerar o link de download');
       }
 
       return data.signedUrl;
     },
     onError: (error) => {
-      console.error('Error getting download URL:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar link de download');
     }
   });
@@ -433,7 +428,6 @@ export function useSendSubmissionMessage() {
       toast.success('Mensagem enviada!');
     },
     onError: (error) => {
-      console.error('Error sending message:', error);
       toast.error('Erro ao enviar mensagem');
     }
   });

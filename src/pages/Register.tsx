@@ -123,7 +123,6 @@ export default function Register() {
             });
           }
         } catch (inviteError) {
-          console.error('Error processing invitation:', inviteError);
         }
       } else {
         toast({

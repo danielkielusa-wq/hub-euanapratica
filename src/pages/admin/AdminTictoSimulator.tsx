@@ -117,7 +117,6 @@ export default function AdminTictoSimulator() {
         toast.error("Simulação retornou erro");
       }
     } catch (error) {
-      console.error("Simulation error:", error);
       toast.error("Erro ao executar simulação");
       setResult({
         success: false,

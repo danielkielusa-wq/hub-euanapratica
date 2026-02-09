@@ -9,12 +9,17 @@ import { Users, GraduationCap, BookOpen, Clock, AlertTriangle, Loader2, Download
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { AnalyticsEvent } from '@/types/analytics';
 
 export default function AdminReports() {
   const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading } = useAdminStats();
   const { data: expiringAccess, isLoading: expiringLoading } = useExpiringAccess();
   const { data: recentEnrollments, isLoading: enrollmentsLoading } = useRecentEnrollments(10);
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const exportEnrollmentsReport = () => {
     if (!recentEnrollments || recentEnrollments.length === 0) return;
@@ -56,6 +61,32 @@ export default function AdminReports() {
     link.setAttribute('download', `acessos_expirando_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     link.click();
   };
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setAnalyticsLoading(true);
+      const { data, error } = await supabase
+        .from('analytics_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (!error) {
+        setAnalyticsEvents((data as AnalyticsEvent[]) || []);
+      }
+      setAnalyticsLoading(false);
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  const analyticsSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    analyticsEvents.forEach((event) => {
+      counts.set(event.event_type, (counts.get(event.event_type) || 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  }, [analyticsEvents]);
 
   if (statsLoading) {
     return (
@@ -255,6 +286,62 @@ export default function AdminReports() {
                 <span>Relatório de Usuários</span>
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Analytics Events */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Eventos de Analytics (últimos 100)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {analyticsSummary.length === 0 ? (
+                    <Badge variant="secondary">Sem eventos ainda</Badge>
+                  ) : (
+                    analyticsSummary.map(([type, count]) => (
+                      <Badge key={type} variant="outline">
+                        {type}: {count}
+                      </Badge>
+                    ))
+                  )}
+                </div>
+                <div className="rounded-lg border">
+                  <div className="grid grid-cols-4 gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">
+                    <span>Quando</span>
+                    <span>Evento</span>
+                    <span>Entidade</span>
+                    <span>Usuário</span>
+                  </div>
+                  <div className="divide-y">
+                    {analyticsEvents.length === 0 ? (
+                      <div className="px-3 py-4 text-sm text-muted-foreground">Nenhum evento registrado.</div>
+                    ) : (
+                      analyticsEvents.map((event) => (
+                        <div key={event.id} className="grid grid-cols-4 gap-2 px-3 py-2 text-sm">
+                          <span className="text-muted-foreground">
+                            {format(new Date(event.created_at), 'dd/MM/yyyy HH:mm')}
+                          </span>
+                          <span className="font-medium">{event.event_type}</span>
+                          <span className="text-muted-foreground">
+                            {event.entity_type || '-'}
+                          </span>
+                          <span className="text-muted-foreground truncate">
+                            {event.user_id || '-'}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

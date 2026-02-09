@@ -1,0 +1,295 @@
+Aqui está o prompt otimizado para o Lovable (apenas instruções, sem código):
+
+---
+
+**PROMPT PARA LOVABLE: Implementação de Lógica para EUA Na Pratica Hub**
+
+Estou anexando o código .tsx da interface já criada para uma plataforma de comunidade de aprendizagem chamada "EUA Na Pratica Hub". A interface visual está pronta, mas precisa de toda a lógica funcional, gerenciamento de estado e integração com backend/banco de dados.
+
+**OBJETIVO:**
+Transformar a interface estática em uma aplicação totalmente funcional com todas as features de comunidade, , eventos e gamificação.
+
+---
+
+**PARTE 1: CONFIGURAÇÃO INICIAL**
+
+**1.1 Setup do Banco de Dados**
+- Configure Supabase como backend
+- Crie as tabelas necessárias: users, posts, comments, courses, modules, lessons, events, badges, user_progress, notifications
+- Estabeleça as relações entre tabelas (foreign keys)
+- Configure Row Level Security (RLS) para proteção de dados
+- Crie índices para otimizar queries frequentes
+
+**1.2 Autenticação**
+- Implemente sistema de autenticação completo com Supabase Auth
+- Fluxo de login/registro
+- Proteção de rotas (redirect se não autenticado)
+- Persistência de sessão
+- Context API ou Zustand para gerenciar estado do usuário logado globalmente
+
+---
+
+**PARTE 2: SISTEMA DE POSTS E COMUNIDADE**
+
+**2.1 Feed de Posts**
+- Implemente listagem de posts do banco de dados
+- Paginação infinita ou "carregar mais" quando usuário rolar
+- Sistema de filtros funcionais: "Mais Recentes", "Mais Populares", "Por Categoria"
+- Ordenação dinâmica baseada no filtro selecionado
+- Loading states e skeleton screens durante carregamento
+
+**2.2 Criação de Posts**
+- Modal ou página para criar novo post
+- Formulário com validação: título (obrigatório), conteúdo (obrigatório), categoria (select)
+- Rich text editor para formatação do conteúdo (bold, italic, links)
+- Salvar post no banco de dados
+- Atualizar feed automaticamente após criar post
+- Toast de confirmação de sucesso
+
+**2.3 Interação com Posts**
+- Sistema de curtidas: toggle like/unlike
+- Atualizar contador de likes em tempo real
+- Salvar likes no banco (tabela post_likes com userId e postId)
+- Verificar se usuário já curtiu o post para mostrar estado correto
+- Navegar para página de detalhes do post ao clicar
+
+**2.4 Sistema de Comentários**
+- Página de detalhes do post com seção de comentários
+- Listar todos os comentários do post
+- Formulário para adicionar novo comentário
+- Comentários aninhados (respostas a comentários, até 2 níveis)
+- Botão "Responder" em cada comentário
+- Sistema de likes em comentários também
+- Atualizar contador de comentários do post
+
+**2.5 Categorias**
+- Sidebar com lista de categorias clicáveis
+- Filtrar posts por categoria selecionada
+- Highlight da categoria ativa
+- Contador de posts por categoria (opcional)
+
+---
+
+**PARTE 3: SISTEMA DE GAMIFICAÇÃO**
+
+**3.1 Sistema de Pontos**
+- Definir regras de pontuação:
+  - Criar post: +10 pontos
+  - Receber like em post: +2 pontos
+  - Comentar: +5 pontos
+  - Participar de evento: +20 pontos
+- Implementar lógica para adicionar pontos automaticamente quando ações ocorrem
+- Atualizar pontos do usuário no banco de dados
+- Mostrar animação/toast quando ganhar pontos
+
+**3.2 Sistema de Níveis**
+- Definir tabela de níveis (ex: Nível 1: 0-100 pts, Nível 2: 101-250 pts, etc.)
+- Calcular nível atual baseado em pontos totais
+- Calcular progresso para próximo nível (barra de porcentagem)
+- Atualizar nível automaticamente quando atingir threshold
+- Popup especial quando subir de nível
+
+**3.3 Badges e Conquistas**
+- Criar sistema de badges com condições:
+  - "Primeiro Post": criar primeiro post
+  - "Social": ganhar 10 likes
+  - "Top 10": entrar no ranking dos 10 melhores
+  - Criar mais badges relevantes
+- Verificar condições e conceder badges automaticamente
+- Salvar badges do usuário no banco
+- Mostrar popup ao desbloquear nova badge
+- Exibir badges no perfil do usuário
+
+**3.4 Ranking**
+- Sidebar com Top 10 usuários mais pontuados
+- Query ordenada por pontos (DESC) limitada a 10
+- Atualizar ranking em tempo real
+- Mostrar: posição, nome, avatar, pontos, nível
+- Highlight se usuário logado estiver no top 10
+
+---
+
+---
+
+**PARTE 5: CALENDÁRIO E EVENTOS**
+
+**5.1 Listagem de Eventos**
+- Página de calendário com vista mensal
+- Marcar datas com eventos no calendário
+- Lista de próximos eventos (ordenados por data)
+- Carregar eventos do banco de dados
+
+**5.2 Card de Evento**
+- Mostrar: data, horário, título, descrição, número de participantes
+- Converter horário automaticamente para fuso do usuário (use biblioteca como date-fns-tz)
+- Botão "Participar" / "Cancelar Participação"
+
+**5.3 Sistema de Inscrição**
+- Salvar participação do usuário no evento (tabela event_participants)
+- Atualizar contador de participantes
+- Verificar se usuário já está inscrito para mostrar botão correto
+- Adicionar pontos quando participar de evento
+
+**5.4 Criação de Eventos (Admin)**
+- Formulário para criar evento: título, descrição, data, horário, link da live
+- Salvar no banco de dados
+- Notificar membros sobre novo evento (opcional)
+
+**5.5 Notificações de Eventos**
+- Sistema de lembretes antes do evento (1 dia, 1 hora antes)
+- Badge de notificação no ícone de sino
+- Lista de notificações não lidas
+
+---
+
+**PARTE 6: PERFIL DO USUÁRIO**
+
+**6.1 Página de Perfil**
+- Rota dinâmica: /perfil/[userId]
+- Carregar dados do usuário específico
+- Mostrar: avatar, nome, bio, localização, data de entrada
+- Estatísticas: pontos totais, nível, posts criados, comentários feitos
+- Grid de badges conquistadas
+- Permitir edição se for perfil do próprio usuário
+
+**6.2 Edição de Perfil**
+- Formulário para editar: nome, bio, localização, avatar
+- Upload de imagem para avatar (Supabase Storage)
+- Validação de campos
+- Salvar alterações no banco
+- Toast de confirmação
+
+**6.3 Histórico de Atividades**
+- Timeline das atividades recentes do usuário
+- Tipos: posts criados, comentários,  iniciados/completados
+- Ordenado por data (mais recente primeiro)
+- Paginação se necessário
+
+---
+
+**PARTE 7: BUSCA E NAVEGAÇÃO**
+
+**7.1 Busca Global**
+- Input de busca no header
+- Buscar em: posts (título e conteúdo), usuários (nome)
+- Resultados agrupados por tipo
+- Debounce na digitação para otimizar
+- Highlight do termo buscado nos resultados
+
+**7.2 Sistema de Navegação**
+- Sidebar responsiva (collapse em mobile)
+- Highlight da página ativa
+- Contador de notificações não lidas
+- Navegação fluida entre seções
+
+---
+
+**PARTE 8: NOTIFICAÇÕES**
+
+**8.1 Centro de Notificações**
+- Dropdown ao clicar no ícone de sino
+- Listar notificações do usuário (ordenadas por mais recente)
+- Tipos de notificações:
+  - Alguém curtiu seu post
+  - Alguém comentou seu post
+  - Você subiu de nível
+  - Você ganhou nova badge
+  - Evento começando em breve
+- Marcar como lida ao clicar
+- Badge com número de não lidas
+
+**8.2 Geração de Notificações**
+- Criar notificação automaticamente quando ações relevantes ocorrem
+- Salvar no banco (tabela notifications)
+- Não notificar o próprio usuário de suas ações
+
+---
+
+**PARTE 9: OTIMIZAÇÕES E POLIMENTO**
+
+**9.1 Performance**
+- Implementar React Query ou SWR para cache de dados
+- Lazy loading de componentes pesados
+- Otimizar imagens (next/image ou similar)
+- Implementar virtualization para listas longas (react-window)
+
+**9.2 UX Enhancements**
+- Loading states consistentes em toda aplicação
+- Error states com mensagens claras
+- Empty states quando não há dados
+- Confirmações antes de ações destrutivas
+- Toasts para feedback de ações
+
+**9.3 Responsividade**
+- Garantir que TODOS os componentes funcionem em mobile
+- Menu hamburguer em mobile
+- Modals full-screen em mobile
+- Touch-friendly (botões com tamanho adequado)
+
+**9.4 Acessibilidade**
+- Labels em todos os inputs
+- Aria-labels onde necessário
+- Navegação por teclado funcional
+- Contraste adequado de cores
+- Focus states visíveis
+
+---
+
+**PARTE 10: FUNCIONALIDADES EXTRAS (OPCIONAL MAS RECOMENDADO)**
+
+**10.1 Sistema de Menções**
+- Autocompletar @ para mencionar usuários
+- Notificar usuário quando for mencionado
+- Link clicável para perfil do mencionado
+
+**10.2 Reações Além de Like**
+- Múltiplas reações (❤️ 👏 🎉 🤔)
+- Mostrar contador por tipo de reação
+- Tooltip mostrando quem reagiu
+
+**10.3 Modo Escuro**
+- Toggle no header para alternar tema
+- Salvar preferência no localStorage
+- CSS variables para cores do tema
+
+**10.4 Moderação (Admin)**
+- Painel admin para gerenciar posts/comentários
+- Deletar conteúdo inapropriado
+- Banir usuários
+- Configurar categorias e badges
+
+---
+
+**ENTREGÁVEIS ESPERADOS:**
+
+1. Aplicação totalmente funcional com todas as features descritas
+2. Banco de dados estruturado e populado com dados de exemplo
+3. Autenticação funcionando
+4. Todas as interações com feedback visual
+5. Código organizado e comentado
+6. Responsivo em todos os breakpoints
+7. Performance otimizada
+
+**TECNOLOGIAS A USAR:**
+- React/Next.js
+- TypeScript
+- Supabase (banco de dados + auth + storage)
+- Tailwind CSS
+- shadcn/ui para componentes base
+- React Query ou SWR para data fetching
+- date-fns para manipulação de datas
+- Lucide React para ícones
+
+**PRIORIDADES:**
+1. Autenticação e usuários
+2. Sistema de posts e comunidade
+3. Sistema de gamificação
+5. Eventos
+6. Perfis e notificações
+7. Polimentos e extras
+
+Implemente cada parte de forma incremental, testando e validando antes de passar para a próxima.
+
+---
+
+Esse prompt está completo e pronto para usar no Lovable?

@@ -1,0 +1,60 @@
+ResumePassAI
+
+3- historico de relatorios - Na tela do ResumePassAI, deve haver algum local que salva o resultado dos relatorios, para que possa ser consultado posteriormente. Portanto, apos a execucao, o Sistema devera salvar de alguma forma no banco de dados e permitir para o usuario consultar o historico
+
+
+
+Prime Jobs
+
+0 - continue with Prime jobs app prompt.
+
+Email Template for Prime Jobs
+
+Prime Jobs - vagas salvas
+
+
+
+Plataforma
+
+1\. para automatizarmos o processo, preciso que você peça ao lovable que, 'todo lead que entrar naquela tabela que você me mostrou ele realize uma requisição HTTP do tipo POST para https://n8n.sapunplugged.com/webhook/7df09015-3dc7-45f8-8390-54a7f3180191, contendo todas as informações do lead no formato JSON'
+
+4\. Alterar titulo e favicon atualmente mostrando lovable.
+
+5\. Direcionamento na tela Hub - Deve ir direto para o checkout os links configurados na tabela produtos, no campo de checkout URL.. atualmente esta direcionando pro catalogo
+
+6\. Centralizar configuracaodas API's - Pra todas chamads existentes no sistema para API's no Sistema, deve haver configuracoes dos links e demais dados para o admin.
+
+
+
+Comunidade
+
+8\. Redesign interface de acordo com prompt e arquivos no diretorio "C:\\Users\\kield\\enphub\_fresh\\specs\\Comunidade\\StudentCommunity.tsx"
+
+7\. Erro de direcionamento ao abrir a comunidade: Ao clicar na COmundiade, ta abrindo uma pagina antes de acesso exclusivo
+
+
+
+Precificacao
+
+2- Simplificar precificacao - Teremos apenas o plano Basico (freemium) e o plano PRO.
+
+Devera haver opcoes para compras de creditos adicionais caso a pessoa queira mais creditos. O plano tb passa a ser annual, nao mensal. O cliente podera pagar de acordo com as configuracoes dos planos na tela do admin.
+
+
+
+**9. NETWORKING SCRIPT GENERATOR**
+
+\- NETWORKING SCRIPT GENERATOR arquivos: C:\\Users\\kield\\enphub\_fresh\\specs\\Script Generator
+
+
+
+**10. Brazilian Experience Translator** - - Converte títulos de cargo brasileiros para equivalentes americanos. Files C:\\Users\\kield\\enphub\_fresh\\specs\\Brazilian Experience Translator
+
+
+
+11\. Configuracoes
+
+Pra cada aplicacao (ResumePass AI, Experience Translator, Prime Jobs, Comunidade, Networking Script Generator), deve haver uma opcao no menu de Admin, para configurar o que for necessario. Por exemplo, Prompts, API's se aplicavel, regras de negocio, etc.
+
+
+

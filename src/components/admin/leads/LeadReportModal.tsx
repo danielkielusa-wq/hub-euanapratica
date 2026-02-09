@@ -58,8 +58,12 @@ export function LeadReportModal({ isOpen, onClose, evaluation }: LeadReportModal
   const fetchReportData = async () => {
     if (!evaluation) return;
     
-    // Try to parse existing formatted report
-    if (evaluation.formatted_report) {
+    const formattedAt = evaluation.formatted_at ? new Date(evaluation.formatted_at).getTime() : 0;
+    const updatedAt = evaluation.updated_at ? new Date(evaluation.updated_at).getTime() : 0;
+    const isStale = formattedAt > 0 && updatedAt > formattedAt;
+
+    // Try to parse existing formatted report (only if not stale)
+    if (evaluation.formatted_report && !isStale) {
       try {
         const parsed = JSON.parse(evaluation.formatted_report);
         if (parsed.greeting && parsed.diagnostic) {
@@ -74,7 +78,7 @@ export function LeadReportModal({ isOpen, onClose, evaluation }: LeadReportModal
     // Generate if not available
     setIsLoading(true);
     const { data, error } = await supabase.functions.invoke('format-lead-report', {
-      body: { evaluationId: evaluation.id }
+      body: { evaluationId: evaluation.id, forceRefresh: isStale }
     });
     
     if (!error && data?.content) {

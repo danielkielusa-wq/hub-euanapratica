@@ -184,7 +184,6 @@ export function useCreateAssignment() {
       toast.success('Tarefa criada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error creating assignment:', error);
       toast.error('Erro ao criar tarefa');
     }
   });
@@ -227,7 +226,6 @@ export function useUpdateAssignment() {
       toast.success('Tarefa atualizada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error updating assignment:', error);
       toast.error('Erro ao atualizar tarefa');
     }
   });
@@ -262,7 +260,6 @@ export function useDeleteAssignment() {
       toast.success('Tarefa excluída com sucesso!');
     },
     onError: (error) => {
-      console.error('Error deleting assignment:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao excluir tarefa');
     }
   });
@@ -293,7 +290,6 @@ export function usePublishAssignment() {
       toast.success('Tarefa publicada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error publishing assignment:', error);
       toast.error('Erro ao publicar tarefa');
     }
   });
@@ -356,7 +352,6 @@ export function useDuplicateAssignment() {
       toast.success('Tarefa duplicada com sucesso!');
     },
     onError: (error) => {
-      console.error('Error duplicating assignment:', error);
       toast.error('Erro ao duplicar tarefa');
     }
   });

@@ -49,7 +49,6 @@ export default function ResetPassword() {
       });
 
       if (updateError) {
-        console.error('Password update error:', updateError);
         
         if (updateError.message.includes('expired') || updateError.message.includes('invalid')) {
           setError('O link de recuperação expirou ou é inválido. Por favor, solicite um novo link.');
@@ -69,7 +68,6 @@ export default function ResetPassword() {
         navigate('/login');
       }, 3000);
     } catch (err) {
-      console.error('Unexpected error:', err);
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);

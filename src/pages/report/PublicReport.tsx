@@ -67,15 +67,18 @@ export default function PublicReport() {
       setEvaluation(data.evaluation);
       setIsVerifying(false);
       
-      // Check if we have cached formatted content
-      if (data.evaluation.formatted_report) {
+      const formattedAt = data.evaluation.formatted_at ? new Date(data.evaluation.formatted_at).getTime() : 0;
+      const updatedAt = data.evaluation.updated_at ? new Date(data.evaluation.updated_at).getTime() : 0;
+      const isStale = formattedAt > 0 && updatedAt > formattedAt;
+
+      if (data.evaluation.formatted_report && !isStale) {
         setFormattedContent(data.evaluation.formatted_report);
       } else {
-        // Request AI formatting
+        // Request AI formatting (force refresh if stale)
         setIsFormatting(true);
         try {
           const { data: formatted, error: formatError } = await supabase.functions.invoke('format-lead-report', {
-            body: { evaluationId: data.evaluation.id }
+            body: { evaluationId: data.evaluation.id, forceRefresh: isStale }
           });
           
           if (!formatError && formatted?.content) {
@@ -87,7 +90,6 @@ export default function PublicReport() {
             );
           }
         } catch (formatErr) {
-          console.error('Error formatting report:', formatErr);
           // Will show fallback with raw content
         }
         setIsFormatting(false);

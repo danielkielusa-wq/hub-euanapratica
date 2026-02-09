@@ -84,7 +84,6 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
 
   const onSubmit = async (data: FormData) => {
     if (!submission?.id || submission.id.startsWith('placeholder-')) {
-      console.error('Submission not found');
       return;
     }
 
@@ -105,7 +104,6 @@ export function SubmissionReview({ submission, open, onClose }: SubmissionReview
 
       onClose();
     } catch (error) {
-      console.error('Error submitting feedback:', error);
     }
   };
 

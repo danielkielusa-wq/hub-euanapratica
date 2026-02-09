@@ -1,0 +1,143 @@
+Brazilian Experience Translator - Converte títulos de cargo brasileiros para equivalentes americanos
+
+Descrição:
+Ferramenta que traduz títulos de cargos brasileiros (ex: "Analista Sênior de TI") para equivalentes americanos aceitos no mercado de trabalho dos EUA (ex: "Senior IT Systems Analyst", "Senior DevOps Engineer", "IT Consultant").
+Fluxo de usuário:
+
+User acessa a ferramenta "Title Translator"
+Preenche formulário:
+
+Título atual no Brasil (obrigatório)
+Área de atuação (opcional): dropdown com opções
+Principais responsabilidades (opcional): textarea
+Anos de experiência (opcional): number input
+
+
+Clica "Traduzir Título"
+Sistema verifica se user tem créditos (precisa de 1 crédito)
+Se sim, debita 1 crédito e chama IA
+Retorna 3 sugestões ranqueadas de títulos americanos
+Para cada sugestão, mostra:
+
+Título em inglês
+Confidence score (% de match)
+Explicação de por que esse título faz sentido
+Empresas típicas que usam esse título
+Faixa salarial (USD/ano)
+Snippet de exemplo de job description
+
+
+User pode clicar "Usar Este Título no Meu Currículo" para copiar
+
+prompt = f"""You are an expert in translating Brazilian job titles to US equivalents.
+
+Brazilian Title: {title_br}
+Area: {area or 'Not specified'}
+Responsibilities: {responsibilities or 'Not provided'}
+Years of Experience: {years_experience or 'Not specified'}
+
+Provide 3 US equivalent job titles, ranked by relevance and confidence.
+
+For each title, provide:
+1. The exact US title (string)
+2. Confidence score (float 0-10)
+3. Brief explanation of why this title is common in the US
+4. Why this title fits this person's profile specifically
+5. List of 3-5 typical companies using this title (array of strings)
+6. Salary range in USD per year (string format "$XX,000 - $XX,000")
+7. A brief snippet (50-80 words) of what a typical job description would say for this role
+
+Then provide:
+- Which of the 3 titles you recommend most (string)
+- Detailed reasoning for the recommendation (2-3 sentences)
+
+Respond ONLY with valid JSON in this exact format:
+{{
+  "suggestions": [
+    {{
+      "title_us": "...",
+      "confidence": 0.XX,
+      "explanation": "...",
+      "why_this_fits": "...",
+      "example_companies": ["...", "...", "..."],
+      "salary_range": "$XX,000 - $XX,000",
+      "example_jd_snippet": "..."
+    }},
+    // 2 more
+  ],
+  "recommended": "...",
+  "reasoning": "..."
+}}
+
+IMPORTANT: 
+- Titles must be real job titles used in the US market
+- Salary ranges must be realistic for 2025 US market
+- Companies must be real, well-known US companies
+- Be specific and practical, avoid generic advice
+"""
+
+Database - Tabela para tracking:
+sqlCREATE TABLE title_translations (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    title_br_input VARCHAR(255),
+    area VARCHAR(100),
+    responsibilities TEXT,
+    years_experience INT,
+    title_us_recommended VARCHAR(255),
+    all_suggestions JSONB, -- Armazena as 3 sugestões completas
+    credits_used INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_translations_user ON title_translations(user_id);
+CREATE INDEX idx_translations_date ON title_translations(created_at);
+
+Frontend - React Component:
+Preciso de um componente React chamado TitleTranslator.jsx que:
+
+Form Section:
+
+Input text para "Seu título no Brasil" (required)
+Dropdown "Área de atuação" com opções: Tecnologia, Finanças, Marketing, Operações, Engenharia, Saúde, Educação, Outro
+Textarea para "Principais responsabilidades" (opcional, placeholder: "Ex: Gerenciar equipe de 5 pessoas, desenvolver estratégias de marketing...")
+Number input para "Anos de experiência" (opcional, min: 0, max: 50)
+Botão "🔄 Traduzir Título" (desabilitado se input vazio ou sem créditos)
+Mostrar créditos disponíveis: "Você tem X créditos" (atualiza em tempo real)
+
+
+Results Section (após submissão):
+
+Card destacado com "✅ Recomendado: [título]"
+Parágrafo explicando o reasoning
+Lista das 3 sugestões em cards:
+
+Cada card mostra:
+
+Título em negrito
+Badge com confidence score (ex: "92% match")
+Explicação
+"💼 Comum em: [empresas]"
+"💰 Faixa salarial: [range]"
+Snippet do JD em itálico/cinza
+Botão "Usar Este Título" que copia para clipboard
+
+
+
+
+Animação de loading enquanto processa (skeleton ou spinner)
+
+
+Error Handling:
+
+Se sem créditos: mostrar modal "Você está sem créditos! Compre mais créditos para continuar." com botão "Comprar Créditos"
+Se erro de API: mostrar toast "Erro ao traduzir. Tente novamente."
+Validação do form: não permitir submit vazio
+
+Estilo:
+
+Design limpo, profissional
+Cards com sombra sutil
+Cores: Azul para primário (#4A90E2), Verde para sucesso (#48BB78), Cinza para secundário
+Responsive: mobile-first
+Animações suaves (fade-in results)

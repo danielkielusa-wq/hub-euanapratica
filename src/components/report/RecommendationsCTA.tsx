@@ -3,12 +3,14 @@ import { Badge } from '@/components/ui/badge';
 import { Zap, Sparkles, ArrowRight, Crown, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ServiceRecommendation } from '@/types/leads';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface RecommendationsCTAProps {
   recommendations: ServiceRecommendation[];
 }
 
 export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps) {
+  const { logEvent } = useAnalytics();
   // Filter only recommendations that have enriched service data
   const validRecs = recommendations.filter(r => r.service_name);
   
@@ -58,7 +60,21 @@ export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps)
 
               <Button 
                 className="w-full bg-background text-foreground hover:bg-background/90 font-black py-6 rounded-2xl mt-4 group"
-                onClick={() => rec.service_checkout_url && window.open(rec.service_checkout_url, '_blank')}
+                onClick={() => {
+                  logEvent({
+                    event_type: 'cta_click',
+                    entity_type: 'hub_service',
+                    entity_id: rec.service_id,
+                    metadata: {
+                      cta_text: rec.service_cta_text || 'Garantir Minha Vaga',
+                      placement: 'report_primary',
+                      url: rec.service_checkout_url || null
+                    }
+                  });
+                  if (rec.service_checkout_url) {
+                    window.open(rec.service_checkout_url, '_blank');
+                  }
+                }}
               >
                 {rec.service_cta_text || 'Garantir Minha Vaga'} 
                 <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
@@ -94,7 +110,21 @@ export function RecommendationsCTA({ recommendations }: RecommendationsCTAProps)
                 <Button 
                   variant={rec.type === 'UPGRADE' ? 'default' : 'outline'}
                   className="w-full rounded-xl text-xs font-bold"
-                  onClick={() => rec.service_checkout_url && window.open(rec.service_checkout_url, '_blank')}
+                  onClick={() => {
+                    logEvent({
+                      event_type: 'cta_click',
+                      entity_type: 'hub_service',
+                      entity_id: rec.service_id,
+                      metadata: {
+                        cta_text: rec.service_cta_text || 'Saiba mais',
+                        placement: rec.type === 'UPGRADE' ? 'report_upgrade' : 'report_secondary',
+                        url: rec.service_checkout_url || null
+                      }
+                    });
+                    if (rec.service_checkout_url) {
+                      window.open(rec.service_checkout_url, '_blank');
+                    }
+                  }}
                 >
                   {rec.service_cta_text || 'Saiba mais'}
                 </Button>

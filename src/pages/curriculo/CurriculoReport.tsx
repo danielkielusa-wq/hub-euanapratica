@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   ReportHeader,
   MetricsRow,
@@ -26,6 +27,7 @@ import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 export default function CurriculoReport() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logEvent } = useAnalytics();
   const { quota, isLoading: quotaLoading } = useSubscription();
   const [result, setResult] = useState<FullAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -47,16 +49,23 @@ export default function CurriculoReport() {
     const stored = localStorage.getItem(CURRICULO_RESULT_STORAGE_KEY);
     if (stored) {
       try {
-        setResult(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setResult(parsed);
+        logEvent({
+          event_type: 'curriculo_report_view',
+          metadata: {
+            score: parsed?.score || null,
+            ats_score: parsed?.metrics?.ats_format?.score || null
+          }
+        });
       } catch (e) {
-        console.error('Failed to parse stored result:', e);
         navigate('/curriculo');
       }
     } else {
       // No result found, redirect back
       navigate('/curriculo');
     }
-  }, [navigate]);
+  }, [navigate, logEvent]);
 
   const handleNewAnalysis = () => {
     localStorage.removeItem(CURRICULO_RESULT_STORAGE_KEY);
@@ -66,6 +75,12 @@ export default function CurriculoReport() {
   const handleDownloadPDF = async () => {
     // Check if PDF is allowed in user's plan
     if (!features.allow_pdf) {
+      logEvent({
+        event_type: 'curriculo_pdf_blocked',
+        metadata: {
+          plan_id: quota?.planId || null
+        }
+      });
       setShowUpgradeModal(true);
       toast({
         title: 'Recurso Premium',
@@ -77,6 +92,13 @@ export default function CurriculoReport() {
 
     if (!result) return;
     
+    logEvent({
+      event_type: 'curriculo_pdf_download_start',
+      metadata: {
+        plan_id: quota?.planId || null
+      }
+    });
+
     setIsGeneratingPDF(true);
     
     try {
@@ -93,12 +115,17 @@ export default function CurriculoReport() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
         
+      logEvent({
+        event_type: 'curriculo_pdf_downloaded',
+        metadata: {
+          filename: 'curriculo-usa-report.pdf'
+        }
+      });
       toast({
         title: 'PDF gerado!',
         description: 'O relatório foi baixado com sucesso.',
       });
     } catch (err) {
-      console.error('PDF generation error:', err);
       toast({
         title: 'Erro ao gerar PDF',
         description: 'Não foi possível criar o arquivo.',

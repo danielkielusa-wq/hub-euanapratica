@@ -17,8 +17,10 @@ import {
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useCurriculoAnalysis } from '@/hooks/useCurriculoAnalysis';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function CurriculoUSA() {
+  const { logEvent } = useAnalytics();
   const {
     status,
     uploadedFile,
@@ -36,6 +38,43 @@ export default function CurriculoUSA() {
   const hasCredits = quota ? quota.remaining > 0 : true;
   const hasRequiredFields = !!uploadedFile && !!jobDescription.trim();
 
+  const handleAnalyze = async () => {
+    logEvent({
+      event_type: 'curriculo_analyze_click',
+      metadata: {
+        has_credits: hasCredits,
+        has_required_fields: hasRequiredFields,
+        status
+      }
+    });
+    await analyze();
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setFile(file);
+    if (file) {
+      logEvent({
+        event_type: 'curriculo_upload',
+        metadata: {
+          filename: file.name,
+          size: file.size,
+          type: file.type
+        }
+      });
+    }
+  };
+
+  const handleUpgradeClick = () => {
+    logEvent({
+      event_type: 'curriculo_upgrade_click',
+      metadata: {
+        plan_id: quota?.planId || null,
+        monthly_limit: quota?.monthlyLimit || null
+      }
+    });
+    setShowUpgradeModal(true);
+  };
+
   // Dynamic button configuration based on credit state
   const getButtonConfig = () => {
     if (!hasCredits) {
@@ -44,7 +83,7 @@ export default function CurriculoUSA() {
         icon: Lock,
         variant: 'secondary' as const,
         disabled: false, // Allow click to open modal
-        onClick: () => setShowUpgradeModal(true),
+        onClick: handleUpgradeClick,
         tooltip: `Você já usou seu limite de ${quota?.monthlyLimit} análise(s) este mês no plano ${quota?.planName}.`,
       };
     }
@@ -53,7 +92,7 @@ export default function CurriculoUSA() {
       icon: Sparkles,
       variant: 'default' as const,
       disabled: !hasRequiredFields,
-      onClick: analyze,
+      onClick: handleAnalyze,
       tooltip: null,
     };
   };
@@ -92,9 +131,9 @@ export default function CurriculoUSA() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ResumeUploadCard 
                   file={uploadedFile} 
-                  onFileChange={setFile}
+                  onFileChange={handleFileChange}
                   disabled={!hasCredits}
-                  onBlockedAction={() => setShowUpgradeModal(true)}
+                  onBlockedAction={handleUpgradeClick}
                 />
                 <JobDescriptionCard value={jobDescription} onChange={setJobDescription} />
               </div>

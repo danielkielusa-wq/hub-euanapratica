@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe } from 'lucide-react';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
@@ -22,11 +22,25 @@ export default function AdminSettings() {
   const [leadPrompt, setLeadPrompt] = useState('');
   const [hasLeadChanges, setHasLeadChanges] = useState(false);
 
+  // Report webhook config
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [reportBaseUrl, setReportBaseUrl] = useState('');
+  const [hasWebhookChanges, setHasWebhookChanges] = useState(false);
+
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
     if (resumeValue) setResumePrompt(resumeValue);
     const leadValue = getConfigValue('lead_report_formatter_prompt');
     if (leadValue) setLeadPrompt(leadValue);
+
+    // Load webhook configs
+    const webhookUrlValue = getConfigValue('lead_webhook_url');
+    if (webhookUrlValue) setWebhookUrl(webhookUrlValue);
+    const webhookEnabledValue = getConfigValue('lead_webhook_enabled');
+    setWebhookEnabled(webhookEnabledValue === 'true');
+    const baseUrlValue = getConfigValue('lead_report_base_url');
+    if (baseUrlValue) setReportBaseUrl(baseUrlValue);
   }, [configs]);
 
   useEffect(() => {
@@ -39,6 +53,17 @@ export default function AdminSettings() {
     setHasLeadChanges(leadPrompt !== originalValue && leadPrompt !== '');
   }, [leadPrompt, configs]);
 
+  useEffect(() => {
+    const originalUrl = getConfigValue('lead_webhook_url');
+    const originalEnabled = getConfigValue('lead_webhook_enabled') === 'true';
+    const originalBaseUrl = getConfigValue('lead_report_base_url');
+    const hasChanges =
+      webhookUrl !== originalUrl ||
+      webhookEnabled !== originalEnabled ||
+      reportBaseUrl !== originalBaseUrl;
+    setHasWebhookChanges(hasChanges);
+  }, [webhookUrl, webhookEnabled, reportBaseUrl, configs]);
+
   const handleSaveResume = async () => {
     await updateConfig('resume_analyzer_prompt', resumePrompt);
     setHasResumeChanges(false);
@@ -49,8 +74,20 @@ export default function AdminSettings() {
     setHasLeadChanges(false);
   };
 
+  const handleSaveWebhook = async () => {
+    await Promise.all([
+      updateConfig('lead_webhook_url', webhookUrl),
+      updateConfig('lead_webhook_enabled', webhookEnabled ? 'true' : 'false'),
+      updateConfig('lead_report_base_url', reportBaseUrl),
+    ]);
+    setHasWebhookChanges(false);
+  };
+
   const resumeConfig = configs.find(c => c.key === 'resume_analyzer_prompt');
   const leadConfig = configs.find(c => c.key === 'lead_report_formatter_prompt');
+  const webhookUrlConfig = configs.find(c => c.key === 'lead_webhook_url');
+  const webhookEnabledConfig = configs.find(c => c.key === 'lead_webhook_enabled');
+  const reportBaseUrlConfig = configs.find(c => c.key === 'lead_report_base_url');
 
   const { categories, createCategory, updateCategory, deleteCategory, isLoading: categoriesLoading } = useCommunityCategories();
   const { rules, updateRule, isLoading: rulesLoading } = useGamificationRules();
@@ -79,6 +116,7 @@ export default function AdminSettings() {
         <Tabs defaultValue="prompts" className="space-y-6">
           <TabsList className="rounded-xl">
             <TabsTrigger value="prompts" className="gap-2 rounded-lg"><FileCheck className="h-4 w-4" />Prompts IA</TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2 rounded-lg"><FileText className="h-4 w-4" />Relatórios de Carreira</TabsTrigger>
             <TabsTrigger value="community" className="gap-2 rounded-lg"><Users className="h-4 w-4" />Comunidade</TabsTrigger>
           </TabsList>
 
@@ -111,6 +149,147 @@ export default function AdminSettings() {
                     <div className="flex justify-end"><Button onClick={handleSaveLead} disabled={!hasLeadChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-primary" />
+                  <CardTitle>Webhook de Novos Leads</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure o webhook automático que dispara quando um novo lead é inserido na tabela career_evaluations.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoading ? (
+                  <Skeleton className="h-48 w-full rounded-xl" />
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Link2 className="w-4 h-4" />
+                        URL do Webhook
+                      </label>
+                      <Input
+                        value={webhookUrl}
+                        onChange={(e) => setWebhookUrl(e.target.value)}
+                        placeholder="https://n8n.sapunplugged.com/webhook/..."
+                        className="rounded-xl font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        URL do endpoint n8n que receberá os dados dos novos leads
+                      </p>
+                      {webhookUrlConfig?.updated_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Última atualização: {format(new Date(webhookUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        URL Base dos Relatórios
+                      </label>
+                      <Input
+                        value={reportBaseUrl}
+                        onChange={(e) => setReportBaseUrl(e.target.value)}
+                        placeholder="https://hub.euanapratica.com"
+                        className="rounded-xl font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        URL base usada para gerar os links de relatórios (será concatenada com /report/:token)
+                      </p>
+                      {reportBaseUrlConfig?.updated_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Última atualização: {format(new Date(reportBaseUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Webhook Ativo</p>
+                        <p className="text-xs text-muted-foreground">
+                          {webhookEnabled ? 'Webhooks serão enviados automaticamente' : 'Webhooks estão desativados'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={webhookEnabled}
+                        onCheckedChange={setWebhookEnabled}
+                      />
+                    </div>
+
+                    {webhookEnabledConfig?.updated_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Status alterado em: {format(new Date(webhookEnabledConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+
+                    <div className="border-t pt-4">
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleSaveWebhook}
+                          disabled={!hasWebhookChanges || isSaving}
+                          className="rounded-[12px] gap-2"
+                        >
+                          <Save className="w-4 h-4" />
+                          {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[24px] border-blue-500/20 bg-blue-500/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  <CardTitle className="text-blue-500">Documentação</CardTitle>
+                </div>
+                <CardDescription>
+                  Informações sobre o funcionamento do webhook de leads
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Como funciona</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Sempre que um novo lead é inserido na tabela <code className="px-1.5 py-0.5 bg-muted rounded text-xs">career_evaluations</code>,
+                    um trigger PostgreSQL dispara automaticamente e envia todos os dados do lead via POST para o webhook configurado.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Payload enviado</h4>
+                  <p className="text-sm text-muted-foreground">
+                    O webhook recebe um JSON com todos os campos do lead + o campo <code className="px-1.5 py-0.5 bg-muted rounded text-xs">report_link</code> contendo
+                    o link completo para acessar o relatório.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Funciona para</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Leads importados via planilha CSV</li>
+                    <li>Leads inseridos manualmente no Supabase</li>
+                    <li>Leads inseridos via API</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Documentação completa</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Consulte <code className="px-1.5 py-0.5 bg-muted rounded text-xs">docs/LEAD_WEBHOOK.md</code> para detalhes técnicos,
+                    troubleshooting e exemplos de uso.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

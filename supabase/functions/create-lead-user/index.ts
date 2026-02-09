@@ -52,7 +52,7 @@ serve(async (req) => {
     const { data: existingProfile } = await supabase
       .from("profiles")
       .select("id")
-      .eq("email", email.toLowerCase())
+      .ilike("email", email.toLowerCase())
       .maybeSingle();
 
     if (existingProfile) {
@@ -75,6 +75,74 @@ serve(async (req) => {
     });
 
     if (authError) {
+      if (authError.code === "email_exists") {
+        const { data: existingProfileAfterError } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("email", email.toLowerCase())
+          .maybeSingle();
+
+        if (existingProfileAfterError?.id) {
+          return new Response(
+            JSON.stringify({ user_id: existingProfileAfterError.id, existing: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        let existingUserId: string | null = null;
+        let page = 1;
+        const perPage = 1000;
+
+        while (!existingUserId && page <= 10) {
+          const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ page, perPage });
+
+          if (usersError) {
+            console.error("Auth error:", authError, usersError);
+            return new Response(
+              JSON.stringify({ error: usersError.message || authError.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          const match = usersData?.users?.find((user) => (user.email || "").toLowerCase() === email.toLowerCase());
+          if (match) {
+            existingUserId = match.id;
+            break;
+          }
+
+          if (!usersData?.users?.length || usersData.users.length < perPage) {
+            break;
+          }
+
+          page += 1;
+        }
+
+        if (!existingUserId) {
+          console.error("Auth error:", authError);
+          return new Response(
+            JSON.stringify({ error: authError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: existingUserId,
+              email: email.toLowerCase(),
+              full_name,
+              phone: phone || null
+            },
+            { onConflict: "id" }
+          );
+
+        return new Response(
+          JSON.stringify({ user_id: existingUserId, existing: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       console.error("Auth error:", authError);
       return new Response(
         JSON.stringify({ error: authError.message }),

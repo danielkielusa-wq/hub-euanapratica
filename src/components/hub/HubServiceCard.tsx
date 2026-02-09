@@ -117,7 +117,6 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
       window.open(service.redirect_url, '_blank');
     } else {
       // No checkout configured
-      console.warn('No checkout URL configured for service:', service.id);
     }
   };
 

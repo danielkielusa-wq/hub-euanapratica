@@ -10,11 +10,13 @@ import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { CommunityPost } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import { toast } from '@/hooks/use-toast';
 
 export default function PostDetail() {
   const { id: postId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { logEvent } = useAnalytics();
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [postLoading, setPostLoading] = useState(true);
   const { comments, isLoading: commentsLoading, createComment, toggleCommentLike, deleteComment } = useCommunityComments(postId || '');
@@ -53,7 +55,6 @@ export default function PostDetail() {
         setPost(data || null);
       }
     } catch (err) {
-      console.error('Error fetching post:', err);
       setPost(null);
     } finally {
       setPostLoading(false);
@@ -64,6 +65,18 @@ export default function PostDetail() {
     fetchPost();
   }, [fetchPost]);
 
+  useEffect(() => {
+    if (!post) return;
+    logEvent({
+      event_type: 'community_post_view',
+      entity_type: 'community_post',
+      entity_id: post.id,
+      metadata: {
+        source: 'detail'
+      }
+    });
+  }, [post, logEvent]);
+
   const toggleLike = async (targetPostId: string) => {
     if (!user) {
       toast({ title: 'VocÃª precisa estar logado', variant: 'destructive' });
@@ -73,6 +86,15 @@ export default function PostDetail() {
     if (!post || post.id !== targetPostId) return;
 
     const isLiked = Boolean(post.user_has_liked);
+    logEvent({
+      event_type: 'community_post_like',
+      entity_type: 'community_post',
+      entity_id: targetPostId,
+      metadata: {
+        action: isLiked ? 'unlike' : 'like',
+        source: 'detail'
+      }
+    });
     setPost(prev => prev ? {
       ...prev,
       user_has_liked: !isLiked,
@@ -100,7 +122,6 @@ export default function PostDetail() {
         if (error) throw error;
       }
     } catch (err) {
-      console.error('Error toggling like:', err);
       setPost(prev => prev ? {
         ...prev,
         user_has_liked: isLiked,

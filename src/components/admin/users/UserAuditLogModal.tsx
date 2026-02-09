@@ -11,14 +11,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserAuditLogs } from '@/hooks/useAdminUsers';
-import { 
-  History, 
-  UserPlus, 
-  Edit, 
-  UserCheck, 
-  Shield, 
+import {
+  History,
+  UserPlus,
+  Edit,
+  UserCheck,
+  Shield,
   LogIn,
-  Clock
+  Clock,
+  UserCog,
 } from 'lucide-react';
 import type { AuditAction } from '@/types/auth';
 
@@ -28,6 +29,11 @@ const actionConfig: Record<AuditAction, { label: string; icon: typeof History; c
   status_changed: { label: 'Status Alterado', icon: UserCheck, color: 'bg-amber-500/10 text-amber-600' },
   role_changed: { label: 'Papel Alterado', icon: Shield, color: 'bg-purple-500/10 text-purple-600' },
   profile_updated: { label: 'Perfil Atualizado', icon: Edit, color: 'bg-blue-500/10 text-blue-600' },
+  plan_changed: { label: 'Plano Alterado', icon: Shield, color: 'bg-indigo-500/10 text-indigo-600' },
+  usage_reset: { label: 'Uso Resetado', icon: History, color: 'bg-orange-500/10 text-orange-600' },
+  usage_recorded: { label: 'Uso Registrado', icon: History, color: 'bg-emerald-500/10 text-emerald-600' },
+  user_deleted: { label: 'Usuário Excluído', icon: History, color: 'bg-red-500/10 text-red-600' },
+  impersonation_started: { label: 'Impersonação Iniciada', icon: UserCog, color: 'bg-slate-500/10 text-slate-600' },
   login: { label: 'Login', icon: LogIn, color: 'bg-muted text-muted-foreground' },
 };
 
@@ -47,10 +53,10 @@ export function UserAuditLogModal({ open, onOpenChange, userId, userName }: User
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            HistÃ³rico de {userName}
+            Histórico de {userName}
           </DialogTitle>
           <DialogDescription>
-            Linha do tempo de alteraÃ§Ãµes e acessos
+            Linha do tempo de alterações e acessos
           </DialogDescription>
         </DialogHeader>
 
@@ -72,14 +78,14 @@ export function UserAuditLogModal({ open, onOpenChange, userId, userName }: User
               {logs.map((log) => {
                 const config = actionConfig[log.action as AuditAction] || actionConfig.updated;
                 const Icon = config.icon;
-                
+
                 return (
                   <div key={log.id} className="relative">
                     {/* Timeline dot */}
                     <div className={`absolute -left-[25px] p-1.5 rounded-full ${config.color}`}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    
+
                     <div className="pl-4">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className={config.color}>
@@ -87,17 +93,17 @@ export function UserAuditLogModal({ open, onOpenChange, userId, userName }: User
                         </Badge>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {format(new Date(log.created_at), "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR })}
+                          {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </span>
                       </div>
-                      
+
                       {log.changed_by && (
                         <p className="text-sm text-muted-foreground">
                           Por: {log.changed_by.full_name}
                         </p>
                       )}
-                      
-                      {log.old_values && log.new_values && (
+
+                      {log.new_values && (
                         <div className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono">
                           {Object.keys(log.new_values as Record<string, unknown>).map((key) => {
                             const oldVal = (log.old_values as Record<string, unknown>)?.[key];
@@ -109,7 +115,7 @@ export function UserAuditLogModal({ open, onOpenChange, userId, userName }: User
                                 {oldVal !== undefined && (
                                   <span className="line-through text-destructive">{String(oldVal)}</span>
                                 )}
-                                <span className="text-primary">â†’</span>
+                                {oldVal !== undefined && <span className="text-primary">?</span>}
                                 <span className="text-green-600">{String(newVal)}</span>
                               </div>
                             );

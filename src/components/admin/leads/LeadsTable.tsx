@@ -64,8 +64,8 @@ export function LeadsTable() {
           : e
       ));
       toast({ 
-        title: 'Relatório regenerado!', 
-        description: 'O relatório foi atualizado com sucesso.' 
+        title: 'RelatÃ³rio regenerado!', 
+        description: 'O relatÃ³rio foi atualizado com sucesso.' 
       });
     }
     
@@ -80,18 +80,19 @@ export function LeadsTable() {
   const downloadCSV = () => {
     // Headers no mesmo formato do input + URL
     const headers = [
-      'Nome', 'email', 'telefone', 'Area', 'Atuação', 
+      'Nome', 'email', 'telefone', 'Area', 'AtuaÃ§Ã£o', 
       'trabalha internacional', 'experiencia', 'Englishlevel',
       'objetivo', 'VisaStatus', 'timeline', 'FamilyStatus',
       'incomerange', 'investment range', 'impediment', 
-      'impedmentother', 'main concern', 'relatorio', 'URL Relatório'
+      'impedmentother', 'main concern', 'relatorio', 'URL RelatÃ³rio'
     ];
     
-    // Deduplicar por email, mantendo mais recente (já ordenado por created_at desc)
+    // Deduplicar por email, mantendo mais recente (jÃ¡ ordenado por created_at desc)
     const uniqueByEmail = new Map<string, CareerEvaluation>();
     evaluations.forEach(e => {
-      if (!uniqueByEmail.has(e.email)) {
-        uniqueByEmail.set(e.email, e);
+      const key = (e.email || '').trim().toLowerCase();
+      if (key && !uniqueByEmail.has(key)) {
+        uniqueByEmail.set(key, e);
       }
     });
     const dedupedEvaluations = Array.from(uniqueByEmail.values());
@@ -102,7 +103,7 @@ export function LeadsTable() {
       e.phone || '',
       e.area || '',
       e.atuacao || '',
-      e.trabalha_internacional ? 'Sim' : 'Não',
+      e.trabalha_internacional ? 'Sim' : 'NÃ£o',
       e.experiencia || '',
       e.english_level || '',
       e.objetivo || '',
@@ -136,15 +137,26 @@ export function LeadsTable() {
     toast({ 
       title: 'CSV exportado!', 
       description: duplicatesRemoved > 0 
-        ? `${dedupedEvaluations.length} leads únicos exportados (${duplicatesRemoved} duplicatas removidas).`
+        ? `${dedupedEvaluations.length} leads Ãºnicos exportados (${duplicatesRemoved} duplicatas removidas).`
         : `${dedupedEvaluations.length} leads exportados.`
     });
   };
 
+  const dedupedEvaluations = (() => {
+    const uniqueByEmail = new Map<string, CareerEvaluation>();
+    evaluations.forEach(e => {
+      const key = (e.email || '').trim().toLowerCase();
+      if (key && !uniqueByEmail.has(key)) {
+        uniqueByEmail.set(key, e);
+      }
+    });
+    return Array.from(uniqueByEmail.values());
+  })();
+
   const copyReportUrl = (token: string) => {
     const url = `${window.location.origin}/report/${token}`;
     navigator.clipboard.writeText(url);
-    toast({ title: 'Link copiado!', description: 'O link do relatório foi copiado para a área de transferência.' });
+    toast({ title: 'Link copiado!', description: 'O link do relatÃ³rio foi copiado para a Ã¡rea de transferÃªncia.' });
   };
 
   if (isLoading) {
@@ -168,7 +180,7 @@ export function LeadsTable() {
   return (
     <>
       <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-muted-foreground">{evaluations.length} leads encontrados</p>
+        <p className="text-sm text-muted-foreground">{dedupedEvaluations.length} leads encontrados</p>
         <Button variant="outline" onClick={downloadCSV} className="gap-2 rounded-[12px]">
           <Download className="w-4 h-4" />
           Exportar CSV
@@ -180,16 +192,16 @@ export function LeadsTable() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Área</TableHead>
-              <TableHead>Inglês</TableHead>
+              <TableHead>Ãrea</TableHead>
+              <TableHead>InglÃªs</TableHead>
               <TableHead>Formatado</TableHead>
               <TableHead>Acessos</TableHead>
               <TableHead>Importado em</TableHead>
-              <TableHead className="w-[140px]">Ações</TableHead>
+              <TableHead className="w-[140px]">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {evaluations.map((evaluation) => (
+            {dedupedEvaluations.map((evaluation) => (
               <TableRow key={evaluation.id}>
                 <TableCell className="font-medium">{evaluation.name}</TableCell>
                 <TableCell className="text-muted-foreground">{evaluation.email}</TableCell>
@@ -201,7 +213,7 @@ export function LeadsTable() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={evaluation.formatted_report ? 'default' : 'secondary'}>
-                    {evaluation.formatted_report ? 'Sim' : 'Não'}
+                    {evaluation.formatted_report ? 'Sim' : 'NÃ£o'}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -218,7 +230,7 @@ export function LeadsTable() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleViewReport(evaluation)}
-                      title="Ver relatório"
+                      title="Ver relatÃ³rio"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -227,7 +239,7 @@ export function LeadsTable() {
                       size="icon"
                       onClick={() => handleRefresh(evaluation.id)}
                       disabled={refreshingId === evaluation.id}
-                      title="Regenerar relatório"
+                      title="Regenerar relatÃ³rio"
                     >
                       <RefreshCw className={cn("w-4 h-4", refreshingId === evaluation.id && "animate-spin")} />
                     </Button>
@@ -243,7 +255,7 @@ export function LeadsTable() {
                       variant="ghost"
                       size="icon"
                       onClick={() => window.open(`/report/${evaluation.access_token}`, '_blank')}
-                      title="Abrir relatório"
+                      title="Abrir relatÃ³rio"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Button>

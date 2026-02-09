@@ -1,0 +1,141 @@
+# Prompt para Claude Code - CRM EUA Na Prática
+
+Crie uma plataforma CRM completa para "EUA Na Prática" com as seguintes especificações:
+
+## Visão Geral
+Uma plataforma moderna de gestão de relacionamento com clientes (CRM) inspirada no Monday.com, para gerenciar leads, assinantes e serviços de consultoria para imigração/mudança para os EUA.
+
+## Funcionalidades Core
+
+### 1. Gestão de Leads (Pipeline Visual)
+- **Estágios do funil**: Lead → Nutrição → Proposta → Convertido → Cliente Ativo
+- Visualização em kanban board (drag & drop entre estágios)
+- Cards de leads com informações essenciais
+- Filtros por: estágio, plano de interesse, data de entrada, status
+- Indicadores visuais de prioridade e tempo no estágio
+
+### 2. Gestão de Clientes
+- **Planos de Assinatura**: Free, Pro, VIP
+- Cadastro completo: nome, email, telefone, plano, status, notas
+- Histórico de interações e timeline de atividades
+- Tags personalizáveis para segmentação
+- Status: Ativo, Cancelado, Trial, etc.
+
+### 3. Serviços/Produtos
+- **Serviços disponíveis**:
+  - Revisão de Currículo (preço, duração)
+  - Consultoria 60 minutos
+  - Outros serviços customizáveis
+- Tabela de serviços com preços e descrições
+- Vinculação de serviços a clientes
+- Histórico de serviços contratados
+
+### 4. Sistema de Lembretes e Tarefas
+- Criar lembretes vinculados a leads/clientes
+- Notificações de follow-up
+- Lista de tarefas com prioridades
+- Calendário integrado
+- Filtros por: pendente, concluído, atrasado
+
+### 5. Dashboard Analítico
+- Métricas principais:
+  - Total de leads por estágio
+  - Taxa de conversão
+  - Clientes por plano (Free/Pro/VIP)
+  - Receita mensal estimada
+  - Serviços mais vendidos
+- Gráficos visuais (barras, pizza, linha)
+
+## Requisitos Técnicos
+
+### Stack Tecnológico
+- **Frontend**: React com TypeScript
+- **Estilo**: Tailwind CSS com componentes modernos
+- **Ícones**: Lucide React
+- **Estado**: React Hooks (useState, useEffect)
+- **Armazenamento**: LocalStorage (com opção de exportar/importar dados)
+
+### Design
+- Interface limpa e moderna inspirada no Monday.com
+- Paleta de cores profissional (azuis, roxos, acentos vibrantes)
+- Responsivo (desktop first, mas funcional em mobile)
+- Animações suaves nas transições
+- Modo claro (modo escuro opcional)
+
+### Estrutura de Dados
+```typescript
+// Lead
+{
+  id: string
+  nome: string
+  email: string
+  telefone: string
+  estagio: 'lead' | 'nutricao' | 'proposta' | 'convertido' | 'cliente'
+  planoInteresse: 'Free' | 'Pro' | 'VIP'
+  origem: string
+  prioridade: 'baixa' | 'media' | 'alta'
+  dataCriacao: Date
+  ultimaInteracao: Date
+  notas: string
+  tags: string[]
+}
+
+// Cliente
+{
+  id: string
+  leadId: string (referência)
+  planoAtual: 'Free' | 'Pro' | 'VIP'
+  status: 'ativo' | 'cancelado' | 'trial'
+  dataConversao: Date
+  valorMensal: number
+  servicosContratados: ServicoContratado[]
+}
+
+// Serviço
+{
+  id: string
+  nome: string
+  descricao: string
+  preco: number
+  duracao: string
+  ativo: boolean
+}
+
+// Lembrete
+{
+  id: string
+  clienteId: string
+  titulo: string
+  descricao: string
+  dataHora: Date
+  concluido: boolean
+  prioridade: 'baixa' | 'media' | 'alta'
+}
+```
+
+## Navegação e Páginas
+
+1. **Dashboard** - Visão geral e métricas
+2. **Pipeline** - Gestão de leads (kanban)
+3. **Clientes** - Lista e detalhes de clientes
+4. **Serviços** - Catálogo de serviços
+5. **Lembretes** - Agenda e tarefas
+6. **Configurações** - Personalização e exportação
+
+## Funcionalidades Extras Desejáveis
+- Busca global rápida
+- Exportar dados para CSV/JSON
+- Filtros avançados salvos
+- Automações simples (ex: lembrete automático 3 dias após lead entrar)
+- Notas rápidas e histórico de comunicação
+
+## Experiência do Usuário
+- Onboarding inicial com dados de exemplo
+- Tutoriais inline (tooltips)
+- Confirmações para ações destrutivas
+- Loading states e feedback visual
+- Empty states informativos e convidativos
+
+---
+
+**Objetivo Final**: Uma ferramenta completa, visualmente atraente e funcional para gerenciar todo o ciclo de vida do cliente, desde o primeiro contato até a venda de serviços e manutenção do relacionamento.

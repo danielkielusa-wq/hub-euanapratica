@@ -124,6 +124,7 @@ const VALID_ROUTES: Record<string, { exists: boolean; requiresAuth: boolean; all
   '/admin/matriculas': { exists: true, requiresAuth: true, allowedRoles: ['admin'] },
   '/admin/produtos': { exists: true, requiresAuth: true, allowedRoles: ['admin'] },
   '/admin/relatorios': { exists: true, requiresAuth: true, allowedRoles: ['admin'] },
+  '/admin/auditoria': { exists: true, requiresAuth: true, allowedRoles: ['admin'] },
   '/admin/biblioteca/upload': { exists: true, requiresAuth: true, allowedRoles: ['admin', 'mentor'] },
   '/admin/testes-e2e': { exists: true, requiresAuth: true, allowedRoles: ['admin'] },
 };
@@ -434,3 +435,4 @@ export function useE2ERunPolling(runId?: string, enabled = false) {
     }
   });
 }
+

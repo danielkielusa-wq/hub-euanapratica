@@ -55,7 +55,6 @@ export function useAdminUsers(filters: UserFilters = {}) {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching admin users:', error);
         throw error;
       }
 
@@ -98,10 +97,11 @@ export function useUpdateUserRole() {
       if (error) throw error;
 
       // Log the change
-      await supabase.from('user_audit_logs').insert({
+      await supabase.from('audit_events').insert({
         user_id: userId,
-        changed_by_user_id: adminUser?.id,
+        actor_id: adminUser?.id,
         action: 'role_changed',
+        source: 'admin_ui',
         old_values: { role: currentRole?.role },
         new_values: { role }
       });
@@ -111,7 +111,6 @@ export function useUpdateUserRole() {
       toast.success('Papel do usuário atualizado!');
     },
     onError: (error) => {
-      console.error('Error updating role:', error);
       toast.error('Erro ao atualizar papel');
     }
   });
@@ -139,10 +138,11 @@ export function useUpdateUserStatus() {
       if (error) throw error;
 
       // Log the change
-      await supabase.from('user_audit_logs').insert({
+      await supabase.from('audit_events').insert({
         user_id: userId,
-        changed_by_user_id: adminUser?.id,
+        actor_id: adminUser?.id,
         action: 'status_changed',
+        source: 'admin_ui',
         old_values: { status: currentProfile?.status },
         new_values: { status }
       });
@@ -152,7 +152,6 @@ export function useUpdateUserStatus() {
       toast.success('Status do usuário atualizado!');
     },
     onError: (error) => {
-      console.error('Error updating status:', error);
       toast.error('Erro ao atualizar status');
     }
   });
@@ -165,10 +164,11 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: async (userId: string) => {
       // Log the deletion before deleting
-      await supabase.from('user_audit_logs').insert({
+      await supabase.from('audit_events').insert({
         user_id: userId,
-        changed_by_user_id: adminUser?.id,
+        actor_id: adminUser?.id,
         action: 'user_deleted',
+        source: 'admin_ui',
         old_values: { deleted: false },
         new_values: { deleted: true }
       });
@@ -188,7 +188,6 @@ export function useDeleteUser() {
       toast.success('Usuário excluído permanentemente!');
     },
     onError: (error: any) => {
-      console.error('Error deleting user:', error);
       toast.error(error.message || 'Erro ao excluir usuário');
     }
   });
@@ -240,10 +239,11 @@ export function useCreateUser() {
       }
 
       // Log the creation
-      await supabase.from('user_audit_logs').insert({
+      await supabase.from('audit_events').insert({
         user_id: newUserId,
-        changed_by_user_id: adminUser?.id,
+        actor_id: adminUser?.id,
         action: 'created',
+        source: 'admin_ui',
         new_values: { email: data.email, full_name: data.full_name, role: data.role, status: data.status }
       });
 
@@ -264,7 +264,7 @@ export function useUserAuditLogs(userId: string) {
     queryKey: ['user-audit-logs', userId],
     queryFn: async (): Promise<UserAuditLog[]> => {
       const { data: logs, error } = await supabase
-        .from('user_audit_logs')
+        .from('audit_events')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -273,7 +273,7 @@ export function useUserAuditLogs(userId: string) {
       if (error) throw error;
 
       // Get changed_by profiles
-      const changedByIds = logs?.filter(l => l.changed_by_user_id).map(l => l.changed_by_user_id) || [];
+      const changedByIds = logs?.filter(l => l.actor_id).map(l => l.actor_id) || [];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -283,7 +283,7 @@ export function useUserAuditLogs(userId: string) {
 
       return (logs || []).map(log => ({
         ...log,
-        changed_by: log.changed_by_user_id ? profileMap[log.changed_by_user_id] : undefined
+        changed_by: log.actor_id ? profileMap[log.actor_id] : undefined
       })) as UserAuditLog[];
     },
     enabled: !!userId

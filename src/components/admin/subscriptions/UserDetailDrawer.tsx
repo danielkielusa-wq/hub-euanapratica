@@ -102,7 +102,6 @@ export function UserDetailDrawer({
         setActivities(data);
       }
     } catch (err) {
-      console.error('Error fetching activities:', err);
     } finally {
       setLoadingActivities(false);
     }

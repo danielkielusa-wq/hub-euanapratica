@@ -48,15 +48,15 @@ export function useUpdateProfile() {
       if (error) throw error;
 
       // Log the update (ignore errors from audit log)
-      try {
-        await supabase.from('user_audit_logs').insert([{
-          user_id: user!.id,
-          changed_by_user_id: user!.id,
-          action: 'profile_updated',
-          new_values: JSON.parse(JSON.stringify(updates))
-        }]);
-      } catch (e) {
-        console.error('Failed to log profile update:', e);
+        try {
+          await supabase.from('audit_events').insert([{
+            user_id: user!.id,
+            actor_id: user!.id,
+            action: 'profile_updated',
+            source: 'profile',
+            new_values: JSON.parse(JSON.stringify(updates))
+          }]);
+        } catch (e) {
       }
 
       return data as Profile;
@@ -178,7 +178,6 @@ export function useAvatarUpload() {
 
       return true;
     } catch (err) {
-      console.error('Error deleting avatar:', err);
       return false;
     }
   };

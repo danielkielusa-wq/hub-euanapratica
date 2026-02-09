@@ -1,0 +1,2131 @@
+Descrição
+# 🅿️ PARKING LOT - SISTEMA COMPLETO DE REFERRAL NETWORK
+
+---
+
+## 📐 ARQUITETURA GERAL DO SISTEMA
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    REFERRAL NETWORK SYSTEM                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [USERS] ←→ [MATCHING] ←→ [TRANSACTIONS] ←→ [GAMIFICATION] │
+│     ↓            ↓              ↓                  ↓         │
+│  [PROFILES]  [ALGORITHM]   [CREDITS]         [LEADERBOARD]  │
+│     ↓            ↓              ↓                  ↓         │
+│  [VERIFY]    [SEARCH]      [VALIDATION]       [BADGES]      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 👥 1. CADASTRO E PERFIS
+
+### **1.1 Tipos de Usuário**
+
+```
+┌─ SEEKER (Candidato - busca referral)
+│  ├─ Estado: No Brasil OU já nos EUA
+│  ├─ Objetivo: Conseguir referrals para vagas
+│  ├─ Créditos iniciais: 3
+│  └─ Pode virar HELPER depois de contratado
+│
+├─ HELPER (Quem dá referral)
+│  ├─ Estado: Trabalha em empresa americana
+│  ├─ Objetivo: Ajudar comunidade + ganhar créditos
+│  ├─ Créditos iniciais: 5 (incentivo maior)
+│  └─ Precisa de verificação de emprego
+│
+└─ HYBRID (Ambos)
+   ├─ Já trabalha em empresa gringa MAS ainda busca outras
+   ├─ Pode PEDIR e DAR referrals
+   └─ Créditos: 5 iniciais
+```
+
+---
+
+### **1.2 Informações Obrigatórias no Cadastro**
+
+```
+TODOS OS USUÁRIOS:
+├─ Nome completo
+├─ Email (validado)
+├─ LinkedIn (obrigatório - validação de identidade)
+├─ Localização atual (Brasil/EUA/Outro)
+├─ Área de atuação (Engineering, Product, Design, Data, etc)
+├─ Senioridade (Intern, Junior, Mid, Senior, Staff+)
+└─ Currículo/Resume (PDF, obrigatório para Seekers)
+
+HELPERS ADICIONALMENTE:
+├─ Empresa atual (obrigatório)
+├─ Cargo/título
+├─ Tempo na empresa
+├─ Email corporativo (@empresa.com) - para verificação
+├─ Departamento/Time
+└─ Willingness: "Quantos referrals por mês você consegue enviar?"
+   └─ Opções: 1-2 | 3-5 | 6-10 | 10+
+```
+
+---
+
+### **1.3 Verificação de Emprego (Helpers)**
+
+```
+MÉTODO 1 - Email Corporativo (Preferido):
+┌──────────────────────────────────────────────┐
+│ Sistema envia código de 6 dígitos para:     │
+│ juliana.silva@stripe.com                     │
+│                                               │
+│ Código expira em: 15 minutos                 │
+│ Juliana insere código → ✅ Verificada        │
+└──────────────────────────────────────────────┘
+
+MÉTODO 2 - LinkedIn + Manual Review:
+├─ Se empresa não tem email corporativo público
+├─ OU se Helper não quer usar email corporativo
+├─ Sistema valida:
+│  ├─ LinkedIn mostra empresa atual
+│  ├─ Perfil tem +6 meses de atividade
+│  └─ Equipe EUA na Prática valida manualmente (24-48h)
+└─ Status: "Pending Verification" → "Verified"
+
+BADGES DE VERIFICAÇÃO:
+├─ ✅ Email Verified (via email corporativo)
+├─ 🔍 Manually Verified (via LinkedIn review)
+└─ 💎 Long-tenure (2+ anos na empresa)
+```
+
+---
+
+## 🎯 2. SISTEMA DE CRÉDITOS
+
+### **2.1 Como Funcionam os Créditos**
+
+```
+CRÉDITO = Moeda interna para solicitar ajuda
+
+┌─ GANHAR CRÉDITOS:
+│  ├─ Cadastro inicial: +3 (Seeker) ou +5 (Helper)
+│  ├─ Completar perfil 100%: +2
+│  ├─ Enviar referral (Tier 1): +1 após confirmação
+│  ├─ Enviar referral (Tier 2/3): +1 imediato
+│  ├─ Pessoa que você referiu foi CONTRATADA: +5
+│  ├─ Indicar novo Helper que se cadastra: +3
+│  ├─ Indicar novo Helper que envia 1º referral: +5 (bônus)
+│  ├─ Ser "Helper do Mês": +10
+│  └─ Comprar pacote extra: 10 créditos = R$ 97
+│
+├─ GASTAR CRÉDITOS:
+│  ├─ Pedir referral: -1 crédito
+│  ├─ Mock interview (30min): -3 créditos
+│  ├─ Revisão de currículo: -2 créditos
+│  ├─ Coffee chat com insider: -2 créditos
+│  └─ Intro/apresentação entre 2 pessoas: -1 crédito
+│
+└─ REGRAS:
+   ├─ Créditos NÃO expiram
+   ├─ MAS: Se ficar 6 meses inativo → perde 50%
+   ├─ Limite máximo: 100 créditos acumulados
+   └─ Transferência de créditos: NÃO permitido (evita mercado negro)
+```
+
+---
+
+### **2.2 Histórico de Transações**
+
+```
+CADA USUÁRIO VÊ:
+
+┌────────────────────────────────────────────────────┐
+│ MEUS CRÉDITOS: 12                                  │
+├────────────────────────────────────────────────────┤
+│ Data       │ Tipo              │ Valor  │ Saldo   │
+├────────────────────────────────────────────────────┤
+│ 05/02/2026 │ Referral enviado  │ +1     │ 12      │
+│ 03/02/2026 │ Pedido referral   │ -1     │ 11      │
+│ 01/02/2026 │ Perfil completo   │ +2     │ 12      │
+│ 28/01/2026 │ Cadastro inicial  │ +3     │ 10      │
+└────────────────────────────────────────────────────┘
+
+FILTROS:
+├─ Por tipo (ganhos/gastos)
+├─ Por período
+└─ Export CSV
+```
+
+---
+
+## 🔍 3. MARKETPLACE & MATCHING
+
+### **3.1 Busca de Helpers**
+
+```
+SEEKER busca Helper por:
+
+FILTROS BÁSICOS:
+├─ Empresa (dropdown: Google, Meta, Stripe, etc)
+├─ Área (Engineering, Product, Design, etc)
+├─ Senioridade (para matching de nível)
+├─ Localização (Bay Area, NYC, Seattle, Remote, etc)
+└─ Disponibilidade (Ativo nas últimas 7 dias)
+
+FILTROS AVANÇADOS:
+├─ Response Rate (>80%, >90%, >95%)
+├─ Tempo na empresa (>6m, >1y, >2y)
+├─ Número de referrals enviados (1-5, 6-15, 16+)
+├─ Taxa de contratação (pessoas que ele referiu e foram contratadas)
+└─ Idioma (Português, Inglês, Ambos)
+```
+
+---
+
+### **3.2 Match Score (Algoritmo)**
+
+```
+CADA HELPER RECEBE UM SCORE de 0-100 para o Seeker:
+
+FATORES (peso %):
+
+├─ 30% - EMPRESA MATCH
+│  └─ Helper trabalha na empresa que Seeker quer (100 pts)
+│      Empresa similar/tier parecido (50 pts)
+│
+├─ 25% - ÁREA/SKILLS OVERLAP
+│  └─ Mesmo role (Backend → Backend) = 100 pts
+│      Related role (Backend → Infra) = 70 pts
+│      Different role (Backend → Design) = 30 pts
+│
+├─ 20% - RESPONSE RATE
+│  └─ >95% = 100 pts
+│      80-95% = 80 pts
+│      <80% = 50 pts
+│
+├─ 15% - HELPER REPUTATION
+│  └─ Tier 3 (Super Helper) = 100 pts
+│      Tier 2 (Verified) = 70 pts
+│      Tier 1 (New) = 40 pts
+│
+├─ 5% - DISPONIBILIDADE
+│  └─ Ativo nas últimas 24h = 100 pts
+│      Última semana = 70 pts
+│      Última mês = 40 pts
+│
+└─ 5% - RECENT SUCCESS
+   └─ Teve contratação nos últimos 30 dias = +20 pts bônus
+
+EXEMPLO:
+┌──────────────────────────────────────────────────┐
+│ Juliana Silva - PM @ Stripe                      │
+│ Match Score: 92% 🔥                              │
+│                                                   │
+│ Por que esse score?                              │
+│ ✅ Trabalha na Stripe (empresa que você quer)    │
+│ ✅ Mesma área (Product Management)               │
+│ ✅ Response rate: 96% (responde rápido!)         │
+│ ✅ Super Helper (23 referrals enviados)          │
+│ ✅ Ativa hoje (última vez: 2h atrás)             │
+│ ✅ 3 pessoas contratadas via seus referrals      │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### **3.3 Perfil do Helper (Visão do Seeker)**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ JULIANA SILVA                                           │
+│ Product Manager @ Stripe                    Match: 92%  │
+│ São Paulo → San Francisco | 2 anos na empresa           │
+│ ✅ Email Verified  💎 Long-tenure  🏆 Super Helper      │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│ 📊 ESTATÍSTICAS                                         │
+│ ├─ Referrals enviados: 23                               │
+│ ├─ Taxa de confirmação: 87% (20/23 confirmados)         │
+│ ├─ Pessoas contratadas: 3 🎉                            │
+│ ├─ Response rate: 96% (responde em ~4h)                 │
+│ ├─ Última atividade: 2 horas atrás                      │
+│ └─ Membro desde: Jan 2025 (Founding Helper)             │
+│                                                          │
+│ 🏅 BADGES                                               │
+│ [Founding Helper] [Quick Responder] [Stripe Kingmaker]  │
+│ [Gold Connector] [Super Helper]                         │
+│                                                          │
+│ 💬 TESTEMUNHOS (3 mais recentes)                        │
+│ ⭐⭐⭐⭐⭐ "Juliana me ajudou em 3h e fui contratado!"   │
+│            - Bruno S. (Jan 2026)                         │
+│                                                          │
+│ ⭐⭐⭐⭐⭐ "Super atenciosa e deu dicas valiosas"         │
+│            - Camila R. (Dez 2025)                        │
+│                                                          │
+│ ⭐⭐⭐⭐⭐ "Referral + mock interview = job offer!"       │
+│            - Pedro M. (Nov 2025)                         │
+│                                                          │
+│ 📝 ÁREAS QUE AJUDO                                      │
+│ ├─ Product Management (Principal foco)                  │
+│ ├─ Product Operations                                   │
+│ └─ Technical Program Management                         │
+│                                                          │
+│ 💼 VAGAS QUE COSTUMO AJUDAR                             │
+│ ├─ Senior+ PM roles                                     │
+│ ├─ Fintech/Payments domain                              │
+│ └─ Cross-functional leadership roles                    │
+│                                                          │
+│ 🌎 PREFERÊNCIAS                                         │
+│ ├─ Aceita pedidos em: Português & English              │
+│ ├─ Responde melhor em: Horário PT (9am-6pm)            │
+│ └─ Capacidade mensal: 3-5 referrals/mês                 │
+│                                                          │
+│         [💳 PEDIR REFERRAL - 1 CRÉDITO]                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔄 4. FLUXO COMPLETO DE REFERRAL
+
+### **4.1 Solicitação de Referral**
+
+```
+BRUNO (Seeker) clica em "PEDIR REFERRAL" no perfil da Juliana:
+
+┌─────────────────────────────────────────────────────┐
+│ SOLICITAR REFERRAL PARA JULIANA                     │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ 1️⃣ QUAL VAGA VOCÊ ESTÁ MIRANDO?                    │
+│                                                      │
+│ [ ] Link da vaga (ex: stripe.com/careers/12345)     │
+│     ___________________________________________      │
+│                                                      │
+│ [ ] Busca geral (sem vaga específica ainda)         │
+│     Cargo desejado: _________________________       │
+│                                                      │
+│ 2️⃣ POR QUE VOCÊ SE ENCAIXA? (max 500 chars)        │
+│ ┌─────────────────────────────────────────────┐    │
+│ │ - 5 anos backend em pagamentos               │    │
+│ │ - Experiência com Ruby/Go (stack da vaga)    │    │
+│ │ - Projeto OSS: payment-gateway (2.3k stars)  │    │
+│ └─────────────────────────────────────────────┘    │
+│                                                      │
+│ 3️⃣ O QUE VOCÊ JÁ PESQUISOU SOBRE A STRIPE?         │
+│ ┌─────────────────────────────────────────────┐    │
+│ │ - Li engineering blog sobre fault tolerance  │    │
+│ │ - Estudei Stripe Radar (anti-fraud)          │    │
+│ │ - Conversei com 2 ex-Stripers               │    │
+│ └─────────────────────────────────────────────┘    │
+│                                                      │
+│ 4️⃣ SEU CURRÍCULO                                    │
+│ [ Anexar arquivo ] resume_bruno.pdf ✅              │
+│                                                      │
+│ ────────────────────────────────────────────────    │
+│                                                      │
+│ 💡 DICA: Pedidos bem preparados têm 3x mais chance  │
+│    de sucesso! Mostre que você fez a lição de casa. │
+│                                                      │
+│ 💳 Custo: 1 crédito (você tem 3)                    │
+│                                                      │
+│         [❌ Cancelar]  [✅ ENVIAR PEDIDO]           │
+└─────────────────────────────────────────────────────┘
+
+VALIDAÇÕES:
+├─ Campo "Por que você se encaixa" com mínimo 100 chars
+├─ Pelo menos 1 item em "O que pesquisou"
+├─ Currículo anexado (obrigatório)
+└─ Seeker tem crédito suficiente
+```
+
+---
+
+### **4.2 Transação Criada**
+
+```
+SISTEMA REGISTRA:
+
+Transaction ID: REF-00127
+├─ From: Bruno Silva (Seeker)
+├─ To: Juliana Silva (Helper)
+├─ Company: Stripe
+├─ Role: Senior Backend Engineer - Payments
+├─ Status: PENDING
+├─ Created: 2026-02-07 14:32:00 UTC
+├─ Expires: 2026-02-10 14:32:00 UTC (72h)
+├─ Credits: -1 (Bruno) | TBD (Juliana)
+└─ Code: STRIPE-REF-7X9K (gerado automaticamente)
+
+NOTIFICAÇÕES ENVIADAS:
+
+┌─ PARA JULIANA:
+│  ├─ 📧 Email: "Você tem 1 novo pedido de referral!"
+│  ├─ 📱 Push: "Bruno quer referral para Stripe"
+│  ├─ 🔔 In-app: Badge vermelho no ícone
+│  └─ Prazo: 72h para responder
+│
+└─ PARA BRUNO:
+   ├─ 📧 Email: "Seu pedido foi enviado para Juliana"
+   ├─ Status: "Aguardando resposta (até 72h)"
+   └─ -1 crédito debitado (saldo: 2)
+```
+
+---
+
+### **4.3 Helper Responde**
+
+```
+JULIANA vê o pedido e tem 3 OPÇÕES:
+
+┌──────────────────────────────────────────────────────┐
+│ PEDIDO DE REFERRAL #REF-00127                        │
+├──────────────────────────────────────────────────────┤
+│ De: Bruno Silva                                       │
+│ Para: Stripe - Senior Backend Engineer               │
+│ Recebido: 2h atrás                                   │
+│                                                       │
+│ [VER PERFIL COMPLETO] [VER CURRÍCULO]                │
+│                                                       │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                       │
+│ RESUMO DO BRUNO:                                     │
+│ "5 anos backend em pagamentos, exp com Ruby/Go..."   │
+│                                                       │
+│ O QUE ELE PESQUISOU:                                 │
+│ "Li engineering blog, estudei Stripe Radar..."       │
+│                                                       │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                       │
+│ SUA RESPOSTA:                                        │
+│                                                       │
+│ ⚪ ✅ SIM, VOU ENVIAR O REFERRAL                     │
+│    └─ Você ganha: +10-15 pontos + 1 crédito*        │
+│                                                       │
+│ ⚪ ⏳ PRECISO DE MAIS TEMPO                          │
+│    └─ Prazo estendido por +48h                       │
+│                                                       │
+│ ⚪ ❌ NÃO POSSO AJUDAR DESSA VEZ                     │
+│    └─ Por quê? (opcional, ajuda o candidato)         │
+│       [ ] Não é fit para a vaga                      │
+│       [ ] Já atingi meu limite mensal                │
+│       [ ] Outro motivo: _______________              │
+│                                                       │
+│ ⚪ 💬 QUERO CONVERSAR ANTES                          │
+│    └─ Abre chat direto com Bruno                     │
+│                                                       │
+│         [ENVIAR RESPOSTA]                            │
+│                                                       │
+│ *Pontos variam por Tier. Ver detalhes.               │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+### **4.4 Cenário A: Juliana Aceita**
+
+```
+DIA 1 - Juliana aceita pedido do Bruno:
+├─ Status: REFERRAL_CLAIMED
+├─ Juliana ganha pontos PROVISÓRIOS (baseado no Tier)
+└─ Bruno é notificado
+
+DIA 7 - Sistema pergunta pro Bruno:
+
+┌─────────────────────────────────────────────────────┐
+│ 📬 ATUALIZAÇÃO DE STATUS                             │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ Faz 7 dias que Juliana enviou seu referral para:    │
+│ 🏢 Stripe - Senior Backend Engineer                 │
+│                                                      │
+│ Como está o processo?                               │
+│                                                      │
+│ ( ) ✅ A Stripe entrou em contato (1ª entrevista)   │
+│                                                      │
+│ ( ) 📧 Recebi email automático (screening/link)     │
+│                                                      │
+│ ( ) ⏳ Ainda não recebi nenhum contato              │
+│                                                      │
+│ ( ) ❌ Recebi rejeição (sem entrevista)             │
+│                                                      │
+│ ( ) ❓ Não tenho certeza / Outro                    │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 💡 Sua resposta ajuda Juliana a ganhar os pontos    │
+│    completos e melhora o sistema para todos!        │
+│                                                      │
+│         [ATUALIZAR STATUS]                          │
+└─────────────────────────────────────────────────────┘
+
+SISTEMA PROCESSA:
+
+SE "✅ Stripe entrou em contato":
+├─ Juliana: Pontos provisórios → DEFINITIVOS + BÔNUS
+├─ Status: REFERRAL_CONFIRMED → INTERVIEW_SCHEDULED
+├─ Bruno: +2 créditos (obrigado por confirmar!)
+└─ Juliana taxa de confirmação: +1 sucesso
+
+SE "📧 Recebi email automático":
+├─ Juliana: Pontos provisórios → DEFINITIVOS (sem bônus)
+├─ Status: REFERRAL_CONFIRMED → INITIAL_CONTACT
+├─ Bruno: +1 crédito
+└─ Sistema continua acompanhando
+
+SE "⏳ Ainda não recebi":
+├─ Sistema pergunta novamente em 7 dias
+├─ Juliana mantém pontos provisórios (aguardando)
+└─ Após 30 dias sem contato → Expirado (Juliana perde pontos provisórios)
+
+SE "❌ Recebi rejeição":
+├─ Juliana: Mantém 50% dos pontos (tentou!)
+├─ Status: REFERRAL_REJECTED
+└─ Bruno: +1 crédito reembolsado
+
+NOTIFICAÇÕES:
+
+┌─ PARA BRUNO:
+│  ├─ 📧 "Juliana aceitou! Ela vai enviar seu referral"
+│  ├─ 📱 Push notification
+│  └─ In-app: Status mudou para "Referral sendo enviado"
+│
+└─ PARA JULIANA:
+   ├─ 📧 "Parabéns! +12 pontos, +1 crédito"
+   ├─ Mensagem template para copiar/enviar pro Bruno:
+   └─ "Oi Bruno! Enviei seu referral hoje. Quando a Stripe
+       entrar em contato, insere o código STRIPE-REF-7X9K
+       na plataforma. Boa sorte! 🚀"
+```
+
+---
+
+### **4.5 Cenário B: Juliana Recusa**
+
+```
+JULIANA clica em "❌ NÃO POSSO AJUDAR"
+
+Sistema pergunta motivo (opcional):
+├─ [ ] Candidato não é fit para a vaga
+├─ [ ] Já atingi meu limite mensal de referrals
+├─ [ ] Não conheço bem essa área/time
+└─ [ ] Outro: _______________
+
+SISTEMA ATUALIZA:
+├─ Transaction status: PENDING → DECLINED
+├─ Bruno: +1 crédito REEMBOLSADO (volta pra 3)
+├─ Juliana: SEM penalidade (recusar é ok!)
+└─ Estatística interna: "Juliana decline rate" atualizada
+
+NOTIFICAÇÕES:
+
+┌─ PARA BRUNO:
+│  ├─ 📧 "Juliana não pode ajudar dessa vez"
+│  ├─ Motivo (se fornecido): "Limite mensal atingido"
+│  ├─ +1 crédito devolvido
+│  └─ Sugestão automática: "Que tal tentar com Carlos?
+│      Ele também trabalha na Stripe e tem 94% acceptance rate"
+│
+└─ PARA JULIANA:
+   └─ Sem notificação (ação dela)
+
+SISTEMA MONITORA:
+├─ Se Juliana recusar >70% dos pedidos (3 meses):
+│  └─ Match score diminui
+│  └─ Aparece menos no marketplace
+└─ MAS: Recusar é DIREITO do Helper (não é punição severa)
+```
+
+---
+
+### **4.6 Cenário C: Timeout (72h sem resposta)**
+
+```
+APÓS 72 HORAS SEM RESPOSTA DA JULIANA:
+
+SISTEMA AUTOMÁTICO:
+├─ Transaction status: PENDING → EXPIRED
+├─ Bruno: +1 crédito REEMBOLSADO
+├─ Juliana: -5 pontos (penalidade leve)
+└─ Response rate de Juliana atualizado: 96% → 94%
+
+NOTIFICAÇÕES:
+
+┌─ PARA BRUNO:
+│  ├─ 📧 "Juliana não respondeu a tempo"
+│  ├─ +1 crédito devolvido
+│  └─ Sugestões de outros Helpers (automático)
+│
+└─ PARA JULIANA:
+   ├─ 📧 "Você perdeu 1 pedido por timeout"
+   ├─ -5 pontos aplicados
+   └─ "Dica: Ative notificações push para não perder pedidos!"
+
+SE JULIANA TEM 3+ TIMEOUTS EM 30 DIAS:
+└─ Suspensão temporária de 15 dias (não aparece no marketplace)
+└─ Email de aviso: "Seu perfil será removido se continuar"
+```
+
+---
+
+## ✅ 5. VALIDAÇÃO DO REFERRAL
+
+### **5.1 Sistema de Tiers (Confiança Progressiva)**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ TIER 1: NEW HELPER                                  │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Requisitos:                                          │
+│ ├─ 0-3 referrals confirmados                        │
+│ └─ Novo na plataforma                               │
+│                                                       │
+│ Pontos por referral:                                 │
+│ ├─ +8 pontos PROVISÓRIOS (validação necessária)     │
+│ └─ +0 créditos (aguarda confirmação)                 │
+│                                                       │
+│ Validação:                                           │
+│ └─ Candidato PRECISA confirmar com código            │
+│    (ver seção 5.2)                                   │
+├─────────────────────────────────────────────────────┤
+│ TIER 2: VERIFIED HELPER                             │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Requisitos:                                          │
+│ ├─ 4-10 referrals confirmados                       │
+│ ├─ Taxa de confirmação: ≥70%                        │
+│ └─ Sem reports de abuso                             │
+│                                                       │
+│ Pontos por referral:                                 │
+│ ├─ +12 pontos IMEDIATOS                             │
+│ └─ +1 crédito IMEDIATO                              │
+│                                                       │
+│ Validação:                                           │
+│ └─ OPCIONAL (mas ganha +5 bônus se confirmar)        │
+├─────────────────────────────────────────────────────┤
+│ TIER 3: SUPER HELPER 💎                             │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│ Requisitos:                                          │
+│ ├─ 10+ referrals confirmados                        │
+│ ├─ Taxa de confirmação: ≥80%                        │
+│ ├─ Response rate: ≥90%                              │
+│ └─ Pelo menos 1 contratação confirmada              │
+│                                                       │
+│ Pontos por referral:                                 │
+│ ├─ +15 pontos IMEDIATOS                             │
+│ └─ +1 crédito IMEDIATO                              │
+│                                                       │
+│ Validação:                                           │
+│ └─ NÃO necessária (auto-aprovado)                    │
+│                                                       │
+│ Benefícios extras:                                   │
+│ ├─ Badge "Super Helper" no perfil                    │
+│ ├─ Prioridade no marketplace (aparece primeiro)      │
+│ ├─ Destaque no newsletter mensal                     │
+│ └─ Acesso a eventos exclusivos                       │
+└─────────────────────────────────────────────────────┘
+
+PROGRESSÃO ENTRE TIERS:
+├─ Sistema reavalia SEMANALMENTE
+├─ Pode SUBIR ou DESCER de tier
+└─ Notificação quando muda de tier
+```
+
+---
+
+### **5.2 Validação por Código (Tier 1 obrigatório)**
+
+```
+APÓS 7 DIAS DO REFERRAL CLAIMED:
+
+Sistema envia email pro BRUNO:
+
+┌──────────────────────────────────────────────────────┐
+│ Oi Bruno! 👋                                         │
+│                                                       │
+│ Faz 7 dias que a Juliana enviou seu referral para   │
+│ a Stripe. Como está indo?                            │
+│                                                       │
+│ [ ] ✅ A Stripe entrou em contato comigo             │
+│ [ ] ⏳ Ainda não recebi nada                         │
+│ [ ] ❌ Recebi rejeição automática                    │
+│                                                       │
+│         [RESPONDER]                                  │
+└──────────────────────────────────────────────────────┘
+
+SE BRUNO ESCOLHE "✅ Stripe entrou em contato":
+
+┌──────────────────────────────────────────────────────┐
+│ QUE LEGAL! 🎉                                        │
+│                                                       │
+│ Para confirmar o referral da Juliana e ela ganhar    │
+│ os pontos completos, insira o código que ela te      │
+│ passou:                                              │
+│                                                       │
+│ Código: ┌────────────────┐                          │
+│         │ ______________ │                          │
+│         └────────────────┘                          │
+│                                                       │
+│ Não lembra o código? [Pedir pra Juliana de novo]    │
+│                                                       │
+│         [❌ Cancelar]  [✅ CONFIRMAR]                │
+└──────────────────────────────────────────────────────┘
+
+BRUNO insere: STRIPE-REF-7X9K
+
+SISTEMA VALIDA:
+├─ ✅ Código existe
+├─ ✅ Código vinculado à transação REF-00127
+├─ ✅ Código pertence à Juliana → Bruno
+└─ ✅ MATCH!
+
+CONFIRMAÇÃO CONCLUÍDA:
+
+┌─ JULIANA recebe:
+│  ├─ Os +8 pontos provisórios viram DEFINITIVOS
+│  ├─ BÔNUS: +5 pontos extras (confirmação verificada)
+│  ├─ +1 crédito liberado
+│  ├─ Taxa de confirmação: 18/21 = 85.7%
+│  ├─ Progresso para Tier 2: 3/4 confirmações ✅
+│  └─ Notificação: "Bruno confirmou! +13 pontos totais 🎉"
+│
+└─ BRUNO recebe:
+   ├─ +5 pontos bônus (por confirmar e ajudar a comunidade)
+   └─ Notificação: "Obrigado por confirmar! +5 pontos pra você também"
+
+SE BRUNO NÃO RESPONDE EM 14 DIAS:
+├─ Sistema assume "sem confirmação"
+├─ Juliana mantém os +8 pontos provisórios
+├─ MAS não ganha o bônus nem o crédito
+└─ Contado na taxa de confirmação como "não confirmado"
+```
+
+---
+
+### **5.3 Report de Problema**
+
+```
+BRUNO também pode REPORTAR problema:
+
+Botão disponível: "⚠️ Reportar problema"
+
+┌──────────────────────────────────────────────────────┐
+│ O QUE ACONTECEU?                                     │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│ [ ] Juliana disse que enviou mas não recebi nada     │
+│ [ ] Juliana me pediu dinheiro/algo em troca          │
+│ [ ] Juliana foi desrespeitosa                        │
+│ [ ] Outro: ___________________________________       │
+│                                                       │
+│ Detalhes (opcional):                                 │
+│ ┌────────────────────────────────────────────────┐  │
+│ │                                                 │  │
+│ │                                                 │  │
+│ └────────────────────────────────────────────────┘  │
+│                                                       │
+│ ⚠️ Reports falsos resultam em penalidade             │
+│                                                       │
+│         [❌ Cancelar]  [📨 ENVIAR REPORT]            │
+└──────────────────────────────────────────────────────┘
+
+SISTEMA REGISTRA:
+├─ Flagged transaction: REF-00127
+├─ Reviewed by: Equipe EUA na Prática (manual)
+├─ Status: UNDER_REVIEW
+└─ Ambas as partes notificadas
+
+EQUIPE ANALISA (24-48h):
+├─ Checa histórico de Juliana (outros reports?)
+├─ Checa histórico de Bruno (reporta muito?)
+├─ Pode pedir evidências de ambos
+└─ Decisão:
+
+   CASO 1: Bruno está certo
+   ├─ Juliana: -20 pontos + warning
+   ├─ Bruno: +1 crédito reembolsado
+   └─ Se Juliana tem 3+ reports: BAN permanente
+
+   CASO 2: Falso alarme / mal-entendido
+   ├─ Nenhuma penalidade
+   └─ Transação cancelada
+
+   CASO 3: Bruno está abusando
+   ├─ Bruno: -10 pontos + warning
+   └─ Juliana: mantém pontos
+```
+
+---
+
+## 🎮 6. GAMIFICAÇÃO COMPLETA
+
+### **6.1 Sistema de Pontos**
+
+```
+PONTOS = Métrica de reputação e engajamento
+
+COMO GANHAR PONTOS:
+
+┌─ AÇÕES BÁSICAS:
+│  ├─ Cadastro completo: +10
+│  ├─ Completar perfil 100%: +15
+│  ├─ Verificar email corporativo: +20
+│  ├─ Conectar LinkedIn: +5
+│  └─ Upload de currículo: +5
+│
+├─ REFERRALS (como Helper):
+│  ├─ Aceitar pedido (Tier 1): +8 provisórios
+│  ├─ Aceitar pedido (Tier 2): +12 imediatos
+│  ├─ Aceitar pedido (Tier 3): +15 imediatos
+│  ├─ Referral confirmado (bônus Tier 1): +5
+│  ├─ Pessoa teve 1ª entrevista: +10
+│  ├─ Pessoa passou pra 2ª rodada: +15
+│  ├─ Pessoa recebeu oferta: +30
+│  └─ Pessoa foi CONTRATADA: +50 🎉
+│
+├─ VELOCIDADE DE RESPOSTA:
+│  ├─ Responder em <6h: +3
+│  ├─ Responder em <24h: +1
+│  └─ Responder em >48h: -2
+│
+├─ COMUNIDADE:
+│  ├─ Indicar Helper que se cadastra: +10
+│  ├─ Helper indicado envia 1º referral: +15
+│  ├─ Dar testemunho para outro Helper: +5
+│  ├─ Receber testemunho 5 estrelas: +3
+│  └─ Ser "Helper do Mês": +100
+│
+├─ ENGAJAMENTO:
+│  ├─ Logar 7 dias seguidos: +5
+│  ├─ Logar 30 dias seguidos: +20
+│  ├─ Atualizar perfil/status: +2
+│  └─ Participar de evento da comunidade: +10
+│
+└─ SEEKERS TAMBÉM GANHAM:
+   ├─ Confirmar referral recebido: +5
+   ├─ Dar feedback sobre processo: +3
+   ├─ Escrever testemunho: +5
+   └─ Virar Helper após ser contratado: +50
+
+COMO PERDER PONTOS:
+
+├─ Timeout (não responder em 72h): -5
+├─ Report de abuso (validado): -20
+├─ Pedir dinheiro em troca de referral: -100 + BAN
+├─ Fake referral (não enviou): -30
+└─ Inatividade >6 meses: -50% dos pontos
+```
+
+---
+
+### **6.2 Leaderboard**
+
+```
+┌───────────────────────────────────────────────────────┐
+│ 🏆 LEADERBOARD - FEVEREIRO 2026                       │
+├───────────────────────────────────────────────────────┤
+│                                                        │
+│ FILTROS:                                              │
+│ [Este Mês] [Trimestre] [Ano] [All-Time]              │
+│ [Todos] [Helpers] [Seekers]                           │
+│ [Global] [Por Empresa] [Por Área]                     │
+│                                                        │
+├───────────────────────────────────────────────────────┤
+│ #  │ USUÁRIO          │ PONTOS │ BADGES      │ STATS │
+├───────────────────────────────────────────────────────┤
+│ 🥇 │ Juliana Silva    │ 1,247  │ 💎🔥⚡      │ 23→3  │
+│    │ PM @ Stripe      │        │             │       │
+├───────────────────────────────────────────────────────┤
+│ 🥈 │ Carlos Mendes    │ 1,103  │ 💎🌟        │ 19→2  │
+│    │ SWE @ Google     │        │             │       │
+├───────────────────────────────────────────────────────┤
+│ 🥉 │ Ana Costa        │ 987    │ 💎⭐⭐      │ 15→1  │
+│    │ Designer @ Meta  │        │             │       │
+├───────────────────────────────────────────────────────┤
+│ 4  │ Pedro Santos     │ 856    │ 🥇🔥        │ 12→1  │
+│    │ PM @ Airbnb      │        │             │       │
+├───────────────────────────────────────────────────────┤
+│ 5  │ Camila Rocha     │ 734    │ 🥇⚡        │ 10→0  │
+│    │ Data @ Uber      │        │             │       │
+├───────────────────────────────────────────────────────┤
+│                                                        │
+│ VOCÊ: #47 - Bruno Silva - 234 pontos                 │
+│ Continue ajudando para subir! 🚀                      │
+│                                                        │
+└───────────────────────────────────────────────────────┘
+
+LEGENDA STATS:
+├─ 23→3 = 23 referrals enviados, 3 contratações
+└─ Hover mostra mais detalhes
+
+BADGES VISÍVEIS:
+💎 Super Helper
+🔥 Streak de 30 dias
+⚡ Quick Responder
+🌟 Top 10 Mês
+⭐ Top 50 Mês
+🥇 Gold Connector
+🥈 Silver Networker
+🥉 Bronze Helper
+```
+
+---
+
+### **6.3 Badges & Conquistas**
+
+```
+SISTEMA DE BADGES (34 badges disponíveis):
+
+┌─ VERIFICAÇÃO:
+│  ├─ ✅ Email Verified
+│  ├─ 🔗 LinkedIn Connected
+│  ├─ 💼 Resume Uploaded
+│  └─ 💎 Long-tenure (2+ anos na empresa)
+│
+├─ TIER BADGES:
+│  ├─ 🥉 Bronze Helper (5-10 referrals)
+│  ├─ 🥈 Silver Networker (11-25 referrals)
+│  ├─ 🥇 Gold Connector (26-50 referrals)
+│  └─ 💎 Diamond Insider (51+ referrals)
+│
+├─ CONQUISTAS ESPECIAIS:
+│  ├─ 🚀 First Hire (primeira pessoa contratada via você)
+│  ├─ 🎯 Hat Trick (3 contratações em 1 mês)
+│  ├─ 🔥 Hot Streak (7 referrals em 7 dias)
+│  ├─ ⚡ Lightning Fast (5+ respostas em <1h)
+│  ├─ 🌟 Perfect Month (100% response rate por 30 dias)
+│  └─ 🏆 Helper of the Month
+│
+├─ EMPRESAS ESPECÍFICAS:
+│  ├─ [Logo Google] Google Insider (5+ referrals Google)
+│  ├─ [Logo Meta] Meta Maven (5+ referrals Meta)
+│  ├─ [Logo Stripe] Stripe Kingmaker (5+ referrals Stripe)
+│  └─ ... (1 badge por empresa top)
+│
+├─ COMUNIDADE:
+│  ├─ 🌱 Founding Helper (primeiros 50)
+│  ├─ 🤝 Matchmaker (apresentou 2 pessoas)
+│  ├─ 📚 Mentor (10+ mock interviews)
+│  └─ 💬 Storyteller (5+ testemunhos escritos)
+│
+└─ RAROS/EXCLUSIVOS:
+   ├─ 🦄 Unicorn (alguém que você referiu fundou startup unicórnio)
+   ├─ 🎓 Professor (treinou 5+ pessoas que foram contratadas)
+   ├─ 🌍 Global (ajudou pessoas de 3+ países)
+   └─ 💯 Centurion (100+ referrals enviados)
+
+MECÂNICA:
+├─ Badges aparecem no perfil (público)
+├─ Usuário pode escolher até 5 para destacar
+├─ Algumas badges dão bônus:
+│  └─ Ex: "Quick Responder" → Aparece 10% mais no matching
+└─ Achievements page mostra todas (mesmo as não conquistadas)
+```
+
+---
+
+### **6.4 Missões Semanais/Mensais**
+
+```
+┌──────────────────────────────────────────────────────┐
+│ 🎯 MISSÕES DESTA SEMANA (Fev 03-09)                  │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│ ✅ Complete seu perfil 100%                          │
+│    Recompensa: +15 pontos                            │
+│    Status: ████████████████ 100% CONCLUÍDO!         │
+│                                                       │
+│ ⏳ Envie 1 referral esta semana                      │
+│    Recompensa: +20 pontos + 1 crédito bônus          │
+│    Status: ████████░░░░░░░░ 50% (1/2 dias restantes)│
+│                                                       │
+│ ⏳ Responda 3 pedidos de referral                    │
+│    Recompensa: +30 pontos                            │
+│    Status: ██████░░░░░░░░░░ 33% (1/3)                │
+│                                                       │
+│ 🔒 Faça 5 logins esta semana                         │
+│    Recompensa: +10 pontos + badge "Engaged"          │
+│    Status: ████░░░░░░░░░░░░ 20% (1/5)                │
+│                                                       │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                       │
+│ BÔNUS: Complete TODAS as missões → +50 pontos extras │
+│                                                       │
+└──────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐
+│ 🏅 DESAFIO DO MÊS (Fevereiro)                        │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│ "FEBRUARY HIRING FRENZY"                             │
+│                                                       │
+│ Ajude 10 pessoas a conseguirem entrevistas este mês  │
+│                                                       │
+│ Progresso: █████░░░░░░░░░░░ 5/10                     │
+│                                                       │
+│ Recompensa:                                          │
+│ ├─ +200 pontos                                       │
+│ ├─ Badge exclusivo "Feb Frenzy"                      │
+│ ├─ Destaque no newsletter                            │
+│ └─ 10 créditos bônus                                 │
+│                                                       │
+│ Participantes: 127 helpers competindo                │
+│ Você está em: #23 📈                                 │
+│                                                       │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+### **6.5 Níveis de Conta**
+
+```
+SISTEMA DE XP (Experience Points):
+
+XP = Pontos convertidos em níveis
+
+┌────────────────────────────────────────────────────┐
+│ SEU NÍVEL                                          │
+├────────────────────────────────────────────────────┤
+│                                                     │
+│              ⭐ NÍVEL 12 ⭐                         │
+│                                                     │
+│  ████████████████████████░░░░░░ 1,247 / 1,500 XP  │
+│                                                     │
+│  Faltam 253 XP para Nível 13                       │
+│                                                     │
+├────────────────────────────────────────────────────┤
+│ BENEFÍCIOS DO SEU NÍVEL:                           │
+│ ✓ Match priority (aparece antes que níveis <10)   │
+│ ✓ +2 créditos mensais grátis                      │
+│ ✓ Acesso a "Premium Helpers only" (busca)         │
+│ ✓ Custom profile URL                              │
+│                                                     │
+│ PRÓXIMO NÍVEL (13) DESBLOQUEIA:                    │
+│ 🔓 Agendamento de referrals (envia automaticamente)│
+│ 🔓 Analytics avançados (taxa de sucesso, etc)      │
+│ 🔓 Badge "Elite Helper"                            │
+│                                                     │
+└────────────────────────────────────────────────────┘
+
+PROGRESSÃO DE NÍVEIS:
+
+Nível 1-5: Newbie (0-250 XP)
+├─ Básico: pode pedir e dar referrals
+└─ 3 créditos iniciais
+
+Nível 6-10: Regular (251-750 XP)
+├─ +1 crédito mensal grátis
+└─ Pode escrever testemunhos
+
+Nível 11-15: Veteran (751-1,500 XP)
+├─ +2 créditos mensais grátis
+├─ Priority matching
+└─ Custom URL
+
+Nível 16-20: Elite (1,501-3,000 XP)
+├─ +3 créditos mensais grátis
+├─ Analytics avançados
+├─ Early access a features
+└─ Badge "Elite"
+
+Nível 21+: Legend (3,001+ XP)
+├─ +5 créditos mensais grátis
+├─ Acesso vitalício grátis (não paga mais)
+├─ Pode criar "sub-comunidades"
+├─ Voz em decisões de produto
+└─ Badge "Legend" (animado, dourado)
+```
+
+---
+
+## 🎁 7. MARKETPLACE DE SERVIÇOS (Além de Referrals)
+
+```
+USUÁRIOS PODEM OFERECER/PEDIR OUTROS SERVIÇOS:
+
+┌─────────────────────────────────────────────────────┐
+│ 🛒 MARKETPLACE                                       │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ ┌─ MOCK INTERVIEWS (3 créditos)                    │
+│ │  Pratica entrevista técnica/comportamental        │
+│ │  30min por video call                             │
+│ │  15 Helpers disponíveis                           │
+│ │  [VER OFERTAS]                                    │
+│ │                                                    │
+│ ├─ REVISÃO DE CURRÍCULO (2 créditos)               │
+│ │  Feedback detalhado sobre seu resume             │
+│ │  Turnaround: 48h                                  │
+│ │  23 Helpers disponíveis                           │
+│ │  [VER OFERTAS]                                    │
+│ │                                                    │
+│ ├─ COFFEE CHAT (2 créditos)                        │
+│ │  Conversa informal sobre empresa/cultura          │
+│ │  15-30min por video/telefone                      │
+│ │  31 Helpers disponíveis                           │
+│ │  [VER OFERTAS]                                    │
+│ │                                                    │
+│ ├─ INTRO/NETWORKING (1 crédito)                    │
+│ │  Apresentação para alguém específico              │
+│ │  Helper faz a ponte via email/LinkedIn            │
+│ │  9 Helpers disponíveis                            │
+│ │  [VER OFERTAS]                                    │
+│ │                                                    │
+│ └─ SALARY NEGOTIATION HELP (5 créditos)            │
+│    Consultoria sobre negociação de oferta           │
+│    1h de sessão                                     │
+│    4 Helpers disponíveis                            │
+│    [VER OFERTAS]                                    │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+
+EXEMPLO: MOCK INTERVIEW
+
+┌─────────────────────────────────────────────────────┐
+│ MOCK INTERVIEW - Juliana Silva                      │
+├─────────────────────────────────────────────────────┤
+│ PM @ Stripe | 2 anos de experiência                 │
+│                                                      │
+│ O QUE OFEREÇO:                                      │
+│ ├─ Product Management behavioral interview          │
+│ ├─ Product sense cases                              │
+│ └─ Execution/strategy questions                     │
+│                                                      │
+│ FORMATO:                                            │
+│ ├─ 30 minutos por Zoom                              │
+│ ├─ Feedback escrito após (Google Doc)              │
+│ └─ Disponibilidade: Seg-Sex, 7-9pm PT              │
+│                                                      │
+│ REVIEWS: ⭐⭐⭐⭐⭐ (4.9/5 - 12 sessões)              │
+│                                                      │
+│ "Juliana foi incrível! Feedback super detalhado     │
+│  e me ajudou a passar na Meta." - Bruno S.          │
+│                                                      │
+│ CUSTO: 3 créditos                                   │
+│ (Você tem 12 créditos)                              │
+│                                                      │
+│         [❌ Voltar]  [📅 AGENDAR]                   │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 8. ANALYTICS & DASHBOARDS
+
+### **8.1 Dashboard do Helper**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 📊 MEU DESEMPENHO - Últimos 30 dias                 │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ OVERVIEW:                                           │
+│ ├─ Pedidos recebidos: 15                            │
+│ ├─ Pedidos aceitos: 12 (80% acceptance rate)        │
+│ ├─ Referrals enviados: 12                           │
+│ ├─ Confirmados: 10 (83% confirmation rate) ✅       │
+│ └─ Contratações: 1 🎉                               │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ TEMPO DE RESPOSTA:                                  │
+│ Média: 4.2 horas ⚡                                 │
+│                                                      │
+│ [GRÁFICO: Barras mostrando respostas por faixa]    │
+│ <6h:  ████████ 8 pedidos                           │
+│ 6-24h: ███ 3 pedidos                                │
+│ 24-48h: █ 1 pedido                                  │
+│ >48h: 0 pedidos                                     │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ FUNIL DE CONVERSÃO:                                 │
+│                                                      │
+│ Referral enviado:     12 ████████████████████ 100% │
+│ Candidato contactado:  10 ███████████████░░░░  83% │
+│ 1ª entrevista:         7 ███████████░░░░░░░░░  58% │
+│ 2ª+ rodada:            4 ████████░░░░░░░░░░░░  33% │
+│ Oferta recebida:       2 ████░░░░░░░░░░░░░░░░  16% │
+│ Contratado:            1 ██░░░░░░░░░░░░░░░░░░   8% │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ COMPARAÇÃO COM OUTROS HELPERS:                      │
+│                                                      │
+│                    Você   Média   Top 10%          │
+│ Response rate:     80%    67%     95%              │
+│ Confirmation:      83%    72%     90%              │
+│ Tempo resposta:    4.2h   12h     2h               │
+│                                                      │
+│ 💡 Dica: Responda em <6h para entrar no Top 10%!   │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+### **8.2 Dashboard do Seeker**
+
+```
+
+┌─────────────────────────────────────────────────────┐
+│ 🎯 MEUS REFERRALS SOLICITADOS                       │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ ATIVOS (3):                                         │
+│                                                      │
+│ ┌─ Google - Software Engineer                      │
+│ │  Helper: Carlos Mendes (@google.com)              │
+│ │  Enviado: 3 dias atrás                            │
+│ │  Status: 🟡 AGUARDANDO CONTATO                    │
+│ │                                                    │
+│ │  [ O que fazer agora? ]                           │
+│ │  ( ) Google me contactou ✅                       │
+│ │  ( ) Recebi email automático 📧                   │
+│ │  ( ) Ainda nada ⏳                                │
+│ │  ( ) Fui rejeitado ❌                             │
+│ │                                                    │
+│ │  [ATUALIZAR STATUS]  [Mensagem p/ Carlos]         │
+│ │                                                    │
+│ ├─ Stripe - Backend Engineer                       │
+│ │  Helper: Juliana Silva (@stripe.com)              │
+│ │  Enviado: 12 dias atrás                           │
+│ │  Status: 🟢 ENTREVISTA AGENDADA (System Design)   │
+│ │  Data: 15 Fev, 2pm PT                             │
+│ │                                                    │
+│ │  Próxima atualização:                             │
+│ │  ( ) Fiz a entrevista - Como foi?                 │
+│ │     [ ] Muito bem  [ ] Ok  [ ] Não foi bem        │
+│ │  ( ) Avançar para próxima rodada ✅               │
+│ │  ( ) Recebi rejeição ❌                           │
+│ │                                                    │
+│ │  [ATUALIZAR]  [Ver preparação para entrevista]    │
+│ │                                                    │
+│ └─ Meta - Full Stack Engineer                      │
+│    Helper: Ana Costa (@meta.com)                    │
+│    Enviado: 18 dias atrás                           │
+│    Status: 🔴 REJEITADO (após screening)            │
+│                                                      │
+│    Feedback recebido:                               │
+│    "Precisa mais experiência em React/Frontend"     │
+│                                                      │
+│    [Ver feedback completo]  [Pedir nova vaga]       │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ HISTÓRICO (2):                                      │
+│                                                      │
+│ ✅ Airbnb - PM (Declined pelo helper)               │
+│ ❌ Uber - Data Engineer (Rejected após 1ª rodada)   │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+
+```
+
+---
+
+## 📱 9. NOTIFICAÇÕES & COMUNICAÇÃO
+
+```
+SISTEMA DE NOTIFICAÇÕES (3 canais):
+
+┌─ EMAIL (sempre ativo):
+│  ├─ Novo pedido de referral (Helper)
+│  ├─ Resposta do Helper (Seeker)
+│  ├─ Reminder: Responder pedido (72h timer)
+│  ├─ Confirmação necessária (7 dias após envio)
+│  ├─ Mudança de status (entrevista, oferta, etc)
+│  ├─ Subiu de Tier/Nível
+│  ├─ Nova missão semanal disponível
+│  ├─ Report/problema em transação
+│  └─ Newsletter semanal (opt-in)
+│
+├─ PUSH NOTIFICATION (mobile app + browser):
+│  ├─ Novo pedido (Helper) - URGENTE
+│  ├─ Resposta aceita (Seeker) - URGENTE
+│  ├─ 24h antes de timeout
+│  ├─ Alguém curtiu seu perfil
+│  └─ Você subiu no leaderboard
+│
+└─ IN-APP (red dot badge):
+   ├─ Todos os eventos acima
+   ├─ Chat message de outro usuário
+   └─ System announcements
+
+CONFIGURAÇÕES (usuário controla):
+├─ Frequência: Instant | Daily Digest | Weekly
+├─ Canais: Email | Push | Both | None (por tipo)
+└─ Quiet hours: Não incomodar das 10pm-8am (fuso local)
+```
+
+---
+
+## 🔐 10. SEGURANÇA & ANTI-ABUSE
+
+```
+MEDIDAS DE PROTEÇÃO:
+
+┌─ LIMITE DE RATE (evita spam):
+│  ├─ Seeker: Max 5 pedidos/semana
+│  ├─ Helper: Max 20 aceites/semana (auto-ajusta por Tier)
+│  └─ Cooldown: 24h entre pedidos para a MESMA empresa
+│
+├─ VERIFICAÇÃO DE IDENTIDADE:
+│  ├─ Email verification obrigatório
+│  ├─ LinkedIn connection obrigatório
+│  ├─ Email corporativo (Helpers)
+│  └─ Manual review para casos suspeitos
+│
+├─ DETECÇÃO DE FAKE/ABUSE:
+│  ├─ ML model detecta padrões suspeitos:
+│  │  └─ Helper "envia" 50 referrals mas 0 confirmações
+│  │  └─ Seeker pede referrals mas nunca confirma
+│  │  └─ Múltiplas contas do mesmo IP/device
+│  ├─ Flag automático → Manual review
+│  └─ Shadow ban (não notifica o usuário, só reduz visibilidade)
+│
+├─ REPORT SYSTEM:
+│  ├─ Qualquer usuário pode reportar outro
+│  ├─ Categorias: Fake referral | Harassment | Spam | Outros
+│  ├─ Review em 24-48h por equipe
+│  └─ 3+ reports = investigação prioritária
+│
+├─ PENALIDADES PROGRESSIVAS:
+│  ├─ 1º warning: Email de alerta
+│  ├─ 2º warning: Suspensão 7 dias
+│  ├─ 3º warning: Suspensão 30 dias + -50% pontos
+│  └─ 4º warning: BAN permanente
+│
+└─ MONETIZAÇÃO PROIBIDA:
+   └─ "Me pague $500 que eu te dou referral" = BAN imediato
+   └─ Sistema monitora palavras-chave em mensagens
+```
+
+---
+
+## 💰 11. MONETIZAÇÃO & PLANOS
+
+```
+┌─────────────────────────────────────────────────────┐
+│ PLANOS                                               │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ FREE (sempre disponível):                           │
+│ ├─ 3 créditos iniciais                              │
+│ ├─ Pode pedir até 3 referrals                       │
+│ ├─ Pode DAR referrals ilimitados (ganha créditos)   │
+│ ├─ Acesso a leaderboard básico                      │
+│ ├─ Match score parcial (top 5 Helpers)              │
+│ └─ Sem badges avançados                             │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ PREMIUM - R$ 997/ano:                               │
+│ ├─ 12 créditos/mês (144/ano) + rollover             │
+│ ├─ Pedidos ILIMITADOS de referral                   │
+│ ├─ Match score completo (todos os Helpers ranqueados│
+│ ├─ Analytics avançados (seu desempenho vs média)    │
+│ ├─ Templates premium de approach                    │
+│ ├─ Prioridade nas respostas (badge "Premium")       │
+│ ├─ Acesso a todos os badges                         │
+│ ├─ Mock interviews com desconto (2 créditos vs 3)   │
+│ ├─ Comunidade exclusiva (Slack/Discord Premium)     │
+│ ├─ Early access a features                          │
+│ └─ 1 sessão de mentoria 1:1 com fundador (anual)    │
+│                                                      │
+│ 💡 ROI: 1 job offer em empresa americana paga isso  │
+│         100x em 1 mês de salário.                   │
+│                                                      │
+│         [ASSINAR PREMIUM - R$ 997/ano]              │
+│         ou R$ 97/mês (sem desconto anual)            │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ À LA CARTE (sem plano):                             │
+│ └─ Pacote de 10 créditos: R$ 97                     │
+│    (para quem não quer compromisso anual)            │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+
+ESTRATÉGIA DE CONVERSÃO:
+
+1. HOOK (Free Tier):
+   └─ Deixa pessoa EXPERIMENTAR (3 créditos = 3 pedidos)
+   └─ Se funcionar (1 entrevista) → pessoa vê valor
+
+2. URGÊNCIA:
+   └─ "Acabaram seus créditos! 🚨"
+   └─ "Upgrade agora e peça mais 12 referrals este mês"
+
+3. SOCIAL PROOF:
+   └─ "Bruno conseguiu Google em 45 dias com Premium"
+   └─ "127 membros Premium este mês"
+
+4. GARANTIA:
+   └─ "30 dias money-back se não conseguir nenhuma entrevista"
+
+5. SCARCITY (opcional):
+   └─ "Apenas 50 vagas Premium/mês" (cria exclusividade)
+```
+
+---
+
+## 🚀 12. ROADMAP DE FEATURES FUTURO
+
+```
+FASE 1 (MVP - Mês 1-2):
+├─ Cadastro + perfis básicos
+├─ Sistema de créditos
+├─ Pedidos de referral (1 por vez)
+├─ Validação simples (sistema de honra + código)
+├─ Leaderboard básico
+└─ 5 badges iniciais
+
+FASE 2 (V1 - Mês 3-4):
+├─ Sistema de Tiers
+├─ Match score algorithm
+├─ Marketplace de serviços (mock, review)
+├─ Analytics básicos
+├─ 15 badges totais
+└─ Email corporativo verification
+
+FASE 3 (V2 - Mês 5-6):
+├─ Mobile app (iOS + Android)
+├─ Chat interno entre usuários
+├─ Missões semanais/mensais
+├─ Eventos da comunidade (virtual)
+├─ Integração LinkedIn (auto-import perfil)
+└─ 25 badges totais
+
+FASE 4 (V3 - Mês 7-12):
+├─ API pública (empresas podem integrar)
+├─ ATS integration (Greenhouse, Lever)
+├─ AI matching (ML model melhor)
+├─ Sub-comunidades (por empresa, por área)
+├─ White-label (empresas podem ter sua própria instância)
+└─ 34+ badges
+
+FUTURO (V4+):
+├─ Blockchain badges (NFTs?)
+├─ Salary transparency database
+├─ Interview prep AI coach
+├─ Job board integrado
+└─ Expansion: Europa, Ásia
+```
+
+---
+
+## 📝 13. TECH STACK RECOMENDADO
+
+```
+FRONTEND:
+├─ Web: Next.js 14 + TypeScript
+├─ Mobile: React Native (code sharing com web)
+├─ UI: Tailwind CSS + shadcn/ui
+├─ State: Zustand (simple) ou Redux Toolkit
+└─ Forms: React Hook Form + Zod validation
+
+BACKEND:
+├─ API: Node.js + Express (ou Fastify)
+├─ Database: PostgreSQL (relacional é melhor aqui)
+├─ ORM: Prisma
+├─ Auth: Clerk ou Auth0
+├─ File storage: AWS S3 (currículos, screenshots)
+└─ Email: SendGrid ou Resend
+
+INFRAESTRUTURA:
+├─ Hosting: Vercel (frontend) + Railway/Render (backend)
+├─ Database: Supabase ou Neon (Postgres managed)
+├─ Cache: Redis (para leaderboards, rate limiting)
+├─ Queue: BullMQ (jobs assíncronos - emails, notificações)
+└─ Monitoring: Sentry (errors) + PostHog (analytics)
+
+MATCHING ALGORITHM:
+├─ Elasticsearch (search de Helpers por skills/empresa)
+├─ Custom scoring em PostgreSQL (funciona bem pra MVP)
+└─ Futuro: ML model em Python (TensorFlow) se necessário
+
+NOTIFICAÇÕES:
+├─ Push: OneSignal ou Firebase Cloud Messaging
+├─ Email: SendGrid templates
+└─ In-app: WebSockets (Socket.io)
+
+SEGURANÇA:
+├─ Rate limiting: upstash/ratelimit
+├─ Email verification: Verificação de código (6 dígitos)
+├─ Corporate email: Hunter.io API ou ZeroBounce
+└─ Fraud detection: Custom rules + future ML
+
+ANALYTICS:
+├─ Product analytics: Mixpanel ou PostHog
+├─ User behavior: Hotjar
+└─ Custom dashboards: Recharts ou Chart.js
+```
+
+---
+
+ESTADOS POSSÍVEIS DE UM REFERRAL:
+
+1. PENDING (0-72h)
+   └─ Helper ainda não respondeu
+
+2. CLAIMED (Helper aceitou)
+   └─ Helper disse que vai enviar/enviou
+
+3. INITIAL_CONTACT (Seeker confirma email/screening)
+   └─ Empresa mandou email automático
+
+4. INTERVIEW_SCHEDULED (1ª entrevista marcada)
+   └─ Seeker confirma que tem entrevista
+
+5. INTERVIEW_COMPLETED
+   ├─ PASSED → Próxima rodada
+   └─ FAILED → Rejeitado
+
+6. OFFER_RECEIVED (Oferta recebida!)
+   └─ Seeker confirma que recebeu proposta
+
+7. HIRED (Contratado! 🎉)
+   └─ Seeker confirma início na empresa
+
+8. REJECTED (Não deu certo)
+   ├─ Auto-reject (sem entrevista)
+   ├─ Após screening
+   └─ Após N rodadas
+
+9. EXPIRED (Timeout sem resposta)
+   ├─ Helper não respondeu em 72h
+   └─ Seeker não deu update em 30 dias
+
+10. DECLINED (Helper recusou)
+    └─ Helper não pode ajudar
+
+## ADMIN - CONFIGURAÇÕES DE REGRAS
+┌─────────────────────────────────────────────────────┐
+│ ⚙️ ADMIN - CONFIGURAÇÃO DE PONTOS & CRÉDITOS        │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ FILTROS:                                            │
+│ [Todos] [Pontos] [Créditos] [Apenas Ativos]        │
+│                                                      │
+│ [+ NOVA REGRA]  [IMPORTAR]  [EXPORTAR CSV]          │
+│                                                      │
+├─────────────────────────────────────────────────────┤
+│ ID │ EVENTO                  │ TIPO    │ QTD │ ATIVO│
+├─────────────────────────────────────────────────────┤
+│ 01 │ user.signup            │ Credits │ +3  │ ✅  │
+│ 02 │ user.profile_complete  │ Credits │ +2  │ ✅  │
+│ 03 │ user.verify_corporate  │ Credits │ +3  │ ✅  │
+│ 04 │ referral.request       │ Credits │ -1  │ ✅  │
+│ 05 │ referral.claimed       │ Points  │ +10 │ ✅  │
+│ 06 │ referral.confirmed     │ Points  │ +5  │ ✅  │
+│ 07 │ referral.interview     │ Points  │ +15 │ ✅  │
+│ 08 │ referral.hired         │ Points  │ +50 │ ✅  │
+│ 09 │ referral.hired         │ Credits │ +10 │ ✅  │
+│ 10 │ helper.timeout         │ Points  │ -5  │ ✅  │
+│ 11 │ marketplace.mock       │ Credits │ -3  │ ✅  │
+│ 12 │ marketplace.resume     │ Credits │ -2  │ ✅  │
+│ 13 │ seeker.update_status   │ Credits │ +2  │ ✅  │
+│ 14 │ badge.earned           │ Points  │ +20 │ 🔒  │
+│ 15 │ report.abuse_confirmed │ Points  │ -20 │ ✅  │
+│    │                         │         │     │ [+] │
+└─────────────────────────────────────────────────────┘
+
+CLICANDO EM UMA REGRA:
+
+┌─────────────────────────────────────────────────────┐
+│ EDITAR REGRA #05                                     │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ ID do Evento:                                       │
+│ [referral.claimed________________________]          │
+│                                                      │
+│ Nome Descritivo:                                    │
+│ [Helper aceita pedido de referral________]          │
+│                                                      │
+│ Tipo de Recompensa:                                 │
+│ ( ) Pontos  (x) Créditos  ( ) Ambos                 │
+│                                                      │
+│ Quantidade:                                         │
+│ [+10] pontos                                        │
+│                                                      │
+│ Aplicar a:                                          │
+│ [x] Helper  [ ] Seeker  [ ] Ambos                   │
+│                                                      │
+│ Condições Especiais:                                │
+│ [x] Varia por Tier do Helper                        │
+│     ├─ Tier 1: 8 pontos (provisórios)               │
+│     ├─ Tier 2: 12 pontos (imediatos)                │
+│     └─ Tier 3: 15 pontos (imediatos)                │
+│                                                      │
+│ [ ] Limite máximo por período                       │
+│     └─ Max _____ por [dia/semana/mês]               │
+│                                                      │
+│ [ ] Requer validação manual                         │
+│                                                      │
+│ Status:                                             │
+│ (x) Ativo  ( ) Inativo  ( ) Teste A/B               │
+│                                                      │
+│ Notas internas:                                     │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Pontos provisórios para Tier 1 até seeker     │ │
+│ │ confirmar que empresa contactou.               │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                      │
+│ Logs de mudanças:                                   │
+│ 2026-01-15 - Admin alterou de +8 para +10 (todos)   │
+│ 2025-12-03 - Regra criada                           │
+│                                                      │
+│         [CANCELAR]  [SALVAR ALTERAÇÕES]             │
+└─────────────────────────────────────────────────────┘
+
+## 📧 15. ADMIN - CONFIGURAÇÃO DE EMAILS
+
+### **15.1 Tela de Admin - Templates de Email**
+
+┌─────────────────────────────────────────────────────┐
+│ 📧 ADMIN - TEMPLATES DE EMAIL                       │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ FILTROS:                                            │
+│ [Todos] [Transacionais] [Marketing] [Notificações] │
+│                                                      │
+│ [+ NOVO TEMPLATE]  [TESTE DE ENVIO]                 │
+│                                                      │
+├─────────────────────────────────────────────────────┤
+│ ID │ TEMPLATE                     │ TRIGGER    │ ✅ │
+├─────────────────────────────────────────────────────┤
+│ 01 │ Novo pedido de referral      │ Auto       │ ✅ │
+│ 02 │ Helper aceitou seu pedido    │ Auto       │ ✅ │
+│ 03 │ Reminder: Responder (24h)    │ Auto       │ ✅ │
+│ 04 │ Timeout - pedido expirado    │ Auto       │ ✅ │
+│ 05 │ Atualizar status (7 dias)    │ Auto       │ ✅ │
+│ 06 │ Parabéns! Você foi contratado│ Manual     │ ✅ │
+│ 07 │ Subiu de Tier                │ Auto       │ ✅ │
+│ 08 │ Newsletter semanal           │ Agendado   │ 🔒 │
+│ 09 │ Missão semanal disponível    │ Agendado   │ ✅ │
+│ 10 │ Créditos acabando            │ Auto       │ ✅ │
+│    │                              │            │[+] │
+└─────────────────────────────────────────────────────┘
+
+CLICANDO EM UM TEMPLATE:
+
+┌─────────────────────────────────────────────────────┐
+│ EDITAR TEMPLATE #05 - Atualizar Status (7 dias)     │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ Nome do Template:                                   │
+│ [Atualizar status do referral (7 dias)_______]     │
+│                                                      │
+│ Trigger:                                            │
+│ ( ) Manual                                          │
+│ (x) Automático                                      │
+│     └─ Evento: referral.claimed + 7 dias            │
+│                                                      │
+│ ( ) Agendado (cron)                                 │
+│     └─ Toda segunda, 9am BRT                        │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ Remetente:                                          │
+│ Nome: [EUA na Prática_____]                         │
+│ Email: [noreply@euanapratica.com___]                │
+│                                                      │
+│ Assunto:                                            │
+│ [Como está o processo com a {{company}}?_____]     │
+│                                                      │
+│ Preview Text:                                       │
+│ [Faz 7 dias que {{helper_name}} enviou seu...]     │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ Corpo do Email (HTML + variáveis):                  │
+│                                                      │
+│ [Editor Visual] [Código HTML] [Variáveis]           │
+│                                                      │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ Oi {{seeker_name}}! 👋                         │ │
+│ │                                                 │ │
+│ │ Faz 7 dias que {{helper_name}} enviou seu      │ │
+│ │ referral para:                                  │ │
+│ │                                                 │ │
+│ │ 🏢 {{company}} - {{role}}                      │ │
+│ │                                                 │ │
+│ │ Como está o processo?                           │ │
+│ │                                                 │ │
+│ │ [BOTÃO: ATUALIZAR STATUS]                       │ │
+│ │                                                 │ │
+│ │ Opções:                                         │ │
+│ │ ✅ A {{company}} entrou em contato              │ │
+│ │ 📧 Recebi email automático                      │ │
+│ │ ⏳ Ainda não recebi nada                        │ │
+│ │ ❌ Recebi rejeição                              │ │
+│ │                                                 │ │
+│ │ Sua resposta ajuda {{helper_name}} a ganhar    │ │
+│ │ os pontos completos! 🙏                         │ │
+│ │                                                 │ │
+│ │ Abraço,                                         │ │
+│ │ Equipe EUA na Prática                           │ │
+│ └────────────────────────────────────────────────┘ │
+│                                                      │
+│ VARIÁVEIS DISPONÍVEIS:                              │
+│ {{seeker_name}}, {{seeker_email}}                   │
+│ {{helper_name}}, {{helper_company}}                 │
+│ {{company}}, {{role}}, {{transaction_id}}           │
+│ {{days_since_claimed}}, {{credits_remaining}}       │
+│ {{update_status_url}}                               │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ CONDIÇÕES DE ENVIO:                                 │
+│ [x] Apenas se status = 'claimed'                    │
+│ [x] Seeker não atualizou nos últimos 7 dias         │
+│ [ ] Horário específico: Entre 9am-6pm (fuso local)  │
+│                                                      │
+│ FREQUÊNCIA:                                         │
+│ [x] Enviar apenas 1 vez                             │
+│ [ ] Repetir a cada ____ dias (máx 3x)               │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ [🧪 ENVIAR TESTE]  [👁️ PREVIEW]  [💾 SALVAR]      │
+│                                                      │
+│ Última modificação: 2026-02-01 por admin@eua.com    │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+
+## 📚 16. FAQ - PÁGINA DE REGRAS DA PLATAFORMA
+
+┌─────────────────────────────────────────────────────┐
+│ ❓ FAQ - PERGUNTAS FREQUENTES                       │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ 🔍 Buscar: [___________________________] 🔎         │
+│                                                      │
+│ CATEGORIAS:                                         │
+│ [📋 Geral] [💳 Créditos] [🎯 Referrals]            │
+│ [🎮 Gamificação] [💰 Pagamentos] [🔒 Segurança]    │
+│                                                      │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ 📋 GERAL                                            │
+│                                                      │
+│ ▼ O que é o EUA na Prática?                        │
+│   Somos uma plataforma que conecta brasileiros      │
+│   que buscam oportunidades em empresas americanas   │
+│   com brasileiros que já trabalham nessas empresas  │
+│   e podem dar referrals.                            │
+│                                                      │
+│ ▼ Quem pode usar a plataforma?                     │
+│   ├─ SEEKERS: Brasileiros buscando emprego em      │
+│   │   empresas americanas (morando no BR ou não)    │
+│   └─ HELPERS: Brasileiros que trabalham em empresas│
+│       americanas (remoto ou presencial nos EUA)     │
+│                                                      │
+│ ▼ Precisa estar nos EUA para ser Helper?           │
+│   NÃO! Se você trabalha para empresa americana      │
+│   (mesmo remotamente do Brasil), pode ser Helper.   │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 💳 CRÉDITOS                                         │
+│                                                      │
+│ ▼ O que são créditos?                              │
+│   Créditos são a "moeda" interna para solicitar    │
+│   referrals e serviços. 1 crédito = 1 pedido.      │
+│                                                      │
+│ ▼ Quantos créditos ganho ao me cadastrar?          │
+│   ├─ Seeker: 3 créditos iniciais                   │
+│   ├─ Helper: 5 créditos iniciais                   │
+│   └─ Bônus: +2 ao completar perfil 100%            │
+│                                                      │
+│ ▼ Como ganhar mais créditos?                       │
+│   📊 TABELA DE CRÉDITOS                            │
+│   ┌─────────────────────────────┬────────┐        │
+│   │ AÇÃO                        │ CRÉDITO│        │
+│   ├─────────────────────────────┼────────┤        │
+│   │ Completar perfil 100%       │ +2     │        │
+│   │ Verificar email corporativo │ +3     │        │
+│   │ Enviar referral (confirmado)│ +2     │        │
+│   │ Seeker teve entrevista      │ +3     │        │
+│   │ Seeker foi contratado       │ +10    │        │
+│   │ Indicar novo Helper         │ +5     │        │
+│   │ Confirmar empresa contactou │ +2     │        │
+│   │ Comprar pacote (10 créditos)│ R$ 97  │        │
+│   └─────────────────────────────┴────────┘        │
+│                                                      │
+│ ▼ Créditos expiram?                                │
+│   NÃO, mas se ficar 6 meses inativo, você perde    │
+│   50% dos créditos acumulados.                      │
+│                                                      │
+│ ▼ Helpers gastam créditos para ajudar?             │
+│   NÃO! Helpers NÃO gastam créditos ao enviar       │
+│   referrals. Eles GANHAM créditos por ajudar! ✨   │
+│                                                      │
+│ ▼ Posso transferir créditos para outra pessoa?     │
+│   NÃO. Créditos são pessoais e intransferíveis.    │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 🎯 REFERRALS                                        │
+│                                                      │
+│ ▼ Como funciona o pedido de referral?              │
+│   1. Você busca Helpers que trabalham na empresa   │
+│   2. Escolhe o Helper com melhor Match Score       │
+│   3. Gasta 1 crédito e envia pedido personalizado  │
+│   4. Helper tem 72h para responder                  │
+│   5. Se aceitar, ele envia seu CV internamente     │
+│   6. Você atualiza o status conforme andamento     │
+│                                                      │
+│ ▼ O que é Match Score?                             │
+│   É um algoritmo que calcula compatibilidade entre │
+│   você e o Helper (0-100%) baseado em:             │
+│   • Empresa (30%)                                   │
+│   • Área/skills (25%)                               │
+│   • Response rate (20%)                             │
+│   • Reputação (15%)                                 │
+│   • Disponibilidade (10%)                           │
+│                                                      │
+│ ▼ Quanto tempo demora para ter resposta?           │
+│   Média geral: 12 horas                             │
+│   Helpers ⚡ (Quick Responders): <6 horas           │
+│   Prazo máximo: 72 horas (senão expira)            │
+│                                                      │
+│ ▼ E se o Helper não responder?                     │
+│   • Após 72h sem resposta, pedido expira           │
+│   • Seu crédito é REEMBOLSADO automaticamente      │
+│   • Helper perde 5 pontos                           │
+│   • Sistema sugere outros Helpers                   │
+│                                                      │
+│ ▼ Como confirmo que recebi o referral?             │
+│   Após 7 dias, você recebe email perguntando o     │
+│   status. Você escolhe:                             │
+│   ✅ Empresa contactou (1ª entrevista)             │
+│   📧 Recebi email automático                        │
+│   ⏳ Ainda nada                                     │
+│   ❌ Fui rejeitado                                  │
+│                                                      │
+│ ▼ Helpers ganham algo ao me ajudar?                │
+│   SIM! Sistema de pontos + créditos:               │
+│   • +10-15 pontos (imediato ou após confirmação)   │
+│   • +2 créditos (quando você confirma)             │
+│   • +3 créditos extras (se você teve entrevista)   │
+│   • +10 créditos (se você foi CONTRATADO!)         │
+│   • Badges, posição no leaderboard, reputação      │
+│                                                      │
+│ ▼ Posso pedir múltiplos referrals?                 │
+│   SIM, mas com limites:                             │
+│   • Free: 3 créditos = 3 pedidos                   │
+│   • Premium: Ilimitado (12 créditos/mês + rollover)│
+│   • Cooldown: 24h entre pedidos para mesma empresa │
+│   • Max: 5 pedidos/semana                           │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 🎮 GAMIFICAÇÃO                                      │
+│                                                      │
+│ ▼ O que são pontos?                                │
+│   Pontos medem sua reputação e engajamento.        │
+│   Quanto mais pontos, maior seu nível e benefícios.│
+│                                                      │
+│ ▼ Qual a diferença entre pontos e créditos?        │
+│   PONTOS: Reputação (não se gasta, acumula)        │
+│   CRÉDITOS: Moeda (se gasta para pedir referrals)  │
+│                                                      │
+│ ▼ O que são Tiers?                                 │
+│   Sistema de confiança para Helpers:               │
+│   • Tier 1 (New): 0-3 referrals confirmados        │
+│   • Tier 2 (Verified): 4-10 refs, 70%+ confirmação │
+│   • Tier 3 (Super): 10+ refs, 80%+ confirmação     │
+│                                                      │
+│   Quanto maior o Tier, mais pontos imediatos!      │
+│                                                      │
+│ ▼ O que são badges?                                │
+│   Conquistas especiais que aparecem no seu perfil: │
+│   🥉 Bronze Helper (5-10 referrals)                │
+│   💎 Super Helper (status Elite)                   │
+│   ⚡ Quick Responder (respostas <6h)               │
+│   🔥 Stripe Kingmaker (5+ contratações Stripe)     │
+│   ... e 30+ outros badges!                         │
+│                                                      │
+│ ▼ Como funciona o Leaderboard?                     │
+│   Ranking público dos top Helpers por pontos.      │
+│   • Atualizado em tempo real                       │
+│   • Top 10 mensal ganham destaque no newsletter    │
+│   • Top 3 ganham sessão grátis de mentoria         │
+│   • #1 conversa 1:1 com fundador + case study      │
+│                                                      │
+│ ▼ O que são níveis?                                │
+│   Pontos são convertidos em níveis (XP):           │
+│   • Nível 1-5: Newbie (0-250 XP)                   │
+│   • Nível 6-10: Regular (251-750 XP)               │
+│   • Nível 11-15: Veteran (751-1,500 XP)            │
+│   • Nível 16-20: Elite (1,501-3,000 XP)            │
+│   • Nível 21+: Legend (3,001+ XP) → Acesso grátis! │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 💰 PAGAMENTOS & PLANOS                              │
+│                                                      │
+│ ▼ Quanto custa?                                    │
+│   • FREE: Sempre disponível (3 créditos iniciais)  │
+│   • PREMIUM: R$ 997/ano ou R$ 97/mês               │
+│   • À LA CARTE: 10 créditos = R$ 97 (one-time)     │
+│                                                      │
+│ ▼ O que vem no plano Premium?                      │
+│   ✅ 12 créditos/mês (144/ano)                     │
+│   ✅ Rollover (acumula se não usar)                │
+│   ✅ Pedidos ilimitados                             │
+│   ✅ Match score completo                           │
+│   ✅ Analytics avançados                            │
+│   ✅ Templates premium                              │
+│   ✅ Prioridade nas respostas                       │
+│   ✅ Mock interviews com desconto                   │
+│   ✅ Comunidade exclusiva                           │
+│   ✅ 1 sessão mentoria com fundador/ano             │
+│                                                      │
+│ ▼ Tem garantia?                                    │
+│   SIM! 30 dias money-back se não conseguir         │
+│   NENHUMA entrevista via nossos referrals.          │
+│                                                      │
+│ ▼ Posso cancelar quando quiser?                    │
+│   SIM, sem multas. Créditos não usados permanecem  │
+│   ativos até o fim do período pago.                 │
+│                                                      │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                                      │
+│ 🔒 SEGURANÇA & PRIVACIDADE                          │
+│                                                      │
+│ ▼ Como vocês verificam Helpers?                    │
+│   • Email corporativo (@empresa.com)                │
+│   • LinkedIn conectado e ativo                      │
+│   • Manual review em casos duvidosos                │
+│   • Sistema anti-fraud (ML detection)               │
+│                                                      │
+│ ▼ Meus dados estão seguros?                        │
+│   SIM. Usamos criptografia SSL, não vendemos       │
+│   dados, e seguimos LGPD/GDPR rigorosamente.        │
+│                                                      │
+│ ▼ O que acontece se alguém abusar?                 │
+│   Sistema de reports + penalidades progressivas:   │
+│   1º warning → Alerta                               │
+│   2º warning → Suspensão 7 dias                     │
+│   3º warning → Suspensão 30 dias + -50% pontos     │
+│   4º warning → BAN permanente                       │
+│                                                      │
+│ ▼ Posso ser banido por pedir dinheiro em troca?    │
+│   SIM! BAN IMEDIATO. Referrals devem ser de graça. │
+│   Helpers ganham via pontos/créditos do sistema.    │
+│                                                      │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ ❓ NÃO ACHOU SUA RESPOSTA?                          │
+│                                                      │
+│ [📧 CONTATAR SUPORTE] [💬 CHAT AO VIVO]            │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+## 🎨 14. EXEMPLO DE ESQUEMA DE DATABASE
+
+```sql
+-- USERS
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email VARCHAR UNIQUE NOT NULL,
+  linkedin_url VARCHAR,
+  name VARCHAR NOT NULL,
+  location VARCHAR,
+  role VARCHAR, -- 'seeker' | 'helper' | 'both'
+  
+  -- Campos helper
+  company VARCHAR,
+  job_title VARCHAR,
+  tenure_months INT,
+  corporate_email VARCHAR,
+  verified BOOLEAN DEFAULT false,
+  helper_tier INT DEFAULT 1, -- 1, 2, 3
+  
+  -- Gamificação
+  points INT DEFAULT 0,
+  credits INT DEFAULT 3,
+  level INT DEFAULT 1,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_active TIMESTAMP
+);
+
+-- TRANSACTIONS (Pedidos de referral)
+CREATE TABLE transactions (
+  id VARCHAR PRIMARY KEY, -- REF-00127
+  from_user_id UUID REFERENCES users(id),
+  to_user_id UUID REFERENCES users(id),
+  
+  company VARCHAR NOT NULL,
+  role VARCHAR NOT NULL,
+  job_url VARCHAR,
+  
+  status VARCHAR NOT NULL, 
+  -- 'pending' | 'claimed' | 'confirmed' | 'declined' | 'expired'
+  
+  confirmation_code VARCHAR, -- STRIPE-REF-7X9K
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  responded_at TIMESTAMP,
+  confirmed_at TIMESTAMP,
+  expires_at TIMESTAMP
+);
+
+-- BADGES
+CREATE TABLE badges (
+  id VARCHAR PRIMARY KEY,
+  name VARCHAR NOT NULL,
+  description TEXT,
+  icon VARCHAR, -- emoji ou URL
+  rarity VARCHAR -- 'common' | 'rare' | 'epic' | 'legendary'
+);
+
+CREATE TABLE user_badges (
+  user_id UUID REFERENCES users(id),
+  badge_id VARCHAR REFERENCES badges(id),
+  earned_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, badge_id)
+);
+
+-- POINTS HISTORY
+CREATE TABLE points_history (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  amount INT NOT NULL, -- pode ser negativo
+  reason VARCHAR NOT NULL,
+  related_transaction_id VARCHAR REFERENCES transactions(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- CREDITS HISTORY
+CREATE TABLE credits_history (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  amount INT NOT NULL,
+  reason VARCHAR NOT NULL,
+  related_transaction_id VARCHAR REFERENCES transactions(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- REVIEWS/TESTIMONIALS
+CREATE TABLE reviews (
+  id UUID PRIMARY KEY,
+  from_user_id UUID REFERENCES users(id),
+  to_user_id UUID REFERENCES users(id),
+  transaction_id VARCHAR REFERENCES transactions(id),
+  
+  rating INT CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- REPORTS
+CREATE TABLE reports (
+  id UUID PRIMARY KEY,
+  reporter_id UUID REFERENCES users(id),
+  reported_id UUID REFERENCES users(id),
+  transaction_id VARCHAR REFERENCES transactions(id),
+  
+  reason VARCHAR NOT NULL,
+  details TEXT,
+  status VARCHAR DEFAULT 'pending', -- 'pending' | 'reviewed' | 'resolved'
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  reviewed_at TIMESTAMP
+);
+```
+
+---
+
+## ✅ PRONTO PARA SALVAR!
+
+Isso cobre **TODO o sistema**:
+- Cadastro e perfis
+- Créditos e transações
+- Matching e busca
+- Validação de referrals (simples)
+- Gamificação completa
+- Marketplace de serviços
+- Analytics
+- Segurança
+- Monetização
+- Tech stack
+- Database schema
+
+## Fontes de Receita - Informacao apenas
+### **7.1 Além do Plano Anual**
+```
+FONTES DE RECEITA:
+
+1. PLANO PREMIUM (Principal - 70% da receita)
+   ├─ R$ 997/ano (ou R$ 97/mês)
+   ├─ Target: Seekers ativos
+   └─ Conversão esperada: 15-20% após usar 3 créditos free
+
+2. CRÉDITOS À LA CARTE (20% da receita)
+   ├─ 10 créditos = R$ 97
+   ├─ 25 créditos = R$ 197 (20% desconto)
+   ├─ 50 créditos = R$ 347 (30% desconto)
+   └─ Target: Quem não quer compromisso anual
+
+3. MARKETPLACE DE SERVIÇOS (5% da receita)
+   ├─ Plataforma tira 30% de cada transação
+   ├─ Ex: Mock interview = 3 créditos
+   │   └─ Helper recebe: 2 créditos
+   │   └─ Plataforma: 1 crédito (ou equivalente R$)
+   └─ Target: Ambos (seekers compram, helpers oferecem)
+
+4. PARCERIAS B2B COM EMPRESAS (5% da receita)
+   ├─ Empresa paga para ter "pipeline privilegiado"
+   ├─ Ex: Stripe paga R$ 5k/mês para:
+   │   └─ Badge "Stripe Partner" na plataforma
+   │   └─ Funcionários BR ganham créditos dobrados
+   │   └─ Acesso a analytics de candidatos
+   └─ Target: Empresas que contratam muito BR
+
+5. AFFILIATE/COMISSÕES (Futuro - potencial)
+   ├─ Parceria com serviços complementares:
+   │   └─ Visto/imigração (5-10% comissão)
+   │   └─ Cursos de prep para interview (20-30%)
+   │   └─ Relocação/moradia (comissão)
+   └─ Target: Seekers que conseguiram job offer
+```
+### **7.4 Upsells & Cross-sells**
+```
+APÓS SEEKER CONSEGUIR JOB OFFER:
+
+┌─────────────────────────────────────────────────────┐
+│ 🎉 PARABÉNS PELA OFERTA NA STRIPE!                  │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│ Você está a 1 passo de começar!                     │
+│                                                      │
+│ PRÓXIMOS PASSOS (podemos ajudar):                   │
+│                                                      │
+│ 📋 VISTO & IMIGRAÇÃO                                │
+│ Consultoria especializada em H1-B/O-1/Green Card    │
+│ Parceiro: [Nome da consultoria]                     │
+│ Desconto EUA na Prática: 15% off                    │
+│ [AGENDAR CONSULTA GRÁTIS]                           │
+│                                                      │
+│ 💰 NEGOCIAÇÃO DE SALÁRIO                            │
+│ Sessão 1:1 com ex-recruiter de FAANG                │
+│ Custo: 5 créditos ou R$ 197                         │
+│ [AGENDAR SESSÃO]                                    │
+│                                                      │
+│ 🏠 RELOCAÇÃO & MORADIA                              │
+│ Guia completo + consultoria de relocação            │
+│ Parceiro: [Empresa de relocação]                    │
+│ [VER PACOTES]                                       │
+│                                                      │
+│ 🎓 CURSO: PRIMEIROS 90 DIAS NO JOB                  │
+│ Como se destacar, evitar erros, crescer rápido      │
+│ Desconto: 30% off (R$ 197 → R$ 137)                │
+│ [QUERO O CURSO]                                     │
+│                                                      │
+└──────────────────────────────────────────────────

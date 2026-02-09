@@ -32,7 +32,6 @@ export function useAppConfigs() {
       if (error) throw error;
       setConfigs(data || []);
     } catch (error: any) {
-      console.error('Error fetching configs:', error);
       toast({
         title: 'Erro ao carregar configurações',
         description: error.message,
@@ -69,7 +68,6 @@ export function useAppConfigs() {
         description: 'A configuração foi atualizada com sucesso.',
       });
     } catch (error: any) {
-      console.error('Error updating config:', error);
       toast({
         title: 'Erro ao salvar',
         description: error.message,

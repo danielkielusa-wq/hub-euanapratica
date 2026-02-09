@@ -26,12 +26,10 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       .single();
 
     if (profileError || !profile) {
-      console.error('Error fetching profile:', profileError);
       return null;
     }
 
     if (profile.status === 'inactive') {
-      console.error('User is inactive');
       await supabase.auth.signOut();
       return null;
     }
@@ -43,7 +41,6 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       .single();
 
     if (roleError || !roleData) {
-      console.error('Error fetching role:', roleError);
       return null;
     }
 
@@ -64,7 +61,6 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
       has_completed_onboarding: profile.has_completed_onboarding ?? false,
     };
   } catch (error) {
-    console.error('Error in fetchUserWithRole:', error);
     return null;
   }
 }
@@ -76,13 +72,14 @@ async function updateLastLogin(userId: string): Promise<void> {
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', userId);
     
-    await supabase.from('user_audit_logs').insert({
+    await supabase.from('audit_events').insert({
       user_id: userId,
+      actor_id: userId,
       action: 'login',
+      source: 'auth',
       new_values: { timestamp: new Date().toISOString() }
     });
   } catch (error) {
-    console.error('Error updating last login:', error);
   }
 }
 
@@ -166,7 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Error signing out:', error);
         throw error;
       }
     } finally {
@@ -215,7 +211,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const impersonate = useCallback(async (userId: string) => {
     // Only admins can impersonate (checked by caller, but double-check here)
     if (authState.user?.role !== 'admin') {
-      console.error('Only admins can impersonate users');
       return;
     }
 
@@ -226,7 +221,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (profileError || !profile) {
-      console.error('Error fetching user profile for impersonation:', profileError);
       return;
     }
 
@@ -237,7 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (roleError || !roleData) {
-      console.error('Error fetching user role for impersonation:', roleError);
       return;
     }
 
@@ -259,10 +252,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Log impersonation start
-    await supabase.from('user_audit_logs').insert({
+    await supabase.from('audit_events').insert({
       user_id: userId,
-      changed_by_user_id: authState.user?.id,
+      actor_id: authState.user?.id,
       action: 'impersonation_started',
+      source: 'admin',
       new_values: { impersonated_by: authState.user?.email }
     });
 

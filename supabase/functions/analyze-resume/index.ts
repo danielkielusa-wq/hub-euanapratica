@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
+import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -263,10 +264,10 @@ serve(async (req) => {
     }
 
     // Call OpenAI Responses API with structured outputs
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    const openaiConfig = await getApiConfig("openai_api");
+    if (!openaiConfig.credentials.api_key) {
       return new Response(
-        JSON.stringify({ error: "AI configuration error" }),
+        JSON.stringify({ error: "AI configuration error: OpenAI API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -465,10 +466,10 @@ ${resumeContent}`,
           },
         ];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const aiResponse = await fetch(`${openaiConfig.base_url}/responses`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${openaiConfig.credentials.api_key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -582,6 +583,36 @@ ${resumeContent}`,
       return false;
     };
 
+    const recordAuditWithRetry = async (uid: string, maxRetries = 3): Promise<boolean> => {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const { error } = await adminSupabase
+            .from('audit_events')
+            .insert({
+              user_id: uid,
+              actor_id: uid,
+              action: 'usage_recorded',
+              source: 'curriculo_usa',
+              new_values: { app_id: 'curriculo_usa', source: 'analyze_resume' },
+            });
+
+          if (!error) {
+            console.log(`Audit recorded successfully for user ${uid} on attempt ${attempt + 1}`);
+            return true;
+          }
+
+          console.error(`Audit recording attempt ${attempt + 1} failed:`, error);
+        } catch (err) {
+          console.error(`Audit recording attempt ${attempt + 1} threw:`, err);
+        }
+
+        if (attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 200 * Math.pow(2, attempt)));
+        }
+      }
+      return false;
+    };
+
     const usageRecorded = await recordUsageWithRetry(userId);
     
     if (!usageRecorded) {
@@ -594,6 +625,11 @@ ${resumeContent}`,
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Audit recording is best-effort — don't block the user if it fails
+    recordAuditWithRetry(userId).catch((err) => {
+      console.error("Non-critical: audit recording failed for user:", userId, err);
+    });
     // ========== END RECORD USAGE ==========
 
     return new Response(JSON.stringify(result), {

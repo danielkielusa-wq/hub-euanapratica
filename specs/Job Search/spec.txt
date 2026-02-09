@@ -1,0 +1,1186 @@
+Vibecoding Prompt - Feature Prime Jobs (FOCUSED)
+
+Score: 9.9/10 ✨
+
+
+
+🎯 O QUE ESTAMOS CONSTRUINDO
+
+Uma feature exclusiva e premium de vagas de emprego remotas para a plataforma “EUA Na Pratica”. Pense em um LinkedIn Jobs meets Remote.co, mas especificamente curado para brasileiros que querem trabalhar remotamente para empresas americanas.
+
+A vibe é: profissional, aspiracional, mas acessível. Não é elitista, mas deixa claro que é um benefício premium que vale a pena.
+
+
+
+🏗️ ARQUITETURA DO NEGÓCIO
+
+Modelo de Acesso em 3 Camadas
+
+1. FREE (Teaser/Preview):
+
+∙ Pode ver a lista de vagas
+
+∙ Mostra APENAS os 3 primeiros job cards
+
+∙ Todos os botões de “Ver Detalhes” nos cards 4+ aparecem desabilitados com ícone de cadeado 🔒
+
+∙ Se clicar em qualquer botão desabilitado → abre modal mostrando planos disponíveis
+
+∙ Se tentar acessar URL direto /prime-jobs/[id] → redirect para /upgrade
+
+∙ Mensagem-chave: “Você está vendo uma prévia. Upgrade para acessar 200+ vagas exclusivas”
+
+2. VIP e Pro (Full Access):
+
+∙ Acesso completo a todas as vagas
+
+∙ Pode favoritar vagas ilimitadamente
+
+∙ Pode ver detalhes completos
+
+∙ Limite mensal de aplicações: Configurável pelo admin na tabela de planos
+
+∙ Sistema de tracking mensal (resetado dia 1 de cada mês). Limites não cumulativos.
+
+
+
+3. ADMIN (God Mode):
+
+∙ Tudo ilimitado
+
+∙ Sem limites de aplicação
+
+∙ Acesso total à feature
+
+
+
+Regra de Ouro - Links Compartilhados:
+
+Se um usuário FREE recebe o link /prime-jobs/abc123 de um amigo:
+
+Será obrigado a se registrar na plataforma antes de conseguir ver a vaga.
+
+∙ Pode abrir a página e ver todos os detalhes da vaga (read-only)
+
+∙ Botão “Aplicar” fica desabilitado
+
+∙ Banner no topo: “🔒 Esta é uma vaga exclusiva Prime Jobs. Faça upgrade para VIP e candidate-se!”
+
+∙ É tipo: “olha que vaga incrível você poderia acessar se fosse VIP”
+
+
+
+🗄️ DATABASE SCHEMA
+
+Você já tem a tabela jobs pronta. Precisa criar:
+
+1. job_bookmarks
+
+Para favoritar vagas.
+
+
+
+Campos essenciais:
+
+- user_id (referencia auth.users)
+
+- job_id (referencia jobs)
+
+- created_at
+
+
+
+RLS: User só vê e manipula seus próprios bookmarks
+
+
+
+
+
+2. job_applications
+
+Para tracking de quando user clicou “Aplicar”.
+
+
+
+Campos essenciais:
+
+- user_id
+
+- job_id
+
+- status ('clicked', 'applied', '')
+
+- applied_at
+
+- updated_at
+
+- notes (opcional)
+
+
+
+RLS: User só vê e manipula suas próprias applications/clicks
+
+
+
+3. user_monthly_usage
+
+Para tracking de limites mensais de aplicações.
+
+
+
+Campos essenciais:
+
+- user_id
+
+- month (date, formato YYYY-MM-01)
+
+- job_applications_count
+
+- created_at
+
+- updated_at
+
+
+
+RLS: User só vê seu próprio usage
+
+
+
+4. Alterações em subscription_plans
+
+
+
+Adicionar campo:
+
+- prime_jobs_application_limit (integer, nullable)
+
+  - NULL = ilimitado
+
+  - 0 = sem acesso (FREE)
+
+  - Número específico = limite mensal por plano
+
+
+
+Valores sugeridos:
+
+  FREE: 0
+
+  VIP: 10
+
+  ADMIN: 25
+
+
+
+5. Database Function
+
+Confirma de acordo com a lógica já aplicada para o ResumePass AÍ.
+
+Talvez algo como:
+
+Criar function check_application_limit(p_user_id uuid) RETURNS boolean que:
+
+∙ Pega o plano do user via join
+
+∙ Se limit = NULL → return true (ilimitado)
+
+∙ Se limit = 0 → return false (sem acesso)
+
+∙ Se não, conta quantas applications foram feitas no mês atual
+
+∙ Compara com o limite
+
+∙ Return true/false
+
+
+
+🎨 PÁGINAS E ROTAS
+
+1. /prime-jobs - Hub Principal
+
+Vibe: Dashboard premium, mas clean. Não overwhelming.
+
+Header Section:
+
+
+
+Title: Prime Jobs
+
+Subtitle: Vagas remotas curadas para brasileiros trabalharem em empresas americanas
+
+Stats: "142 vagas disponíveis apenas essa semana - atualizado diariamente" (dinâmico, contador real)
+
+
+
+Filter Bar (sticky top):
+
+Horizontal layout com:
+
+∙ Search input (busca em title, company, description)
+
+∙ Experience Level dropdown (Junior, Mid, Senior) — valores dinâmicos do DB
+
+∙ Employment Type dropdown (Full-Time, Contract, Part-Time) — dinâmico do DB
+
+∙ Job Category dropdown (Engineering, Design, Marketing…) — dinâmico do DB, campo job_category
+
+∙ Salary Range slider (USD apenas, $0 - $300k)
+
+∙ Quando ativo, filtra APENAS vagas que TÊM salário definido
+
+∙ Remote Type toggle/tabs (Fully Remote / Hybrid / Todos)
+
+∙ Botão “Limpar Filtros”
+
+Results Section:
+
+
+
+"X vagas encontradas" (contador filtrado)
+
+
+
+
+
+Jobs Grid:
+
+∙ Layout: 3 colunas desktop, 2 tablet, 1 mobile
+
+∙ Cards com hover effect (lift + sombra)
+
+∙ Infinite scroll (apenas VIP/ADMIN)
+
+∙ FREE users:
+
+∙ Mostrar exatamente 3 cards normais, bloqueado o botão ver detalhes.
+
+∙ se clicar qualquer card, UpgradePrompt especial:
+
+
+
+🔒 Upgrade para VIP
+
+Desbloqueie acesso a [X] vagas adicionais
+
+[Botão: Ver Planos →]
+
+
+
+
+
+Empty State (quando filtros não retornam nada):
+
+
+
+🔍 Ilustração de lupa
+
+"Nenhuma vaga encontrada com esses filtros"
+
+"Tente ajustar os critérios ou volte mais tarde!"
+
+“Todo dias, novas vagas”
+
+[Botão: Limpar Filtros]
+
+
+
+
+
+2. Job Card (Componente Reutilizável)
+
+Anatomy:
+
+
+
+┌─────────────────────────────────┐
+
+│ [Logo]  "NEW!" (se <24h)       │
+
+│                                 │
+
+│ Job Title (bold, 2 linhas max) │
+
+│ Company Name (gray)            │
+
+│                                 │
+
+│ [Fully Remote] [$80k-$120k]    │
+
+│ [Senior]                        │
+
+│                                 │
+
+│ react | typescript | node | aws│
+
+│ (+3 mais)                       │
+
+│                                 │
+
+│ Posted 3 days ago    [♥] [→]   │
+
+└─────────────────────────────────┘
+
+
+
+
+
+Elementos:
+
+1. Company Logo — quadrado 48x48px, fallback para inicial
+
+2. “NEW!” badge — amarelo, se posted_at < 24h atrás
+
+3. Job Title — bold, 18px, max 2 linhas com ellipsis
+
+4. Company Name — gray, 14px
+
+5. Badges:
+
+∙ Remote Type: azul (Fully Remote) ou roxo (Hybrid)
+
+∙ Salary: verde ($XXk - $XXXk) — só se disponível
+
+∙ Experience: cinza outline
+
+6. Tech Stack — max 4 tags visíveis, resto “+N mais”
+
+7. Footer:
+
+∙ Left: “Postado X dias (ou horas) atrás” (relativo)
+
+∙ Right: Heart icon (bookmark) + Botão “Ver Detalhes”
+
+Estados:
+
+∙ Normal (VIP/ADMIN):
+
+∙ Tudo clicável
+
+∙ Hover: card lift 4px + sombra aumenta
+
+∙ Botão azul vibrante
+
+∙ Locked (FREE cards 4+):
+
+∙ Opacity 60%
+
+∙ Cursor not-allowed no card inteiro
+
+∙ Botão “🔒 Ver Detalhes” desabilitado
+
+∙ Hover no botão: tooltip “Upgrade para VIP”
+
+∙ Click no botão: abre modal de planos
+
+Micro-interações:
+
+∙ Click no coração: bounce animation + fill/unfill
+
+∙ Hover no card: smooth lift transition
+
+∙ Click em “Ver Detalhes”: navegação para modal 
+
+
+
+3. /prime-jobs/[id] - Página de Detalhes
+
+Design: Página completa (não modal). URL compartilhável.
+
+Layout Sections:
+
+Banner Contextual (apenas FREE users):
+
+
+
+┌────────────────────────────────────────────┐
+
+│ 🔒 Esta é uma vaga exclusiva Prime Jobs.  │
+
+│ Faça upgrade para VIP e candidate-se a    │
+
+│ esta e centenas de outras vagas!           │
+
+│                                             │
+
+│ [Botão: Ver Planos →]                     │
+
+└────────────────────────────────────────────┘
+
+
+
+
+
+Estilo: Fundo âmbar claro, borda esquerda âmbar escura
+
+Header:
+
+
+
+[Company Logo 80x80]
+
+
+
+Job Title (h1, 32px, bold)
+
+Company Name (h2, 24px, gray)
+
+
+
+[Fully Remote] · Posted 3 days ago · $80k-$120k · Senior Level
+
+
+
+[Bookmark ♥]
+
+
+
+
+
+Tech Stack (se disponível):
+
+Badges maiores que nos cards, coloridos
+
+Job Description:
+
+
+
+────────────────────────────────────
+
+Job Description
+
+
+
+[HTML renderizado com prose styling]
+
+────────────────────────────────────
+
+
+
+
+
+Apply Section (destaque final):
+
+
+
+┌────────────────────────────────────────────┐
+
+│ Pronto para aplicar??                            │
+
+│ Clique abaixo para iniciar o processo.  │
+
+│                                             │
+
+│               [Aplicar agora →]                │
+
+│               (botão gigante)               │
+
+└────────────────────────────────────────────┘
+
+
+
+
+
+Estados do Botão “Aplicar”:
+
+1. FREE user:
+
+∙ “🔒 Assine para aplicar”
+
+∙ Desabilitado, cinza
+
+∙ Click → modal de planos
+
+2. VIP/Pro/ADMIN - não aplicou ainda:
+
+∙ “Apply Now →”
+
+∙ Azul vibrante, hover scale 105%
+
+∙ Click → registra application + abre URL externa
+
+3. VIP/Pro/ADMIN - já aplicou:
+
+∙ “✓ Application Tracked”
+
+∙ Verde claro, desabilitado
+
+∙ Mostra quando foi aplicado
+
+4. Limite mensal atingido:
+
+∙ “Limite mensal atingido ”
+
+∙ Desabilitado, cinza
+
+∙ Tooltip: “Próximo reset em [data]”
+
+Share Section (footer discreto):
+
+
+
+[Share icon] Compartilhar esta vaga
+
+
+
+
+
+Click: copia URL para clipboard + toast “Link copiado!”
+
+
+
+4. /prime-jobs/bookmarks - Favoritos
+
+Access Control: Apenas VIP/pro/ADMIN. FREE → redirect /upgrade
+
+Layout:
+
+
+
+Minhas Vagas Favoritas ❤️
+
+X vaga(s) salva(s)
+
+
+
+[Mesma grid de 3 colunas com JobCards]
+
+
+
+
+
+Diferenças:
+
+∙ Cada card tem botão “Remover dos Favoritos” (X discreto no canto)
+
+∙ Ordenação: Data do bookmark (mais recente primeiro)
+
+Empty State:
+
+
+
+❤️ (ícone grande)
+
+
+
+Você ainda não favoritou nenhuma vaga
+
+
+
+Explore Prime Jobs e salve suas vagas favoritas 
+
+para acessar rapidamente depois.
+
+
+
+[Botão: Explorar Vagas →]
+
+
+
+
+
+🔐 REGRAS DE ACESSO E SEGURANÇA
+
+Aplica as regras de seguranças necessárias no banco para que usuário seja capaz de consultar apenas seus próprios dados e que não possa consultar dados de outros.
+
+
+
+Server-Side Validations
+
+Antes de permitir “Apply”:
+
+1. Verificar user_subscriptions.plan IN ('VIP', 'ADMIN', ‘Pro’)
+
+2. Se não ADMIN, chamar check_application_limit(user_id)
+
+3. Se OK:
+
+∙ Inserir em job_applications (status: ‘clicked’)
+
+∙ Incrementar user_monthly_usage.job_applications_count do mês atual
+
+∙ Abrir job.url em nova tab
+
+4. Se limite atingido:
+
+∙ Retornar erro com data de próximo reset
+
+∙ Mostrar toast apropriado
+
+Antes de permitir acesso a /prime-jobs/[id] (FREE):
+
+1. Se chegou via link compartilhado: permitir visualização read-only
+
+2. Se tentou navegar diretamente sem ser VIP/Pro/ADMIN: redirect /upgrade
+
+
+
+📧 EMAIL DIGEST SEMANAL
+
+Na página do admin, ele deve ser permitido customizar os e-mails com uso de parâmetros, portanto adicione a opção no meu admin. . Crie essa lógica. 
+
+
+
+A princípio uma estrutura como abaixo: 
+
+Quem recebe: Todos os usuários (FREE, VIP, ADMIN)
+
+Frequência: Toda 5a feira-feira, 9h BRT
+
+Conteúdo:
+
+
+
+Subject: 📬 10 novas vagas remotas esta semana | Prime Jobs EUA Na Prática
+
+
+
+────────────────────────────────────
+
+Olá [Nome],
+
+
+
+Esta semana adicionamos XX novas
+
+remotas em empresas americanas:
+
+
+
+[Card Vaga 1]
+
+[Card Vaga 2]
+
+[Card Vaga 3]
+
+
+
+──── SE FREE ────
+
+🔒 Veja as outras 7 vagas e candidate-se 
+
+fazendo upgrade para VIP
+
+
+
+[Botão: Ver Todas as Vagas →]
+
+─────────────────
+
+
+
+──── SE VIP/Pro/ADMIN ────
+
+[Card Vaga 4]
+
+[Card Vaga 5]
+
+...
+
+[Card Vaga 10]
+
+──────────────────────
+
+
+
+────────────────────────────────────
+
+Não quer receber este digest? 
+
+[Gerenciar preferências]
+
+
+
+
+
+Query para vagas da semana:
+
+
+
+Implementação:
+
+∙ Template HTML responsivo
+
+∙ Opt-out: campo em user_profiles ou settings
+
+
+
+🎭 COMPONENTES REUTILIZÁVEIS
+
+VIPGate
+
+Wrapper que controla acesso baseado em plano.
+
+
+
+Props:
+
+- plan: 'FREE' | 'VIP' | PRO | 'ADMIN'
+
+- children: conteúdo para VIP/ADMIN/PRO
+
+- previewCount?: número de items para FREE
+
+- upgradeMessage?: custom message
+
+
+
+
+
+EmptyState
+
+Estado vazio genérico.
+
+
+
+Props:
+
+- icon: React node
+
+- title: string
+
+- description: string
+
+- action?: { label, href/onClick }
+
+
+
+
+
+JobCard
+
+Card de vaga.
+
+
+
+Props:
+
+- job: Job object
+
+- isLocked: boolean
+
+- showRemoveButton?: boolean (para bookmarks)
+
+- onBookmarkToggle?: callback
+
+
+
+
+
+JobFilters
+
+Barra de filtros completa.
+
+
+
+Props:
+
+- onFilterChange: (filters) => void
+
+- initialFilters?: object
+
+
+
+
+
+UpgradePrompt
+
+Banner/modal de upgrade.
+
+
+
+Props:
+
+- context: 'prime-jobs' | 'job-details' | 'bookmarks'
+
+- jobsHidden?: number
+
+- asModal?: boolean
+
+
+
+
+
+🚀 NAVIGATION & INTEGRATION
+
+Menu Principal
+
+Adicionar item “Prime Jobs” com badge “Hot” discreto ao lado.
+
+Comportamento click:
+
+∙ FREE: vai para /prime-jobs (vê preview de 3 vagas)
+
+∙ VIP/pro/ADMIN: vai para /prime-jobs (vê tudo)
+
+Breadcrumbs
+
+
+
+Home > Prime Jobs
+
+Home > Prime Jobs > [Job Title]
+
+Home > Prime Jobs > Favoritos
+
+
+
+
+
+Meta Tags
+
+
+
+<!-- Dynamic por job -->
+
+<title>[Job Title] - [Company] | Prime Jobs</title>
+
+<meta name="description" content="[primeiros 160 chars da description]">
+
+
+
+<!-- Open Graph -->
+
+<meta property="og:title" content="[Job Title] at [Company]">
+
+<meta property="og:description" content="[excerpt]">
+
+<meta property="og:image" content="[company logo ou fallback]">
+
+<meta property="og:url" content="https://acesso.euanapratica.com/prime-jobs/[id]">
+
+
+
+
+
+🎨 DESIGN SYSTEM
+
+Cores
+
+
+
+Navy (headers): #1e3a8a
+
+Gold (premium badges): #f59e0b
+
+Blue (CTAs): #3b82f6
+
+Green (remote/salary): #10b981
+
+Purple (hybrid): #8b5cf6
+
+Gray (text): #6b7280
+
+Amber (warnings): #f59e0b
+
+
+
+
+
+Typography
+
+
+
+Headings: Inter Bold
+
+Body: Inter Regular
+
+Mono: Para tech tags, código
+
+
+
+
+
+Spacing
+
+
+
+Cards: p-6, gap-6
+
+Sections: py-8, mb-8
+
+Buttons: px-6 py-3
+
+Filters: gap-3
+
+
+
+
+
+Loading States
+
+∙ Skeleton loaders para job cards
+
+∙ Shimmer effect sutil
+
+∙ Manter aspect ratio para evitar layout shift
+
+Animations
+
+
+
+Card hover: translateY(-4px) + shadow
+
+Bookmark click: bounce + fill
+
+Button active: scale(0.98)
+
+Page transitions: fade in
+
+
+
+
+
+Responsive
+
+
+
+Mobile: < 640px → 1 coluna
+
+Tablet: 640-1024px → 2 colunas
+
+Desktop: > 1024px → 3 colunas
+
+
+
+
+
+🧪 EDGE CASES & ERROR HANDLING
+
+Jobs sem dados completos:
+
+∙ Sem logo → placeholder com inicial da empresa
+
+∙ Sem salary → não mostrar badge, excluir de filtro de salary
+
+∙ Sem tech_stack → esconder seção
+
+∙ Sem description → mostrar mensagem “Descrição não disponível”
+
+Network errors:
+
+∙ Toast: “Erro ao carregar vagas. Tente novamente.”
+
+∙ Botão de retry
+
+∙ Não crashar a página
+
+Limite mensal atingido:
+
+∙ Toast: “Você atingiu o limite mensal de aplicações. Próximo reset em [data]”
+
+∙ Botão “Apply” desabilitado com tooltip explicativo
+
+∙ Data de reset: primeiro dia do próximo mês
+
+Link compartilhado (FREE user):
+
+∙ Permitir visualização completa (read-only)
+
+∙ Banner no topo explicando
+
+∙ Botão “Apply” desabilitado com CTA de upgrade
+
+Job deletado/não encontrado:
+
+∙ 404 page customizada
+
+∙ “Esta vaga não está mais disponível”
+
+∙ Botão: “Voltar para Prime Jobs”
+
+Filtros sem resultados:
+
+∙ Contador: “0 vagas encontradas”
+
+∙ Empty state específico
+
+∙ Sugestão: “Tente ajustar os filtros”
+
+
+
+🎤 COPY & MESSAGING
+
+Tons de Voz
+
+∙ Aspiracional mas não arrogante
+
+∙ Direto e útil (sem fluff)
+
+∙ Empático com desafios de trabalho remoto
+
+Headers Principais
+
+
+
+Prime Jobs 💼
+
+Vagas remotas curadas para brasileiros trabalharem em empresas americanas
+
+
+
+Minhas Vagas Favoritas ❤️
+
+Suas oportunidades salvas em um só lugar
+
+
+
+
+
+CTAs
+
+
+
+Primário: "Ver Detalhes →" | "Aplicar Agora →" | "Ver Planos →"
+
+Secundário: "Compartilhar" | "Salvar" | "Limpar Filtros"
+
+
+
+
+
+Empty States
+
+
+
+Sem bookmarks:
+
+"Você ainda não favoritou nenhuma vaga. 
+
+Explore Prime Jobs e salve suas favoritas!"
+
+
+
+Sem resultados:
+
+"Nenhuma vaga encontrada com esses filtros. 
+
+Tente ajustar os critérios ou volte mais tarde!"
+
+
+
+
+
+Error Messages
+
+
+
+Genérico: "Algo deu errado. Tente novamente."
+
+Limite atingido: "Limite mensal atingido. Próximo reset em [data]."
+
+Sem acesso: "Esta feature é exclusiva para membros VIP."
+
+
+
+
+
+📦 DELIVERABLES CHECKLIST
+
+Database:
+
+∙ Tabela job_bookmarks criada com RLS
+
+∙ Tabela job_applications criada com RLS
+
+∙ Tabela user_monthly_usage criada com RLS
+
+∙ Campo prime_jobs_application_limit em subscription_plans
+
+∙ Function check_application_limit() criada
+
+∙ RLS policies testadas
+
+Pages:
+
+∙ /prime-jobs - Lista principal funcionando
+
+∙ /prime-jobs/[id] - Detalhes da vaga
+
+∙ /prime-jobs/bookmarks - Favoritos
+
+Components:
+
+∙ JobCard com estados locked/unlocked
+
+∙ JobFilters completo e funcional
+
+∙ JobDetailsView com todos os elementos
+
+∙ VIPGate implementado
+
+∙ EmptyState reutilizável
+
+∙ UpgradePrompt modal/banner
+
+Funcionalidades:
+
+∙ Controle de acesso (FREE vê 3, VIP, Pro vê tudo)
+
+∙ Sistema de filtros funcionando
+
+∙ Paginação/infinite scroll (VIP/ADMIN)
+
+∙ Bookmarks (adicionar/remover)
+
+∙ Tracking de aplicações com limite mensal
+
+∙ Compartilhamento de links
+
+∙ FREE pode ver detalhes via link mas não aplicar
+
+UX/UI:
+
+∙ Design responsivo (mobile/tablet/desktop)
+
+∙ Loading states (skeletons)
+
+∙ Empty states personalizados
+
+∙ Toast notifications
+
+∙ Hover effects e animações
+
+∙ Accessibility básica
+
+Integration:
+
+∙ Link no menu principal
+
+∙ Breadcrumbs
+
+∙ Meta tags e Open Graph
+
+∙ Email digest (cron via N8N)
+
+
+
+🎬 FINAL VIBE CHECK
+
+Quando tudo estiver pronto, a experiência deve ser:
+
+Para FREE users:
+
+“Wow, essas vagas são incríveis! Consigo ver 3 e elas já são muito boas. Preciso de acesso às outras 200+. Vou considerar seriamente o upgrade.”
+
+Para VIP/Pro users:
+
+“Finalmente! Vagas remotas relevantes, bem filtradas, posso salvar favoritas, e o tracking de aplicações me ajuda a organizar. Valeu a pena o upgrade.”
+
+Para ADMIN:
+
+“Tudo funcionando perfeitamente. Jobs sendo importados, users conseguem acessar, limites estão respeitados. Feature está sólida.”
+
+
+
+Nova vaga = vaga criada nas últimas 48 horas.
+
+Paginação - 20 vagas por página
+
+
+
+Isso é Prime Jobs. ✨
+
+Foco total na experiência de busca e aplicação para vagas. Clean, rápido, intuitivo.
+
+Now go build it. 🚀​​​​​​​​​​​​​​​​
+

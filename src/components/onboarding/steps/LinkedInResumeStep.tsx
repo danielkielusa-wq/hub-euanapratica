@@ -36,7 +36,6 @@ export function LinkedInResumeStep({ data, onChange, errors }: LinkedInResumeSte
           .update({ resume_url: path })
           .eq('id', user.id);
       } catch (error) {
-        console.error('Error saving resume to profile:', error);
       }
     } else {
       setUploadedFileName(null);

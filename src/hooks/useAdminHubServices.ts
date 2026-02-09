@@ -61,7 +61,6 @@ export function useCreateHubService() {
       toast.success('Produto criado com sucesso!');
     },
     onError: (error) => {
-      console.error('Error creating hub service:', error);
       toast.error('Erro ao criar produto');
     },
   });
@@ -119,7 +118,6 @@ export function useUpdateHubService() {
       toast.success('Produto atualizado com sucesso!');
     },
     onError: (error) => {
-      console.error('Error updating hub service:', error);
       toast.error('Erro ao atualizar produto');
     },
   });
@@ -143,7 +141,6 @@ export function useDeleteHubService() {
       toast.success('Produto removido com sucesso!');
     },
     onError: (error) => {
-      console.error('Error deleting hub service:', error);
       toast.error('Erro ao remover produto');
     },
   });

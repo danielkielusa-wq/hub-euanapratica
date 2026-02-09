@@ -1,0 +1,68 @@
+✅ Sistema de Webhook de Leads Configurado com Sucesso!
+Implementei um sistema completo e configurável de webhooks para notificar o n8n sobre novos leads. Aqui está o resumo:
+
+🎯 O que foi implementado:
+1. Sistema de Webhook Automático
+✅ Trigger PostgreSQL que dispara em toda inserção na tabela career_evaluations
+✅ Função notify_new_lead() que envia POST via pg_net para o n8n
+✅ Payload completo com todos os campos do lead + report_link
+✅ Link do relatório sempre começa com https://hub.euanapratica.com
+2. Interface de Administração
+✅ Nova aba "Relatórios de Carreira" em Admin → Configurações
+✅ Configuração da URL do webhook (sem hardcode!)
+✅ Configuração da URL base dos relatórios
+✅ Switch para ativar/desativar webhooks
+✅ Timestamps de última atualização
+3. Configurações Dinâmicas
+Todas as configurações ficam no app_configs:
+
+lead_webhook_url - URL do webhook n8n
+lead_webhook_enabled - true/false para ativar/desativar
+lead_report_base_url - URL base para gerar links
+4. Documentação Completa
+📄 docs/LEAD_WEBHOOK.md - Documentação técnica detalhada
+📄 docs/LEAD_WEBHOOK_SETUP.md - Guia de configuração rápida
+📄 test_webhook.sql - Script de teste
+🚀 Como usar:
+Passo 1: Configurar via Admin
+Acesse Admin → Configurações
+Clique na aba "Relatórios de Carreira"
+Configure:
+URL do Webhook: https://n8n.sapunplugged.com/webhook/7df09015-3dc7-45f8-8390-54a7f3180191
+URL Base dos Relatórios: https://hub.euanapratica.com
+Webhook Ativo: ON
+Clique em "Salvar Configurações"
+Passo 2: Testar
+Execute o test_webhook.sql no Supabase SQL Editor para inserir um lead de teste e verificar se o webhook foi disparado.
+
+Passo 3: Configurar n8n
+Configure o workflow do n8n para receber o POST e processar o lead (enviar email, adicionar ao CRM, etc.)
+
+📦 Payload enviado ao n8n:
+
+{
+  "id": "uuid",
+  "name": "Nome do Lead",
+  "email": "lead@email.com",
+  "phone": "+5511999999999",
+  "report_link": "https://hub.euanapratica.com/report/uuid-token",
+  // ... todos os outros campos do lead
+}
+✨ Funciona automaticamente para:
+✅ Leads importados via planilha CSV
+✅ Leads inseridos manualmente no Supabase
+✅ Leads inseridos via API
+✅ Qualquer INSERT na tabela career_evaluations
+📚 Arquivos criados/modificados:
+Migrations:
+
+supabase/migrations/20260209000000_lead_webhook_trigger.sql - Trigger inicial
+supabase/migrations/20260209100000_lead_webhook_config.sql - Configs dinâmicas
+Admin UI:
+
+src/pages/admin/AdminSettings.tsx - Nova aba "Relatórios de Carreira"
+Documentação:
+
+docs/LEAD_WEBHOOK.md - Documentação técnica
+docs/LEAD_WEBHOOK_SETUP.md - Guia rápido
+test_webhook.sql - Script de teste

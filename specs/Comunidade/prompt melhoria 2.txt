@@ -1,0 +1,59 @@
+Aqui estão 3 pilares de melhoria (UX Trends + Gamification + Busca) para transformar essa tela, mantendo o estilo "Silicon Valley Startup":
+1. UX & Layout: "Bento Social" e Abas Inteligentes
+Em vez de uma lista infinita simples, vamos adotar um layout mais dinâmico e segmentado.
+Abas de Contexto ("For You"):
+Atualmente é comum ter apenas "Feed". A tendência (tipo Twitter/X ou LinkedIn) é ter: "Para Você" (Algoritmo/Trending), "Recentes" e "Sem Resposta" (ótimo para quem quer ganhar pontos de ajuda).
+Cards com "Rich Preview":
+Se o aluno posta um link de vaga ou do LinkedIn, o card deve expandir automaticamente um preview bonito (imagem, título, domínio), não apenas um link azul.
+Visual Hierarchy (Destaque):
+Posts "Fixados" ou "Trending" (com muitos likes/comentários recentes) devem ter um background sutilmente diferente (ex: um gradiente bem leve ou uma borda brilhante) para quebrar a monotonia da lista.
+2. A "Super Busca" (Search & Discovery)
+Você pediu um campo de pesquisa, mas podemos fazer melhor. Vamos criar uma "Command Bar" no topo da lista de posts.
+Localização: Logo acima dos filtros, ocupando a largura total da coluna do feed.
+Comportamento:
+Não apenas texto. Ao clicar, ela sugere: "Filtrar por Vagas", "Filtrar por Vistos", "Posts de Mentores".
+Busca em tempo real: Conforme digita, ele já filtra o feed sem precisar dar "Enter" (Instant Search).
+UX Text: O placeholder não deve ser "Buscar...", mas sim algo convidativo: "Sobre qual empresa ou assunto você quer saber hoje?"
+3. Gamification 2.0: "Quests" e Recompensas Visuais
+A gamificação atual está numa "pílula" no topo. Vamos integrá-la à experiência de uso (Behavioral Design).
+Barra de XP "Sticky":
+Ao rolar a página, o progresso do usuário fica fixo ou minimizado no topo.
+Feedback Visual: Quando o usuário der um like ou comentar, partículas (confetes sutis ou faíscas) saem do botão e voam para a barra de XP dele. Isso dá uma satisfação imediata (Dopamine hit).
+Side Quests (Missões Diárias):
+Na barra lateral, abaixo do Ranking, adicionar um card "Missões de Hoje":
+🔘 Responder 1 dúvida (0/1) -> +50 XP
+🔘 Ler 3 artigos (1/3) -> +20 XP
+Isso guia o comportamento do usuário: "Não sei o que postar, mas vou responder alguém para bater a meta".
+Badges no Avatar:
+Nos posts, a borda do avatar do usuário muda de cor conforme o nível dele (Bronze, Prata, Ouro, Diamante). Isso gera autoridade visual imediata.
+Proposta Visual (Especificação para a próxima etapa)
+Imagine a tela dividida assim:
+Topo (Header):
+Título "Comunidade".
+Uma barra de busca grande, estilo Input do ChatGPT/Perplexity, convidativa.
+Coluna Esquerda (Navegação Rápida):
+Canais (Geral, Vagas, Off-topic).
+Filtro rápido: "Apenas Mentores" (Toggle).
+Coluna Central (Feed):
+Abas no topo: Em Alta | Novos | Ajude Alguém (Sem resposta).
+Input de Post: "No que você está pensando?" (Ao clicar, abre o modal).
+Os Cards: Design limpo, muito espaço em branco (whitespace), botões de ação (Like/Comment) com contadores visíveis e ícones que mudam de estado (outline -> filled color).
+Coluna Direita (Gamification & Social):
+Card "Meu Nível": Avatar grande com anel de progresso circular em volta.
+Card "Daily Quests": Checklist interativo.
+Card "Top Helpers da Semana": Ranking de quem mais ajudou (não apenas quem mais postou).
+
+Alem disso, uma tatica nova de upsell:
+
+No marketing tradicional, você empurra um produto. No Upsell Contextual, você oferece uma solução no momento exato em que a "dor" do usuário está exposta.
+Se um aluno posta sobre "Medo de entrevista técnica", e o sistema sugere discretamente "Mock Interview VIP", a conversão é altíssima porque a relevância é imediata.
+A Estratégia Visual "Discreta"
+Para não parecer um anúncio chato (o que geraria "cegueira de banner"), vamos desenhar isso como um "Insight do Hub" ou "Recurso Relacionado".
+Visual: Um card pequeno, com fundo bem suave (indigo ou roxo claro, remetendo a IA/Magia), inserido logo após o texto do post e antes dos botões de like.
+Microcopy: Em vez de "Compre agora", usamos "Acelere isso com..." ou "Recomendado para este tópico".
+Ícone: Uma varinha mágica (Sparkles) ou um raio (Zap) para indicar inteligência do sistema.
+
+Esta faltando tb o box no lado direito chamado "Tem uma ideia" Sugerir topicos para as proximas lives ou convidados especiais" - enviar sugestao.
+Falta tb proximos eventos - onde se o usuario nao tiver o plano necessario para hotseats, devera ser convidado para upsell plano.
+
+Arquivos: 

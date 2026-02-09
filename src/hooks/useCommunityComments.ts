@@ -3,9 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { CommunityComment } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export function useCommunityComments(postId: string) {
   const { user } = useAuth();
+  const { logEvent } = useAnalytics();
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,7 +19,7 @@ export function useCommunityComments(postId: string) {
     }
 
     if (!postId) {
-      toast({ title: 'Post invÃ¡lido', variant: 'destructive' });
+      toast({ title: 'Post inválido', variant: 'destructive' });
       return null;
     }
 
@@ -79,7 +81,6 @@ export function useCommunityComments(postId: string) {
         setComments(data || []);
       }
     } catch (err) {
-      console.error('Error fetching comments:', err);
     } finally {
       setIsLoading(false);
     }
@@ -112,11 +113,20 @@ export function useCommunityComments(postId: string) {
 
       if (error) throw error;
 
+      logEvent({
+        event_type: 'community_comment_created',
+        entity_type: 'community_post',
+        entity_id: postId,
+        metadata: {
+          comment_id: data.id,
+          parent_id: parentId || null
+        }
+      });
+
       await fetchComments();
       toast({ title: 'Comentário adicionado!' });
       return data;
     } catch (err: any) {
-      console.error('Error creating comment:', err);
       toast({ title: 'Erro ao comentar', description: err.message, variant: 'destructive' });
       return null;
     }
@@ -136,6 +146,15 @@ export function useCommunityComments(postId: string) {
         .eq('comment_id', commentId)
         .single();
 
+      logEvent({
+        event_type: 'community_comment_like',
+        entity_type: 'community_comment',
+        entity_id: commentId,
+        metadata: {
+          action: existing ? 'unlike' : 'like'
+        }
+      });
+
       if (existing) {
         await supabase
           .from('community_likes')
@@ -152,7 +171,6 @@ export function useCommunityComments(postId: string) {
 
       await fetchComments();
     } catch (err: any) {
-      console.error('Error toggling comment like:', err);
     }
   };
 

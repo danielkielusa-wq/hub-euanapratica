@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_configs: {
+        Row: {
+          id: string
+          name: string
+          api_key: string
+          base_url: string | null
+          credentials: Json | null
+          parameters: Json | null
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          api_key: string
+          base_url?: string | null
+          credentials?: Json | null
+          parameters?: Json | null
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          api_key?: string
+          base_url?: string | null
+          credentials?: Json | null
+          parameters?: Json | null
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       app_configs: {
         Row: {
           description: string | null
@@ -943,6 +985,90 @@ export type Database = {
         }
         Relationships: []
       }
+      jobs: {
+        Row: {
+          company: string
+          created_at: string | null
+          description: string | null
+          employment_type: string | null
+          error: string | null
+          experience_level: string | null
+          id: string
+          is_brazil_friendly: boolean | null
+          job_category: string | null
+          location: string | null
+          location_restrictions: string | null
+          logo_url: string | null
+          posted_at: string | null
+          remote_type: string | null
+          salary_currency: string | null
+          salary_max: number | null
+          salary_min: number | null
+          salary_type: string | null
+          source: string
+          tags: string[] | null
+          tech_stack: string[] | null
+          timezone_requirements: string | null
+          title: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          company: string
+          created_at?: string | null
+          description?: string | null
+          employment_type?: string | null
+          error?: string | null
+          experience_level?: string | null
+          id?: string
+          is_brazil_friendly?: boolean | null
+          job_category?: string | null
+          location?: string | null
+          location_restrictions?: string | null
+          logo_url?: string | null
+          posted_at?: string | null
+          remote_type?: string | null
+          salary_currency?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          salary_type?: string | null
+          source: string
+          tags?: string[] | null
+          tech_stack?: string[] | null
+          timezone_requirements?: string | null
+          title: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          company?: string
+          created_at?: string | null
+          description?: string | null
+          employment_type?: string | null
+          error?: string | null
+          experience_level?: string | null
+          id?: string
+          is_brazil_friendly?: boolean | null
+          job_category?: string | null
+          location?: string | null
+          location_restrictions?: string | null
+          logo_url?: string | null
+          posted_at?: string | null
+          remote_type?: string | null
+          salary_currency?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          salary_type?: string | null
+          source?: string
+          tags?: string[] | null
+          tech_stack?: string[] | null
+          timezone_requirements?: string | null
+          title?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       material_downloads: {
         Row: {
           downloaded_at: string | null
@@ -1653,6 +1779,51 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          idempotency_key: string | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          source: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          idempotency_key?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_audit_logs: {
         Row: {
           action: string
@@ -1989,9 +2160,83 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      brazil_friendly_jobs: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          location_restrictions: string | null
+          posted_at: string | null
+          remote_type: string | null
+          source: string | null
+          tags: string[] | null
+          timezone_requirements: string | null
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          location_restrictions?: string | null
+          posted_at?: string | null
+          remote_type?: string | null
+          source?: string | null
+          tags?: string[] | null
+          timezone_requirements?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          location_restrictions?: string | null
+          posted_at?: string | null
+          remote_type?: string | null
+          source?: string | null
+          tags?: string[] | null
+          timezone_requirements?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      admin_update_api_credentials: {
+        Args: { p_api_key: string; p_credentials_json: Json }
+        Returns: undefined
+      }
+      check_api_credentials_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          api_key: string
+          name: string
+          has_credentials: boolean
+          is_active: boolean
+        }[]
+      }
+      decrypt_credential: {
+        Args: { encrypted_text: string }
+        Returns: string
+      }
+      encrypt_credential: {
+        Args: { plaintext: string }
+        Returns: string
+      }
+      test_encryption: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          original: string
+          encrypted: string
+          decrypted: string
+          success: boolean
+        }[]
+      }
       admin_change_user_plan: {
         Args: { p_new_plan_id: string; p_user_id: string }
         Returns: boolean
@@ -2016,6 +2261,8 @@ export type Database = {
         Args: { _session_id: string; _user_id: string }
         Returns: boolean
       }
+      check_job_exists: { Args: { job_url: string }; Returns: boolean }
+      cleanup_old_jobs: { Args: never; Returns: Json }
       get_community_ranking: {
         Args: { p_limit?: number }
         Returns: {
@@ -2089,6 +2336,7 @@ export type Database = {
         Returns: boolean
       }
       record_curriculo_usage: { Args: { p_user_id: string }; Returns: boolean }
+      record_analytics_event: { Args: { p_event_type: string; p_entity_type?: string | null; p_entity_id?: string | null; p_metadata?: Json | null }; Returns: boolean }
     }
     Enums: {
       access_level: "public" | "restricted"
@@ -2302,3 +2550,5 @@ export const Constants = {
     },
   },
 } as const
+
+

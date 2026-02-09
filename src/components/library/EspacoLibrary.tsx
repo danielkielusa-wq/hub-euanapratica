@@ -171,7 +171,6 @@ export function EspacoLibrary({ espacoId, espacoName, userRole }: EspacoLibraryP
       setUploadDialogOpen(false);
       toast.success('Material enviado com sucesso!');
     } catch (error) {
-      console.error('Erro no upload:', error);
       toast.error('Erro ao enviar material');
     } finally {
       setIsUploading(false);

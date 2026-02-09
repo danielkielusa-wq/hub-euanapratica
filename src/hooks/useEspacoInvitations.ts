@@ -241,7 +241,6 @@ export function useInvitationByToken(token: string | null) {
         .rpc('get_invitation_by_token', { _token: token });
 
       if (error) {
-        console.error('Error fetching invitation:', error);
         return null;
       }
 

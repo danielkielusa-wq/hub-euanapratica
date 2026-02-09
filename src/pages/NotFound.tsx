@@ -46,7 +46,6 @@ const NotFound = () => {
 
   // Log de erro para debugging (opcional: enviar para backend)
   useEffect(() => {
-    console.error(
       "404 Error: User tried to access non-existent route:",
       location.pathname,
       "User:", user?.email || 'anonymous'

@@ -97,7 +97,6 @@ export function MyFilesTab({ espacoId }: MyFilesTabProps) {
       
       toast.success(`${acceptedFiles.length} arquivo(s) enviado(s) com sucesso!`);
     } catch (error) {
-      console.error('Upload error:', error);
       toast.error('Erro ao enviar arquivo(s)');
     } finally {
       setIsUploading(false);

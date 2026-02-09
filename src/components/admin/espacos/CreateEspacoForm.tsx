@@ -102,7 +102,6 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
       
       navigate(isMentor ? '/mentor/espacos' : '/admin/espacos');
     } catch (error) {
-      console.error('Error creating espaco:', error);
       toast.error('Erro ao criar espaço');
     } finally {
       setIsSubmitting(false);

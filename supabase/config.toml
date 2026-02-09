@@ -26,3 +26,18 @@ verify_jwt = false
 
 [functions.create-lead-user]
 verify_jwt = false
+
+[functions.send-booking-confirmation]
+verify_jwt = false
+
+[functions.send-booking-cancelled]
+verify_jwt = false
+
+[functions.send-booking-rescheduled]
+verify_jwt = false
+
+[functions.send-booking-reminder]
+verify_jwt = false
+
+[functions.send-prime-jobs-digest]
+verify_jwt = false

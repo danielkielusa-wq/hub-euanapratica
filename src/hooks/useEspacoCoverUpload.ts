@@ -62,7 +62,6 @@ export function useEspacoCoverUpload() {
       
       return publicUrlData.publicUrl;
     } catch (err: any) {
-      console.error('Error uploading cover:', err);
       toast.error('Erro ao enviar imagem: ' + (err.message || 'Tente novamente'));
       return null;
     } finally {
@@ -88,7 +87,6 @@ export function useEspacoCoverUpload() {
       toast.success('Imagem removida');
       return true;
     } catch (err: any) {
-      console.error('Error deleting cover:', err);
       toast.error('Erro ao remover imagem');
       return false;
     }

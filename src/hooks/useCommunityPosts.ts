@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CommunityPost, PostFilter } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface UseCommunityPostsOptions {
   categoryId?: string | null;
@@ -13,6 +14,7 @@ interface UseCommunityPostsOptions {
 export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
   const { categoryId, filter = 'recent', limit = 20 } = options;
   const { user } = useAuth();
+  const { logEvent } = useAnalytics();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +76,6 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
         setPosts(data || []);
       }
     } catch (err: any) {
-      console.error('Error fetching posts:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -110,10 +111,17 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
       if (error) throw error;
 
       setPosts(prev => [{ ...data, user_has_liked: false }, ...prev]);
+      logEvent({
+        event_type: 'community_post_created',
+        entity_type: 'community_post',
+        entity_id: data.id,
+        metadata: {
+          category_id: categoryId || null
+        }
+      });
       toast({ title: 'Discussão criada com sucesso!' });
       return data;
     } catch (err: any) {
-      console.error('Error creating post:', err);
       toast({ title: 'Erro ao criar discussão', description: err.message, variant: 'destructive' });
       return null;
     }
@@ -129,6 +137,15 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
     if (!post) return;
 
     const isLiked = post.user_has_liked;
+
+    logEvent({
+      event_type: 'community_post_like',
+      entity_type: 'community_post',
+      entity_id: postId,
+      metadata: {
+        action: isLiked ? 'unlike' : 'like'
+      }
+    });
 
     // Optimistic update
     setPosts(prev => prev.map(p => 
@@ -171,7 +188,6 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
             }
           : p
       ));
-      console.error('Error toggling like:', err);
       toast({ title: 'Erro ao curtir', description: err.message, variant: 'destructive' });
     }
   };
@@ -188,7 +204,6 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
       setPosts(prev => prev.filter(p => p.id !== postId));
       toast({ title: 'Discussão removida!' });
     } catch (err: any) {
-      console.error('Error deleting post:', err);
       toast({ title: 'Erro ao remover', description: err.message, variant: 'destructive' });
     }
   };
