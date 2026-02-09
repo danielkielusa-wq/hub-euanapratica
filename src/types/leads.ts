@@ -42,6 +42,9 @@ export interface CareerEvaluation {
   report_content: string;
   formatted_report?: string;
   formatted_at?: string;
+  processing_status?: 'pending' | 'processing' | 'completed' | 'error';
+  processing_error?: string;
+  processing_started_at?: string;
   access_token: string;
   first_accessed_at?: string;
   access_count: number;

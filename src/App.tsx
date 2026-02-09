@@ -49,6 +49,7 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import AdminTictoSimulator from "./pages/admin/AdminTictoSimulator";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
 import CurriculoReport from "./pages/curriculo/CurriculoReport";
+import SavedReportPage from "./pages/curriculo/SavedReportPage";
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
 import ServiceCatalog from "./pages/hub/ServiceCatalog";
@@ -465,7 +466,14 @@ function AppRoutes() {
           </ServiceGuard>
         </ProtectedRoute>
       } />
-      
+      <Route path="/resumepass/report/:id" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceGuard serviceRoute="/curriculo">
+            <SavedReportPage />
+          </ServiceGuard>
+        </ProtectedRoute>
+      } />
+
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -129,6 +129,7 @@ export function useLeadImport() {
     }
 
     const batchId = crypto.randomUUID();
+    const processedEvaluationIds: string[] = [];
 
     for (const lead of leads.filter(l => l.isValid)) {
       try {
@@ -205,6 +206,9 @@ export function useLeadImport() {
           report_content: lead.data.relatorio.trim(),
           formatted_report: null,
           formatted_at: null,
+          processing_status: 'pending' as const,
+          processing_error: null,
+          processing_started_at: null,
           imported_by: user.id,
           import_batch_id: batchId
         };
@@ -223,22 +227,42 @@ export function useLeadImport() {
           continue;
         }
 
-        const { error: evalError } = existingEvaluation
-          ? await supabase
-              .from('career_evaluations')
-              .update(evaluationPayload)
-              .eq('id', existingEvaluation.id)
-          : await supabase
-              .from('career_evaluations')
-              .insert(evaluationPayload);
+        if (existingEvaluation) {
+          const { error: evalError } = await supabase
+            .from('career_evaluations')
+            .update(evaluationPayload)
+            .eq('id', existingEvaluation.id);
 
-        if (evalError) {
-          errors.push({ row: lead.row, email, message: evalError.message });
+          if (evalError) {
+            errors.push({ row: lead.row, email, message: evalError.message });
+          } else {
+            processedEvaluationIds.push(existingEvaluation.id);
+          }
+        } else {
+          const { data: insertedData, error: evalError } = await supabase
+            .from('career_evaluations')
+            .insert(evaluationPayload)
+            .select('id')
+            .single();
+
+          if (evalError) {
+            errors.push({ row: lead.row, email, message: evalError.message });
+          } else if (insertedData) {
+            processedEvaluationIds.push(insertedData.id);
+          }
         }
       } catch (error: any) {
         errors.push({ row: lead.row, email: lead.data.email, message: error.message });
       }
     }
+
+    // Fire-and-forget: trigger report pre-processing for updated evaluations
+    // (New inserts are handled by the DB trigger; this covers updates/re-imports)
+    processedEvaluationIds.forEach(id => {
+      supabase.functions.invoke('format-lead-report', {
+        body: { evaluationId: id }
+      }).catch(() => {}); // Silent - DB trigger is the primary path
+    });
 
     // Add validation errors
     leads.filter(l => !l.isValid).forEach(lead => {

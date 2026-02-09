@@ -54,12 +54,14 @@ export function LeadsTable() {
         variant: 'destructive' 
       });
     } else if (data?.content) {
-      setEvaluations(prev => prev.map(e => 
-        e.id === id 
-          ? { 
-              ...e, 
-              formatted_report: JSON.stringify(data.content), 
-              formatted_at: new Date().toISOString() 
+      setEvaluations(prev => prev.map(e =>
+        e.id === id
+          ? {
+              ...e,
+              formatted_report: JSON.stringify(data.content),
+              formatted_at: new Date().toISOString(),
+              processing_status: 'completed' as const,
+              processing_error: undefined
             }
           : e
       ));
@@ -194,7 +196,7 @@ export function LeadsTable() {
               <TableHead>Email</TableHead>
               <TableHead>Ãrea</TableHead>
               <TableHead>InglÃªs</TableHead>
-              <TableHead>Formatado</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Acessos</TableHead>
               <TableHead>Importado em</TableHead>
               <TableHead className="w-[140px]">AÃ§Ãµes</TableHead>
@@ -212,9 +214,15 @@ export function LeadsTable() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={evaluation.formatted_report ? 'default' : 'secondary'}>
-                    {evaluation.formatted_report ? 'Sim' : 'NÃ£o'}
-                  </Badge>
+                  {evaluation.processing_status === 'completed' ? (
+                    <Badge variant="default">Pronto</Badge>
+                  ) : evaluation.processing_status === 'processing' ? (
+                    <Badge variant="outline" className="animate-pulse">Processando...</Badge>
+                  ) : evaluation.processing_status === 'error' ? (
+                    <Badge variant="destructive" title={evaluation.processing_error || ''}>Erro</Badge>
+                  ) : (
+                    <Badge variant="secondary">Pendente</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={evaluation.access_count > 0 ? 'default' : 'secondary'}>
