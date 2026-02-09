@@ -113,7 +113,6 @@ export default function Onboarding() {
         });
         
         if (error) {
-          console.error('Error checking phone:', error);
         } else if (!isAvailable) {
           newErrors.phone = 'Este número de telefone já está cadastrado no sistema.';
         }
@@ -155,7 +154,6 @@ export default function Onboarding() {
       await updateOnboarding.mutateAsync(dataToSave);
       setLastSaved(new Date());
     } catch (error) {
-      console.error('Error saving progress:', error);
       toast.error('Erro ao salvar. Tentando novamente...');
     } finally {
       setIsSaving(false);
@@ -200,7 +198,6 @@ export default function Onboarding() {
       toast.success('Perfil configurado com sucesso!');
       navigate(getDashboardPath(), { replace: true });
     } catch (error) {
-      console.error('Error completing onboarding:', error);
       toast.error('Erro ao finalizar. Tente novamente.');
     }
   }, [saveProgress, completeOnboarding, navigate, getDashboardPath]);

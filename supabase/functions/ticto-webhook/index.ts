@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,13 +48,14 @@ serve(async (req) => {
     });
 
     // 2. Validate token - can come from body OR header
-    const expectedToken = Deno.env.get("TICTO_SECRET_KEY");
-    const receivedToken = payload.token || 
-                          req.headers.get("X-Ticto-Token") || 
+    const tictoConfig = await getApiConfig("ticto_webhook");
+    const expectedToken = tictoConfig.credentials.secret_key;
+    const receivedToken = payload.token ||
+                          req.headers.get("X-Ticto-Token") ||
                           req.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!expectedToken) {
-      console.error("TICTO_SECRET_KEY not configured");
+      console.error("Ticto secret key not configured");
       return new Response(JSON.stringify({ error: "Webhook not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

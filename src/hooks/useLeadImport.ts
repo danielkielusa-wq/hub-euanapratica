@@ -157,39 +157,80 @@ export function useLeadImport() {
           });
 
           if (createError || !newUser?.user_id) {
-            errors.push({ row: lead.row, email, message: createError?.message || 'Erro ao criar usuário' });
+            let errorMessage = createError?.message || 'Erro ao criar usuário';
+
+            const contextBody = createError?.context?.body;
+            if (contextBody) {
+              try {
+                const parsed = JSON.parse(contextBody);
+                if (parsed?.error) {
+                  errorMessage = parsed.error;
+                }
+              } catch {
+                // Ignore JSON parse errors and keep default message
+              }
+            }
+
+            errors.push({ row: lead.row, email, message: errorMessage });
             continue;
           }
+
           userId = newUser.user_id;
-          newUsersCreated++;
+          if (newUser.existing) {
+            reportsLinkedToExisting++;
+          } else {
+            newUsersCreated++;
+          }
         }
 
-        // Insert career evaluation
-        const { error: evalError } = await supabase
+        const evaluationPayload = {
+          user_id: userId,
+          name: lead.data.Nome.trim(),
+          email,
+          phone: lead.data.telefone?.trim() || null,
+          area: lead.data.Area?.trim() || null,
+          atuacao: lead.data['Atuação']?.trim() || null,
+          trabalha_internacional: lead.data['trabalha internacional']?.toLowerCase() === 'sim',
+          experiencia: lead.data.experiencia?.trim() || null,
+          english_level: lead.data.Englishlevel?.trim() || null,
+          objetivo: lead.data.objetivo?.trim() || null,
+          visa_status: lead.data.VisaStatus?.trim() || null,
+          timeline: lead.data.timeline?.trim() || null,
+          family_status: lead.data.FamilyStatus?.trim() || null,
+          income_range: lead.data.incomerange?.trim() || null,
+          investment_range: lead.data['investment range']?.trim() || null,
+          impediment: lead.data.impediment?.trim() || null,
+          impediment_other: lead.data.impedmentother?.trim() || null,
+          main_concern: lead.data['main concern']?.trim() || null,
+          report_content: lead.data.relatorio.trim(),
+          formatted_report: null,
+          formatted_at: null,
+          imported_by: user.id,
+          import_batch_id: batchId
+        };
+
+        // Upsert by email: keep a single report per email
+        const { data: existingEvaluation, error: existingEvalError } = await supabase
           .from('career_evaluations')
-          .insert({
-            user_id: userId,
-            name: lead.data.Nome.trim(),
-            email,
-            phone: lead.data.telefone?.trim() || null,
-            area: lead.data.Area?.trim() || null,
-            atuacao: lead.data.Atuação?.trim() || null,
-            trabalha_internacional: lead.data['trabalha internacional']?.toLowerCase() === 'sim',
-            experiencia: lead.data.experiencia?.trim() || null,
-            english_level: lead.data.Englishlevel?.trim() || null,
-            objetivo: lead.data.objetivo?.trim() || null,
-            visa_status: lead.data.VisaStatus?.trim() || null,
-            timeline: lead.data.timeline?.trim() || null,
-            family_status: lead.data.FamilyStatus?.trim() || null,
-            income_range: lead.data.incomerange?.trim() || null,
-            investment_range: lead.data['investment range']?.trim() || null,
-            impediment: lead.data.impediment?.trim() || null,
-            impediment_other: lead.data.impedmentother?.trim() || null,
-            main_concern: lead.data['main concern']?.trim() || null,
-            report_content: lead.data.relatorio.trim(),
-            imported_by: user.id,
-            import_batch_id: batchId
-          });
+          .select('id')
+          .eq('email', email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingEvalError) {
+          errors.push({ row: lead.row, email, message: existingEvalError.message });
+          continue;
+        }
+
+        const { error: evalError } = existingEvaluation
+          ? await supabase
+              .from('career_evaluations')
+              .update(evaluationPayload)
+              .eq('id', existingEvaluation.id)
+          : await supabase
+              .from('career_evaluations')
+              .insert(evaluationPayload);
 
         if (evalError) {
           errors.push({ row: lead.row, email, message: evalError.message });

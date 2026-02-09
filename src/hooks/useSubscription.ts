@@ -69,7 +69,6 @@ export function useSubscription(): UseSubscriptionReturn {
         .rpc('get_user_quota', { p_user_id: user.id });
 
       if (rpcError) {
-        console.error('Error fetching quota:', rpcError);
         setError('Erro ao buscar informações de quota');
         return;
       }
@@ -111,7 +110,6 @@ export function useSubscription(): UseSubscriptionReturn {
         });
       }
     } catch (err) {
-      console.error('Subscription fetch error:', err);
       setError('Erro ao carregar assinatura');
     } finally {
       setIsLoading(false);
@@ -127,7 +125,6 @@ export function useSubscription(): UseSubscriptionReturn {
         .rpc('record_curriculo_usage', { p_user_id: user.id });
 
       if (rpcError) {
-        console.error('Error recording usage:', rpcError);
         return false;
       }
 
@@ -135,7 +132,6 @@ export function useSubscription(): UseSubscriptionReturn {
       await fetchQuota();
       return true;
     } catch (err) {
-      console.error('Record usage error:', err);
       return false;
     }
   }, [fetchQuota]);
@@ -163,7 +159,6 @@ export function useSubscription(): UseSubscriptionReturn {
           : DEFAULT_FEATURES,
       }));
     } catch (err) {
-      console.error('Error fetching plans:', err);
       return [];
     }
   }, []);

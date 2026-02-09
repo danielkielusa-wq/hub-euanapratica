@@ -32,7 +32,6 @@ export default function ForgotPassword() {
       });
 
       if (resetError) {
-        console.error('Password reset error:', resetError);
         // Não revelar se o email existe ou não por segurança
         // Sempre mostrar sucesso para evitar enumeração de emails
       }
@@ -41,7 +40,6 @@ export default function ForgotPassword() {
       setIsSuccess(true);
       toast.success('Email de recuperação enviado!');
     } catch (err) {
-      console.error('Unexpected error:', err);
       setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);

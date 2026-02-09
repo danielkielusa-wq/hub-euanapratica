@@ -61,7 +61,6 @@ export function useAdminPlans() {
 
       setPlans(mappedPlans);
     } catch (err) {
-      console.error('Error fetching plans:', err);
       toast({
         title: 'Erro ao carregar planos',
         description: 'Não foi possível buscar os planos.',
@@ -102,7 +101,6 @@ export function useAdminPlans() {
       // Refresh plans
       await fetchPlans();
     } catch (err) {
-      console.error('Error updating plan:', err);
       toast({
         title: 'Erro ao salvar',
         description: 'Não foi possível atualizar o plano.',

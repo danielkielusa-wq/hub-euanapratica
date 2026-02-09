@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,9 +24,38 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get OpenAI config from database
+    const openaiConfig = await getApiConfig("openai_api");
+
+    // Fetch evaluation first
+    const { data: evaluation, error: evalError } = await supabase
+      .from("career_evaluations")
+      .select("*")
+      .eq("id", evaluationId)
+      .maybeSingle();
+
+    if (evalError || !evaluation) {
+      return new Response(
+        JSON.stringify({ error: "Relatório não encontrado" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Return cached report if available and refresh not forced
+    if (!forceRefresh && evaluation.formatted_report) {
+      try {
+        const cached = JSON.parse(evaluation.formatted_report);
+        return new Response(
+          JSON.stringify({ content: cached, cached: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch {
+        // Fall through and regenerate if cache is invalid
+      }
+    }
 
     // Return raw content if no AI key
     if (!openaiApiKey) {
@@ -247,10 +277,10 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
       }
     };
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const aiResponse = await fetch(`${openaiConfig.base_url}/responses`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
+        Authorization: `Bearer ${openaiConfig.credentials.api_key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

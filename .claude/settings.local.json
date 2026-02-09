@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /b c:Userskieldenphub_freshsupabasemigrations)",
+      "Bash(npx supabase migration:*)",
+      "Bash(supabase migration repair:*)",
+      "Bash(supabase db push:*)",
+      "Bash(supabase db execute:*)",
+      "Bash(supabase db dump:*)",
+      "Bash(supabase projects:*)",
+      "Bash(supabase inspect:*)",
+      "Bash(supabase db lint:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(for f in supabase/migrations/20260206124700_drop_analytics_audit_trigger.sql supabase/migrations/20260206130000_backfill_audit_events.sql supabase/migrations/20260206170000_add_analytics_events.sql)",
+      "Bash(do if hexdump -C \"$f\")",
+      "Bash(then echo \"BOM found: $f\")",
+      "Bash(else echo \"OK: $f\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(test_webhook.sql << 'EOF'\n-- Teste do webhook de novos leads\n-- IMPORTANTE: Este teste insere um lead de teste real no banco de dados\n\nDO $\nDECLARE\n  test_user_id UUID;\n  test_lead_id UUID;\nBEGIN\n  -- Pegar um usuário existente para teste \\(admin\\)\n  SELECT id INTO test_user_id\n  FROM profiles\n  WHERE email LIKE '%admin%'\n  OR has_role\\(id, 'admin'\\)\n  LIMIT 1;\n\n  IF test_user_id IS NULL THEN\n    RAISE EXCEPTION 'Nenhum usuário admin encontrado para teste';\n  END IF;\n\n  -- Inserir lead de teste\n  INSERT INTO career_evaluations \\(\n    user_id,\n    name,\n    email,\n    phone,\n    area,\n    atuacao,\n    trabalha_internacional,\n    experiencia,\n    english_level,\n    objetivo,\n    visa_status,\n    timeline,\n    family_status,\n    income_range,\n    investment_range,\n    impediment,\n    main_concern,\n    report_content\n  \\) VALUES \\(\n    test_user_id,\n    'Lead Teste Webhook',\n    'teste.webhook@euanapratica.com',\n    '+5511987654321',\n    'Tecnologia',\n    'Desenvolvedor Full Stack',\n    false,\n    '5-10 anos',\n    'Intermediário',\n    'Trabalhar remoto para empresa americana',\n    'Nenhum',\n    '6-12 meses',\n    'Solteiro',\n    'R$8.000-R$12.000',\n    'R$5.000-R$10.000',\n    'Nenhum',\n    'Conseguir visto de trabalho',\n    'Lead de teste para verificar funcionamento do webhook automático para n8n.'\n  \\)\n  RETURNING id INTO test_lead_id;\n\n  RAISE NOTICE 'Lead de teste criado com ID: %', test_lead_id;\n  RAISE NOTICE 'Webhook deve ter sido disparado automaticamente!';\n  RAISE NOTICE 'Verifique o n8n em: https://n8n.sapunplugged.com';\n\nEND $;\n\n-- Verificar último request do pg_net\nSELECT\n  id as request_id,\n  status_code,\n  content::text as response,\n  error_msg,\n  created_at\nFROM net._http_response\nWHERE created_at > NOW\\(\\) - INTERVAL '1 minute'\nORDER BY created_at DESC\nLIMIT 1;\nEOF)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx supabase functions deploy:*)"
+    ]
+  }
+}

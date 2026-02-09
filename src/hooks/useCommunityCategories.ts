@@ -22,7 +22,6 @@ export function useCommunityCategories() {
 
       setCategories(data || []);
     } catch (err: any) {
-      console.error('Error fetching categories:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -53,7 +52,6 @@ export function useCommunityCategories() {
       toast({ title: 'Categoria criada com sucesso!' });
       return data;
     } catch (err: any) {
-      console.error('Error creating category:', err);
       toast({ title: 'Erro ao criar categoria', description: err.message, variant: 'destructive' });
       throw err;
     }
@@ -74,7 +72,6 @@ export function useCommunityCategories() {
       toast({ title: 'Categoria atualizada!' });
       return data;
     } catch (err: any) {
-      console.error('Error updating category:', err);
       toast({ title: 'Erro ao atualizar categoria', description: err.message, variant: 'destructive' });
       throw err;
     }
@@ -92,7 +89,6 @@ export function useCommunityCategories() {
       setCategories(prev => prev.filter(c => c.id !== id));
       toast({ title: 'Categoria removida!' });
     } catch (err: any) {
-      console.error('Error deleting category:', err);
       toast({ title: 'Erro ao remover categoria', description: err.message, variant: 'destructive' });
       throw err;
     }
@@ -120,7 +116,6 @@ export function useCommunityCategories() {
         }));
       });
     } catch (err: any) {
-      console.error('Error reordering categories:', err);
       toast({ title: 'Erro ao reordenar', description: err.message, variant: 'destructive' });
     }
   };

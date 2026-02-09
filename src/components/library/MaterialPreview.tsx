@@ -41,7 +41,6 @@ export function MaterialPreview({ material, isOpen, onClose, onDownload }: Mater
           setPdfUrl(url);
         }
       } catch (error) {
-        console.error('Error loading preview:', error);
       } finally {
         setLoading(false);
       }

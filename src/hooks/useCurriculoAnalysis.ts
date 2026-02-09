@@ -190,7 +190,6 @@ export function useCurriculoAnalysis() {
       navigate('/curriculo/resultado');
 
     } catch (error: unknown) {
-      console.error('Analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao analisar currículo';
       setState(prev => ({
         ...prev,

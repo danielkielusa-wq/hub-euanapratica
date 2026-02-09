@@ -18,7 +18,6 @@ export function PostComposer({ onSubmit, isSubmitting = false }: PostComposerPro
       await onSubmit(content);
       setContent('');
     } catch (error) {
-      console.error('Error submitting post:', error);
     }
   };
 

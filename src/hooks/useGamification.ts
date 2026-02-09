@@ -22,7 +22,6 @@ export function useGamification() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116' && error.status !== 406) {
-        console.error('Error fetching user stats:', error);
       }
 
       setUserStats(data || {
@@ -35,7 +34,6 @@ export function useGamification() {
         last_activity_at: new Date().toISOString(),
       });
     } catch (err) {
-      console.error('Error in fetchUserStats:', err);
     }
   }, [user]);
 
@@ -48,7 +46,6 @@ export function useGamification() {
 
       setRanking(data || []);
     } catch (err) {
-      console.error('Error fetching ranking:', err);
     }
   }, []);
 
@@ -70,7 +67,6 @@ export function useGamification() {
 
       setUserBadges(data || []);
     } catch (err) {
-      console.error('Error fetching user badges:', err);
     }
   }, [user]);
 
@@ -115,7 +111,6 @@ export function useGamificationRules() {
       if (error) throw error;
       setRules(data || []);
     } catch (err) {
-      console.error('Error fetching rules:', err);
     }
   }, []);
 
@@ -129,7 +124,6 @@ export function useGamificationRules() {
       if (error) throw error;
       setBadges(data || []);
     } catch (err) {
-      console.error('Error fetching badges:', err);
     }
   }, []);
 

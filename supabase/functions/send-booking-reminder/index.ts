@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
+import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,9 +24,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get Resend config from database
+    const resendConfig = await getApiConfig("resend_email");
 
     let body: ReminderRequest = {};
     try {
@@ -110,11 +113,11 @@ Deno.serve(async (req) => {
         const isOneHourReminder = hours_before <= 2;
         const origin = "https://hub-euanapratica.vercel.app";
 
-        const emailResponse = await fetch("https://api.resend.com/emails", {
+        const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${resendApiKey}`,
+            "Authorization": `Bearer ${resendConfig.credentials.api_key}`,
           },
           body: JSON.stringify({
             from: "EUA Na Prática <noreply@euanapratica.com>",

@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, FileSpreadsheet, Users, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Users, Loader2, Download } from 'lucide-react';
 import { CSVUploadZone } from '@/components/admin/leads/CSVUploadZone';
 import { ImportPreview } from '@/components/admin/leads/ImportPreview';
 import { ImportSummaryModal } from '@/components/admin/leads/ImportSummaryModal';
@@ -32,6 +32,41 @@ export default function AdminLeadsImport() {
     setActiveTab('list');
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'Nome',
+      'email',
+      'telefone',
+      'Area',
+      'Atuação',
+      'trabalha internacional',
+      'experiencia',
+      'Englishlevel',
+      'objetivo',
+      'VisaStatus',
+      'timeline',
+      'FamilyStatus',
+      'incomerange',
+      'investment range',
+      'impediment',
+      'impedmentother',
+      'main concern',
+      'relatorio'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      headers.map(() => '').join(',')
+    ].join('\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'template-leads.csv';
+    link.click();
+  };
+
   const validLeadsCount = parsedLeads.filter(l => l.isValid).length;
 
   return (
@@ -45,7 +80,7 @@ export default function AdminLeadsImport() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Importar Leads</h1>
             <p className="text-sm text-muted-foreground">
-              Importe leads via CSV e gere relatórios de diagnóstico
+              Importe leads via CSV e gere relatÃ³rios de diagnÃ³stico
             </p>
           </div>
         </div>
@@ -68,8 +103,8 @@ export default function AdminLeadsImport() {
               <CardHeader>
                 <CardTitle>Upload de CSV</CardTitle>
                 <CardDescription>
-                  Faça upload de um arquivo CSV com os dados dos leads. O sistema irá criar usuários 
-                  automaticamente para emails novos e vincular relatórios a usuários existentes.
+                  FaÃ§a upload de um arquivo CSV com os dados dos leads. O sistema irÃ¡ criar usuÃ¡rios 
+                  automaticamente para emails novos e vincular relatÃ³rios a usuÃ¡rios existentes.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -107,13 +142,17 @@ export default function AdminLeadsImport() {
 
             {/* CSV Format Info */}
             <Card className="rounded-[24px]">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle className="text-base">Formato do CSV</CardTitle>
+                <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2 rounded-[12px]">
+                  <Download className="w-4 h-4" />
+                  Baixar template
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Colunas obrigatórias:</strong> Nome, email, relatorio</p>
-                  <p><strong>Colunas opcionais:</strong> telefone, Area, Atuação, trabalha internacional, 
+                  <p><strong>Colunas obrigatÃ³rias:</strong> Nome, email, relatorio</p>
+                  <p><strong>Colunas opcionais:</strong> telefone, Area, AtuaÃ§Ã£o, trabalha internacional, 
                     experiencia, Englishlevel, objetivo, VisaStatus, timeline, FamilyStatus, 
                     incomerange, investment range, impediment, impedmentother, main concern</p>
                 </div>
@@ -126,7 +165,7 @@ export default function AdminLeadsImport() {
               <CardHeader>
                 <CardTitle>Leads Importados</CardTitle>
                 <CardDescription>
-                  Lista dos últimos 50 leads importados. Clique no ícone de link para copiar a URL do relatório.
+                  Lista dos Ãºltimos 50 leads importados. Clique no Ã­cone de link para copiar a URL do relatÃ³rio.
                 </CardDescription>
               </CardHeader>
               <CardContent>

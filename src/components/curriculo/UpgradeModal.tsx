@@ -58,7 +58,6 @@ export function UpgradeModal({
           : [],
       })));
     } catch (err) {
-      console.error('Error fetching plans:', err);
     } finally {
       setIsLoading(false);
     }

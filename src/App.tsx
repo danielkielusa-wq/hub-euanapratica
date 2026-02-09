@@ -42,7 +42,9 @@ import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminApis from "./pages/admin/AdminApis";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminTictoSimulator from "./pages/admin/AdminTictoSimulator";
 import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
@@ -63,6 +65,10 @@ import StudentBookings from "./pages/booking/StudentBookings";
 import Community from "./pages/community/Community";
 import PostDetail from "./pages/community/PostDetail";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
+import PrimeJobs from "./pages/jobs/PrimeJobs";
+import JobDetailsPage from "./pages/jobs/JobDetailsPage";
+import JobBookmarks from "./pages/jobs/JobBookmarks";
+import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 
 
 const queryClient = new QueryClient();
@@ -324,6 +330,11 @@ function AppRoutes() {
           <AdminReports />
         </ProtectedRoute>
       } />
+      <Route path="/admin/auditoria" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAuditLogs />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/biblioteca/upload" element={
         <ProtectedRoute allowedRoles={['admin', 'mentor']}>
           <UploadMaterials />
@@ -342,6 +353,11 @@ function AppRoutes() {
       <Route path="/admin/configuracoes" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminSettings />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/configuracoes-apis" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminApis />
         </ProtectedRoute>
       } />
       <Route path="/admin/assinaturas" element={
@@ -407,6 +423,25 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* Prime Jobs - accessible by all authenticated users */}
+      <Route path="/prime-jobs" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <PrimeJobs />
+        </ProtectedRoute>
+      } />
+      <Route path="/prime-jobs/:id" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <JobDetailsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/prime-jobs/bookmarks" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceGuard serviceRoute="/prime-jobs/bookmarks">
+            <JobBookmarks />
+          </ServiceGuard>
+        </ProtectedRoute>
+      } />
+
       {/* Currículo USA - protected by ServiceGuard */}
       <Route path="/curriculo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
@@ -436,6 +471,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AnalyticsTracker />
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
@@ -445,3 +481,4 @@ const App = () => (
 
 
 export default App;
+

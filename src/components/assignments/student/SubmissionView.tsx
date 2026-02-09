@@ -34,7 +34,6 @@ export function SubmissionView({ submission }: SubmissionViewProps) {
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error('Download error:', error);
       toast.error('Erro ao baixar arquivo. Tente novamente.');
     } finally {
       setIsDownloading(false);

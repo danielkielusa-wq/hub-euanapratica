@@ -64,7 +64,6 @@ export function usePlanAccess(): UsePlanAccessReturn {
         .rpc('get_full_plan_access', { p_user_id: user.id });
 
       if (rpcError) {
-        console.error('Error fetching plan access:', rpcError);
         setError('Erro ao buscar informações do plano');
         return;
       }
@@ -112,7 +111,6 @@ export function usePlanAccess(): UsePlanAccessReturn {
         });
       }
     } catch (err) {
-      console.error('Plan access fetch error:', err);
       setError('Erro ao carregar plano');
     } finally {
       setIsLoading(false);

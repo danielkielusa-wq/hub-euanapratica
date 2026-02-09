@@ -54,7 +54,6 @@ export function useCreateFeedback() {
       queryClient.invalidateQueries({ queryKey: ['admin-feedback'] });
     },
     onError: (error) => {
-      console.error('Erro ao criar feedback:', error);
       toast.error('Não conseguimos registrar seu feedback. Tente novamente mais tarde.');
     },
   });
@@ -173,7 +172,6 @@ export function useUpdateFeedback() {
       queryClient.invalidateQueries({ queryKey: ['feedback-detail', variables.id] });
     },
     onError: (error) => {
-      console.error('Erro ao atualizar feedback:', error);
       toast.error('Erro ao atualizar o feedback. Tente novamente.');
     },
   });

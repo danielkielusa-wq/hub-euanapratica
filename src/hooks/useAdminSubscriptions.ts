@@ -46,14 +46,12 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
       const { data, error: rpcError } = await supabase.rpc('admin_get_users_with_usage');
 
       if (rpcError) {
-        console.error('Error fetching users:', rpcError);
         setError('Erro ao carregar usuários');
         return;
       }
 
       setUsers(data || []);
     } catch (err) {
-      console.error('Fetch users error:', err);
       setError('Erro ao carregar dados');
     } finally {
       setIsLoading(false);
@@ -75,7 +73,6 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
         price: Number(p.price) || 0,
       })));
     } catch (err) {
-      console.error('Error fetching plans:', err);
     }
   }, []);
 
@@ -87,7 +84,6 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
       });
 
       if (rpcError) {
-        console.error('Error changing plan:', rpcError);
         toast({
           title: 'Erro ao alterar plano',
           description: rpcError.message,
@@ -105,7 +101,6 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
       await fetchUsers();
       return true;
     } catch (err) {
-      console.error('Change plan error:', err);
       toast({
         title: 'Erro',
         description: 'Não foi possível alterar o plano.',
@@ -122,7 +117,6 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
       });
 
       if (rpcError) {
-        console.error('Error resetting usage:', rpcError);
         toast({
           title: 'Erro ao resetar uso',
           description: rpcError.message,
@@ -140,7 +134,6 @@ export function useAdminSubscriptions(): UseAdminSubscriptionsReturn {
       await fetchUsers();
       return true;
     } catch (err) {
-      console.error('Reset usage error:', err);
       toast({
         title: 'Erro',
         description: 'Não foi possível resetar o uso.',

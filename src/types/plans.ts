@@ -3,7 +3,7 @@ export type PlanTier = 'basic' | 'pro' | 'vip';
 export type PlanTheme = 'gray' | 'blue' | 'purple';
 
 // Feature keys for access control
-export type PlanFeatureKey = 
+export type PlanFeatureKey =
   | 'hotseats'
   | 'hotseat_priority'
   | 'hotseat_guaranteed'
@@ -11,6 +11,7 @@ export type PlanFeatureKey =
   | 'library'
   | 'masterclass'
   | 'job_concierge'
+  | 'prime_jobs'
   | 'show_improvements'
   | 'show_power_verbs'
   | 'show_cheat_sheet'
@@ -114,6 +115,7 @@ export const ROUTE_FEATURE_MAP: Record<string, PlanFeatureKey> = {
   '/biblioteca': 'library',
   '/comunidade': 'community',
   '/masterclass': 'masterclass',
+  '/prime-jobs/bookmarks': 'prime_jobs',
 };
 
 // Service type to discount category mapping

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
+import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,7 +203,12 @@ Deno.serve(async (req) => {
       .single();
 
     // Try to send email via Resend if configured
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    let resendConfig;
+    try {
+      resendConfig = await getApiConfig("resend_email");
+    } catch (err) {
+      console.warn("Resend not configured:", err);
+    }
     let emailSent = false;
     const origin = req.headers.get("origin") || "https://enphub.lovable.app";
     const inviteLink = invitation?.token 
@@ -212,19 +218,19 @@ Deno.serve(async (req) => {
     console.log("Invitation created for:", email);
     console.log("Invite link:", inviteLink);
 
-    if (!resendApiKey) {
-      console.warn("RESEND_API_KEY not configured - email will not be sent");
+    if (!resendConfig) {
+      console.warn("Resend not configured - email will not be sent");
     }
 
-    if (resendApiKey && invitation?.token) {
+    if (resendConfig && invitation?.token) {
       try {
         console.log("Sending invitation email via Resend...");
         
-        const emailResponse = await fetch("https://api.resend.com/emails", {
+        const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${resendApiKey}`,
+            "Authorization": `Bearer ${resendConfig.credentials.api_key}`,
           },
           body: JSON.stringify({
             from: "EUA Na Prática <noreply@euanapratica.com>",

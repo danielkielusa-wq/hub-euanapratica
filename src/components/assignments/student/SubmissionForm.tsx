@@ -122,7 +122,6 @@ export function SubmissionForm({ assignment, existingSubmission, onSubmitSuccess
         file_size: result.size
       }));
     } catch (error) {
-      console.error('Upload error:', error);
       setSelectedFile(null);
     } finally {
       clearInterval(progressInterval);

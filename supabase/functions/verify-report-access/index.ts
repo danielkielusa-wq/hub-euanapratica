@@ -90,8 +90,47 @@ serve(async (req) => {
         .update(updateData)
         .eq("id", evaluation.id);
 
+      // Log analytics event (report opened)
+      await supabase
+        .from("analytics_events")
+        .insert({
+          user_id: evaluation.user_id,
+          event_type: "report_opened",
+          entity_type: "career_evaluation",
+          entity_id: evaluation.id,
+          metadata: {
+            token,
+            source: "public_report",
+            access_count: updateData.access_count
+          }
+        });
+
+      await supabase
+        .from("audit_events")
+        .insert({
+          user_id: evaluation.user_id,
+          actor_id: evaluation.user_id,
+          action: "usage_recorded",
+          source: "report",
+          new_values: {
+            event_type: "report_opened",
+            entity_type: "career_evaluation",
+            entity_id: evaluation.id,
+            access_count: updateData.access_count
+          }
+        });
+
+      // Always return the latest evaluation for this email (handles duplicates)
+      const { data: latestEvaluation } = await supabase
+        .from("career_evaluations")
+        .select("*")
+        .eq("email", evaluation.email)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       return new Response(
-        JSON.stringify({ success: true, evaluation }),
+        JSON.stringify({ success: true, evaluation: latestEvaluation || evaluation }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

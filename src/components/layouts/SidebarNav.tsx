@@ -24,7 +24,9 @@ import {
   Package,
   FileText,
   TestTube,
-  Upload
+  Upload,
+  Briefcase,
+  Link2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -78,6 +80,12 @@ const studentNavGroups: NavGroup[] = [
         badge: { text: 'IA', variant: 'ai' },
         isSpecial: true
       },
+      {
+        label: 'Prime Jobs',
+        href: '/prime-jobs',
+        icon: Briefcase,
+        badge: { text: 'NOVO', variant: 'new' }
+      },
     ],
   },
   {
@@ -127,6 +135,12 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'RELATÓRIOS',
+    items: [
+      { label: 'Auditoria do Sistema', href: '/admin/auditoria', icon: BarChart3 },
+    ],
+  },
+  {
     label: 'GESTÃO DE USUÁRIOS',
     items: [
       { label: 'Usuários', href: '/admin/usuarios', icon: Users },
@@ -155,6 +169,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'CONFIGURAÇÕES',
     items: [
       { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
+      { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
       { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },
@@ -289,3 +304,5 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
     </nav>
   );
 }
+
+

@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface PostCardProps {
   post: CommunityPost;
@@ -16,6 +17,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
+  const { logEvent } = useAnalytics();
   const author = post.profiles;
   const category = post.community_categories;
   const initials = author?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
@@ -68,7 +70,16 @@ export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
       )}
 
       {/* Content */}
-      <Link to={`/comunidade/${post.id}`} className="block group">
+      <Link
+        to={`/comunidade/${post.id}`}
+        className="block group"
+        onClick={() => logEvent({
+          event_type: 'community_post_open',
+          entity_type: 'community_post',
+          entity_id: post.id,
+          metadata: { source: 'card' }
+        })}
+      >
         <h3 className="font-bold text-foreground text-lg mb-2 group-hover:text-primary transition-colors">
           {post.title}
         </h3>
@@ -93,7 +104,15 @@ export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
           <span className="font-medium">{post.likes_count}</span>
         </Button>
         
-        <Link to={`/comunidade/${post.id}`}>
+        <Link
+          to={`/comunidade/${post.id}`}
+          onClick={() => logEvent({
+            event_type: 'community_post_open',
+            entity_type: 'community_post',
+            entity_id: post.id,
+            metadata: { source: 'comment_button' }
+          })}
+        >
           <Button variant="ghost" size="sm" className="gap-2 h-9 px-3 rounded-xl">
             <MessageCircle className="h-4 w-4" />
             <span className="font-medium">{post.comments_count}</span>

@@ -106,7 +106,6 @@ export function useArchiveEspaco() {
       toast.success(data.newStatus === 'arquivado' ? 'Espaço arquivado com sucesso!' : 'Espaço restaurado com sucesso!');
     },
     onError: (error) => {
-      console.error('Error archiving espaco:', error);
       toast.error('Erro ao atualizar status do espaço');
     }
   });

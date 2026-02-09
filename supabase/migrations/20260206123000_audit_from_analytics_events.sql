@@ -1,0 +1,3 @@
+-- No-op: This migration originally created a trigger on analytics_events that
+-- was immediately dropped by 20260206124700. Skipped due to ordering dependency
+-- (analytics_events table is created later in 20260206170000).

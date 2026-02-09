@@ -470,16 +470,16 @@ export const E2E_TEST_SUITES: E2ETestSuite[] = [
       },
       {
         code: 'TC-5.7',
-        name: 'Logs e Relatórios (Admin)',
-        objective: 'Verificar acesso a logs',
-        expectedResult: 'Exibe logs de login e erros',
-        relatedUrl: '/admin/relatorios',
+        name: 'Auditoria do Sistema (Admin)',
+        objective: 'Verificar acesso à auditoria',
+        expectedResult: 'Exibe registros de auditoria',
+        relatedUrl: '/admin/auditoria',
         testType: 'positive',
-        successCondition: 'Logs são exibidos corretamente',
+        successCondition: 'Registros de auditoria são exibidos corretamente',
         steps: [
-          'Acessar /admin/relatorios',
-          'Verificar logs de login',
-          'Verificar logs de erro'
+          'Acessar /admin/auditoria',
+          'Verificar eventos de auditoria',
+          'Verificar alterações de usuário'
         ]
       }
     ]
@@ -609,3 +609,4 @@ export const getTestCasesByIds = (codes: string[]): E2ETestCase[] => {
 export const getTestCasesBySuites = (suiteNumbers: number[]): E2ETestCase[] => {
   return getAllTestCases().filter(tc => suiteNumbers.includes(tc.suiteNumber));
 };
+
