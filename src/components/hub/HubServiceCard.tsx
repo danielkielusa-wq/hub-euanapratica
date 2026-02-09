@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -81,6 +81,7 @@ const serviceTypeConfig: Record<ServiceType, { color: string }> = {
 };
 
 export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCardProps) {
+  const navigate = useNavigate();
   const Icon = iconMap[service.icon_name] || FileCheck;
   const config = statusConfig[service.status] || statusConfig.available;
   const isComingSoon = service.status === 'coming_soon';
@@ -100,8 +101,17 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
   const displayPrice = service.price_display || formatPrice(service.price, service.currency);
 
   const handleUnlock = () => {
-    // Priority: Ticto checkout URL
-    if (service.ticto_checkout_url) {
+    // Priority 1: Landing page URL (presentation page)
+    if (service.landing_page_url) {
+      // Internal URLs use React Router (same window, in-platform)
+      if (service.landing_page_url.startsWith('/')) {
+        navigate(service.landing_page_url);
+      } else {
+        window.open(service.landing_page_url, '_blank');
+      }
+    }
+    // Priority 2: Ticto checkout URL (direct purchase)
+    else if (service.ticto_checkout_url) {
       try {
         const checkoutUrl = new URL(service.ticto_checkout_url);
         if (userEmail) {
@@ -109,14 +119,12 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
         }
         window.open(checkoutUrl.toString(), '_blank');
       } catch {
-        // Invalid URL, fallback to direct open
         window.open(service.ticto_checkout_url, '_blank');
       }
-    } else if (service.redirect_url) {
-      // Fallback to generic redirect URL
+    }
+    // Priority 3: Generic redirect URL
+    else if (service.redirect_url) {
       window.open(service.redirect_url, '_blank');
-    } else {
-      // No checkout configured
     }
   };
 
@@ -213,10 +221,10 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-        ) : service.ticto_checkout_url ? (
-          // User does NOT have access - redirect to Ticto checkout
-          <Button 
-            variant="outline" 
+        ) : (service.landing_page_url || service.ticto_checkout_url) ? (
+          // User does NOT have access - redirect to landing page or checkout
+          <Button
+            variant="outline"
             className="w-full rounded-xl border-2 border-primary text-primary hover:bg-primary/5"
             onClick={handleUnlock}
           >
@@ -224,9 +232,9 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
             Desbloquear Acesso
           </Button>
         ) : service.redirect_url ? (
-          // Fallback to redirect URL if no checkout configured
-          <Button 
-            variant="outline" 
+          // Fallback to redirect URL
+          <Button
+            variant="outline"
             className="w-full rounded-xl"
             onClick={handleUnlock}
           >

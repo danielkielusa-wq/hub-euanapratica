@@ -6,7 +6,7 @@ import {
   useUpdateHubService,
   useDeleteHubService,
 } from '@/hooks/useAdminHubServices';
-import { HubServiceForm } from '@/components/admin/hub/HubServiceForm';
+import { HubServiceForm, HubServiceFormSubmitData } from '@/components/admin/hub/HubServiceForm';
 import { iconMap } from '@/components/admin/hub/IconSelector';
 import { typeConfig } from '@/components/admin/hub/ServiceTypeSelector';
 import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
@@ -55,7 +55,7 @@ export default function AdminHubServices() {
     setFormOpen(true);
   };
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = (data: HubServiceFormSubmitData) => {
     if (editingService) {
       updateMutation.mutate(
         { id: editingService.id, ...data },

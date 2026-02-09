@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { HubService, HubServiceFormData } from '@/types/hub';
+import { HubService } from '@/types/hub';
+import type { HubServiceFormSubmitData } from '@/components/admin/hub/HubServiceForm';
 import { toast } from 'sonner';
 
 export function useAdminHubServices() {
@@ -22,11 +23,11 @@ export function useCreateHubService() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (formData: Partial<HubServiceFormData>) => {
+    mutationFn: async (formData: HubServiceFormSubmitData) => {
       const { data, error } = await supabase
         .from('hub_services')
         .insert({
-          name: formData.name!,
+          name: formData.name,
           description: formData.description || null,
           icon_name: formData.icon_name || 'FileCheck',
           status: formData.status || 'available',
@@ -45,9 +46,14 @@ export function useCreateHubService() {
           product_type: formData.product_type || 'one_time',
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          landing_page_url: formData.landing_page_url || null,
           // Ticto fields
           ticto_product_id: formData.ticto_product_id || null,
           ticto_checkout_url: formData.ticto_checkout_url || null,
+          // Landing page fields
+          duration: formData.duration || null,
+          meeting_type: formData.meeting_type || null,
+          landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
         })
         .select()
         .single();
@@ -70,7 +76,7 @@ export function useUpdateHubService() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...formData }: Partial<HubServiceFormData> & { id: string }) => {
+    mutationFn: async ({ id, ...formData }: HubServiceFormSubmitData & { id: string }) => {
       // If setting is_highlighted to true, first unset all others
       if (formData.is_highlighted === true) {
         await supabase
@@ -101,9 +107,14 @@ export function useUpdateHubService() {
           product_type: formData.product_type,
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          landing_page_url: formData.landing_page_url || null,
           // Ticto fields
           ticto_product_id: formData.ticto_product_id || null,
           ticto_checkout_url: formData.ticto_checkout_url || null,
+          // Landing page fields
+          duration: formData.duration || null,
+          meeting_type: formData.meeting_type || null,
+          landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
         })
         .eq('id', id)
         .select()

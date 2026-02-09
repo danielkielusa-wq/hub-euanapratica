@@ -59,29 +59,6 @@ export interface EnrollmentExtended {
   espaco?: { name: string };
 }
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  access_duration_days: number | null;
-  price: number | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  espacos?: { id: string; name: string }[];
-}
-
-export interface UserProduct {
-  id: string;
-  user_id: string;
-  product_id: string;
-  purchased_at: string;
-  expires_at: string | null;
-  status: string;
-  created_at: string;
-  product?: Product;
-}
-
 export interface EnrollmentHistory {
   id: string;
   user_espaco_id: string | null;

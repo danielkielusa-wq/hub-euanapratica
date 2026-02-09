@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,10 +12,17 @@ interface FeaturedServiceBannerProps {
 
 export function FeaturedServiceBanner({ service, hasAccess }: FeaturedServiceBannerProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleAction = () => {
     if (hasAccess && service.route) {
-      window.location.href = service.route;
+      navigate(service.route);
+    } else if (service.landing_page_url) {
+      if (service.landing_page_url.startsWith('/')) {
+        navigate(service.landing_page_url);
+      } else {
+        window.open(service.landing_page_url, '_blank');
+      }
     } else if (service.ticto_checkout_url) {
       try {
         const checkoutUrl = new URL(service.ticto_checkout_url);
