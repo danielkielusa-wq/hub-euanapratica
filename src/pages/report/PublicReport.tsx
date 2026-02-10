@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ReportGatekeeper } from '@/components/report/ReportGatekeeper';
@@ -15,10 +15,83 @@ export default function PublicReport() {
   const [evaluation, setEvaluation] = useState<CareerEvaluation | null>(null);
   const [formattedContent, setFormattedContent] = useState<string>('');
   const [tokenValid, setTokenValid] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     checkToken();
   }, [token]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback((evaluationId: string) => {
+    stopPolling();
+    setProcessingStatus('processing');
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const { data, error: pollError } = await supabase.functions.invoke('format-lead-report', {
+          body: { evaluationId }
+        });
+
+        if (pollError) return; // Keep polling on transient errors
+
+        if (data?.status === 'processing') {
+          return; // Still processing, keep polling
+        }
+
+        if (data?.content) {
+          // Done! Stop polling and show report
+          stopPolling();
+          setProcessingStatus(null);
+          setFormattedContent(
+            typeof data.content === 'string'
+              ? data.content
+              : JSON.stringify(data.content)
+          );
+        }
+      } catch {
+        // Keep polling on network errors
+      }
+    }, 3000);
+  }, [stopPolling]);
+
+  const triggerOnDemand = useCallback(async (evaluationId: string, forceRefresh: boolean) => {
+    setIsFormatting(true);
+    try {
+      const { data: formatted, error: formatError } = await supabase.functions.invoke('format-lead-report', {
+        body: { evaluationId, forceRefresh }
+      });
+
+      // If the report is being processed by the trigger, switch to polling
+      if (formatted?.status === 'processing') {
+        setIsFormatting(false);
+        startPolling(evaluationId);
+        return;
+      }
+
+      if (!formatError && formatted?.content) {
+        setFormattedContent(
+          typeof formatted.content === 'string'
+            ? formatted.content
+            : JSON.stringify(formatted.content)
+        );
+      }
+    } catch {
+      // Will show fallback with raw content
+    }
+    setIsFormatting(false);
+  }, [startPolling]);
 
   const checkToken = async () => {
     if (!token) {
@@ -66,33 +139,16 @@ export default function PublicReport() {
 
       setEvaluation(data.evaluation);
       setIsVerifying(false);
-      
-      const formattedAt = data.evaluation.formatted_at ? new Date(data.evaluation.formatted_at).getTime() : 0;
-      const updatedAt = data.evaluation.updated_at ? new Date(data.evaluation.updated_at).getTime() : 0;
-      const isStale = formattedAt > 0 && updatedAt > formattedAt;
 
-      if (data.evaluation.formatted_report && !isStale) {
+      if (data.evaluation.formatted_report) {
+        // Pre-processed report available - instant display
         setFormattedContent(data.evaluation.formatted_report);
+      } else if (data.evaluation.processing_status === 'processing') {
+        // Currently being processed by trigger - poll until ready
+        startPolling(data.evaluation.id);
       } else {
-        // Request AI formatting (force refresh if stale)
-        setIsFormatting(true);
-        try {
-          const { data: formatted, error: formatError } = await supabase.functions.invoke('format-lead-report', {
-            body: { evaluationId: data.evaluation.id, forceRefresh: isStale }
-          });
-          
-          if (!formatError && formatted?.content) {
-            // Store as JSON string for the component to parse
-            setFormattedContent(
-              typeof formatted.content === 'string' 
-                ? formatted.content 
-                : JSON.stringify(formatted.content)
-            );
-          }
-        } catch (formatErr) {
-          // Will show fallback with raw content
-        }
-        setIsFormatting(false);
+        // Pending or error - trigger on-demand (fallback)
+        triggerOnDemand(data.evaluation.id, false);
       }
 
       return true;
@@ -124,19 +180,20 @@ export default function PublicReport() {
 
   if (evaluation) {
     return (
-      <FormattedReport 
-        evaluation={evaluation} 
+      <FormattedReport
+        evaluation={evaluation}
         formattedContent={formattedContent}
         isLoading={isFormatting}
+        processingStatus={processingStatus}
       />
     );
   }
 
   return (
-    <ReportGatekeeper 
-      onVerify={handleVerify} 
-      isLoading={isVerifying} 
-      error={error} 
+    <ReportGatekeeper
+      onVerify={handleVerify}
+      isLoading={isVerifying}
+      error={error}
     />
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAuth } from '@/contexts/AuthContext';
 import type { FullAnalysisResult, AnalysisError } from '@/types/curriculo';
 import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
 
@@ -28,6 +29,7 @@ interface LimitReachedResponse {
 export function useCurriculoAnalysis() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { quota, recordUsage, refetch: refetchQuota } = useSubscription();
   const [state, setState] = useState<AnalysisState>({
     status: 'idle',
@@ -171,7 +173,26 @@ export function useCurriculoAnalysis() {
 
       // Step 4: Store result in localStorage and navigate
       localStorage.setItem(CURRICULO_RESULT_STORAGE_KEY, JSON.stringify(data));
-      
+
+      // Auto-save report to database (fire-and-forget, non-blocking)
+      if (user) {
+        const today = new Date();
+        const title = `Resume Report - ${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        supabase
+          .from('resumepass_reports')
+          .insert({
+            user_id: user.id,
+            title,
+            report_data: data as unknown as Record<string, unknown>,
+          })
+          .then(({ error: saveError }) => {
+            if (saveError) {
+              console.error('Failed to save report to database:', saveError);
+            }
+          });
+      }
+
       // Usage is now recorded in the edge function, just refetch quota
       await refetchQuota();
       

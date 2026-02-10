@@ -14,9 +14,10 @@ interface FormattedReportProps {
   evaluation: CareerEvaluation;
   formattedContent?: string;
   isLoading?: boolean;
+  processingStatus?: string | null;
 }
 
-export function FormattedReport({ evaluation, formattedContent, isLoading }: FormattedReportProps) {
+export function FormattedReport({ evaluation, formattedContent, isLoading, processingStatus }: FormattedReportProps) {
   // Try to parse formatted content as JSON
   let reportData: FormattedReportData | null = null;
   
@@ -31,7 +32,38 @@ export function FormattedReport({ evaluation, formattedContent, isLoading }: For
     }
   }
 
-  // Loading state
+  // Processing state: report is being generated in background (with auto-polling)
+  if (processingStatus === 'processing') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
+        <ReportHeader />
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <Card className="rounded-[40px]">
+            <CardContent className="p-12 flex flex-col items-center justify-center gap-6">
+              <div className="relative">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-xl font-semibold text-foreground">
+                  Preparando seu relatório...
+                </h2>
+                <p className="text-muted-foreground max-w-md">
+                  Nossa inteligência artificial está analisando seu perfil e criando um diagnóstico personalizado. Isso leva apenas alguns segundos.
+                </p>
+              </div>
+              <div className="flex gap-1.5 mt-2">
+                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Loading state: on-demand generation in progress
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">

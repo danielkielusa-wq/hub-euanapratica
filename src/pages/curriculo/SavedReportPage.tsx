@@ -1,24 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Loader2, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, FileText, Loader2, Lock, AlertCircle } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useAnalytics } from '@/hooks/useAnalytics';
 import { ReportContent } from '@/components/curriculo/report';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { CurriculoReportPDF } from '@/components/curriculo/pdf';
-import type { FullAnalysisResult } from '@/types/curriculo';
-import { CURRICULO_RESULT_STORAGE_KEY } from '@/types/curriculo';
+import { useResumePassReport } from '@/hooks/useResumePassReports';
 
-export default function CurriculoReport() {
+export default function SavedReportPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { logEvent } = useAnalytics();
   const { quota } = useSubscription();
-  const [result, setResult] = useState<FullAnalysisResult | null>(null);
+  const { data: report, isLoading, error } = useResumePassReport(id);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -31,38 +29,10 @@ export default function CurriculoReport() {
     priority_support: false,
   };
 
-  useEffect(() => {
-    const stored = localStorage.getItem(CURRICULO_RESULT_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setResult(parsed);
-        logEvent({
-          event_type: 'curriculo_report_view',
-          metadata: {
-            score: parsed?.score || null,
-            ats_score: parsed?.metrics?.ats_format?.score || null
-          }
-        });
-      } catch (e) {
-        navigate('/curriculo');
-      }
-    } else {
-      navigate('/curriculo');
-    }
-  }, [navigate, logEvent]);
-
-  const handleNewAnalysis = () => {
-    localStorage.removeItem(CURRICULO_RESULT_STORAGE_KEY);
-    navigate('/curriculo');
-  };
+  const result = report?.report_data ?? null;
 
   const handleDownloadPDF = async () => {
     if (!features.allow_pdf) {
-      logEvent({
-        event_type: 'curriculo_pdf_blocked',
-        metadata: { plan_id: quota?.planId || null }
-      });
       setShowUpgradeModal(true);
       toast({
         title: 'Recurso Premium',
@@ -73,11 +43,6 @@ export default function CurriculoReport() {
     }
 
     if (!result) return;
-
-    logEvent({
-      event_type: 'curriculo_pdf_download_start',
-      metadata: { plan_id: quota?.planId || null }
-    });
 
     setIsGeneratingPDF(true);
 
@@ -92,10 +57,6 @@ export default function CurriculoReport() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      logEvent({
-        event_type: 'curriculo_pdf_downloaded',
-        metadata: { filename: 'curriculo-usa-report.pdf' }
-      });
       toast({
         title: 'PDF gerado!',
         description: 'O relatório foi baixado com sucesso.',
@@ -111,11 +72,27 @@ export default function CurriculoReport() {
     }
   };
 
-  if (!result) {
+  if (isLoading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground">Carregando...</div>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !result) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground">Relatório não encontrado.</p>
+            <Button variant="outline" onClick={() => navigate('/curriculo')}>
+              Voltar ao Currículo USA
+            </Button>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -129,11 +106,11 @@ export default function CurriculoReport() {
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
-              onClick={handleNewAnalysis}
+              onClick={() => navigate('/curriculo')}
               className="gap-2 text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="w-4 h-4" />
-              Nova Análise
+              Voltar
             </Button>
 
             <Button

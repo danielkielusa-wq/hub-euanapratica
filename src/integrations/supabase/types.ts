@@ -534,6 +534,9 @@ export type Database = {
           name: string
           objetivo: string | null
           phone: string | null
+          processing_error: string | null
+          processing_started_at: string | null
+          processing_status: string | null
           report_content: string
           timeline: string | null
           trabalha_internacional: boolean | null
@@ -565,6 +568,9 @@ export type Database = {
           name: string
           objetivo?: string | null
           phone?: string | null
+          processing_error?: string | null
+          processing_started_at?: string | null
+          processing_status?: string | null
           report_content: string
           timeline?: string | null
           trabalha_internacional?: boolean | null
@@ -596,6 +602,9 @@ export type Database = {
           name?: string
           objetivo?: string | null
           phone?: string | null
+          processing_error?: string | null
+          processing_started_at?: string | null
+          processing_status?: string | null
           report_content?: string
           timeline?: string | null
           trabalha_internacional?: boolean | null
@@ -1950,6 +1959,38 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      resumepass_reports: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          report_data: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string
+          report_data: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          report_data?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resumepass_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_attendance: {
         Row: {

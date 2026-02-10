@@ -9,3 +9,5 @@ export { ImprovementsSection } from './ImprovementsSection';
 export { LinkedInQuickFix } from './LinkedInQuickFix';
 export { InterviewCheatSheet } from './InterviewCheatSheet';
 export { CriticalAlert } from './CriticalAlert';
+export { ReportContent } from './ReportContent';
+export type { PlanFeatures } from './ReportContent';

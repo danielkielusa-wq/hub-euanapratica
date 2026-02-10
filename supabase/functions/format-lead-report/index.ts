@@ -58,12 +58,37 @@ serve(async (req) => {
     }
 
     // Return raw content if no AI key
-    if (!openaiApiKey) {
+    if (!openaiConfig?.credentials?.api_key) {
       return new Response(
         JSON.stringify({ error: "AI nao configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Concurrency guard: if already processing and started < 5 min ago, return status
+    if (!forceRefresh && evaluation.processing_status === 'processing') {
+      const startedAt = evaluation.processing_started_at
+        ? new Date(evaluation.processing_started_at).getTime()
+        : 0;
+      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      if (startedAt > fiveMinAgo) {
+        return new Response(
+          JSON.stringify({ status: 'processing', message: 'Relatório sendo gerado...' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // If > 5 min, consider stale and re-process
+    }
+
+    // Mark as processing
+    await supabase
+      .from("career_evaluations")
+      .update({
+        processing_status: 'processing',
+        processing_started_at: new Date().toISOString(),
+        processing_error: null
+      })
+      .eq("id", evaluationId);
 
     // Fetch available hub services for recommendations
     const { data: hubServices } = await supabase
@@ -311,6 +336,10 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
+      await supabase
+        .from("career_evaluations")
+        .update({ processing_status: 'error', processing_error: `OpenAI error: ${aiResponse.status}`, processing_started_at: null })
+        .eq("id", evaluationId);
       return new Response(
         JSON.stringify({ error: "Erro ao processar relatorio" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -339,6 +368,10 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
     const outputText = extractOutputText(aiData);
     if (!outputText) {
       console.error("Unexpected OpenAI response format:", aiData);
+      await supabase
+        .from("career_evaluations")
+        .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
+        .eq("id", evaluationId);
       return new Response(
         JSON.stringify({ error: "Resposta invalida da IA" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -350,6 +383,10 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
       formattedReport = JSON.parse(outputText);
     } catch (parseError) {
       console.error("Failed to parse OpenAI output:", parseError, outputText.slice(0, 1000));
+      await supabase
+        .from("career_evaluations")
+        .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
+        .eq("id", evaluationId);
       return new Response(
         JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -371,12 +408,15 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
       }).filter((rec: { service_name: string | null }) => rec.service_name);
     }
 
-    // Cache the formatted report as JSON string
+    // Cache the formatted report and mark as completed
     await supabase
       .from("career_evaluations")
       .update({
         formatted_report: JSON.stringify(formattedReport),
-        formatted_at: new Date().toISOString()
+        formatted_at: new Date().toISOString(),
+        processing_status: 'completed',
+        processing_error: null,
+        processing_started_at: null
       })
       .eq("id", evaluationId);
 
@@ -386,6 +426,20 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
     );
   } catch (error: unknown) {
     console.error("Error:", error);
+    // Try to mark as error if we have context
+    try {
+      const body = await req.clone().json().catch(() => null);
+      if (body?.evaluationId) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sb = createClient(supabaseUrl, supabaseServiceKey);
+        await sb.from("career_evaluations").update({
+          processing_status: 'error',
+          processing_error: error instanceof Error ? error.message : 'Erro desconhecido',
+          processing_started_at: null
+        }).eq("id", body.evaluationId);
+      }
+    } catch { /* best-effort */ }
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

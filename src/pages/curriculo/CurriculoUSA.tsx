@@ -14,6 +14,7 @@ import {
   JobDescriptionCard,
   AnalyzingLoader,
 } from '@/components/curriculo';
+import { ReportHistory } from '@/components/curriculo/ReportHistory';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useCurriculoAnalysis } from '@/hooks/useCurriculoAnalysis';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -169,6 +170,9 @@ export default function CurriculoUSA() {
               </div>
             </>
           )}
+
+          {/* Report History */}
+          {(status === 'idle' || status === 'error') && <ReportHistory />}
         </div>
       </div>
 
