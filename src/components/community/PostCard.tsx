@@ -8,6 +8,8 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { usePostUpsell } from '@/hooks/usePostUpsell';
+import { UpsellCard } from './UpsellCard';
 
 interface PostCardProps {
   post: CommunityPost;
@@ -18,10 +20,11 @@ interface PostCardProps {
 
 export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
   const { logEvent } = useAnalytics();
+  const { data: upsellData } = usePostUpsell(post.id);
   const author = post.profiles;
   const category = post.community_categories;
   const initials = author?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  
+
   const timeAgo = formatDistanceToNow(new Date(post.created_at), {
     addSuffix: true,
     locale: ptBR,
@@ -88,6 +91,13 @@ export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
           {hasMore && <span className="text-primary font-medium">... ver mais</span>}
         </p>
       </Link>
+
+      {/* Upsell Card */}
+      {upsellData && (
+        <div className="mt-4">
+          <UpsellCard data={upsellData} />
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-4 mt-5 pt-4 border-t border-border/50">

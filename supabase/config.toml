@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.send-prime-jobs-digest]
 verify_jwt = false
+
+[functions.analyze-post-for-upsell]
+verify_jwt = false

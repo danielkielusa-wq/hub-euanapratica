@@ -1,0 +1,1 @@
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('upsell_impressions', 'upsell_blacklist', 'hub_services', 'app_configs', 'api_configs') ORDER BY table_name;

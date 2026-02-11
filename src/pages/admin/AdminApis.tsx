@@ -20,6 +20,7 @@ const KNOWN_CREDENTIAL_KEYS: Record<string, string[]> = {
   openai_api: ['api_key'],
   resend_email: ['api_key'],
   ticto_webhook: ['secret_key'],
+  anthropic_api: ['api_key'],
 };
 
 export default function AdminApis() {

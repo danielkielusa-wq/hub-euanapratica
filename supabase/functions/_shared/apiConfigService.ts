@@ -149,6 +149,21 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
       };
     }
 
+    case "anthropic_api": {
+      const apiKeyValue = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!apiKeyValue) throw new Error("ANTHROPIC_API_KEY not configured");
+      return {
+        id: "legacy-anthropic",
+        name: "Anthropic API (Legacy)",
+        api_key: "anthropic_api",
+        base_url: "https://api.anthropic.com/v1",
+        credentials: { api_key: apiKeyValue },
+        parameters: { model: "claude-haiku-4-5-20251001", max_tokens: 150 },
+        description: "Legacy env var configuration",
+        is_active: true,
+      };
+    }
+
     default:
       throw new Error(`Unknown API key: ${apiKey}`);
   }

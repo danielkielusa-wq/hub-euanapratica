@@ -13,6 +13,10 @@ export interface ServiceLandingPageData {
     title: string;
     quote?: string;
   };
+  benefits_section?: {
+    title?: string;
+    description?: string;
+  };
   benefits?: Array<{
     icon: string;
     title: string;

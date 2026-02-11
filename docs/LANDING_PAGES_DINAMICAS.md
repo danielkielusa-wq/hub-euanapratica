@@ -32,6 +32,10 @@ Novos campos adicionados:
     title: string;            // Ex: "Mentor & Strategist"
     quote?: string;           // Citação do mentor
   };
+  benefits_section?: {
+    title?: string;           // Ex: "O que você vai descobrir nesta sessão?"
+    description?: string;     // Descrição da seção de benefícios
+  };
   benefits?: Array<{
     icon: string;             // Nome do ícone Lucide (ex: "Briefcase")
     title: string;            // Título do benefício
@@ -152,6 +156,10 @@ SET
       "initials": "NM",
       "title": "Cargo",
       "quote": "Citação inspiradora"
+    },
+    "benefits_section": {
+      "title": "O que você vai descobrir nesta sessão?",
+      "description": "Descrição introdutória da seção de benefícios..."
     },
     "benefits": [
       {

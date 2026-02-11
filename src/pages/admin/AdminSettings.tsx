@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles } from 'lucide-react';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
@@ -28,6 +30,16 @@ export default function AdminSettings() {
   const [reportBaseUrl, setReportBaseUrl] = useState('');
   const [hasWebhookChanges, setHasWebhookChanges] = useState(false);
 
+  // Upsell config
+  const [upsellEnabled, setUpsellEnabled] = useState(true);
+  const [upsellPrompt, setUpsellPrompt] = useState('');
+  const [upsellModel, setUpsellModel] = useState('claude-haiku-4-5-20251001');
+  const [upsellMaxTokens, setUpsellMaxTokens] = useState('150');
+  const [upsellTemperature, setUpsellTemperature] = useState('0');
+  const [upsellRateLimitDays, setUpsellRateLimitDays] = useState('7');
+  const [upsellBlacklistDays, setUpsellBlacklistDays] = useState('30');
+  const [hasUpsellChanges, setHasUpsellChanges] = useState(false);
+
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
     if (resumeValue) setResumePrompt(resumeValue);
@@ -41,6 +53,22 @@ export default function AdminSettings() {
     setWebhookEnabled(webhookEnabledValue === 'true');
     const baseUrlValue = getConfigValue('lead_report_base_url');
     if (baseUrlValue) setReportBaseUrl(baseUrlValue);
+
+    // Load upsell configs
+    const upsellEnabledValue = getConfigValue('upsell_enabled');
+    setUpsellEnabled(upsellEnabledValue !== 'false');
+    const upsellPromptValue = getConfigValue('upsell_prompt_template');
+    if (upsellPromptValue) setUpsellPrompt(upsellPromptValue);
+    const upsellModelValue = getConfigValue('upsell_model');
+    if (upsellModelValue) setUpsellModel(upsellModelValue);
+    const upsellMaxTokensValue = getConfigValue('upsell_max_tokens');
+    if (upsellMaxTokensValue) setUpsellMaxTokens(upsellMaxTokensValue);
+    const upsellTemperatureValue = getConfigValue('upsell_temperature');
+    if (upsellTemperatureValue) setUpsellTemperature(upsellTemperatureValue);
+    const upsellRateLimitValue = getConfigValue('upsell_rate_limit_days');
+    if (upsellRateLimitValue) setUpsellRateLimitDays(upsellRateLimitValue);
+    const upsellBlacklistValue = getConfigValue('upsell_blacklist_days');
+    if (upsellBlacklistValue) setUpsellBlacklistDays(upsellBlacklistValue);
   }, [configs]);
 
   useEffect(() => {
@@ -64,6 +92,25 @@ export default function AdminSettings() {
     setHasWebhookChanges(hasChanges);
   }, [webhookUrl, webhookEnabled, reportBaseUrl, configs]);
 
+  useEffect(() => {
+    const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
+    const originalPrompt = getConfigValue('upsell_prompt_template');
+    const originalModel = getConfigValue('upsell_model');
+    const originalMaxTokens = getConfigValue('upsell_max_tokens');
+    const originalTemperature = getConfigValue('upsell_temperature');
+    const originalRateLimit = getConfigValue('upsell_rate_limit_days');
+    const originalBlacklist = getConfigValue('upsell_blacklist_days');
+    const hasChanges =
+      upsellEnabled !== originalEnabled ||
+      upsellPrompt !== originalPrompt ||
+      upsellModel !== originalModel ||
+      upsellMaxTokens !== originalMaxTokens ||
+      upsellTemperature !== originalTemperature ||
+      upsellRateLimitDays !== originalRateLimit ||
+      upsellBlacklistDays !== originalBlacklist;
+    setHasUpsellChanges(hasChanges);
+  }, [upsellEnabled, upsellPrompt, upsellModel, upsellMaxTokens, upsellTemperature, upsellRateLimitDays, upsellBlacklistDays, configs]);
+
   const handleSaveResume = async () => {
     await updateConfig('resume_analyzer_prompt', resumePrompt);
     setHasResumeChanges(false);
@@ -81,6 +128,19 @@ export default function AdminSettings() {
       updateConfig('lead_report_base_url', reportBaseUrl),
     ]);
     setHasWebhookChanges(false);
+  };
+
+  const handleSaveUpsellConfigs = async () => {
+    await Promise.all([
+      updateConfig('upsell_enabled', upsellEnabled ? 'true' : 'false'),
+      updateConfig('upsell_prompt_template', upsellPrompt),
+      updateConfig('upsell_model', upsellModel),
+      updateConfig('upsell_max_tokens', upsellMaxTokens),
+      updateConfig('upsell_temperature', upsellTemperature),
+      updateConfig('upsell_rate_limit_days', upsellRateLimitDays),
+      updateConfig('upsell_blacklist_days', upsellBlacklistDays),
+    ]);
+    setHasUpsellChanges(false);
   };
 
   const resumeConfig = configs.find(c => c.key === 'resume_analyzer_prompt');
@@ -118,6 +178,7 @@ export default function AdminSettings() {
             <TabsTrigger value="prompts" className="gap-2 rounded-lg"><FileCheck className="h-4 w-4" />Prompts IA</TabsTrigger>
             <TabsTrigger value="reports" className="gap-2 rounded-lg"><FileText className="h-4 w-4" />Relatórios de Carreira</TabsTrigger>
             <TabsTrigger value="community" className="gap-2 rounded-lg"><Users className="h-4 w-4" />Comunidade</TabsTrigger>
+            <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
           </TabsList>
 
           <TabsContent value="prompts" className="space-y-6">
@@ -339,6 +400,170 @@ export default function AdminSettings() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="upsell" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <CardTitle>Sistema de Upsell Contextual</CardTitle>
+                </div>
+                <CardDescription>
+                  Configure como a IA analisa posts e sugere serviços relevantes na comunidade
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Toggle global */}
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Sistema Ativo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Liga/desliga o upsell contextual globalmente
+                    </p>
+                  </div>
+                  <Switch
+                    checked={upsellEnabled}
+                    onCheckedChange={setUpsellEnabled}
+                  />
+                </div>
+
+                {/* Prompt Template */}
+                <div className="space-y-2">
+                  <Label>Prompt Template</Label>
+                  <Textarea
+                    value={upsellPrompt}
+                    onChange={(e) => setUpsellPrompt(e.target.value)}
+                    className="min-h-[300px] font-mono text-sm rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use {'{post_content}'} e {'{services_json}'} como placeholders
+                  </p>
+                </div>
+
+                {/* Configurações do modelo */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Modelo Claude</Label>
+                    <Select value={upsellModel} onValueChange={setUpsellModel}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="claude-haiku-4-5-20251001">Haiku 4.5 (Recomendado)</SelectItem>
+                        <SelectItem value="claude-sonnet-4-5-20250929">Sonnet 4.5</SelectItem>
+                        <SelectItem value="claude-opus-4-6">Opus 4.6</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Max Tokens</Label>
+                    <Input
+                      type="number"
+                      value={upsellMaxTokens}
+                      onChange={(e) => setUpsellMaxTokens(e.target.value)}
+                      className="rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Temperature</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="1"
+                      value={upsellTemperature}
+                      onChange={(e) => setUpsellTemperature(e.target.value)}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Rate limiting */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Intervalo entre Cards (dias)</Label>
+                    <Input
+                      type="number"
+                      value={upsellRateLimitDays}
+                      onChange={(e) => setUpsellRateLimitDays(e.target.value)}
+                      className="rounded-xl"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tempo mínimo entre cards para o mesmo usuário
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Blacklist Duration (dias)</Label>
+                    <Input
+                      type="number"
+                      value={upsellBlacklistDays}
+                      onChange={(e) => setUpsellBlacklistDays(e.target.value)}
+                      className="rounded-xl"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tempo de blacklist após 2 dismissals
+                    </p>
+                  </div>
+                </div>
+
+                {/* Botão salvar */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSaveUpsellConfigs}
+                    disabled={!hasUpsellChanges || isSaving}
+                    className="rounded-[12px] gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Card de documentação */}
+            <Card className="rounded-[24px] border-blue-500/20 bg-blue-500/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  <CardTitle className="text-blue-500">Como Funciona</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-foreground">Fluxo do Sistema</h4>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Usuário cria um post na comunidade</li>
+                    <li>Sistema verifica rate limit e blacklist</li>
+                    <li>Pre-filtro compara keywords dos serviços com o texto do post</li>
+                    <li>Se houver match, Claude API analisa o post e sugere serviço</li>
+                    <li>Se confidence {'>='} 0.7, card de upsell é exibido no post</li>
+                    <li>Após 2 dismissals, serviço entra em blacklist por 30 dias</li>
+                  </ol>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium text-foreground">Otimizações de Custo</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Pre-filtro de keywords economiza ~90% de chamadas à API</li>
+                    <li>Rate limiting previne spam de cards para o mesmo usuário</li>
+                    <li>Haiku 4.5 é 20x mais barato que Sonnet</li>
+                    <li>Max 1 card por post (constraint no banco)</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium text-foreground">Métricas Disponíveis</h4>
+                  <p>
+                    Todas as interações são rastreadas em <code className="px-1 py-0.5 bg-muted rounded text-xs">upsell_impressions</code>:
+                    impressões, clicks, dismissals e conversões.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

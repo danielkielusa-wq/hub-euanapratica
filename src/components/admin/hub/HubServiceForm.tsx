@@ -32,7 +32,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Loader2, Tag, Palette, CreditCard, MousePointerClick, ExternalLink, ChevronDown, Layout, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Tag, Palette, CreditCard, MousePointerClick, ExternalLink, ChevronDown, Layout, Plus, Trash2, Sparkles } from 'lucide-react';
 import { IconSelector } from './IconSelector';
 import { ServiceTypeSelector } from './ServiceTypeSelector';
 import { HubService, ServiceLandingPageData, RIBBON_OPTIONS, PRODUCT_TYPE_LABELS, ProductType, ServiceStatus } from '@/types/hub';
@@ -77,6 +77,9 @@ const formSchema = z.object({
   mentor_initials: z.string().max(3).optional(),
   mentor_title: z.string().optional(),
   mentor_quote: z.string().optional(),
+  // Benefits section
+  benefits_section_title: z.string().optional(),
+  benefits_section_description: z.string().optional(),
   // Benefits (array)
   benefits: z.array(z.object({
     icon: z.string(),
@@ -91,6 +94,10 @@ const formSchema = z.object({
   // FAQ
   faq_title: z.string().optional(),
   faq_description: z.string().optional(),
+  // Upsell fields
+  keywords: z.array(z.string()).default([]),
+  target_tier: z.string().default('all'),
+  is_visible_for_upsell: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -121,6 +128,9 @@ export interface HubServiceFormSubmitData {
   duration?: string;
   meeting_type?: string;
   landing_page_data: ServiceLandingPageData | null;
+  keywords?: string[];
+  target_tier?: string;
+  is_visible_for_upsell?: boolean;
 }
 
 interface HubServiceFormProps {
@@ -134,11 +144,12 @@ interface HubServiceFormProps {
 function buildLandingPageData(data: FormData): ServiceLandingPageData | null {
   const hasHero = data.hero_subtitle || data.hero_tagline;
   const hasMentor = data.mentor_name;
+  const hasBenefitsSection = data.benefits_section_title || data.benefits_section_description;
   const hasBenefits = data.benefits && data.benefits.length > 0 && data.benefits.some(b => b.title);
   const hasAudience = data.target_audience && data.target_audience.length > 0 && data.target_audience.some(a => a.title);
   const hasFaq = data.faq_title || data.faq_description;
 
-  if (!hasHero && !hasMentor && !hasBenefits && !hasAudience && !hasFaq) {
+  if (!hasHero && !hasMentor && !hasBenefitsSection && !hasBenefits && !hasAudience && !hasFaq) {
     return null;
   }
 
@@ -157,6 +168,12 @@ function buildLandingPageData(data: FormData): ServiceLandingPageData | null {
       title: data.mentor_title || '',
     };
     if (data.mentor_quote) result.mentor.quote = data.mentor_quote;
+  }
+
+  if (hasBenefitsSection) {
+    result.benefits_section = {};
+    if (data.benefits_section_title) result.benefits_section.title = data.benefits_section_title;
+    if (data.benefits_section_description) result.benefits_section.description = data.benefits_section_description;
   }
 
   if (hasBenefits && data.benefits) {
@@ -219,10 +236,15 @@ export function HubServiceForm({
       mentor_initials: '',
       mentor_title: '',
       mentor_quote: '',
+      benefits_section_title: '',
+      benefits_section_description: '',
       benefits: [],
       target_audience: [],
       faq_title: '',
       faq_description: '',
+      keywords: [],
+      target_tier: 'all',
+      is_visible_for_upsell: true,
     },
   });
 
@@ -275,10 +297,15 @@ export function HubServiceForm({
         mentor_initials: lp?.mentor?.initials || '',
         mentor_title: lp?.mentor?.title || '',
         mentor_quote: lp?.mentor?.quote || '',
+        benefits_section_title: lp?.benefits_section?.title || '',
+        benefits_section_description: lp?.benefits_section?.description || '',
         benefits: lp?.benefits || [],
         target_audience: lp?.target_audience || [],
         faq_title: lp?.faq_section?.title || '',
         faq_description: lp?.faq_section?.description || '',
+        keywords: service?.keywords || [],
+        target_tier: service?.target_tier || 'all',
+        is_visible_for_upsell: service?.is_visible_for_upsell ?? true,
       });
 
       setLandingPageOpen(hasLandingData);
@@ -314,6 +341,9 @@ export function HubServiceForm({
       duration: data.duration,
       meeting_type: data.meeting_type,
       landing_page_data: landingPageData,
+      keywords: data.keywords,
+      target_tier: data.target_tier,
+      is_visible_for_upsell: data.is_visible_for_upsell,
     });
   };
 
@@ -737,7 +767,96 @@ export function HubServiceForm({
               />
             </div>
 
-            {/* Section 5: Landing Page Data */}
+            {/* Section 5: Upsell Contextual */}
+            <div className="rounded-xl border bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-semibold text-indigo-900">UPSELL CONTEXTUAL</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Configure como este serviço pode ser sugerido automaticamente na comunidade
+              </p>
+
+              <FormField
+                control={form.control}
+                name="is_visible_for_upsell"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border bg-white p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-sm">Visível para Upsell</FormLabel>
+                      <p className="text-[11px] text-muted-foreground">
+                        Permite que este serviço seja sugerido via IA na comunidade
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="keywords"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Keywords (separadas por vírgula)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Ex: entrevista, nervoso, medo, ansiedade, interview"
+                        value={Array.isArray(field.value) ? field.value.join(', ') : field.value || ''}
+                        onChange={(e) => {
+                          // Store as string while typing, convert to array on blur
+                          field.onChange(e.target.value);
+                        }}
+                        onBlur={(e) => {
+                          // Convert to array when user finishes editing
+                          const keywords = e.target.value
+                            .split(',')
+                            .map(k => k.trim())
+                            .filter(k => k.length > 0);
+                          field.onChange(keywords);
+                        }}
+                        className="min-h-[80px] bg-white"
+                      />
+                    </FormControl>
+                    <p className="text-[11px] text-muted-foreground">
+                      Palavras-chave para pre-filtro antes de chamar a IA. Economiza custos!
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="target_tier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tier Alvo</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Selecione o tier" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="basic">Basic</SelectItem>
+                        <SelectItem value="premium">Premium</SelectItem>
+                        <SelectItem value="vip">VIP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Define para qual plano de assinatura este serviço será sugerido
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Section 6: Landing Page Data */}
             <Collapsible open={landingPageOpen} onOpenChange={setLandingPageOpen}>
               <div className="rounded-xl border bg-muted/30">
                 <CollapsibleTrigger asChild>
@@ -886,10 +1005,46 @@ export function HubServiceForm({
                       />
                     </div>
 
+                    {/* Benefits Section Header */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seção de Benefícios (Cabeçalho)</h4>
+                      <FormField
+                        control={form.control}
+                        name="benefits_section_title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Título da Seção</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: O que você vai descobrir nesta sessão?" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="benefits_section_description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descrição da Seção</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Ex: Muitos profissionais perdem anos (e milhares de dólares) tentando imigrar da forma errada..."
+                                className="resize-none"
+                                rows={3}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     {/* Benefits */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Benefícios</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Benefícios (Itens)</h4>
                         <Button
                           type="button"
                           variant="outline"

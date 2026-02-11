@@ -45,6 +45,7 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
   const landingData = service.landing_page_data || {};
   const hero = landingData.hero || {};
   const mentor = landingData.mentor;
+  const benefitsSection = landingData.benefits_section;
   const benefits = landingData.benefits || [];
   const targetAudience = landingData.target_audience || [];
   const faqSection = landingData.faq_section;
@@ -153,9 +154,11 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
          {/* Benefits Section */}
          {benefits.length > 0 && (
            <div className="bg-white rounded-[32px] p-8 shadow-xl border border-gray-100 mb-16">
-               <h2 className="text-2xl font-black text-gray-900 mb-4">O que você vai descobrir nesta sessão?</h2>
+               <h2 className="text-2xl font-black text-gray-900 mb-4">
+                 {benefitsSection?.title || 'O que você vai descobrir nesta sessão?'}
+               </h2>
                <p className="text-gray-500 mb-8 leading-relaxed">
-                 Muitos profissionais perdem anos (e milhares de dólares) tentando imigrar da forma errada. Esta sessão é um "alinhamento de bússola" para evitar erros caros.
+                 {benefitsSection?.description || 'Muitos profissionais perdem anos (e milhares de dólares) tentando imigrar da forma errada. Esta sessão é um "alinhamento de bússola" para evitar erros caros.'}
                </p>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

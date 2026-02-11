@@ -4,6 +4,8 @@ import { CommunityPost, PostFilter } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalyzePost } from '@/hooks/useAnalyzePost';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface UseCommunityPostsOptions {
   categoryId?: string | null;
@@ -15,6 +17,8 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
   const { categoryId, filter = 'recent', limit = 20 } = options;
   const { user } = useAuth();
   const { logEvent } = useAnalytics();
+  const analyzePost = useAnalyzePost();
+  const queryClient = useQueryClient();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +123,30 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
           category_id: categoryId || null
         }
       });
+
+      // Análise de upsell (assíncrono, não bloqueia)
+      analyzePost.mutate(
+        {
+          postId: data.id,
+          title,
+          content,
+          userId: user.id,
+        },
+        {
+          onSuccess: (result) => {
+            if (result.match) {
+              console.log('[Upsell] Card created:', result.impression_id, result.service);
+              queryClient.invalidateQueries({ queryKey: ['post-upsell', data.id] });
+            } else {
+              console.warn('[Upsell] No match. Reason:', result.reason || 'unknown', result);
+            }
+          },
+          onError: (error) => {
+            console.error('[Upsell] Analysis failed:', error);
+          },
+        }
+      );
+
       toast({ title: 'Discussão criada com sucesso!' });
       return data;
     } catch (err: any) {

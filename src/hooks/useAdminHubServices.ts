@@ -54,6 +54,10 @@ export function useCreateHubService() {
           duration: formData.duration || null,
           meeting_type: formData.meeting_type || null,
           landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
+          // Upsell fields
+          keywords: formData.keywords || [],
+          target_tier: formData.target_tier || 'all',
+          is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
         })
         .select()
         .single();
@@ -115,6 +119,10 @@ export function useUpdateHubService() {
           duration: formData.duration || null,
           meeting_type: formData.meeting_type || null,
           landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
+          // Upsell fields
+          keywords: formData.keywords || [],
+          target_tier: formData.target_tier || 'all',
+          is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
         })
         .eq('id', id)
         .select()
