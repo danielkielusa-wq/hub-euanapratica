@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getInternalPath } from '@/lib/navigation';
 import {
   GraduationCap,
   FileCheck,
@@ -103,9 +104,9 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
   const handleUnlock = () => {
     // Priority 1: Landing page URL (presentation page)
     if (service.landing_page_url) {
-      // Internal URLs use React Router (same window, in-platform)
-      if (service.landing_page_url.startsWith('/')) {
-        navigate(service.landing_page_url);
+      const internalPath = getInternalPath(service.landing_page_url);
+      if (internalPath) {
+        navigate(internalPath);
       } else {
         window.open(service.landing_page_url, '_blank');
       }

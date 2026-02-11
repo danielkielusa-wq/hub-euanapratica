@@ -56,9 +56,9 @@ const studentNavGroups: NavGroup[] = [
     items: [
       { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass },
       { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' } },
-      { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+      // { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
       { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck },
-      { label: 'Catálogo', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' } },
+      // { label: 'Catálogo', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Meus Espaços', href: '/dashboard/espacos', icon: LayoutGrid },
     ],
   },

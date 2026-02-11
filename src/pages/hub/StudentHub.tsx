@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useHighlightedService, useSecondaryServices } from '@/hooks/useHighlightedService';
+import { getInternalPath } from '@/lib/navigation';
 import { toast } from 'sonner';
 import * as icons from 'lucide-react';
 import {
@@ -27,16 +28,6 @@ export default function StudentHub() {
   const planName = quota?.planName || 'Starter (Free)';
   const remainingCredits = quota?.remaining ?? 1;
   const userName = user?.full_name?.split(' ')[0] || 'Usuário';
-
-  // Extract internal path from URL (handles both "/path" and "https://our-domain/path")
-  const getInternalPath = (url: string): string | null => {
-    if (url.startsWith('/')) return url;
-    try {
-      const parsed = new URL(url);
-      if (parsed.origin === window.location.origin) return parsed.pathname;
-    } catch {}
-    return null;
-  };
 
   const handleOpenAI = () => {
     navigate('/curriculo');

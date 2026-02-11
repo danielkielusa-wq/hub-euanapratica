@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getInternalPath } from '@/lib/navigation';
 import { HubService } from '@/types/hub';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -13,15 +14,6 @@ interface FeaturedServiceBannerProps {
 export function FeaturedServiceBanner({ service, hasAccess }: FeaturedServiceBannerProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const getInternalPath = (url: string): string | null => {
-    if (url.startsWith('/')) return url;
-    try {
-      const parsed = new URL(url);
-      if (parsed.origin === window.location.origin) return parsed.pathname;
-    } catch {}
-    return null;
-  };
 
   const handleAction = () => {
     if (hasAccess && service.route) {

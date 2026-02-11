@@ -4,6 +4,7 @@ import * as icons from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { getInternalPath } from '@/lib/navigation';
 import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,15 +36,6 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
       style: 'currency',
       currency: 'BRL',
     }).format(price);
-  };
-
-  const getInternalPath = (url: string): string | null => {
-    if (url.startsWith('/')) return url;
-    try {
-      const parsed = new URL(url);
-      if (parsed.origin === window.location.origin) return parsed.pathname;
-    } catch {}
-    return null;
   };
 
   const handleUnlock = () => {
