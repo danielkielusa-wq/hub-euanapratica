@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,14 @@ import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Li
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
+import { useAdminApis } from '@/hooks/useAdminApis';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function AdminSettings() {
   const { configs, isLoading, isSaving, updateConfig, getConfigValue } = useAppConfigs();
-  
+  const { apis, isLoading: apisLoading } = useAdminApis();
+
   const [resumePrompt, setResumePrompt] = useState('');
   const [hasResumeChanges, setHasResumeChanges] = useState(false);
   const [leadPrompt, setLeadPrompt] = useState('');
@@ -29,6 +32,11 @@ export default function AdminSettings() {
   const [webhookEnabled, setWebhookEnabled] = useState(false);
   const [reportBaseUrl, setReportBaseUrl] = useState('');
   const [hasWebhookChanges, setHasWebhookChanges] = useState(false);
+
+  // Title Translator config
+  const [ttPrompt, setTtPrompt] = useState('');
+  const [ttApiConfig, setTtApiConfig] = useState('openai_api');
+  const [hasTtChanges, setHasTtChanges] = useState(false);
 
   // Upsell config
   const [upsellEnabled, setUpsellEnabled] = useState(true);
@@ -53,6 +61,12 @@ export default function AdminSettings() {
     setWebhookEnabled(webhookEnabledValue === 'true');
     const baseUrlValue = getConfigValue('lead_report_base_url');
     if (baseUrlValue) setReportBaseUrl(baseUrlValue);
+
+    // Load title translator configs
+    const ttPromptValue = getConfigValue('title_translator_prompt');
+    if (ttPromptValue) setTtPrompt(ttPromptValue);
+    const ttApiConfigValue = getConfigValue('title_translator_api_config');
+    if (ttApiConfigValue) setTtApiConfig(ttApiConfigValue);
 
     // Load upsell configs
     const upsellEnabledValue = getConfigValue('upsell_enabled');
@@ -93,6 +107,15 @@ export default function AdminSettings() {
   }, [webhookUrl, webhookEnabled, reportBaseUrl, configs]);
 
   useEffect(() => {
+    const originalPrompt = getConfigValue('title_translator_prompt');
+    const originalApi = getConfigValue('title_translator_api_config');
+    const hasChanges =
+      ttPrompt !== originalPrompt ||
+      ttApiConfig !== (originalApi || 'openai_api');
+    setHasTtChanges(hasChanges);
+  }, [ttPrompt, ttApiConfig, configs]);
+
+  useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
     const originalPrompt = getConfigValue('upsell_prompt_template');
     const originalModel = getConfigValue('upsell_model');
@@ -128,6 +151,14 @@ export default function AdminSettings() {
       updateConfig('lead_report_base_url', reportBaseUrl),
     ]);
     setHasWebhookChanges(false);
+  };
+
+  const handleSaveTitleTranslator = async () => {
+    await Promise.all([
+      updateConfig('title_translator_prompt', ttPrompt),
+      updateConfig('title_translator_api_config', ttApiConfig),
+    ]);
+    setHasTtChanges(false);
   };
 
   const handleSaveUpsellConfigs = async () => {
@@ -178,6 +209,7 @@ export default function AdminSettings() {
             <TabsTrigger value="prompts" className="gap-2 rounded-lg"><FileCheck className="h-4 w-4" />Prompts IA</TabsTrigger>
             <TabsTrigger value="reports" className="gap-2 rounded-lg"><FileText className="h-4 w-4" />Relatórios de Carreira</TabsTrigger>
             <TabsTrigger value="community" className="gap-2 rounded-lg"><Users className="h-4 w-4" />Comunidade</TabsTrigger>
+            <TabsTrigger value="title-translator" className="gap-2 rounded-lg"><Globe className="h-4 w-4" />Title Translator</TabsTrigger>
             <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
           </TabsList>
 
@@ -399,6 +431,74 @@ export default function AdminSettings() {
                       </div>
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="title-translator" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2"><Globe className="w-5 h-5 text-primary" /><CardTitle>Title Translator - Configuracao da IA</CardTitle></div>
+                <CardDescription>Configure a API, modelo e prompt usados pela ferramenta de traducao de titulos.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={ttApiConfig} onValueChange={setTtApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    {api.name}
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada e seu modelo serão configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">/admin/configuracoes-apis</Link>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Prompt da IA</Label>
+                      <Textarea
+                        value={ttPrompt}
+                        onChange={(e) => setTtPrompt(e.target.value)}
+                        className="min-h-[300px] font-mono text-sm rounded-xl"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use {'{title_br}'}, {'{area}'}, {'{responsibilities}'} e {'{years_experience}'} como placeholders
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button
+                        onClick={handleSaveTitleTranslator}
+                        disabled={!hasTtChanges || isSaving}
+                        className="rounded-[12px] gap-2"
+                      >
+                        <Save className="w-4 h-4" />
+                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
+                      </Button>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

@@ -48,6 +48,17 @@ serve(async (req) => {
     if (!forceRefresh && evaluation.formatted_report) {
       try {
         const cached = JSON.parse(evaluation.formatted_report);
+
+        // V2 reports: enrich product recommendations with live hub_services data
+        if (cached.report_metadata?.report_version === '2.0') {
+          const enriched = await enrichV2Recommendations(supabase, cached);
+          return new Response(
+            JSON.stringify({ content: enriched, cached: true }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // V1 reports: return as-is
         return new Response(
           JSON.stringify({ content: cached, cached: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -57,7 +68,32 @@ serve(async (req) => {
       }
     }
 
-    // Return raw content if no AI key
+    // V2 + forceRefresh: re-enrich recommendations only, do NOT regenerate via AI
+    if (forceRefresh && evaluation.formatted_report) {
+      try {
+        const cached = JSON.parse(evaluation.formatted_report);
+        if (cached.report_metadata?.report_version === '2.0') {
+          const enriched = await enrichV2Recommendations(supabase, cached);
+          await supabase
+            .from("career_evaluations")
+            .update({
+              formatted_report: JSON.stringify(enriched),
+              processing_status: 'completed',
+              processing_error: null,
+              processing_started_at: null
+            })
+            .eq("id", evaluationId);
+          return new Response(
+            JSON.stringify({ content: enriched, cached: false }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch {
+        // Fall through to V1 forceRefresh flow
+      }
+    }
+
+    // Return raw content if no AI key (V1 flow only from here)
     if (!openaiConfig?.credentials?.api_key) {
       return new Response(
         JSON.stringify({ error: "AI nao configurada" }),
@@ -446,3 +482,67 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
     );
   }
 });
+
+/**
+ * V2 reports are pre-processed by the upstream system.
+ * This function only enriches product recommendations with live hub_services data
+ * (URLs, prices, CTA texts) without calling AI.
+ */
+async function enrichV2Recommendations(
+  supabase: ReturnType<typeof createClient>,
+  reportData: Record<string, any>
+): Promise<Record<string, any>> {
+  try {
+    const { data: hubServices } = await supabase
+      .from("hub_services")
+      .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
+      .eq("status", "available")
+      .eq("is_visible_in_hub", true);
+
+    if (!hubServices?.length) {
+      return reportData;
+    }
+
+    const recommendation = reportData.product_recommendation;
+    if (!recommendation) {
+      return reportData;
+    }
+
+    // Enrich primary offer
+    const primaryOffer = recommendation.primary_offer;
+    if (primaryOffer?.recommended_product_name) {
+      const matched = hubServices.find(
+        (s: any) =>
+          s.name.toLowerCase().includes(primaryOffer.recommended_product_name.toLowerCase()) ||
+          primaryOffer.recommended_product_name.toLowerCase().includes(s.name.toLowerCase())
+      );
+      if (matched) {
+        primaryOffer.recommended_product_url = matched.ticto_checkout_url || primaryOffer.recommended_product_url;
+        primaryOffer.recommended_product_price = matched.price_display || primaryOffer.recommended_product_price;
+        primaryOffer.cta = matched.cta_text || primaryOffer.cta;
+        primaryOffer._enriched_service_id = matched.id;
+      }
+    }
+
+    // Enrich secondary offer
+    const secondaryOffer = recommendation.secondary_offer;
+    if (secondaryOffer?.secondary_product_name) {
+      const matched = hubServices.find(
+        (s: any) =>
+          s.name.toLowerCase().includes(secondaryOffer.secondary_product_name.toLowerCase()) ||
+          secondaryOffer.secondary_product_name.toLowerCase().includes(s.name.toLowerCase())
+      );
+      if (matched) {
+        secondaryOffer._enriched_service_id = matched.id;
+        secondaryOffer._enriched_checkout_url = matched.ticto_checkout_url || null;
+        secondaryOffer._enriched_cta_text = matched.cta_text || null;
+        secondaryOffer._enriched_price_display = matched.price_display || null;
+      }
+    }
+
+    return reportData;
+  } catch (err) {
+    console.error("Error enriching V2 recommendations:", err);
+    return reportData; // Return original data on any error
+  }
+}

@@ -18,7 +18,7 @@ export type PlanFeatureKey =
   | 'allow_pdf';
 
 // Limited features (with usage counts)
-export type LimitedFeature = 'resume_pass' | 'job_concierge';
+export type LimitedFeature = 'resume_pass' | 'title_translator' | 'job_concierge';
 
 // Discount categories
 export interface PlanDiscounts {
@@ -33,6 +33,7 @@ export interface PlanDiscounts {
 export interface PlanFeatures {
   // Usage limits
   resume_pass_limit: number;
+  title_translator_limit: number;
   job_concierge_count: number;
   
   // Access toggles
@@ -88,6 +89,7 @@ export interface UserPlanAccess {
 // Default features for fallback
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   resume_pass_limit: 1,
+  title_translator_limit: 1,
   job_concierge_count: 0,
   hotseats: false,
   hotseat_priority: false,

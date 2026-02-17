@@ -44,6 +44,11 @@ export function useAdminPlans() {
           features.resume_pass_limit = p.monthly_limit;
         }
 
+        // Default title_translator_limit if not set
+        if (!features.title_translator_limit) {
+          features.title_translator_limit = 1;
+        }
+
         return {
           id: p.id,
           name: p.name,

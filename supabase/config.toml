@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.analyze-post-for-upsell]
 verify_jwt = false
+
+[functions.translate-title]
+verify_jwt = false
+
+[functions.test-api-connection]
+verify_jwt = false

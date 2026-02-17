@@ -40,9 +40,9 @@ export function NewPostModal({ open, onOpenChange, categories, onSubmit }: NewPo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] rounded-[24px]">
+      <DialogContent className="sm:max-w-[600px] rounded-[32px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Nova Discussão</DialogTitle>
+          <DialogTitle className="text-xl font-black text-gray-900">Nova Discussao</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
@@ -96,7 +96,7 @@ export function NewPostModal({ open, onOpenChange, categories, onSubmit }: NewPo
           <Button
             onClick={handleSubmit}
             disabled={!title.trim() || !content.trim() || isSubmitting}
-            className="rounded-xl gap-2"
+            className="rounded-xl gap-2 bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-600/20"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -232,6 +232,14 @@ All colors MUST be HSL.
     display: none;
   }
 
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   @keyframes float {
     0%, 100% {
       transform: translateY(0px);

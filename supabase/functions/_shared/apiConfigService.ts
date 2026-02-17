@@ -49,7 +49,8 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
   }
 
   console.log(`[getApiConfig] credentials type:`, typeof data.credentials);
-  console.log(`[getApiConfig] credentials value:`, JSON.stringify(data.credentials));
+  const credKeys = data.credentials ? Object.keys(data.credentials) : [];
+  console.log(`[getApiConfig] credentials keys:`, credKeys.join(", ") || "(empty)");
 
   // Check if credentials exist and are not null/empty
   const hasCredentials = data.credentials &&
@@ -113,7 +114,7 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
         api_key: "openai_api",
         base_url: "https://api.openai.com/v1",
         credentials: { api_key: apiKeyValue },
-        parameters: { model: "gpt-4", max_tokens: 4000 },
+        parameters: { model: "gpt-4o-mini", max_tokens: 4000 },
         description: "Legacy env var configuration",
         is_active: true,
       };

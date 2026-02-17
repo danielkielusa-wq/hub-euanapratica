@@ -8,7 +8,9 @@ import { ReportFooter } from './ReportFooter';
 import { RecommendationsCTA } from './RecommendationsCTA';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import type { CareerEvaluation, FormattedReportData } from '@/types/leads';
+import { V2ReportContainer } from './v2';
+import type { CareerEvaluation, FormattedReportData, V2FormattedReportData } from '@/types/leads';
+import { isV2Report } from '@/types/leads';
 
 interface FormattedReportProps {
   evaluation: CareerEvaluation;
@@ -18,18 +20,26 @@ interface FormattedReportProps {
 }
 
 export function FormattedReport({ evaluation, formattedContent, isLoading, processingStatus }: FormattedReportProps) {
-  // Try to parse formatted content as JSON
+  // Try to parse formatted content and detect version
   let reportData: FormattedReportData | null = null;
-  
+  let v2ReportData: V2FormattedReportData | null = null;
+
   if (formattedContent) {
     try {
       const parsed = JSON.parse(formattedContent);
-      if (parsed.greeting && parsed.diagnostic) {
+      if (isV2Report(parsed)) {
+        v2ReportData = parsed;
+      } else if (parsed.greeting && parsed.diagnostic) {
         reportData = parsed as FormattedReportData;
       }
     } catch {
       // Not valid JSON, will show fallback
     }
+  }
+
+  // V2 report: render with V2 components
+  if (v2ReportData) {
+    return <V2ReportContainer data={v2ReportData} />;
   }
 
   // Processing state: report is being generated in background (with auto-polling)

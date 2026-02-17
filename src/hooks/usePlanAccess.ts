@@ -132,6 +132,9 @@ export function usePlanAccess(): UsePlanAccessReturn {
     if (feature === 'resume_pass') {
       return planAccess.features.resume_pass_limit || planAccess.monthlyLimit;
     }
+    if (feature === 'title_translator') {
+      return planAccess.features.title_translator_limit || 1;
+    }
     if (feature === 'job_concierge') {
       return planAccess.features.job_concierge_count || 0;
     }

@@ -26,7 +26,8 @@ import {
   TestTube,
   Upload,
   Briefcase,
-  Link2
+  Link2,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -77,6 +78,13 @@ const studentNavGroups: NavGroup[] = [
         label: 'ResumePass AI',
         href: '/curriculo',
         icon: FileSearch,
+        badge: { text: 'IA', variant: 'ai' },
+        isSpecial: true
+      },
+      {
+        label: 'Title Translator',
+        href: '/title-translator',
+        icon: Globe,
         badge: { text: 'IA', variant: 'ai' },
         isSpecial: true
       },

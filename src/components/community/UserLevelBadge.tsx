@@ -8,18 +8,46 @@ interface UserLevelBadgeProps {
   totalPoints: number;
   size?: 'sm' | 'md' | 'lg';
   showProgress?: boolean;
+  variant?: 'default' | 'pill';
+  initials?: string;
   className?: string;
 }
 
-export function UserLevelBadge({ 
-  level, 
-  totalPoints, 
+export function UserLevelBadge({
+  level,
+  totalPoints,
   size = 'md',
   showProgress = true,
-  className 
+  variant = 'default',
+  initials = '?',
+  className
 }: UserLevelBadgeProps) {
   const progress = getNextLevelProgress(totalPoints, level);
   const title = getLevelTitle(level);
+
+  if (variant === 'pill') {
+    return (
+      <div className={cn(
+        'bg-white p-1.5 pl-4 pr-1.5 rounded-full border border-gray-200 shadow-sm flex items-center gap-3',
+        className
+      )}>
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] font-black uppercase text-gray-400">
+            Nivel {level}
+          </span>
+          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-brand-400 to-brand-600 rounded-full"
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+        </div>
+        <div className="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+          {initials}
+        </div>
+      </div>
+    );
+  }
 
   const sizeClasses = {
     sm: 'h-6 w-6 text-xs',
@@ -44,7 +72,7 @@ export function UserLevelBadge({
       )}>
         {level}
       </div>
-      
+
       {showProgress && (
         <div className="flex-1 min-w-[80px]">
           <div className="flex items-center justify-between text-xs mb-1">
@@ -57,7 +85,7 @@ export function UserLevelBadge({
           <Progress value={progress.percent} className="h-1.5" />
           {level < 5 && (
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {progress.next - totalPoints} XP para nível {level + 1}
+              {progress.next - totalPoints} XP para nivel {level + 1}
             </p>
           )}
         </div>

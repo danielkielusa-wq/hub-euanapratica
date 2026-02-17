@@ -32,7 +32,7 @@ export function UpsellCard({ data, onDismiss }: UpsellCardProps) {
   };
 
   return (
-    <Card className="rounded-[20px] border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+    <Card className="rounded-2xl border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full blur-2xl opacity-40 -mr-12 -mt-12" />
 

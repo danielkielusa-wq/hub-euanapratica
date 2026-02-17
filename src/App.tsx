@@ -71,6 +71,7 @@ import JobDetailsPage from "./pages/jobs/JobDetailsPage";
 import JobBookmarks from "./pages/jobs/JobBookmarks";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 import ServiceDetail from "./pages/services/ServiceDetail";
+import TitleTranslator from "./pages/title-translator/TitleTranslator";
 
 
 const queryClient = new QueryClient();
@@ -470,6 +471,15 @@ function AppRoutes() {
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceGuard serviceRoute="/curriculo">
             <SavedReportPage />
+          </ServiceGuard>
+        </ProtectedRoute>
+      } />
+
+      {/* Title Translator - Job Title Match */}
+      <Route path="/title-translator" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <ServiceGuard serviceRoute="/title-translator">
+            <TitleTranslator />
           </ServiceGuard>
         </ProtectedRoute>
       } />

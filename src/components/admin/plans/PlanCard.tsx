@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
-  Zap, 
-  Users, 
-  Crown, 
-  Percent, 
-  Save, 
-  Copy, 
+import {
+  Zap,
+  Users,
+  Crown,
+  Percent,
+  Save,
+  Copy,
   Briefcase,
   Ticket,
+  Languages,
   Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -199,6 +200,27 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
                   className="w-16 text-center font-bold"
                 />
                 <span className="text-xs text-muted-foreground font-medium">análises</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 1b. Title Translator */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Languages size={14} className="text-primary" /> Title Translator
+          </h3>
+          <div className="bg-muted/50 rounded-2xl p-4 border border-border">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-bold text-foreground">Limite Mensal</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={localPlan.features.title_translator_limit}
+                  onChange={(e) => updateFeature('title_translator_limit', Number(e.target.value))}
+                  className="w-16 text-center font-bold"
+                />
+                <span className="text-xs text-muted-foreground font-medium">traduções</span>
               </div>
             </div>
           </div>

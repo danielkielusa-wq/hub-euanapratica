@@ -187,9 +187,9 @@ INSERT INTO public.api_configs (name, api_key, base_url, description, is_active,
     'OpenAI API',
     'openai_api',
     'https://api.openai.com/v1',
-    'API para análise de currículos e formatação de relatórios usando GPT-4',
+    'API para análise de currículos e formatação de relatórios usando GPT-4. Configure o modelo no campo parameters.',
     true,
-    '{"model": "gpt-4", "max_tokens": 4000}'::JSONB
+    '{"model": "gpt-4o-mini", "max_tokens": 4000}'::JSONB
   ),
   (
     'Resend Email',
@@ -212,7 +212,7 @@ ON CONFLICT (api_key) DO NOTHING;
 -- Comments
 COMMENT ON TABLE public.api_configs IS 'Configurações centralizadas de APIs externas com credenciais criptografadas';
 COMMENT ON COLUMN public.api_configs.credentials IS 'Credenciais criptografadas (JSONB). Cada chave é criptografada com pgcrypto';
-COMMENT ON COLUMN public.api_configs.parameters IS 'Parâmetros adicionais não sensíveis (JSONB). Ex: model, timeout, from_email';
+COMMENT ON COLUMN public.api_configs.parameters IS 'Parâmetros adicionais não sensíveis (JSONB). Deve incluir "model" para especificar qual modelo usar. Ex: {"model": "gpt-4o-mini", "max_tokens": 4000}';
 COMMENT ON FUNCTION public.encrypt_credential IS 'Criptografa uma credencial usando pgcrypto (AES-256)';
 COMMENT ON FUNCTION public.decrypt_credential IS 'Descriptografa uma credencial usando pgcrypto';
 COMMENT ON FUNCTION public.admin_update_api_credentials IS 'Atualiza credenciais de API (criptografa automaticamente). Apenas admins.';
