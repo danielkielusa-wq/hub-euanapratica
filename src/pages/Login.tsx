@@ -1,59 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Loader2, 
-  GraduationCap, 
-  Building2, 
-  ShieldCheck, 
-  Mail, 
-  Lock, 
-  ArrowRight 
+import {
+  Loader2,
+  Mail,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-type RoleType = 'student' | 'mentor' | 'admin';
-
-const ROLE_CONFIG = {
-  student: {
-    label: 'Aluno',
-    icon: GraduationCap,
-    email: 'aluno@teste.com',
-    password: 'TempPass123!',
-  },
-  mentor: {
-    label: 'Mentor',
-    icon: Building2,
-    email: 'mentor@teste.com',
-    password: 'TempPass123!',
-  },
-  admin: {
-    label: 'Admin',
-    icon: ShieldCheck,
-    email: 'admin@teste.com',
-    password: 'TempPass123!',
-  },
-};
 
 export default function Login() {
-  const [selectedRole, setSelectedRole] = useState<RoleType>('student');
-  const [email, setEmail] = useState(ROLE_CONFIG.student.email);
-  const [password, setPassword] = useState(ROLE_CONFIG.student.password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const { toast } = useToast();
-
-  // Auto-fill credentials when role changes
-  useEffect(() => {
-    const config = ROLE_CONFIG[selectedRole];
-    setEmail(config.email);
-    setPassword(config.password);
-  }, [selectedRole]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,67 +53,10 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout 
-      title="Escolha seu perfil" 
-      subtitle="Selecione como deseja acessar a plataforma"
+    <AuthLayout
+      title="Bem-vindo de volta"
+      subtitle="Entre com suas credenciais para acessar a plataforma"
     >
-      {/* Profile Selector */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {(Object.keys(ROLE_CONFIG) as RoleType[]).map((role) => {
-          const config = ROLE_CONFIG[role];
-          const Icon = config.icon;
-          const isSelected = selectedRole === role;
-          
-          return (
-            <button
-              key={role}
-              type="button"
-              onClick={() => setSelectedRole(role)}
-              className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
-                isSelected
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-              )}
-            >
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
-                  isSelected ? "bg-indigo-100" : "bg-gray-100"
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-6 w-6",
-                    isSelected ? "text-indigo-600" : "text-gray-500"
-                  )}
-                />
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-medium",
-                  isSelected ? "text-indigo-600" : "text-gray-700"
-                )}
-              >
-                {config.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Section Divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white px-4 text-xs text-gray-400 uppercase tracking-wider">
-            Login de {ROLE_CONFIG[selectedRole].label}
-          </span>
-        </div>
-      </div>
-
       {/* Login Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
@@ -158,7 +66,7 @@ export default function Login() {
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
               type="email"
-              placeholder={ROLE_CONFIG[selectedRole].email}
+              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
