@@ -30,9 +30,6 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
     data.phase_classification?.rota_letter || data.web_report_data.rota_framework_progress?.current_phase
   );
 
-  console.log('[V2ReportContainer] rota_letter:', data.phase_classification?.rota_letter);
-  console.log('[V2ReportContainer] Extracted Phase:', currentPhase);
-
   const rotaProgress = {
     ...data.web_report_data.rota_framework_progress,
     current_phase: currentPhase
@@ -96,11 +93,13 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
         </ScrollReveal>
 
         {/* 8. Próximos checkpoints */}
-        <ScrollReveal>
-          <V2Checkpoints
-            milestones={data.timeline_milestones}
-          />
-        </ScrollReveal>
+        {data.timeline_milestones && (
+          <ScrollReveal>
+            <V2Checkpoints
+              milestones={data.timeline_milestones}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 9. CTA Final + Explorer invite */}
         <ScrollReveal>
@@ -118,8 +117,8 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
         {/* 10. Footer */}
         <V2ReportFooter
           userName={evaluation.name}
-          generatedAt={data.report_metadata.generated_at}
-          reportVersion={data.report_metadata.report_version}
+          generatedAt={data.report_metadata?.generated_at || evaluation.formatted_at || evaluation.created_at}
+          reportVersion={data.report_metadata?.report_version || '2.0'}
         />
       </main>
     </div>

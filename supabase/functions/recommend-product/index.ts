@@ -23,6 +23,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
+// and is editable by the admin at /admin/configuracoes → Prompts IA tab.
 const DEFAULT_PROMPT = `Você é um especialista em recomendação de produtos educacionais.
 
 Dados do lead: {{lead_data}}
@@ -32,8 +34,8 @@ Serviços disponíveis: {{services}}
 Com base no tier e no perfil do lead, recomende o serviço mais adequado da lista acima.
 Retorne um JSON com:
 - recommended_service_name: nome exato do serviço conforme cadastrado
-- recommendation_description: 1 a 2 parágrafos explicando como esse serviço ajuda o lead a atingir o objetivo dele, de forma personalizada
-- justification: motivo técnico da escolha com base no tier e perfil
+- recommendation_description: 1 a 2 parágrafos personalizados
+- justification: motivo técnico da escolha
 
 Retorne apenas o JSON, sem texto adicional.`;
 
@@ -171,12 +173,14 @@ serve(async (req) => {
     );
 
     // 3. Query hub_services dynamically - never hardcode
+    // Include both 'available' (free) and 'premium' (paid) services
+    // so the LLM can recommend paid products when tier warrants it
     const { data: services } = await supabase
       .from("hub_services")
       .select(
         "id, name, description, category, service_type, price, price_display, landing_page_url, ticto_checkout_url, cta_text"
       )
-      .eq("status", "available")
+      .in("status", ["available", "premium"])
       .eq("is_visible_in_hub", true);
 
     if (!services?.length) {
@@ -225,6 +229,9 @@ serve(async (req) => {
       income_range: evaluation.income_range,
       investment_range: evaluation.investment_range,
       main_concern: evaluation.main_concern,
+      readiness_score: evaluation.readiness_score,
+      phase_name: evaluation.phase_name,
+      rota_letter: evaluation.rota_letter,
     });
 
     const servicesJson = JSON.stringify(
@@ -243,26 +250,55 @@ serve(async (req) => {
       .replace(/\{\{tier\}\}/g, tier)
       .replace(/\{\{services\}\}/g, servicesJson);
 
-    // 6. Call LLM
-    const openaiConfig = await getApiConfig("openai_api");
+    // 6. Call LLM (configurable provider via app_configs)
+    const { data: providerConfig } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "llm_product_recommendation_api")
+      .single();
 
-    const aiResponse = await fetch(`${openaiConfig.base_url}/responses`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiConfig.credentials.api_key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: openaiConfig.parameters?.model || "gpt-4.1-mini",
-        input: [
-          {
-            role: "user",
-            content: [{ type: "input_text", text: prompt }],
-          },
-        ],
-        text: { format: { type: "json_object" } },
-      }),
-    });
+    const providerKey = providerConfig?.value?.trim() || "anthropic_api";
+    console.log(`[recommend-product] Using LLM provider: ${providerKey}`);
+
+    const apiConfig = await getApiConfig(providerKey);
+
+    let aiResponse: Response;
+    if (providerKey === "anthropic_api") {
+      // Anthropic Messages API
+      aiResponse = await fetch(`${apiConfig.base_url}/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiConfig.credentials.api_key,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: apiConfig.parameters?.model || "claude-haiku-4-5-20251001",
+          // Recommendation needs at least 1024 tokens (the shared api_config may have a lower value like 150 for upsell)
+          max_tokens: Math.max(1024, parseInt(String(apiConfig.parameters?.max_tokens || 1024), 10)),
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+    } else {
+      // OpenAI Responses API
+      aiResponse = await fetch(`${apiConfig.base_url}/responses`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiConfig.credentials.api_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: apiConfig.parameters?.model || "gpt-4.1-mini",
+          input: [
+            {
+              role: "user",
+              content: [{ type: "input_text", text: prompt }],
+            },
+          ],
+          text: { format: { type: "json_object" } },
+        }),
+      });
+    }
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -276,7 +312,7 @@ serve(async (req) => {
         .update({
           recommendation_status: "error",
           raw_llm_response: {
-            error: `LLM error: ${aiResponse.status}`,
+            error: `LLM error (${providerKey}): ${aiResponse.status}`,
             detail: errorText.slice(0, 500),
           },
         })
@@ -292,8 +328,10 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
 
-    // Extract output text from OpenAI response
-    const outputText = extractOutputText(aiData);
+    // Extract output text from LLM response (supports both providers)
+    const outputText = providerKey === "anthropic_api"
+      ? extractAnthropicText(aiData)
+      : extractOutputText(aiData);
 
     if (!outputText) {
       console.error(
@@ -316,9 +354,15 @@ serve(async (req) => {
       );
     }
 
+    // Strip markdown code fences if present (```json ... ```)
+    const cleanedText = outputText
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/, "")
+      .trim();
+
     let recommendation: Record<string, any>;
     try {
-      recommendation = JSON.parse(outputText);
+      recommendation = JSON.parse(cleanedText);
     } catch {
       console.error(
         "[recommend-product] Failed to parse LLM output:",
@@ -444,6 +488,20 @@ function extractOutputText(data: any): string | null {
           return part.text;
         }
       }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extracts the output text from Anthropic Messages API format.
+ * Anthropic returns: { content: [{ type: "text", text: "..." }] }
+ */
+function extractAnthropicText(data: any): string | null {
+  if (!Array.isArray(data?.content)) return null;
+  for (const block of data.content) {
+    if (block?.type === "text" && typeof block.text === "string") {
+      return block.text;
     }
   }
   return null;

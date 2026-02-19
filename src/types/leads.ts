@@ -228,6 +228,7 @@ export interface V2ProductRecommendation {
 export interface V2LeadQualification {
   lead_temperature: string;
   lead_priority_score: number;
+  recommended_product_tier?: string;
   is_tech_professional: boolean;
   is_senior_level: boolean;
   works_remotely: boolean;
@@ -235,6 +236,7 @@ export interface V2LeadQualification {
   is_high_income: boolean;
   best_contact_time: string;
   preferred_communication: string;
+  financial_fit?: V2FinancialFit;
 }
 
 export interface V2TimelineMilestones {
@@ -329,29 +331,46 @@ export interface V2UserData {
 
 /** Top-level V2 formatted report JSON */
 export interface V2FormattedReportData {
-  report_metadata: V2ReportMetadata;
+  report_metadata?: V2ReportMetadata;
   user_data: V2UserData;
   scoring: V2Scoring;
   phase_classification: V2PhaseClassification;
   barriers_analysis: V2BarriersAnalysis;
   detailed_analysis: V2DetailedAnalysis;
-  product_recommendation: V2ProductRecommendation;
-  lead_qualification: V2LeadQualification;
-  timeline_milestones: V2TimelineMilestones;
+  product_recommendation?: V2ProductRecommendation;
+  lead_qualification?: V2LeadQualification;
+  timeline_milestones?: V2TimelineMilestones;
   action_plan: V2ActionPlan;
   web_report_data: V2WebReportData;
-  database_fields: V2DatabaseFields;
+  database_fields?: V2DatabaseFields;
 }
 
-/** Type guard: returns true if parsed JSON is a V2 report */
+/** Type guard: returns true if parsed JSON is a V2 report.
+ *  Detects V2 by checking for core structural fields (scoring.score_breakdown,
+ *  phase_classification, barriers_analysis) — not just report_metadata,
+ *  since some reports were generated before that field was added to the schema.
+ */
 export function isV2Report(data: unknown): data is V2FormattedReportData {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'report_metadata' in data &&
-    (data as Record<string, unknown>).report_metadata !== null &&
-    typeof (data as Record<string, unknown>).report_metadata === 'object' &&
-    typeof ((data as Record<string, Record<string, unknown>>).report_metadata).report_version === 'string' &&
-    ((data as Record<string, Record<string, unknown>>).report_metadata).report_version.startsWith('2.')
-  );
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+
+  // Primary check: report_metadata with version 2.x
+  if (
+    obj.report_metadata != null &&
+    typeof obj.report_metadata === 'object' &&
+    typeof (obj.report_metadata as Record<string, unknown>).report_version === 'string' &&
+    ((obj.report_metadata as Record<string, unknown>).report_version as string).startsWith('2.')
+  ) {
+    return true;
+  }
+
+  // Fallback: detect V2 by structural signature (scoring + phase_classification + barriers_analysis)
+  const hasScoring =
+    obj.scoring != null &&
+    typeof obj.scoring === 'object' &&
+    'score_breakdown' in (obj.scoring as Record<string, unknown>);
+  const hasPhase = obj.phase_classification != null && typeof obj.phase_classification === 'object';
+  const hasBarriers = obj.barriers_analysis != null && typeof obj.barriers_analysis === 'object';
+
+  return hasScoring && hasPhase && hasBarriers;
 }

@@ -7,6 +7,7 @@ import type {
   V2ScoreBreakdown,
   V2AnalysisDimension,
 } from '@/types/leads';
+import { ANALYSIS_DIMENSIONS, clampScore, getScorePercent, getBarColor, getScoreLabel } from './scoring';
 
 interface V2DetailedAnalysisProps {
   analysis: V2DetailedAnalysisType;
@@ -21,59 +22,32 @@ interface DimensionEntry {
   maxScore: number;
 }
 
-const dimensionMapping: {
-  analysisKey: keyof V2DetailedAnalysisType;
-  breakdownKey: keyof V2ScoreBreakdown;
-  label: string;
-  maxScore: number;
-}[] = [
-  { analysisKey: 'english', breakdownKey: 'score_english', label: 'Inglês', maxScore: 25 },
-  { analysisKey: 'visa_immigration', breakdownKey: 'score_visa', label: 'Visto', maxScore: 10 },
-  { analysisKey: 'mental_readiness', breakdownKey: 'score_readiness', label: 'Prontidão Mental', maxScore: 5 },
-  { analysisKey: 'experience', breakdownKey: 'score_experience', label: 'Experiência', maxScore: 20 },
-  { analysisKey: 'objective', breakdownKey: 'score_objective', label: 'Objetivo', maxScore: 10 },
-  { analysisKey: 'timeline', breakdownKey: 'score_timeline', label: 'Timeline', maxScore: 10 },
-];
-
-function getStatusLabel(dim: V2AnalysisDimension, pct: number): { label: string; className: string } {
-  if (dim.is_barrier && dim.priority?.toLowerCase() === 'high') {
-    return { label: 'Crítico', className: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400' };
-  }
-  if (dim.is_barrier) {
-    return { label: 'Atenção', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' };
-  }
-  if (pct >= 70) {
-    return { label: 'Bom', className: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' };
-  }
-  return { label: 'Normal', className: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' };
-}
-
-function getBarColor(pct: number, isBarrier: boolean): string {
-  if (isBarrier) return 'bg-amber-400';
-  if (pct >= 70) return 'bg-blue-500';
-  return 'bg-blue-400';
-}
-
 export function V2DetailedAnalysis({ analysis, breakdown }: V2DetailedAnalysisProps) {
   const { ref, isInView } = useInView();
 
-  const entries: DimensionEntry[] = dimensionMapping
-    .map(({ analysisKey, breakdownKey, label, maxScore }) => {
-      const dim = analysis[analysisKey];
+  const entries: DimensionEntry[] = ANALYSIS_DIMENSIONS
+    .map(({ breakdownKey, analysisKey, label, maxScore }) => {
+      const dim = analysisKey ? analysis[analysisKey] : undefined;
       if (!dim) return null;
       return {
-        key: analysisKey,
+        key: analysisKey!,
         label,
         dimension: dim,
-        score: breakdown[breakdownKey],
+        score: clampScore(breakdown[breakdownKey], maxScore),
         maxScore,
       };
     })
     .filter((e): e is DimensionEntry => e !== null)
     .sort((a, b) => {
-      const aPriority = a.dimension.is_barrier ? (a.dimension.priority === 'high' ? 0 : 1) : 2;
-      const bPriority = b.dimension.is_barrier ? (b.dimension.priority === 'high' ? 0 : 1) : 2;
-      return aPriority - bPriority;
+      // Barriers first, sorted by priority severity
+      const priorityRank = (d: V2AnalysisDimension): number => {
+        if (!d.is_barrier) return 3;
+        const p = d.priority?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') ?? '';
+        if (p === 'critica' || p === 'alta') return 0;
+        if (p === 'media') return 1;
+        return 2;
+      };
+      return priorityRank(a.dimension) - priorityRank(b.dimension);
     });
 
   return (
@@ -89,21 +63,23 @@ export function V2DetailedAnalysis({ analysis, breakdown }: V2DetailedAnalysisPr
         <CardContent className="p-0" ref={ref}>
           <Accordion type="single" collapsible className="w-full">
             {entries.map(({ key, label, dimension, score, maxScore }, index) => {
-              const pct = Math.min((score / maxScore) * 100, 100);
-              const status = getStatusLabel(dimension, pct);
+              const pct = getScorePercent(score, maxScore);
+              const status = getScoreLabel(pct, dimension);
 
               return (
                 <AccordionItem key={key} value={key} className="border-b border-border/40 last:border-b-0">
                   <AccordionTrigger className="px-3 sm:px-5 md:px-8 py-4 hover:no-underline hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
                       <span className="text-sm font-medium text-foreground truncate">{label}</span>
-                      <Badge className={`text-[10px] font-bold px-2 py-0.5 shrink-0 ${status.className}`}>
-                        {status.label}
-                      </Badge>
+                      {status && (
+                        <Badge className={`text-[10px] font-bold px-2 py-0.5 shrink-0 ${status.className}`}>
+                          {status.label}
+                        </Badge>
+                      )}
                       <div className="flex-1 mx-2 hidden sm:block">
                         <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${getBarColor(pct, dimension.is_barrier)} transition-all ease-out`}
+                            className={`h-full rounded-full ${getBarColor(pct)} transition-all ease-out`}
                             style={{
                               width: isInView ? `${pct}%` : '0%',
                               transitionDuration: '800ms',

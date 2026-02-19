@@ -44,14 +44,19 @@ serve(async (req) => {
       );
     }
 
+    // Detect V2 report by structure (report_metadata OR scoring+phase+barriers)
+    const isV2 = (obj: Record<string, any>): boolean => {
+      if (typeof obj.report_metadata?.report_version === 'string' && obj.report_metadata.report_version.startsWith('2.')) return true;
+      return obj.scoring?.score_breakdown != null && obj.phase_classification != null && obj.barriers_analysis != null;
+    };
+
     // Return cached report if available and refresh not forced
     if (!forceRefresh && evaluation.formatted_report) {
       try {
         const cached = JSON.parse(evaluation.formatted_report);
 
-        // V2 reports: enrich product recommendations with live hub_services data
-        if (typeof cached.report_metadata?.report_version === 'string' && cached.report_metadata.report_version.startsWith('2.')) {
-          const enriched = await enrichV2Recommendations(supabase, cached);
+        if (isV2(cached)) {
+          const enriched = await enrichV2Recommendations(supabase, cached, evaluationId);
           return new Response(
             JSON.stringify({ content: enriched, cached: true }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -72,8 +77,8 @@ serve(async (req) => {
     if (forceRefresh && evaluation.formatted_report) {
       try {
         const cached = JSON.parse(evaluation.formatted_report);
-        if (typeof cached.report_metadata?.report_version === 'string' && cached.report_metadata.report_version.startsWith('2.')) {
-          const enriched = await enrichV2Recommendations(supabase, cached);
+        if (isV2(cached)) {
+          const enriched = await enrichV2Recommendations(supabase, cached, evaluationId);
           await supabase
             .from("career_evaluations")
             .update({
@@ -126,11 +131,11 @@ serve(async (req) => {
       })
       .eq("id", evaluationId);
 
-    // Fetch available hub services for recommendations
+    // Fetch sellable hub services (free + paid) for recommendations
     const { data: hubServices } = await supabase
       .from("hub_services")
       .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
-      .eq("status", "available")
+      .in("status", ["available", "premium"])
       .eq("is_visible_in_hub", true);
 
     const servicesContext = hubServices?.length ? `
@@ -795,7 +800,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
     }
 
     // V2 reports: enrich product recommendations with live hub_services data
-    const enrichedReport = await enrichV2Recommendations(supabase, formattedReport);
+    const enrichedReport = await enrichV2Recommendations(supabase, formattedReport, evaluationId);
 
     // Cache the formatted report and mark as completed
     await supabase
@@ -838,30 +843,70 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 
 /**
  * V2 reports are pre-processed by the upstream system.
- * This function only enriches product recommendations with live hub_services data
+ * This function enriches product recommendations with live hub_services data
  * (URLs, prices, CTA texts) without calling AI.
+ *
+ * If product_recommendation is missing (N8N reports after the decoupling),
+ * it builds one from the recommend-product edge function columns in career_evaluations.
  */
 async function enrichV2Recommendations(
   supabase: ReturnType<typeof createClient>,
-  reportData: Record<string, any>
+  reportData: Record<string, any>,
+  evaluationId: string
 ): Promise<Record<string, any>> {
   try {
     const { data: hubServices } = await supabase
       .from("hub_services")
       .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
-      .eq("status", "available")
+      .in("status", ["available", "premium"])
       .eq("is_visible_in_hub", true);
 
     if (!hubServices?.length) {
       return reportData;
     }
 
-    const recommendation = reportData.product_recommendation;
-    if (!recommendation) {
+    // If product_recommendation is missing, build it from recommend-product columns
+    if (!reportData.product_recommendation) {
+      const { data: evaluation } = await supabase
+        .from("career_evaluations")
+        .select("recommended_product_name, recommendation_description, recommendation_landing_page_url, recommendation_status")
+        .eq("id", evaluationId)
+        .maybeSingle();
+
+      if (evaluation?.recommendation_status === "completed" && evaluation.recommended_product_name) {
+        const matched = hubServices.find(
+          (s: any) =>
+            s.name.toLowerCase().includes(evaluation.recommended_product_name.toLowerCase()) ||
+            evaluation.recommended_product_name.toLowerCase().includes(s.name.toLowerCase())
+        );
+
+        const tier = reportData.lead_qualification?.recommended_product_tier ||
+          reportData.product_recommendation?.primary_offer?.recommended_product_tier || '';
+
+        reportData.product_recommendation = {
+          primary_offer: {
+            recommended_product_tier: tier,
+            recommended_product_name: evaluation.recommended_product_name,
+            recommended_product_price: matched?.price_display || '',
+            recommended_product_url: matched?.ticto_checkout_url || evaluation.recommendation_landing_page_url || '/hub',
+            fit_score: 80,
+            why_this_fits: evaluation.recommendation_description || '',
+            cta: matched?.cta_text || `Conhecer ${evaluation.recommended_product_name}`,
+            _enriched_service_id: matched?.id || null,
+          },
+          financial_fit: reportData.lead_qualification?.financial_fit || {
+            has_budget: true,
+            budget_gap: '',
+            estimated_ltv: 0,
+          },
+        };
+      }
+
       return reportData;
     }
 
-    // Enrich primary offer
+    // Enrich existing primary offer
+    const recommendation = reportData.product_recommendation;
     const primaryOffer = recommendation.primary_offer;
     if (primaryOffer?.recommended_product_name) {
       const matched = hubServices.find(

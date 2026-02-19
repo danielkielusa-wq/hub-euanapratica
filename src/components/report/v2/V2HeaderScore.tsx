@@ -18,18 +18,20 @@ export function V2HeaderScore({ scoring, phase, hero, evaluation }: V2HeaderScor
     return () => clearTimeout(timer);
   }, []);
 
+  const clampedPct = Math.max(0, Math.min(scoring.readiness_percentual, 100));
+  const clampedScore = Math.max(0, Math.min(scoring.readiness_score, scoring.max_score));
+
   const { strokeColor, textColor } = useMemo(() => {
-    const pct = scoring.readiness_percentual;
-    if (pct > 70) return { strokeColor: '#22c55e', textColor: 'text-green-600' };
-    if (pct >= 40) return { strokeColor: '#f59e0b', textColor: 'text-amber-500' };
-    return { strokeColor: '#3b82f6', textColor: 'text-blue-600' };
-  }, [scoring.readiness_percentual]);
+    if (clampedPct >= 70) return { strokeColor: '#22c55e', textColor: 'text-green-600' };
+    if (clampedPct >= 40) return { strokeColor: '#3b82f6', textColor: 'text-blue-600' };
+    return { strokeColor: '#f59e0b', textColor: 'text-amber-500' };
+  }, [clampedPct]);
 
   const size = 140;
   const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const targetOffset = circumference - (scoring.readiness_percentual / 100) * circumference;
+  const targetOffset = circumference - (clampedPct / 100) * circumference;
 
   const profileChips = useMemo(() => {
     const chips: { icon: typeof Briefcase; label: string; value: string }[] = [];
@@ -97,7 +99,7 @@ export function V2HeaderScore({ scoring, phase, hero, evaluation }: V2HeaderScor
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className={`text-2xl sm:text-3xl md:text-4xl font-black ${textColor}`}>
-                {scoring.readiness_score}
+                {clampedScore}
               </span>
               <span className="text-xs text-muted-foreground">
                 de {scoring.max_score} pontos

@@ -7,7 +7,7 @@ import { ResourcesPills } from './ResourcesPills';
 import { ReportFooter } from './ReportFooter';
 import { RecommendationsCTA } from './RecommendationsCTA';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { V2ReportContainer } from './v2';
 import type { CareerEvaluation, FormattedReportData, V2FormattedReportData } from '@/types/leads';
 import { isV2Report } from '@/types/leads';
@@ -33,7 +33,7 @@ export function FormattedReport({ evaluation, formattedContent, isLoading, proce
         reportData = parsed as FormattedReportData;
       }
     } catch {
-      // Not valid JSON, will show fallback
+      // Not valid JSON, will show error state
     }
   }
 
@@ -90,70 +90,49 @@ export function FormattedReport({ evaluation, formattedContent, isLoading, proce
     );
   }
 
-  // Fallback: show raw content if no structured data
+  // Error state: formatted_report exists but is unrecognized format
   if (!reportData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
         <ReportHeader />
-        <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-          {/* Simple greeting */}
-          <Card className="rounded-[40px] overflow-hidden">
-            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 md:p-10">
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                Olá, {evaluation.name.split(' ')[0]}! 👋
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <Card className="rounded-3xl">
+            <CardContent className="p-8 sm:p-12 flex flex-col items-center justify-center gap-4 text-center">
+              <AlertCircle className="w-10 h-10 text-amber-500" />
+              <h2 className="text-xl font-semibold text-foreground">
+                Relatório em processamento
               </h2>
-              <p className="mt-2 text-muted-foreground">
-                Seu diagnóstico de prontidão para carreira internacional está pronto.
+              <p className="text-muted-foreground max-w-md">
+                Seu relatório está sendo preparado. Tente recarregar a página em alguns instantes.
               </p>
-            </div>
-          </Card>
-
-          {/* Raw content */}
-          <Card className="rounded-[40px]">
-            <CardContent className="p-8">
-              <div className="whitespace-pre-wrap text-foreground leading-relaxed">
-                {formattedContent || evaluation.report_content}
-              </div>
             </CardContent>
           </Card>
-
-          <ReportFooter generatedAt={evaluation.formatted_at || evaluation.created_at} />
         </main>
       </div>
     );
   }
 
-  // Premium structured report
+  // V1 structured report
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background print:bg-white">
       <ReportHeader />
-      
+
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8 print:space-y-6">
-        {/* Greeting */}
         <GreetingCard greeting={reportData.greeting} />
-        
-        {/* Diagnostic Grid */}
         <DiagnosticGrid diagnostic={reportData.diagnostic} />
-        
-        {/* ROTA Method */}
         <RotaMethodSection rotaMethod={reportData.rota_method} />
-        
-        {/* Action Plan */}
         <ActionPlanList actionPlan={reportData.action_plan} />
-        
-        {/* Service Recommendations CTAs */}
+
         {reportData.recommendations && reportData.recommendations.length > 0 && (
           <RecommendationsCTA recommendations={reportData.recommendations} />
         )}
-        
-        {/* Resources */}
-        <ResourcesPills 
-          resources={reportData.resources} 
-          whatsappKeyword={reportData.whatsapp_keyword} 
+
+        <ResourcesPills
+          resources={reportData.resources}
+          whatsappKeyword={reportData.whatsapp_keyword}
         />
-        
-        {/* Footer */}
-        <ReportFooter 
+
+        <ReportFooter
           generatedAt={evaluation.formatted_at || evaluation.created_at}
         />
       </main>
