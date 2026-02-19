@@ -17,6 +17,7 @@ export default function PublicReport() {
   const [tokenValid, setTokenValid] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     checkToken();
@@ -24,8 +25,76 @@ export default function PublicReport() {
 
   // Cleanup polling on unmount
   useEffect(() => {
-    return () => stopPolling();
+    return () => {
+      stopPolling();
+      if (recPollRef.current) clearTimeout(recPollRef.current);
+    };
   }, []);
+
+  // Poll for product recommendation after report is loaded
+  useEffect(() => {
+    if (!evaluation || !formattedContent) return;
+    if (evaluation.recommendation_status === 'completed') return;
+
+    // Check if V2 report with a product tier
+    let hasTier = false;
+    try {
+      const parsed = JSON.parse(formattedContent);
+      if (parsed?.report_metadata?.report_version === '2.0') {
+        const tier =
+          parsed?.product_recommendation?.primary_offer?.recommended_product_tier ||
+          parsed?.lead_qualification?.recommended_product_tier;
+        hasTier = !!tier;
+      }
+    } catch { /* not V2 */ }
+
+    if (!hasTier) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    const pollRecommendation = async () => {
+      if (cancelled || attempts >= maxAttempts) return;
+      attempts++;
+
+      try {
+        const { data } = await supabase.functions.invoke('recommend-product', {
+          body: { evaluationId: evaluation.id },
+        });
+
+        if (data?.status === 'completed' && data?.recommendation) {
+          setEvaluation((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  recommended_product_name:
+                    data.recommendation.recommended_service_name,
+                  recommendation_description:
+                    data.recommendation.recommendation_description,
+                  recommendation_landing_page_url:
+                    data.recommendation.landing_page_url,
+                  recommendation_status: 'completed',
+                }
+              : prev
+          );
+          return;
+        }
+
+        // Still processing or pending - retry
+        recPollRef.current = setTimeout(pollRecommendation, 3000);
+      } catch {
+        recPollRef.current = setTimeout(pollRecommendation, 5000);
+      }
+    };
+
+    pollRecommendation();
+
+    return () => {
+      cancelled = true;
+      if (recPollRef.current) clearTimeout(recPollRef.current);
+    };
+  }, [evaluation?.id, formattedContent]);
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {

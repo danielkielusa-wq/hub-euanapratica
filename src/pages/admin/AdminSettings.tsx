@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag } from 'lucide-react';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
@@ -26,6 +26,10 @@ export default function AdminSettings() {
   const [hasResumeChanges, setHasResumeChanges] = useState(false);
   const [leadPrompt, setLeadPrompt] = useState('');
   const [hasLeadChanges, setHasLeadChanges] = useState(false);
+
+  // Product recommendation prompt
+  const [recPrompt, setRecPrompt] = useState('');
+  const [hasRecChanges, setHasRecChanges] = useState(false);
 
   // Report webhook config
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -53,6 +57,8 @@ export default function AdminSettings() {
     if (resumeValue) setResumePrompt(resumeValue);
     const leadValue = getConfigValue('lead_report_formatter_prompt');
     if (leadValue) setLeadPrompt(leadValue);
+    const recValue = getConfigValue('llm_product_recommendation_prompt');
+    if (recValue) setRecPrompt(recValue);
 
     // Load webhook configs
     const webhookUrlValue = getConfigValue('lead_webhook_url');
@@ -94,6 +100,11 @@ export default function AdminSettings() {
     const originalValue = getConfigValue('lead_report_formatter_prompt');
     setHasLeadChanges(leadPrompt !== originalValue && leadPrompt !== '');
   }, [leadPrompt, configs]);
+
+  useEffect(() => {
+    const originalValue = getConfigValue('llm_product_recommendation_prompt');
+    setHasRecChanges(recPrompt !== originalValue && recPrompt !== '');
+  }, [recPrompt, configs]);
 
   useEffect(() => {
     const originalUrl = getConfigValue('lead_webhook_url');
@@ -144,6 +155,11 @@ export default function AdminSettings() {
     setHasLeadChanges(false);
   };
 
+  const handleSaveRecPrompt = async () => {
+    await updateConfig('llm_product_recommendation_prompt', recPrompt);
+    setHasRecChanges(false);
+  };
+
   const handleSaveWebhook = async () => {
     await Promise.all([
       updateConfig('lead_webhook_url', webhookUrl),
@@ -176,6 +192,7 @@ export default function AdminSettings() {
 
   const resumeConfig = configs.find(c => c.key === 'resume_analyzer_prompt');
   const leadConfig = configs.find(c => c.key === 'lead_report_formatter_prompt');
+  const recConfig = configs.find(c => c.key === 'llm_product_recommendation_prompt');
   const webhookUrlConfig = configs.find(c => c.key === 'lead_webhook_url');
   const webhookEnabledConfig = configs.find(c => c.key === 'lead_webhook_enabled');
   const reportBaseUrlConfig = configs.find(c => c.key === 'lead_report_base_url');
@@ -240,6 +257,24 @@ export default function AdminSettings() {
                     <Textarea value={leadPrompt} onChange={(e) => setLeadPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
                     {leadConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(leadConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
                     <div className="flex justify-end"><Button onClick={handleSaveLead} disabled={!hasLeadChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-primary" /><CardTitle>Recomendador de Produtos</CardTitle></div>
+                <CardDescription>Prompt usado pela IA para recomendar produtos/serviços aos leads com base no tier e perfil.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
+                  <>
+                    <Textarea value={recPrompt} onChange={(e) => setRecPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                    <p className="text-xs text-muted-foreground">
+                      Use {'{{lead_data}}'}, {'{{tier}}'} e {'{{services}}'} como placeholders
+                    </p>
+                    {recConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(recConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
+                    <div className="flex justify-end"><Button onClick={handleSaveRecPrompt} disabled={!hasRecChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
                   </>
                 )}
               </CardContent>

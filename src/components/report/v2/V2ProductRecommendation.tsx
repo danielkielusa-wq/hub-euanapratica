@@ -51,11 +51,10 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
               {primary.recommended_product_price && (
                 <Badge variant="secondary" className="text-sm">{primary.recommended_product_price}</Badge>
               )}
-              {primary.fit_score > 0 && (
-                <span className="text-xs text-background/50">
-                  Fit: {primary.fit_score}%
-                </span>
-              )}
+              <div className="inline-flex items-center gap-1.5 bg-green-500/20 border border-green-500/30 px-2.5 py-1 rounded-full">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-400 font-semibold text-[10px] uppercase tracking-wider">Recomendado</span>
+              </div>
             </div>
 
             <Button
@@ -97,11 +96,6 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
               <p className="text-xs text-muted-foreground leading-relaxed mb-4">
                 {secondary.why_alternative}
               </p>
-              {secondary.secondary_fit_score > 0 && (
-                <p className="text-xs text-muted-foreground mb-4">
-                  Fit: {secondary.secondary_fit_score}%
-                </p>
-              )}
             </div>
             <Button
               variant="outline"
@@ -123,13 +117,6 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
           </div>
         )}
       </div>
-
-      {/* Financial fit note */}
-      {recommendation.financial_fit && !recommendation.financial_fit.has_budget && recommendation.financial_fit.budget_gap && (
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          {recommendation.financial_fit.budget_gap}
-        </p>
-      )}
 
       <p className="text-center text-xs text-muted-foreground mt-8 font-medium">
         Todos os servicos contam com garantia de satisfacao de 7 dias.

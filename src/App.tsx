@@ -72,6 +72,7 @@ import JobBookmarks from "./pages/jobs/JobBookmarks";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 import ServiceDetail from "./pages/services/ServiceDetail";
 import TitleTranslator from "./pages/title-translator/TitleTranslator";
+import LeadFormPage from "./pages/lead-form/LeadFormPage";
 
 
 const queryClient = new QueryClient();
@@ -391,6 +392,9 @@ function AppRoutes() {
       
       {/* Public Report Access (no auth required) */}
       <Route path="/report/:token" element={<PublicReport />} />
+
+      {/* Lead Form (public, no auth - served on report.euanapratica.com) */}
+      <Route path="/avaliar" element={<LeadFormPage />} />
       
       {/* Thank You Pages (public, post-payment redirects) */}
       <Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />

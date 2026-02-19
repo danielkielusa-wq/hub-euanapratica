@@ -39,7 +39,7 @@ export function FormattedReport({ evaluation, formattedContent, isLoading, proce
 
   // V2 report: render with V2 components
   if (v2ReportData) {
-    return <V2ReportContainer data={v2ReportData} />;
+    return <V2ReportContainer data={v2ReportData} evaluation={evaluation} />;
   }
 
   // Processing state: report is being generated in background (with auto-polling)

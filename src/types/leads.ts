@@ -50,6 +50,11 @@ export interface CareerEvaluation {
   access_count: number;
   imported_by?: string;
   import_batch_id?: string;
+  recommended_product_name?: string;
+  recommendation_description?: string;
+  recommendation_landing_page_url?: string;
+  raw_llm_response?: Record<string, any>;
+  recommendation_status?: 'pending' | 'processing' | 'completed' | 'error' | 'skipped';
   created_at: string;
   updated_at: string;
 }
@@ -346,6 +351,7 @@ export function isV2Report(data: unknown): data is V2FormattedReportData {
     'report_metadata' in data &&
     (data as Record<string, unknown>).report_metadata !== null &&
     typeof (data as Record<string, unknown>).report_metadata === 'object' &&
-    ((data as Record<string, Record<string, unknown>>).report_metadata).report_version === '2.0'
+    typeof ((data as Record<string, Record<string, unknown>>).report_metadata).report_version === 'string' &&
+    ((data as Record<string, Record<string, unknown>>).report_metadata).report_version.startsWith('2.')
   );
 }

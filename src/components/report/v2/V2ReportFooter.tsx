@@ -15,7 +15,7 @@ export function V2ReportFooter({ userName, generatedAt, reportVersion }: V2Repor
     : format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: ptBR });
 
   return (
-    <footer className="space-y-4 pt-8 border-t border-border/50">
+    <footer className="space-y-3 sm:space-y-4 pt-8 border-t border-border/50">
       <div className="flex flex-col items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="w-4 h-4" />

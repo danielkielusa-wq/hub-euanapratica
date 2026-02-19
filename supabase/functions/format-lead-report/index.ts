@@ -50,7 +50,7 @@ serve(async (req) => {
         const cached = JSON.parse(evaluation.formatted_report);
 
         // V2 reports: enrich product recommendations with live hub_services data
-        if (cached.report_metadata?.report_version === '2.0') {
+        if (typeof cached.report_metadata?.report_version === 'string' && cached.report_metadata.report_version.startsWith('2.')) {
           const enriched = await enrichV2Recommendations(supabase, cached);
           return new Response(
             JSON.stringify({ content: enriched, cached: true }),
@@ -72,7 +72,7 @@ serve(async (req) => {
     if (forceRefresh && evaluation.formatted_report) {
       try {
         const cached = JSON.parse(evaluation.formatted_report);
-        if (cached.report_metadata?.report_version === '2.0') {
+        if (typeof cached.report_metadata?.report_version === 'string' && cached.report_metadata.report_version.startsWith('2.')) {
           const enriched = await enrichV2Recommendations(supabase, cached);
           await supabase
             .from("career_evaluations")
@@ -152,23 +152,100 @@ Com base no perfil do lead, selecione ate 3 servicos para recomendar:
 
     const systemPrompt = config?.value || `Voce e um especialista em carreiras internacionais da equipe EUA na Pratica, liderada por Daniel Kiel.
 
-Analise os dados do lead e estruture um relatorio de diagnostico de carreira personalizado usando o Metodo ROTA EUA.
+INSTRUCOES CRITICAS:
+1. Analise TODOS os dados fornecidos do lead em profundidade
+2. Gere um relatorio COMPLETO V2.0 com TODAS as secoes obrigatorias
+3. O report_metadata DEVE ter report_version: "2.0"
+4. Calcule scores numericos precisos baseados nos dados reais do lead
+5. Classifique o lead em uma das fases ROTA com diagnostico detalhado
+6. Identifique barreiras criticas e recomende acoes especificas
+7. Crie planos de acao detalhados para 30d, 90d e 6m
+8. Qualifique o lead comercialmente (temperatura, prioridade, perfil)
+9. Seja especifico, personalizado e orientado a acao
 
-O Metodo ROTA EUA tem 4 fases:
-- R (Reconhecimento): Autoconhecimento e analise de perfil
-- O (Organizacao): Preparacao de documentos, ingles e networking
-- T (Transicao): Busca ativa de oportunidades e aplicacoes
-- A (Acao): Entrevistas, negociacao e relocacao
+METODO ROTA EUA (4 fases):
+- R (Reconhecimento): Autoconhecimento, analise de perfil, definicao de objetivos
+- O (Organizacao): Preparacao de documentos, ingles profissional, networking
+- T (Transicao): Busca ativa de vagas, aplicacoes, portfolio internacional
+- A (Acao): Entrevistas, negociacao de oferta, relocacao
 
-Baseado no perfil do lead, determine em qual fase ele esta e forneca orientacao especifica.
+FASES DE PRONTIDAO (phase_id):
+1. Exploracao Inicial (0-25 pontos) - Descobrindo possibilidades
+2. Desenvolvimento (26-50 pontos) - Construindo fundacao
+3. Preparacao Ativa (51-70 pontos) - Quase pronto para aplicar
+4. Pronto para Mercado (71-85 pontos) - Pode aplicar agora
+5. Competitivo Internacional (86-100 pontos) - Altamente qualificado
 
-Seja acolhedor, use emojis apropriados e mantenha um tom profissional mas amigavel.`;
+CRITERIOS DE SCORING (max 100 pontos):
+- Ingles (0-25): Basico=5, Intermediario=12, Avancado=18, Fluente=25
+- Experiencia (0-20): <2anos=5, 2-5=10, 5-10=15, 10+=20
+- Trabalho Internacional (0-10): Nao=0, Sim=10
+- Timeline (0-10): Urgente=10, 6-12m=8, 1-2anos=5, Indefinido=2
+- Objetivo (0-10): Claro=10, Medio=6, Vago=3
+- Visto (0-10): Tem=10, Processo=7, Nenhum=3
+- Prontidao Mental (0-10): Alta=10, Media=6, Baixa=3
+- Bonus Area (0-5): Tech/Engenharia=5, Outras=0
+
+IDENTIFICACAO DE BARREIRAS:
+- Ingles: <Avancado = barreira
+- Experiencia: <3anos = barreira
+- Financeiro: Sem capacidade de investimento = barreira
+- Familia: Resistencia familiar = barreira
+- Visto: Sem estrategia = barreira
+- Tempo: Timeline muito urgente sem preparacao = barreira
+- Clareza: Objetivo vago = barreira
+
+RECOMENDACAO DE PRODUTOS:
+Baseie-se nos servicos disponiveis fornecidos e no perfil do lead:
+- Primary: O servico MAIS adequado ao momento atual
+- Secondary: Servico complementar opcional
+- Financial fit: Avalie se o lead tem budget (income_range vs investment_range)
+- Fit score: 0-100 baseado em quao bem o servico atende as necessidades
+
+QUALIFICACAO COMERCIAL:
+- Lead Temperature: frio (<40 score), morno (40-60), quente (60-80), muito-quente (80+)
+- Priority Score: Combine readiness + financial fit + urgency
+- Profile flags: is_tech, is_senior, works_remotely, has_family, is_high_income
+
+PLANO DE ACAO:
+- 30 dias: 3-5 acoes IMEDIATAS e criticas
+- 90 dias: 3-5 acoes de medio prazo (fundacao)
+- 6 meses: 3-5 acoes estrategicas (longo prazo)
+- Cada acao: numero, titulo, descricao detalhada, prioridade, horas/semana estimadas
+
+WEB REPORT DATA:
+- Hero: Headline inspirador + score display + badge da fase
+- ROTA Progress: Status de cada fase (concluido/atual/futuro) + % de conclusao
+- Key Metrics: 3-5 forcas principais + 2-4 gaps criticos
+- Resources: 4-6 recursos relevantes (videos, guias, ebooks)
+
+TOM:
+- Acolhedor mas profissional
+- Honesto sobre gaps sem desmotivar
+- Orientado a acao e resultados concretos
+- Use emojis estrategicamente (nao exagere)
+- Personalizado para ESTE lead especifico
+
+IMPORTANTE:
+- TODOS os campos obrigatorios devem ser preenchidos
+- Scores devem ser numericos e baseados em criterios objetivos
+- Diagnosticos devem ser especificos e personalizados
+- Recomendacoes devem ser acionaveis e concretas
+- O relatorio COMPLETO deve ter ~2500-3500 palavras de conteudo util`;
 
     // Build user context
+    const currentTimestamp = new Date().toISOString();
     const userContext = `
+METADADOS OBRIGATORIOS:
+- generated_at: "${currentTimestamp}"
+- report_version: "2.0" (OBRIGATORIO)
+- ai_model_used: "gpt-4.1-mini"
+- prompt_version: "v2.0-comprehensive"
+
 DADOS DO LEAD:
 - Nome: ${evaluation.name}
 - Email: ${evaluation.email}
+- Telefone: ${evaluation.phone || 'Nao informado'}
 - Area: ${evaluation.area || 'Nao informado'}
 - Atuacao: ${evaluation.atuacao || 'Nao informado'}
 - Trabalha Internacionalmente: ${evaluation.trabalha_internacional ? 'Sim' : 'Nao'}
@@ -184,155 +261,443 @@ DADOS DO LEAD:
 - Outro Impedimento: ${evaluation.impediment_other || 'Nenhum'}
 - Principal Preocupacao: ${evaluation.main_concern || 'Nao informado'}
 
-CONTEUDO DO RELATORIO ORIGINAL (use como base para enriquecer a analise):
+CONTEUDO DO RELATORIO ORIGINAL (contexto adicional):
 ${evaluation.report_content}
 
 ${servicesContext}
 
-Estruture o relatorio com todas as secoes necessarias, sendo especifico e personalizado para este lead.`;
+INSTRUCAO FINAL:
+Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase ROTA, identificando barreiras, criando planos de acao detalhados e qualificando comercialmente o lead. Seja especifico, personalizado e orientado a resultados concretos.`;
 
     const responseSchema = {
-      name: "format_career_report",
+      name: "format_career_report_v2",
       strict: true,
       schema: {
         type: "object",
         properties: {
-          greeting: {
+          report_metadata: {
             type: "object",
-            description: "Saudacao personalizada para o lead",
             properties: {
-              title: { type: "string", description: "Titulo de saudacao com nome do lead e emoji" },
-              subtitle: { type: "string", description: "Mensagem de boas-vindas da equipe EUA na Pratica" },
-              phase_highlight: { type: "string", description: "Nome da fase atual no metodo ROTA (ex: 'Fase de Organizacao')" },
-              phase_description: { type: "string", description: "Descricao detalhada do que significa estar nesta fase e proximos passos" }
+              generated_at: { type: "string", description: "ISO timestamp de geracao" },
+              report_version: { type: "string", enum: ["2.0"], description: "Versao do relatorio (sempre 2.0)" },
+              ai_model_used: { type: "string", description: "Modelo de IA usado" },
+              prompt_version: { type: "string", description: "Versao do prompt usado" }
             },
-            required: ["title", "subtitle", "phase_highlight", "phase_description"],
+            required: ["generated_at", "report_version", "ai_model_used", "prompt_version"],
             additionalProperties: false
           },
-          diagnostic: {
+          user_data: {
             type: "object",
-            description: "Grid de diagnostico com 4 metricas principais",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+              phone: { type: "string" },
+              area: { type: "string" },
+              atuacao: { type: "string" },
+              trabalha_internacional: { type: "boolean" },
+              experiencia: { type: "string" },
+              english_level: { type: "string" },
+              objetivo: { type: "string" },
+              visa_status: { type: "string" },
+              timeline: { type: "string" },
+              family_status: { type: "string" },
+              income_range: { type: "string" },
+              investment_range: { type: "string" },
+              impediment: { type: "string" },
+              main_concern: { type: "string" }
+            },
+            required: ["name", "email", "phone", "area", "atuacao", "trabalha_internacional", "experiencia", "english_level", "objetivo", "visa_status", "timeline", "family_status", "income_range", "investment_range", "impediment", "main_concern"],
+            additionalProperties: false
+          },
+          scoring: {
+            type: "object",
+            properties: {
+              readiness_score: { type: "number", description: "Score total de prontidao (0-100)" },
+              readiness_percentual: { type: "number", description: "Percentual de prontidao (0-100)" },
+              max_score: { type: "number", description: "Score maximo possivel" },
+              score_breakdown: {
+                type: "object",
+                properties: {
+                  score_english: { type: "number" },
+                  score_experience: { type: "number" },
+                  score_international_work: { type: "number" },
+                  score_timeline: { type: "number" },
+                  score_objective: { type: "number" },
+                  score_visa: { type: "number" },
+                  score_readiness: { type: "number" },
+                  score_area_bonus: { type: "number" }
+                },
+                required: ["score_english", "score_experience", "score_international_work", "score_timeline", "score_objective", "score_visa", "score_readiness", "score_area_bonus"],
+                additionalProperties: false
+              }
+            },
+            required: ["readiness_score", "readiness_percentual", "max_score", "score_breakdown"],
+            additionalProperties: false
+          },
+          phase_classification: {
+            type: "object",
+            properties: {
+              phase_id: { type: "number", description: "ID da fase (1-5)" },
+              phase_name: { type: "string", description: "Nome da fase" },
+              phase_emoji: { type: "string", description: "Emoji representativo" },
+              phase_color: { type: "string", description: "Cor em hex" },
+              rota_letter: { type: "string", enum: ["R", "O", "T", "A"], description: "Letra ROTA" },
+              urgency_level: { type: "string", enum: ["baixa", "media", "alta", "urgente"], description: "Nivel de urgencia" },
+              can_apply_jobs: { type: "boolean", description: "Pode aplicar para vagas?" },
+              estimated_preparation_months: { type: "number", description: "Meses estimados de preparacao" },
+              short_diagnosis: { type: "string", description: "Diagnostico resumido (1-2 frases)" },
+              full_diagnosis: { type: "string", description: "Diagnostico completo e detalhado" }
+            },
+            required: ["phase_id", "phase_name", "phase_emoji", "phase_color", "rota_letter", "urgency_level", "can_apply_jobs", "estimated_preparation_months", "short_diagnosis", "full_diagnosis"],
+            additionalProperties: false
+          },
+          barriers_analysis: {
+            type: "object",
+            properties: {
+              has_english_barrier: { type: "boolean" },
+              has_experience_barrier: { type: "boolean" },
+              has_financial_barrier: { type: "boolean" },
+              has_family_barrier: { type: "boolean" },
+              has_visa_barrier: { type: "boolean" },
+              has_time_barrier: { type: "boolean" },
+              has_clarity_barrier: { type: "boolean" },
+              critical_blockers: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de bloqueadores criticos (max 5)"
+              },
+              recommended_first_action: { type: "string", description: "Proxima acao recomendada" }
+            },
+            required: ["has_english_barrier", "has_experience_barrier", "has_financial_barrier", "has_family_barrier", "has_visa_barrier", "has_time_barrier", "has_clarity_barrier", "critical_blockers", "recommended_first_action"],
+            additionalProperties: false
+          },
+          detailed_analysis: {
+            type: "object",
             properties: {
               english: {
                 type: "object",
                 properties: {
-                  level: { type: "string", description: "Nivel resumido (ex: 'Intermediario')" },
-                  description: { type: "string", description: "Analise do impacto do nivel de ingles" }
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
                 },
-                required: ["level", "description"],
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
                 additionalProperties: false
               },
               experience: {
                 type: "object",
                 properties: {
-                  summary: { type: "string", description: "Resumo da experiencia (ex: '+10 anos PM')" },
-                  details: { type: "string", description: "Analise do perfil profissional" }
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
                 },
-                required: ["summary", "details"],
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
                 additionalProperties: false
               },
               objective: {
                 type: "object",
                 properties: {
-                  goal: { type: "string", description: "Objetivo principal (ex: 'Remoto em dolar')" },
-                  timeline: { type: "string", description: "Timeline desejada" }
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
                 },
-                required: ["goal", "timeline"],
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
                 additionalProperties: false
               },
-              financial: {
+              timeline: {
                 type: "object",
                 properties: {
-                  income: { type: "string", description: "Faixa de renda atual" },
-                  investment: { type: "string", description: "Capacidade de investimento" }
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
                 },
-                required: ["income", "investment"],
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+                additionalProperties: false
+              },
+              visa_immigration: {
+                type: "object",
+                properties: {
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
+                },
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+                additionalProperties: false
+              },
+              financial_context: {
+                type: "object",
+                properties: {
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
+                },
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+                additionalProperties: false
+              },
+              mental_readiness: {
+                type: "object",
+                properties: {
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
+                },
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+                additionalProperties: false
+              },
+              family_context: {
+                type: "object",
+                properties: {
+                  current_level: { type: "string" },
+                  score_contribution: { type: "number" },
+                  assessment: { type: "string" },
+                  is_barrier: { type: "boolean" },
+                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                  recommendation: { type: "string" }
+                },
+                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
                 additionalProperties: false
               }
             },
-            required: ["english", "experience", "objective", "financial"],
+            required: ["english", "experience", "objective", "timeline", "visa_immigration", "financial_context", "mental_readiness", "family_context"],
             additionalProperties: false
           },
-          rota_method: {
+          product_recommendation: {
             type: "object",
-            description: "Analise do Metodo ROTA EUA",
             properties: {
-              current_phase: {
-                type: "string",
-                enum: ["R", "O", "T", "A"],
-                description: "Letra da fase atual: R=Reconhecimento, O=Organizacao, T=Transicao, A=Acao"
+              primary_offer: {
+                type: "object",
+                properties: {
+                  recommended_product_tier: { type: "string", description: "Tier do produto (ex: basico, intermediario, avancado)" },
+                  recommended_product_name: { type: "string", description: "Nome do produto/servico" },
+                  recommended_product_price: { type: "string", description: "Preco formatado" },
+                  recommended_product_url: { type: "string", description: "URL de checkout" },
+                  fit_score: { type: "number", description: "Score de fit (0-100)" },
+                  why_this_fits: { type: "string", description: "Por que este produto e ideal" },
+                  cta: { type: "string", description: "Texto do CTA" }
+                },
+                required: ["recommended_product_tier", "recommended_product_name", "recommended_product_price", "recommended_product_url", "fit_score", "why_this_fits", "cta"],
+                additionalProperties: false
               },
-              phase_analysis: {
-                type: "string",
-                description: "Analise detalhada do momento atual e o que precisa focar nesta fase"
+              secondary_offer: {
+                type: "object",
+                properties: {
+                  secondary_product_tier: { type: "string" },
+                  secondary_product_name: { type: "string" },
+                  secondary_fit_score: { type: "number" },
+                  why_alternative: { type: "string" }
+                },
+                required: ["secondary_product_tier", "secondary_product_name", "secondary_fit_score", "why_alternative"],
+                additionalProperties: false
+              },
+              financial_fit: {
+                type: "object",
+                properties: {
+                  has_budget: { type: "boolean", description: "Tem budget para investir?" },
+                  budget_gap: { type: "string", description: "Gap de budget se houver" },
+                  estimated_ltv: { type: "number", description: "Lifetime value estimado" }
+                },
+                required: ["has_budget", "budget_gap", "estimated_ltv"],
+                additionalProperties: false
               }
             },
-            required: ["current_phase", "phase_analysis"],
+            required: ["primary_offer", "secondary_offer", "financial_fit"],
+            additionalProperties: false
+          },
+          lead_qualification: {
+            type: "object",
+            properties: {
+              lead_temperature: { type: "string", enum: ["frio", "morno", "quente", "muito-quente"], description: "Temperatura do lead" },
+              lead_priority_score: { type: "number", description: "Score de prioridade (0-100)" },
+              is_tech_professional: { type: "boolean" },
+              is_senior_level: { type: "boolean" },
+              works_remotely: { type: "boolean" },
+              has_family: { type: "boolean" },
+              is_high_income: { type: "boolean" },
+              best_contact_time: { type: "string", description: "Melhor horario de contato" },
+              preferred_communication: { type: "string", enum: ["whatsapp", "email", "call", "video"], description: "Canal preferido" }
+            },
+            required: ["lead_temperature", "lead_priority_score", "is_tech_professional", "is_senior_level", "works_remotely", "has_family", "is_high_income", "best_contact_time", "preferred_communication"],
+            additionalProperties: false
+          },
+          timeline_milestones: {
+            type: "object",
+            properties: {
+              next_milestone_action: { type: "string" },
+              next_milestone_deadline: { type: "string" },
+              recheck_recommended_at: { type: "string" },
+              scheduled_follow_up_1: { type: "string" },
+              scheduled_follow_up_2: { type: "string" },
+              scheduled_follow_up_3: { type: "string" },
+              auto_nurture_sequence: { type: "string" }
+            },
+            required: ["next_milestone_action", "next_milestone_deadline", "recheck_recommended_at", "scheduled_follow_up_1", "scheduled_follow_up_2", "scheduled_follow_up_3", "auto_nurture_sequence"],
             additionalProperties: false
           },
           action_plan: {
-            type: "array",
-            description: "Plano de acao com 3 passos prioritarios",
-            items: {
-              type: "object",
-              properties: {
-                step: { type: "number", description: "Numero do passo (1, 2 ou 3)" },
-                title: { type: "string", description: "Titulo curto da acao" },
-                description: { type: "string", description: "Descricao detalhada do que fazer e por que e importante" }
+            type: "object",
+            properties: {
+              next_30_days: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    step_number: { type: "number" },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                    estimated_hours_week: { type: "number" },
+                    milestone: { type: "string" }
+                  },
+                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+                  additionalProperties: false
+                }
               },
-              required: ["step", "title", "description"],
-              additionalProperties: false
-            }
+              next_90_days: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    step_number: { type: "number" },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                    estimated_hours_week: { type: "number" },
+                    milestone: { type: "string" }
+                  },
+                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+                  additionalProperties: false
+                }
+              },
+              next_6_months: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    step_number: { type: "number" },
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                    estimated_hours_week: { type: "number" },
+                    milestone: { type: "string" }
+                  },
+                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["next_30_days", "next_90_days", "next_6_months"],
+            additionalProperties: false
           },
-          resources: {
-            type: "array",
-            description: "Recursos recomendados para o lead",
-            items: {
-              type: "object",
-              properties: {
-                type: {
-                  type: "string",
-                  enum: ["youtube", "instagram", "guide", "articles", "ebook"],
-                  description: "Tipo do recurso"
+          web_report_data: {
+            type: "object",
+            properties: {
+              hero_section: {
+                type: "object",
+                properties: {
+                  headline: { type: "string" },
+                  subheadline: { type: "string" },
+                  score_display: { type: "string" },
+                  phase_badge: { type: "string" }
                 },
-                label: { type: "string", description: "Nome/titulo do recurso" },
-                url: { type: "string", description: "URL do recurso (pode ser vazio)" }
+                required: ["headline", "subheadline", "score_display", "phase_badge"],
+                additionalProperties: false
               },
-              required: ["type", "label", "url"],
-              additionalProperties: false
-            }
-          },
-          whatsapp_keyword: {
-            type: "string",
-            description: "Palavra-chave para enviar no WhatsApp para receber material exclusivo (ex: 'EBOOKENP')"
-          },
-          recommendations: {
-            type: "array",
-            description: "Servicos recomendados para o lead com base no perfil",
-            items: {
-              type: "object",
-              properties: {
-                service_id: { type: "string", description: "ID do servico (use os IDs fornecidos na lista de servicos)" },
-                type: {
-                  type: "string",
-                  enum: ["PRIMARY", "SECONDARY", "UPGRADE"],
-                  description: "Tipo da recomendacao: PRIMARY (mais urgente), SECONDARY (complementar), UPGRADE (premium)"
+              rota_framework_progress: {
+                type: "object",
+                properties: {
+                  current_phase: { type: "string" },
+                  phases: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        letter: { type: "string", enum: ["R", "O", "T", "A"] },
+                        name: { type: "string" },
+                        status: { type: "string", enum: ["concluido", "atual", "futuro"] },
+                        completion_percentage: { type: "number", description: "0-100" }
+                      },
+                      required: ["letter", "name", "status", "completion_percentage"],
+                      additionalProperties: false
+                    }
+                  }
                 },
-                reason: { type: "string", description: "Justificativa personalizada de por que este servico e relevante para o lead" }
+                required: ["current_phase", "phases"],
+                additionalProperties: false
               },
-              required: ["service_id", "type", "reason"],
-              additionalProperties: false
-            }
+              key_metrics: {
+                type: "object",
+                properties: {
+                  strengths: { type: "array", items: { type: "string" } },
+                  critical_gaps: { type: "array", items: { type: "string" } },
+                  estimated_timeline_months: { type: "number" },
+                  can_start_applying: { type: "boolean" }
+                },
+                required: ["strengths", "critical_gaps", "estimated_timeline_months", "can_start_applying"],
+                additionalProperties: false
+              },
+              resources: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string" },
+                    title: { type: "string" },
+                    url: { type: "string" },
+                    price: { type: "string" }
+                  },
+                  required: ["type", "title", "url", "price"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["hero_section", "rota_framework_progress", "key_metrics", "resources"],
+            additionalProperties: false
+          },
+          database_fields: {
+            type: "object",
+            properties: {
+              processing_status: { type: "string", enum: ["pending", "processing", "completed", "error"] },
+              processing_error: { type: "string" },
+              formatted_at: { type: "string" }
+            },
+            required: ["processing_status", "processing_error", "formatted_at"],
+            additionalProperties: false
           }
         },
         required: [
-          "greeting",
-          "diagnostic",
-          "rota_method",
+          "report_metadata",
+          "user_data",
+          "scoring",
+          "phase_classification",
+          "barriers_analysis",
+          "detailed_analysis",
+          "product_recommendation",
+          "lead_qualification",
+          "timeline_milestones",
           "action_plan",
-          "resources",
-          "whatsapp_keyword",
-          "recommendations"
+          "web_report_data",
+          "database_fields"
         ],
         additionalProperties: false
       }
@@ -429,26 +794,14 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
       );
     }
 
-    // Enrich recommendations with service details for frontend rendering
-    if (formattedReport.recommendations?.length && hubServices?.length) {
-      formattedReport.recommendations = formattedReport.recommendations.map((rec: { service_id: string; type: string; reason: string }) => {
-        const service = hubServices.find(s => s.id === rec.service_id);
-        return {
-          ...rec,
-          service_name: service?.name || null,
-          service_description: service?.description || null,
-          service_price_display: service?.price_display || null,
-          service_cta_text: service?.cta_text || null,
-          service_checkout_url: service?.ticto_checkout_url || null
-        };
-      }).filter((rec: { service_name: string | null }) => rec.service_name);
-    }
+    // V2 reports: enrich product recommendations with live hub_services data
+    const enrichedReport = await enrichV2Recommendations(supabase, formattedReport);
 
     // Cache the formatted report and mark as completed
     await supabase
       .from("career_evaluations")
       .update({
-        formatted_report: JSON.stringify(formattedReport),
+        formatted_report: JSON.stringify(enrichedReport),
         formatted_at: new Date().toISOString(),
         processing_status: 'completed',
         processing_error: null,
@@ -457,7 +810,7 @@ Estruture o relatorio com todas as secoes necessarias, sendo especifico e person
       .eq("id", evaluationId);
 
     return new Response(
-      JSON.stringify({ content: formattedReport, cached: false }),
+      JSON.stringify({ content: enrichedReport, cached: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
