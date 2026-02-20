@@ -3,6 +3,7 @@ export { HeroSection } from './HeroSection';
 export { TrustLogos } from './TrustLogos';
 export { BentoGrid } from './BentoGrid';
 export { AIPreview } from './AIPreview';
+export { Testimonials } from './Testimonials';
 export { SuccessPath } from './SuccessPath';
 export { WaitlistSection } from './WaitlistSection';
 export { Footer } from './Footer';

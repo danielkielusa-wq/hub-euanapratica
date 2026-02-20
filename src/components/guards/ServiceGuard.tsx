@@ -42,10 +42,10 @@ export function ServiceGuard({ serviceRoute, children }: ServiceGuardProps) {
         />
         <div className="max-w-lg w-full text-center bg-card border border-border rounded-2xl p-8 shadow-sm">
           <h1 className="text-xl font-bold text-foreground mb-2">
-            Recurso indispon?vel no seu plano
+            Recurso indisponível no seu plano
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            Para acessar este recurso, fa?a upgrade para um plano Pro ou VIP.
+            Para acessar este recurso, faça upgrade para um plano Pro ou VIP.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={() => setShowUpgradeModal(true)}>

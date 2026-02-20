@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdmin, corsHeaders } from '../_shared/authGuard.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// SECURITY: This function is DISABLED in production.
+// Test users should NEVER be created in production environments.
+// To enable for development, set ENABLE_TEST_USERS=true in env vars.
 
 interface TestUser {
   email: string;
@@ -12,11 +12,13 @@ interface TestUser {
   role: 'admin' | 'mentor' | 'student';
 }
 
-const testUsers: TestUser[] = [
-  { email: 'admin@teste.com', password: 'teste123', full_name: 'Admin Teste', role: 'admin' },
-  { email: 'mentor@teste.com', password: 'teste123', full_name: 'Mentor Teste', role: 'mentor' },
-  { email: 'aluno@teste.com', password: 'teste123', full_name: 'Aluno Teste', role: 'student' },
-];
+// Generate cryptographically random password for test users
+function generateSecurePassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => chars[byte % chars.length]).join('');
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -24,59 +26,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Security: Require admin authorization via service role key in header
-    // This function should only be callable by administrators with the service role key
-    const authHeader = req.headers.get('Authorization');
-    const expectedServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    // Verify the caller has the service role key (admin-only access)
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // SECURITY FIX (VULN-03): Block in production unless explicitly enabled
+    const isEnabled = Deno.env.get('ENABLE_TEST_USERS') === 'true';
+    if (!isEnabled) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'This function is disabled in production. Set ENABLE_TEST_USERS=true to enable.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const providedKey = authHeader.replace('Bearer ', '');
-    
-    // Only allow if the caller provides the service role key (not anon key)
-    if (providedKey !== expectedServiceKey) {
-      // Check if caller is an authenticated admin user
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        { global: { headers: { Authorization: authHeader } } }
-      );
+    // SECURITY FIX: Use shared auth guard - require admin
+    const authError = await requireAdmin(req);
+    if (authError) return authError;
 
-      const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(providedKey);
-      
-      if (claimsError || !claimsData?.claims?.sub) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized: Invalid token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Check if user has admin role
-      const supabaseAdmin = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      );
-
-      const { data: roleData, error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', claimsData.claims.sub)
-        .eq('role', 'admin')
-        .single();
-
-      if (roleError || !roleData) {
-        return new Response(
-          JSON.stringify({ error: 'Forbidden: Admin role required' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    // SECURITY FIX: Generate secure random passwords instead of hardcoded weak passwords
+    const testUsers: TestUser[] = [
+      { email: 'admin@teste.com', password: generateSecurePassword(), full_name: 'Admin Teste', role: 'admin' },
+      { email: 'mentor@teste.com', password: generateSecurePassword(), full_name: 'Mentor Teste', role: 'mentor' },
+      { email: 'aluno@teste.com', password: generateSecurePassword(), full_name: 'Aluno Teste', role: 'student' },
+    ];
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

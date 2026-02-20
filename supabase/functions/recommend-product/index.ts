@@ -16,12 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
 
 // Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
 // and is editable by the admin at /admin/configuracoes → Prompts IA tab.
@@ -43,6 +38,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SECURITY FIX (VULN-01): Require authentication or internal call
+  const authError = await requireAuthOrInternal(req);
+  if (authError) return authError;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -477,14 +476,16 @@ serve(async (req) => {
  * Handles both output_text shorthand and nested output array.
  */
 function extractOutputText(data: any): string | null {
-  if (typeof data?.output_text === "string") {
+  // Check top-level output_text (must be non-empty)
+  if (typeof data?.output_text === "string" && data.output_text.length > 0) {
     return data.output_text;
   }
+  // Fallback: dig into output[].content[].text
   const items = Array.isArray(data?.output) ? data.output : [];
   for (const item of items) {
     if (item?.type === "message" && Array.isArray(item.content)) {
       for (const part of item.content) {
-        if (part?.type === "output_text" && typeof part.text === "string") {
+        if (part?.type === "output_text" && typeof part.text === "string" && part.text.length > 0) {
           return part.text;
         }
       }

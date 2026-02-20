@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Sparkles, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sparkles, Lock, ChevronDown } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,9 +31,25 @@ export default function CurriculoUSA() {
     analyze,
     canAnalyze,
   } = useCurriculoAnalysis();
-  
+
   const { quota } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isEducationalPillExpanded, setIsEducationalPillExpanded] = useState(false);
+
+  // Load educational pill state from localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('ats-educational-pill-expanded');
+    if (savedState === 'true') {
+      setIsEducationalPillExpanded(true);
+    }
+  }, []);
+
+  // Persist educational pill state
+  const toggleEducationalPill = () => {
+    const newState = !isEducationalPillExpanded;
+    setIsEducationalPillExpanded(newState);
+    localStorage.setItem('ats-educational-pill-expanded', String(newState));
+  };
 
   const isAnalyzing = status === 'uploading' || status === 'analyzing';
   const hasCredits = quota ? quota.remaining > 0 : true;
@@ -123,9 +139,39 @@ export default function CurriculoUSA() {
                   </span>
                 </h2>
                 <p className="text-gray-500 max-w-2xl mx-auto">
-                  Compare seu CV com a vaga desejada e vença o ATS (Applicant Tracking System). 
+                  Compare seu CV com a vaga desejada e vença o ATS (Applicant Tracking System).
                   Nossa IA simula os robôs de recrutamento dos EUA para te dar um score real.
                 </p>
+
+                {/* Educational Pill - Collapsible */}
+                <div className="max-w-2xl mx-auto pt-2">
+                  <button
+                    onClick={toggleEducationalPill}
+                    className="flex items-center gap-2 mx-auto text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors group"
+                  >
+                    <span>💡 Como o ATS funciona?</span>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isEducationalPillExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isEducationalPillExpanded ? 'max-h-96 opacity-100 mt-3' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="text-sm text-gray-600 leading-relaxed px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
+                      <p>
+                        O ATS (Applicant Tracking System) é um robô usado por empresas americanas para filtrar
+                        currículos automaticamente — antes de qualquer humano ver. Ele busca palavras-chave
+                        específicas da vaga. Se o seu currículo não tiver os termos certos, é descartado na
+                        primeira etapa. Nossa IA simula esse processo pra você saber sua chance real antes de aplicar.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Input Grid */}

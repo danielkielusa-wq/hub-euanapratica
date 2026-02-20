@@ -224,15 +224,19 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      {/* Library routes - accessible by all authenticated users */}
+      {/* Library routes - protected by plan (SECURITY FIX VULN-05) */}
       <Route path="/biblioteca" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <StudentLibrary />
+          <ServiceGuard serviceRoute="/biblioteca">
+            <StudentLibrary />
+          </ServiceGuard>
         </ProtectedRoute>
       } />
       <Route path="/biblioteca/pasta/:folderId" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <StudentLibrary />
+          <ServiceGuard serviceRoute="/biblioteca">
+            <StudentLibrary />
+          </ServiceGuard>
         </ProtectedRoute>
       } />
       
@@ -456,7 +460,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      {/* Currículo USA - protected by ServiceGuard */}
+      {/* ResumePass - protected by ServiceGuard */}
       <Route path="/curriculo" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceGuard serviceRoute="/curriculo">

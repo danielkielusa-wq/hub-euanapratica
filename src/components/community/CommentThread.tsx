@@ -162,7 +162,7 @@ export function CommentThread({
         <Avatar className="h-8 w-8">
           <AvatarImage src={profile?.profile_photo_url || undefined} />
           <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
-            {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+            {profile?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-2">

@@ -45,23 +45,25 @@ export function useAppConfigs() {
   const updateConfig = async (key: string, value: string) => {
     try {
       setIsSaving(true);
-      
+
       const { data: { user } } = await supabase.auth.getUser();
-      
+
+      // Use upsert to insert if key doesn't exist, or update if it does
       const { error } = await supabase
         .from('app_configs')
-        .update({ 
+        .upsert({
+          key,
           value,
-          updated_by: user?.id 
-        })
-        .eq('key', key);
+          updated_by: user?.id
+        }, {
+          onConflict: 'key',
+          ignoreDuplicates: false
+        });
 
       if (error) throw error;
 
-      // Update local state
-      setConfigs(prev => 
-        prev.map(c => c.key === key ? { ...c, value, updated_at: new Date().toISOString() } : c)
-      );
+      // Refetch to ensure local state is in sync with database
+      await fetchConfigs();
 
       toast({
         title: 'Configuração salva',

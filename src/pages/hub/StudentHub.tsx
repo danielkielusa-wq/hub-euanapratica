@@ -24,7 +24,7 @@ export default function StudentHub() {
   const { data: highlightedService } = useHighlightedService();
   const { data: secondaryServices } = useSecondaryServices();
 
-  const planName = quota?.planName || 'Starter (Free)';
+  const planName = quota?.planName || 'Básico';
   const remainingCredits = quota?.remaining ?? 1;
   const userName = user?.full_name?.split(' ')[0] || 'Usuário';
 

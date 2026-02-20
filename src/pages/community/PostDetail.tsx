@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useCommunityComments } from '@/hooks/useCommunityComments';
 import { PostCard } from '@/components/community/PostCard';
@@ -11,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { CommunityPost } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalyzePost } from '@/hooks/useAnalyzePost';
+import { usePostUpsell } from '@/hooks/usePostUpsell';
 import { toast } from '@/hooks/use-toast';
 
 export default function PostDetail() {
@@ -20,6 +23,31 @@ export default function PostDetail() {
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [postLoading, setPostLoading] = useState(true);
   const { comments, isLoading: commentsLoading, createComment, toggleCommentLike, deleteComment } = useCommunityComments(postId || '');
+  const queryClient = useQueryClient();
+  const analyzePost = useAnalyzePost();
+  const { data: upsellData, isLoading: upsellLoading } = usePostUpsell(postId || '');
+  const upsellAnalyzed = useRef(false);
+
+  // Lazy upsell analysis: analyze existing posts that have no impression yet
+  useEffect(() => {
+    const shouldAnalyze = post && user && postId &&
+      (upsellData === null || upsellData === undefined) && !upsellLoading &&
+      !upsellAnalyzed.current && !analyzePost.isPending;
+
+    if (shouldAnalyze) {
+      upsellAnalyzed.current = true;
+      analyzePost.mutate(
+        { postId: post.id, title: post.title, content: post.content, userId: user.id },
+        {
+          onSuccess: (result) => {
+            if (result.match) {
+              queryClient.invalidateQueries({ queryKey: ['post-upsell', post.id] });
+            }
+          },
+        }
+      );
+    }
+  }, [post, user, postId, upsellData, upsellLoading]);
 
   const fetchPost = useCallback(async () => {
     if (!postId) {
@@ -79,7 +107,7 @@ export default function PostDetail() {
 
   const toggleLike = async (targetPostId: string) => {
     if (!user) {
-      toast({ title: 'VocÃª precisa estar logado', variant: 'destructive' });
+      toast({ title: 'Você precisa estar logado', variant: 'destructive' });
       return;
     }
 

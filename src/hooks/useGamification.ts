@@ -17,23 +17,37 @@ export function useGamification() {
     try {
       const { data, error } = await supabase
         .from('user_gamification')
-        .select('*')
+        .select('*, profiles:user_id (id, full_name, profile_photo_url)')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116' && error.status !== 406) {
+        console.error('[Gamification] fetchUserStats error:', error);
       }
 
-      setUserStats(data || {
-        user_id: user.id,
-        total_points: 0,
-        level: 1,
-        posts_count: 0,
-        comments_count: 0,
-        likes_received: 0,
-        last_activity_at: new Date().toISOString(),
-      });
+      if (data) {
+        setUserStats(data);
+      } else {
+        // No gamification row yet — fetch profile separately for the card
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, profile_photo_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        setUserStats({
+          user_id: user.id,
+          total_points: 0,
+          level: 1,
+          posts_count: 0,
+          comments_count: 0,
+          likes_received: 0,
+          last_activity_at: new Date().toISOString(),
+          profiles: profile || undefined,
+        });
+      }
     } catch (err) {
+      console.error('[Gamification] fetchUserStats failed:', err);
     }
   }, [user]);
 
@@ -46,6 +60,7 @@ export function useGamification() {
 
       setRanking(data || []);
     } catch (err) {
+      console.error('[Gamification] fetchRanking failed:', err);
     }
   }, []);
 

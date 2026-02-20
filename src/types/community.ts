@@ -16,6 +16,7 @@ export interface CommunityPost {
   category_id: string | null;
   title: string;
   content: string;
+  image_url: string | null;
   likes_count: number;
   comments_count: number;
   is_pinned: boolean;

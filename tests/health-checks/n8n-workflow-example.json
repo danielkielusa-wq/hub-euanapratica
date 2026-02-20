@@ -1,0 +1,109 @@
+{
+  "name": "ENP Hub - Health Checks Diários",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Schedule (9h diariamente)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd c:\\Users\\I335869\\ENP_HUB\\hub-euanapratica && npx tsx tests/health-checks/run-health-checks.ts --format=json"
+      },
+      "name": "Execute Health Checks",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const stdout = $input.first().json.stdout;\n  \n  // Extrair JSON do output (pode ter logs antes/depois)\n  const jsonMatch = stdout.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) {\n    throw new Error('No JSON found in stdout');\n  }\n  \n  const report = JSON.parse(jsonMatch[0]);\n  \n  return [\n    {\n      json: {\n        status: report.status,\n        environment: report.environment,\n        passed: report.passed,\n        warned: report.warned || 0,\n        failed: report.failed,\n        total: report.total_checks,\n        duration_ms: report.total_duration_ms,\n        timestamp: report.timestamp,\n        checks: report.checks,\n        \n        // Flags úteis para condicionais\n        hasFailures: report.failed > 0,\n        hasWarnings: report.warned > 0,\n        isCritical: report.status === 'down',\n        isHealthy: report.status === 'healthy',\n        isDegraded: report.status === 'degraded'\n      }\n    }\n  ];\n} catch (err) {\n  return [{\n    json: {\n      error: err.message,\n      raw_output: $input.first().json.stdout || $input.first().json.stderr,\n      status: 'error',\n      hasFailures: true\n    }\n  }];\n}"
+      },
+      "name": "Parse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasFailures || $json.hasWarnings}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Has Issues?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        "text": "={{$json.isCritical ? '🚨' : '⚠️'}} *ENP Hub Health Check - {{$json.status.toUpperCase()}}*\n\n📊 *Resumo:*\n• Status: {{$json.status}}\n• Passed: {{$json.passed}}/{{$json.total}}\n• Failed: {{$json.failed}}\n• Warned: {{$json.warned}}\n• Duration: {{$json.duration_ms}}ms\n\n{{$json.failed > 0 ? '❌ *FALHAS DETECTADAS:*\\n' + $json.checks.filter(c => c.status === 'fail').map(c => `• *${c.name}*: ${c.error || 'Unknown'}`).join('\\n') : ''}}\n\n{{$json.warned > 0 ? '⚠️ *WARNINGS:*\\n' + $json.checks.filter(c => c.status === 'warn').map(c => `• *${c.name}*: ${c.error || 'Warning'}`).join('\\n') : ''}}\n\n🕐 {{$json.timestamp}}\n🌍 Ambiente: {{$json.environment}}"
+      },
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "to": "admin@example.com",
+        "subject": "={{$json.isCritical ? '🚨 CRÍTICO' : '⚠️ Atenção'}} - ENP Hub {{$json.status.toUpperCase()}}",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }\n    .container { max-width: 600px; margin: 20px auto; background: white; }\n    .header { padding: 20px; text-align: center; color: white; }\n    .header.down { background: #f44336; }\n    .header.degraded { background: #ff9800; }\n    .header.healthy { background: #4caf50; }\n    .content { padding: 20px; }\n    .check { margin: 10px 0; padding: 10px; border-left: 4px solid #ddd; background: #f9f9f9; }\n    .check.fail { border-color: #f44336; background: #ffebee; }\n    .check.warn { border-color: #ff9800; background: #fff3e0; }\n    .check.pass { border-color: #4caf50; background: #e8f5e9; }\n    .footer { padding: 15px; background: #f5f5f5; text-align: center; font-size: 12px; color: #666; }\n  </style>\n</head>\n<body>\n  <div class=\\\"container\\\">\n    <div class=\\\"header {{$json.status}}\\\">\n      <h1>🏥 ENP Hub Health Check</h1>\n      <h2>Status: {{$json.status.toUpperCase()}}</h2>\n    </div>\n    <div class=\\\"content\\\">\n      <p><strong>📊 Resumo:</strong></p>\n      <ul>\n        <li>Passed: {{$json.passed}}/{{$json.total}}</li>\n        <li>Failed: {{$json.failed}}</li>\n        <li>Warned: {{$json.warned}}</li>\n        <li>Duration: {{$json.duration_ms}}ms</li>\n        <li>Environment: {{$json.environment}}</li>\n        <li>Timestamp: {{$json.timestamp}}</li>\n      </ul>\n      <h3>📋 Detalhes dos Checks:</h3>\n      {{$json.checks.map(c => `<div class=\\\"check ${c.status}\\\">\n        <strong>${c.status === 'fail' ? '❌' : c.status === 'warn' ? '⚠️' : '✅'} ${c.name}</strong> (${c.duration}ms)\n        ${c.error ? '<br><span style=\\\"color: #d32f2f;\\\">' + c.error + '</span>' : ''}\n      </div>`).join('')}}\n    </div>\n    <div class=\\\"footer\\\">\n      <p>Alerta automático - ENP Hub Health Checks<br>\n      Sistema de monitoramento diário via n8n</p>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "content": "=✅ All health checks passed at {{$json.timestamp}}"
+      },
+      "name": "Log Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (9h diariamente)": {
+      "main": [[{ "node": "Execute Health Checks", "type": "main", "index": 0 }]]
+    },
+    "Execute Health Checks": {
+      "main": [[{ "node": "Parse Result", "type": "main", "index": 0 }]]
+    },
+    "Parse Result": {
+      "main": [[{ "node": "Has Issues?", "type": "main", "index": 0 }]]
+    },
+    "Has Issues?": {
+      "main": [
+        [{ "node": "Send Slack Alert", "type": "main", "index": 0 }, { "node": "Send Email", "type": "main", "index": 0 }],
+        [{ "node": "Log Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-20T00:00:00.000Z",
+  "versionId": "1"
+}

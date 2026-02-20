@@ -164,7 +164,7 @@ export function useTitleTranslator() {
 
       const resolvedError = errorData || errorBody;
 
-      // Handle limit reached
+      // Handle limit reached (402)
       if (resolvedError?.error_code === 'LIMIT_REACHED') {
         setStatus('limit_reached');
         const msg = resolvedError.error_message || 'Limite mensal atingido.';
@@ -175,6 +175,24 @@ export function useTitleTranslator() {
           variant: 'destructive',
         });
         await fetchQuota();
+        return;
+      }
+
+      // Handle rate limiting (429)
+      const isRateLimit =
+        resolvedError?.error?.includes('Rate limit exceeded') ||
+        data?.error?.includes('Rate limit exceeded') ||
+        (fnError && 'status' in fnError && (fnError as any).status === 429);
+
+      if (isRateLimit) {
+        const msg = 'A API de IA está temporariamente limitando requisições. Por favor, aguarde alguns minutos e tente novamente.';
+        setStatus('error');
+        setError(msg);
+        toast({
+          title: 'Limite de requisições da API',
+          description: msg,
+          variant: 'destructive',
+        });
         return;
       }
 

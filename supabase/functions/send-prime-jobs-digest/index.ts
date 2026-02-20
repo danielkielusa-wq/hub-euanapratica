@@ -1,11 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
 
 interface DigestRequest {
   test_email?: string; // Optional: send to specific email for testing
@@ -52,6 +47,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SECURITY FIX (VULN-02): Require auth or internal call (cron)
+  const authError = await requireAuthOrInternal(req);
+  if (authError) return authError;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

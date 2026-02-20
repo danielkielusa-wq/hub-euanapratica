@@ -1,7 +1,39 @@
 import { useNavigate } from 'react-router-dom';
 import { FileText, Calendar, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useResumePassReports } from '@/hooks/useResumePassReports';
+
+// Helper function to get score styling and label
+function getScoreInfo(score: number) {
+  if (score < 50) {
+    return {
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      label: '· abaixo do mínimo recomendado',
+      labelColor: 'text-red-600',
+    };
+  }
+  if (score < 70) {
+    return {
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
+      label: '· pode ser melhorado',
+      labelColor: 'text-yellow-600',
+    };
+  }
+  return {
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    label: '· boa compatibilidade',
+    labelColor: 'text-green-600',
+  };
+}
 
 export function ReportHistory() {
   const navigate = useNavigate();
@@ -37,6 +69,7 @@ export function ReportHistory() {
             year: 'numeric',
           });
           const score = report.report_data?.header?.score;
+          const scoreInfo = score !== undefined ? getScoreInfo(score) : null;
 
           return (
             <div
@@ -51,13 +84,32 @@ export function ReportHistory() {
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {report.title}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                     <Calendar className="w-3 h-3" />
                     <span>{formattedDate}</span>
-                    {score !== undefined && (
+                    {score !== undefined && scoreInfo && (
                       <>
                         <span className="text-gray-300">|</span>
-                        <span className="font-medium text-primary">{score}%</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 cursor-help">
+                                <span className={`font-semibold ${scoreInfo.color}`}>
+                                  {score}%
+                                </span>
+                                <span className={`text-[10px] ${scoreInfo.labelColor}`}>
+                                  {scoreInfo.label}
+                                </span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                              <p className="text-sm">
+                                Scores abaixo de 70% são frequentemente descartados automaticamente
+                                pelos sistemas ATS antes de chegar a um recrutador.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </>
                     )}
                   </div>

@@ -247,7 +247,7 @@ export const CurriculoReportPDF = ({ result }: CurriculoReportPDFProps) => {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Relatório Currículo USA</Text>
+          <Text style={styles.title}>Relatório ResumePass</Text>
           <Text style={styles.subtitle}>Gerado em {generatedDate}</Text>
         </View>
 
@@ -327,7 +327,7 @@ export const CurriculoReportPDF = ({ result }: CurriculoReportPDFProps) => {
           </View>
         )}
 
-        <Text style={styles.footer}>Currículo USA - Relatório de Análise</Text>
+        <Text style={styles.footer}>ResumePass - Relatório de Análise</Text>
       </Page>
 
       {/* Page 2: Improvements */}
@@ -365,7 +365,7 @@ export const CurriculoReportPDF = ({ result }: CurriculoReportPDFProps) => {
             ))}
           </View>
 
-          <Text style={styles.footer}>Currículo USA - Melhorias Sugeridas</Text>
+          <Text style={styles.footer}>ResumePass - Melhorias Sugeridas</Text>
         </Page>
       )}
 
@@ -399,7 +399,7 @@ export const CurriculoReportPDF = ({ result }: CurriculoReportPDFProps) => {
           </View>
         )}
 
-        <Text style={styles.footer}>Currículo USA - Guia de Preparação</Text>
+        <Text style={styles.footer}>ResumePass - Guia de Preparação</Text>
       </Page>
     </Document>
   );

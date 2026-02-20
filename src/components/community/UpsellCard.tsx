@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Sparkles, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,19 +12,22 @@ interface UpsellCardProps {
 }
 
 export function UpsellCard({ data, onDismiss }: UpsellCardProps) {
+  const [dismissed, setDismissed] = useState(false);
   const { markClick, markDismiss } = useUpsellTracking();
 
   const handleClick = () => {
     markClick.mutate(data.impressionId);
 
-    // Priorizar landing page, fallback para checkout
     const url = data.landingPageUrl || data.checkoutUrl;
     if (url) {
       window.open(url, '_blank');
     }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDismissed(true);
     markDismiss.mutate(data.impressionId, {
       onSuccess: () => {
         onDismiss?.();
@@ -31,15 +35,17 @@ export function UpsellCard({ data, onDismiss }: UpsellCardProps) {
     });
   };
 
+  if (dismissed) return null;
+
   return (
     <Card className="rounded-2xl border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full blur-2xl opacity-40 -mr-12 -mt-12" />
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full blur-2xl opacity-40 -mr-12 -mt-12 pointer-events-none" />
 
       {/* Close button */}
       <button
         onClick={handleDismiss}
-        className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/5 transition-colors opacity-0 group-hover:opacity-100"
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/5 hover:bg-black/10 transition-colors"
         aria-label="Dispensar sugestão"
       >
         <X className="w-4 h-4 text-gray-500" />

@@ -23,12 +23,15 @@ export default function AdminSettings() {
   const { apis, isLoading: apisLoading } = useAdminApis();
 
   const [resumePrompt, setResumePrompt] = useState('');
+  const [resumeApiConfig, setResumeApiConfig] = useState('openai_api');
   const [hasResumeChanges, setHasResumeChanges] = useState(false);
   const [leadPrompt, setLeadPrompt] = useState('');
+  const [leadApiConfig, setLeadApiConfig] = useState('openai_api');
   const [hasLeadChanges, setHasLeadChanges] = useState(false);
 
   // Product recommendation prompt
   const [recPrompt, setRecPrompt] = useState('');
+  const [recApiConfig, setRecApiConfig] = useState('openai_api');
   const [hasRecChanges, setHasRecChanges] = useState(false);
 
   // Report webhook config
@@ -45,6 +48,7 @@ export default function AdminSettings() {
   // Upsell config
   const [upsellEnabled, setUpsellEnabled] = useState(true);
   const [upsellPrompt, setUpsellPrompt] = useState('');
+  const [upsellApiConfig, setUpsellApiConfig] = useState('anthropic_api');
   const [upsellModel, setUpsellModel] = useState('claude-haiku-4-5-20251001');
   const [upsellMaxTokens, setUpsellMaxTokens] = useState('150');
   const [upsellTemperature, setUpsellTemperature] = useState('0');
@@ -55,10 +59,16 @@ export default function AdminSettings() {
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
     if (resumeValue) setResumePrompt(resumeValue);
+    const resumeApiValue = getConfigValue('resume_analyzer_api_config');
+    if (resumeApiValue) setResumeApiConfig(resumeApiValue);
     const leadValue = getConfigValue('lead_report_formatter_prompt');
     if (leadValue) setLeadPrompt(leadValue);
+    const leadApiValue = getConfigValue('lead_report_api_config');
+    if (leadApiValue) setLeadApiConfig(leadApiValue);
     const recValue = getConfigValue('llm_product_recommendation_prompt');
     if (recValue) setRecPrompt(recValue);
+    const recApiValue = getConfigValue('llm_product_recommendation_api');
+    if (recApiValue) setRecApiConfig(recApiValue);
 
     // Load webhook configs
     const webhookUrlValue = getConfigValue('lead_webhook_url');
@@ -79,6 +89,8 @@ export default function AdminSettings() {
     setUpsellEnabled(upsellEnabledValue !== 'false');
     const upsellPromptValue = getConfigValue('upsell_prompt_template');
     if (upsellPromptValue) setUpsellPrompt(upsellPromptValue);
+    const upsellApiValue = getConfigValue('upsell_api_config');
+    if (upsellApiValue) setUpsellApiConfig(upsellApiValue);
     const upsellModelValue = getConfigValue('upsell_model');
     if (upsellModelValue) setUpsellModel(upsellModelValue);
     const upsellMaxTokensValue = getConfigValue('upsell_max_tokens');
@@ -93,18 +105,30 @@ export default function AdminSettings() {
 
   useEffect(() => {
     const originalValue = getConfigValue('resume_analyzer_prompt');
-    setHasResumeChanges(resumePrompt !== originalValue && resumePrompt !== '');
-  }, [resumePrompt, configs]);
+    const originalApi = getConfigValue('resume_analyzer_api_config');
+    setHasResumeChanges(
+      (resumePrompt !== originalValue && resumePrompt !== '') ||
+      resumeApiConfig !== (originalApi || 'openai_api')
+    );
+  }, [resumePrompt, resumeApiConfig, configs]);
 
   useEffect(() => {
     const originalValue = getConfigValue('lead_report_formatter_prompt');
-    setHasLeadChanges(leadPrompt !== originalValue && leadPrompt !== '');
-  }, [leadPrompt, configs]);
+    const originalApi = getConfigValue('lead_report_api_config');
+    setHasLeadChanges(
+      (leadPrompt !== originalValue && leadPrompt !== '') ||
+      leadApiConfig !== (originalApi || 'openai_api')
+    );
+  }, [leadPrompt, leadApiConfig, configs]);
 
   useEffect(() => {
     const originalValue = getConfigValue('llm_product_recommendation_prompt');
-    setHasRecChanges(recPrompt !== originalValue && recPrompt !== '');
-  }, [recPrompt, configs]);
+    const originalApi = getConfigValue('llm_product_recommendation_api');
+    setHasRecChanges(
+      (recPrompt !== originalValue && recPrompt !== '') ||
+      recApiConfig !== (originalApi || 'openai_api')
+    );
+  }, [recPrompt, recApiConfig, configs]);
 
   useEffect(() => {
     const originalUrl = getConfigValue('lead_webhook_url');
@@ -129,6 +153,7 @@ export default function AdminSettings() {
   useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
     const originalPrompt = getConfigValue('upsell_prompt_template');
+    const originalApi = getConfigValue('upsell_api_config');
     const originalModel = getConfigValue('upsell_model');
     const originalMaxTokens = getConfigValue('upsell_max_tokens');
     const originalTemperature = getConfigValue('upsell_temperature');
@@ -137,26 +162,36 @@ export default function AdminSettings() {
     const hasChanges =
       upsellEnabled !== originalEnabled ||
       upsellPrompt !== originalPrompt ||
+      upsellApiConfig !== (originalApi || 'anthropic_api') ||
       upsellModel !== originalModel ||
       upsellMaxTokens !== originalMaxTokens ||
       upsellTemperature !== originalTemperature ||
       upsellRateLimitDays !== originalRateLimit ||
       upsellBlacklistDays !== originalBlacklist;
     setHasUpsellChanges(hasChanges);
-  }, [upsellEnabled, upsellPrompt, upsellModel, upsellMaxTokens, upsellTemperature, upsellRateLimitDays, upsellBlacklistDays, configs]);
+  }, [upsellEnabled, upsellPrompt, upsellApiConfig, upsellModel, upsellMaxTokens, upsellTemperature, upsellRateLimitDays, upsellBlacklistDays, configs]);
 
   const handleSaveResume = async () => {
-    await updateConfig('resume_analyzer_prompt', resumePrompt);
+    await Promise.all([
+      updateConfig('resume_analyzer_prompt', resumePrompt),
+      updateConfig('resume_analyzer_api_config', resumeApiConfig),
+    ]);
     setHasResumeChanges(false);
   };
 
   const handleSaveLead = async () => {
-    await updateConfig('lead_report_formatter_prompt', leadPrompt);
+    await Promise.all([
+      updateConfig('lead_report_formatter_prompt', leadPrompt),
+      updateConfig('lead_report_api_config', leadApiConfig),
+    ]);
     setHasLeadChanges(false);
   };
 
   const handleSaveRecPrompt = async () => {
-    await updateConfig('llm_product_recommendation_prompt', recPrompt);
+    await Promise.all([
+      updateConfig('llm_product_recommendation_prompt', recPrompt),
+      updateConfig('llm_product_recommendation_api', recApiConfig),
+    ]);
     setHasRecChanges(false);
   };
 
@@ -181,6 +216,7 @@ export default function AdminSettings() {
     await Promise.all([
       updateConfig('upsell_enabled', upsellEnabled ? 'true' : 'false'),
       updateConfig('upsell_prompt_template', upsellPrompt),
+      updateConfig('upsell_api_config', upsellApiConfig),
       updateConfig('upsell_model', upsellModel),
       updateConfig('upsell_max_tokens', upsellMaxTokens),
       updateConfig('upsell_temperature', upsellTemperature),
@@ -239,7 +275,45 @@ export default function AdminSettings() {
               <CardContent className="space-y-4">
                 {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
                   <>
-                    <Textarea value={resumePrompt} onChange={(e) => setResumePrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={resumeApiConfig} onValueChange={setResumeApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prompt da IA</Label>
+                      <Textarea value={resumePrompt} onChange={(e) => setResumePrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                    </div>
                     {resumeConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(resumeConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
                     <div className="flex justify-end"><Button onClick={handleSaveResume} disabled={!hasResumeChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
                   </>
@@ -254,7 +328,45 @@ export default function AdminSettings() {
               <CardContent className="space-y-4">
                 {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
                   <>
-                    <Textarea value={leadPrompt} onChange={(e) => setLeadPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={leadApiConfig} onValueChange={setLeadApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prompt da IA</Label>
+                      <Textarea value={leadPrompt} onChange={(e) => setLeadPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                    </div>
                     {leadConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(leadConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
                     <div className="flex justify-end"><Button onClick={handleSaveLead} disabled={!hasLeadChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
                   </>
@@ -269,10 +381,48 @@ export default function AdminSettings() {
               <CardContent className="space-y-4">
                 {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
                   <>
-                    <Textarea value={recPrompt} onChange={(e) => setRecPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
-                    <p className="text-xs text-muted-foreground">
-                      Use {'{{lead_data}}'}, {'{{tier}}'} e {'{{services}}'} como placeholders
-                    </p>
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={recApiConfig} onValueChange={setRecApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prompt da IA</Label>
+                      <Textarea value={recPrompt} onChange={(e) => setRecPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
+                      <p className="text-xs text-muted-foreground">
+                        Use {'{{lead_data}}'}, {'{{tier}}'} e {'{{services}}'} como placeholders
+                      </p>
+                    </div>
                     {recConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(recConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
                     <div className="flex justify-end"><Button onClick={handleSaveRecPrompt} disabled={!hasRecChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
                   </>
@@ -499,7 +649,12 @@ export default function AdminSettings() {
                                 .filter(api => api.is_active)
                                 .map(api => (
                                   <SelectItem key={api.api_key} value={api.api_key}>
-                                    {api.name}
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
                                   </SelectItem>
                                 ))
                             )}
@@ -565,6 +720,43 @@ export default function AdminSettings() {
                   />
                 </div>
 
+                {/* API Provider */}
+                <div className="space-y-2">
+                  <Label>API Provider</Label>
+                  {apisLoading ? (
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                  ) : (
+                    <Select value={upsellApiConfig} onValueChange={setUpsellApiConfig}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Selecione uma API..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {apis.filter(api => api.is_active).length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground">
+                            Nenhuma API ativa configurada
+                          </div>
+                        ) : (
+                          apis
+                            .filter(api => api.is_active)
+                            .map(api => (
+                              <SelectItem key={api.api_key} value={api.api_key}>
+                                <div className="flex flex-col gap-0.5">
+                                  <span>{api.name}</span>
+                                  {api.parameters?.model && (
+                                    <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                  </p>
+                </div>
+
                 {/* Prompt Template */}
                 <div className="space-y-2">
                   <Label>Prompt Template</Label>
@@ -581,17 +773,16 @@ export default function AdminSettings() {
                 {/* Configurações do modelo */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Modelo Claude</Label>
-                    <Select value={upsellModel} onValueChange={setUpsellModel}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="claude-haiku-4-5-20251001">Haiku 4.5 (Recomendado)</SelectItem>
-                        <SelectItem value="claude-sonnet-4-5-20250929">Sonnet 4.5</SelectItem>
-                        <SelectItem value="claude-opus-4-6">Opus 4.6</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Modelo (override)</Label>
+                    <Input
+                      value={upsellModel}
+                      onChange={(e) => setUpsellModel(e.target.value)}
+                      placeholder="Ex: claude-haiku-4-5-20251001 ou gpt-4o-mini"
+                      className="rounded-xl font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Sobrescreve o modelo da API. Deixe vazio para usar o modelo padrao da API selecionada.
+                    </p>
                   </div>
 
                   <div className="space-y-2">

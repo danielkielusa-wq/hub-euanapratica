@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,6 +9,10 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY FIX (VULN-01): Require authentication or internal call
+    const authError = await requireAuthOrInternal(req);
+    if (authError) return authError;
+
     const { evaluationId, forceRefresh = false } = await req.json();
 
     if (!evaluationId) {
@@ -27,8 +27,44 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get OpenAI config from database
-    const openaiConfig = await getApiConfig("openai_api");
+    // Get API config key from app_configs (admin-selectable)
+    const { data: apiConfigKey, error: apiConfigError } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "lead_report_api_config")
+      .single();
+
+    if (apiConfigError && apiConfigError.code !== 'PGRST116') {
+      console.error(`[format-lead-report] Error fetching API config key:`, apiConfigError);
+    }
+
+    const selectedApiKey = apiConfigKey?.value || "openai_api";
+    console.log(`[format-lead-report] API config from db: ${apiConfigKey?.value || 'NOT FOUND'}, using: ${selectedApiKey}`);
+
+    // Get API credentials and configuration
+    let apiConfigData;
+    try {
+      apiConfigData = await getApiConfig(selectedApiKey);
+      console.log(`[format-lead-report] API config loaded successfully: ${apiConfigData.name}`);
+    } catch (configErr) {
+      console.error(`[format-lead-report] Failed to get API config for "${selectedApiKey}":`, configErr);
+      return new Response(
+        JSON.stringify({
+          error: `Erro de configuração: API "${selectedApiKey}" não encontrada. Verifique em /admin/configuracoes-apis.`,
+          error_code: "API_CONFIG_NOT_FOUND",
+          details: configErr instanceof Error ? configErr.message : String(configErr),
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Detect API type
+    const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
+    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const selectedModel = apiConfigData.parameters?.model ||
+      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
+
+    console.log(`[format-lead-report] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}`);
 
     // Fetch evaluation first
     const { data: evaluation, error: evalError } = await supabase
@@ -99,7 +135,7 @@ serve(async (req) => {
     }
 
     // Return raw content if no AI key (V1 flow only from here)
-    if (!openaiConfig?.credentials?.api_key) {
+    if (!apiConfigData?.credentials?.api_key) {
       return new Response(
         JSON.stringify({ error: "AI nao configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -708,95 +744,179 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       }
     };
 
-    const aiResponse = await fetch(`${openaiConfig.base_url}/responses`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiConfig.credentials.api_key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        instructions: systemPrompt,
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: userContext,
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: responseSchema.name,
-            schema: responseSchema.schema,
-            strict: responseSchema.strict,
-          },
+    let formattedReport;
+
+    if (isAnthropic) {
+      // ========== Anthropic Messages API ==========
+      const anthropicSystemPrompt = systemPrompt + "\n\nIMPORTANT: Respond ONLY with valid JSON matching the schema described. Do not include any text outside the JSON object.";
+
+      const aiResponse = await fetch(`${apiConfigData.base_url || "https://api.anthropic.com/v1"}/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiConfigData.credentials.api_key,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
         },
-      }),
-    });
+        body: JSON.stringify({
+          model: selectedModel,
+          max_tokens: 8000,
+          system: anthropicSystemPrompt,
+          messages: [{ role: "user", content: userContext }],
+        }),
+      });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
-      await supabase
-        .from("career_evaluations")
-        .update({ processing_status: 'error', processing_error: `OpenAI error: ${aiResponse.status}`, processing_started_at: null })
-        .eq("id", evaluationId);
-      return new Response(
-        JSON.stringify({ error: "Erro ao processar relatorio" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const aiData = await aiResponse.json();
-
-    const extractOutputText = (data: any): string | null => {
-      if (typeof data?.output_text === "string") {
-        return data.output_text;
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: `Anthropic error: ${aiResponse.status}`, processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Erro ao processar relatorio" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      const items = Array.isArray(data?.output) ? data.output : [];
-      for (const item of items) {
-        if (item?.type === "message" && Array.isArray(item.content)) {
-          for (const part of item.content) {
-            if (part?.type === "output_text" && typeof part.text === "string") {
-              return part.text;
+
+      const aiData = await aiResponse.json();
+      const text = aiData.content?.[0]?.text;
+      if (!text) {
+        console.error("Unexpected Anthropic response:", aiData);
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Resposta invalida da IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Extract JSON from response (may have markdown code fences)
+      let jsonText = text.trim();
+      const jsonBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1].trim();
+      }
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("No JSON found in Anthropic response:", text.slice(0, 500));
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      try {
+        formattedReport = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error("Failed to parse Anthropic JSON:", parseError, jsonMatch[0].slice(0, 1000));
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // ========== OpenAI Responses API ==========
+      const aiResponse = await fetch(`${apiConfigData.base_url || "https://api.openai.com/v1"}/responses`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiConfigData.credentials.api_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          instructions: systemPrompt,
+          input: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "input_text",
+                  text: userContext,
+                },
+              ],
+            },
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: responseSchema.name,
+              schema: responseSchema.schema,
+              strict: responseSchema.strict,
+            },
+          },
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: `OpenAI error: ${aiResponse.status}`, processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Erro ao processar relatorio" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResponse.json();
+
+      const extractOutputText = (data: any): string | null => {
+        // Check top-level output_text (must be non-empty)
+        if (typeof data?.output_text === "string" && data.output_text.length > 0) {
+          return data.output_text;
+        }
+        // Fallback: dig into output[].content[].text
+        const items = Array.isArray(data?.output) ? data.output : [];
+        for (const item of items) {
+          if (item?.type === "message" && Array.isArray(item.content)) {
+            for (const part of item.content) {
+              if (part?.type === "output_text" && typeof part.text === "string" && part.text.length > 0) {
+                return part.text;
+              }
             }
           }
         }
+        return null;
+      };
+
+      const outputText = extractOutputText(aiData);
+      if (!outputText) {
+        console.error("Unexpected OpenAI response format:", aiData);
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Resposta invalida da IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      return null;
-    };
 
-    const outputText = extractOutputText(aiData);
-    if (!outputText) {
-      console.error("Unexpected OpenAI response format:", aiData);
-      await supabase
-        .from("career_evaluations")
-        .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
-        .eq("id", evaluationId);
-      return new Response(
-        JSON.stringify({ error: "Resposta invalida da IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let formattedReport;
-    try {
-      formattedReport = JSON.parse(outputText);
-    } catch (parseError) {
-      console.error("Failed to parse OpenAI output:", parseError, outputText.slice(0, 1000));
-      await supabase
-        .from("career_evaluations")
-        .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
-        .eq("id", evaluationId);
-      return new Response(
-        JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        formattedReport = JSON.parse(outputText);
+      } catch (parseError) {
+        console.error("Failed to parse OpenAI output:", parseError, outputText.slice(0, 1000));
+        await supabase
+          .from("career_evaluations")
+          .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
+          .eq("id", evaluationId);
+        return new Response(
+          JSON.stringify({ error: "Erro ao parsear resposta da IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // V2 reports: enrich product recommendations with live hub_services data

@@ -45,6 +45,9 @@ export interface PlanFeatures {
   masterclass: boolean;
   job_concierge: boolean;
   
+  // Prime Jobs
+  prime_jobs: boolean;
+
   // Curriculo USA features
   show_improvements: boolean;
   show_power_verbs: boolean;
@@ -98,6 +101,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   library: false,
   masterclass: false,
   job_concierge: false,
+  prime_jobs: false,
   show_improvements: false,
   show_power_verbs: false,
   show_cheat_sheet: false,

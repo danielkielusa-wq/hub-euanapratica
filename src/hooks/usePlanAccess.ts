@@ -100,7 +100,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
         // Default to basic plan
         setPlanAccess({
           planId: 'basic',
-          planName: 'Starter',
+          planName: 'Básico',
           theme: 'gray',
           priceMonthly: 0,
           priceAnnual: 0,
@@ -199,7 +199,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
 
   return {
     planId: planAccess?.planId || 'basic',
-    planName: planAccess?.planName || 'Starter',
+    planName: planAccess?.planName || 'Básico',
     theme: planAccess?.theme || 'gray',
     hasFeature,
     getLimit,

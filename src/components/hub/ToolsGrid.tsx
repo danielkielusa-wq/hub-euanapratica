@@ -20,7 +20,7 @@ const iconMap: Record<string, LucideIcon> = {
 const STATIC_TOOLS = [
   {
     id: 'curriculo-usa',
-    title: 'Currículo USA',
+    title: 'ResumePass',
     description: 'Valide seu CV nos robôs ATS americanos com IA avançada.',
     icon: FileCheck,
     route: '/curriculo',

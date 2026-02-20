@@ -1,17 +1,6 @@
 import { CommunityCategory } from '@/types/community';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Hash, Briefcase, Users, Home, HelpCircle, Plane, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const iconMap: Record<string, React.ElementType> = {
-  hash: Hash,
-  briefcase: Briefcase,
-  users: Users,
-  home: Home,
-  'help-circle': HelpCircle,
-  passport: Plane,
-  globe: Globe,
-};
 
 interface CategorySidebarProps {
   categories: CommunityCategory[];
@@ -25,77 +14,78 @@ export function CategorySidebar({
   categories,
   selectedCategoryId,
   onSelectCategory,
-  onNewPost,
   isLoading,
 }: CategorySidebarProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm">
-        <Skeleton className="h-12 w-full rounded-2xl mb-6" />
-        <div className="space-y-2">
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <Skeleton className="h-4 w-16 mb-4" />
+        <div className="space-y-4">
           {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-10 w-full rounded-xl" />
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="w-8 h-8 rounded-lg" />
+              <Skeleton className="h-4 w-32" />
+            </div>
           ))}
         </div>
       </div>
     );
   }
 
+  const allChannels = [
+    { id: null as string | null, name: 'Todas as Discussoes' },
+    ...categories.map(c => ({ id: c.id as string | null, name: c.name })),
+  ];
+
   return (
-    <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm sticky top-28">
-      <button
-        onClick={onNewPost}
-        className="w-full py-3.5 bg-brand-600 text-white font-bold rounded-2xl shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-all flex items-center justify-center gap-2 mb-8 hover:-translate-y-0.5"
-      >
-        <Plus size={20} /> Nova Discussao
-      </button>
-
-      <p className="px-4 text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">
-        Canais
-      </p>
-      <nav className="space-y-1">
-        <button
-          onClick={() => onSelectCategory(null)}
-          className={cn(
-            'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all',
-            !selectedCategoryId
-              ? 'bg-brand-50 text-brand-600'
-              : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-          )}
-        >
-          <Hash size={18} />
-          Todas as Discussoes
-        </button>
-
-        {categories.map(category => {
-          const Icon = iconMap[category.icon_name] || Hash;
-          const isActive = selectedCategoryId === category.id;
-
-          return (
-            <button
-              key={category.id}
-              onClick={() => onSelectCategory(category.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all',
-                isActive
-                  ? 'bg-brand-50 text-brand-600'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-              )}
-            >
-              <Icon size={18} />
-              {category.name}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="mt-8 pt-6 border-t border-gray-50">
-        <div className="flex items-center justify-between px-4">
-          <span className="text-sm font-bold text-gray-600">Apenas Mentores</span>
-          <div className="w-10 h-6 bg-gray-200 rounded-full relative cursor-pointer hover:bg-gray-300 transition-colors">
-            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-          </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Canais</h3>
         </div>
+        <div className="space-y-4">
+          {allChannels.map((channel) => {
+            const isActive = channel.id === selectedCategoryId;
+            return (
+              <div
+                key={channel.id ?? 'all'}
+                className="flex items-center justify-between group cursor-pointer"
+                onClick={() => onSelectCategory(channel.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center">
+                    <div
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full bg-brand-600'
+                      )}
+                    />
+                  </div>
+                  <p
+                    className={cn(
+                      'text-sm font-bold transition-colors',
+                      isActive
+                        ? 'text-brand-600'
+                        : 'group-hover:text-brand-600'
+                    )}
+                  >
+                    {channel.name}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-2 text-[10px] text-gray-400 space-y-1">
+        <div className="flex gap-2">
+          <a href="#" className="hover:underline">Privacy</a>
+          <a href="#" className="hover:underline">Terms</a>
+          <a href="#" className="hover:underline">Advertising</a>
+          <a href="#" className="hover:underline">Cookies</a>
+        </div>
+        <p>EUA na Pratica &copy; 2025</p>
       </div>
     </div>
   );

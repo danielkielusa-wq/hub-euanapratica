@@ -90,7 +90,7 @@ export default function SavedReportPage() {
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
             <p className="text-muted-foreground">Relatório não encontrado.</p>
             <Button variant="outline" onClick={() => navigate('/curriculo')}>
-              Voltar ao Currículo USA
+              Voltar ao ResumePass
             </Button>
           </div>
         </div>

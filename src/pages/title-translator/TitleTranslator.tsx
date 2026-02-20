@@ -14,10 +14,17 @@ import {
   TrendingUp,
   Award,
   Lock,
+  Info,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useTitleTranslator, type Suggestion, type TranslationResult } from '@/hooks/useTitleTranslator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const AREAS = [
   'Tecnologia',
@@ -82,8 +89,18 @@ export default function TitleTranslatorPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
             Titulo no Brasil *
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="inline-flex" aria-label="Informação sobre título no Brasil">
+                  <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+                <p>Títulos como "Analista Pleno" ou "Coordenador" não existem no mercado americano. A IA vai mapear o equivalente real usado por empresas dos EUA — incluindo o nível de senioridade correto.</p>
+              </TooltipContent>
+            </Tooltip>
           </label>
           <input
             type="text"
@@ -94,8 +111,18 @@ export default function TitleTranslatorPage() {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
             Area de Atuacao
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="inline-flex" aria-label="Informação sobre área de atuação">
+                  <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+                <p>O mesmo cargo tem nomes muito diferentes dependendo da área. Um "Analista" em marketing é chamado de uma forma; em dados ou finanças, de outra. A área garante a tradução certa.</p>
+              </TooltipContent>
+            </Tooltip>
           </label>
           <select
             value={formData.area}
@@ -123,8 +150,18 @@ export default function TitleTranslatorPage() {
       </div>
 
       <div className="space-y-2 mb-8">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
           Anos de Experiencia
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="inline-flex" aria-label="Informação sobre anos de experiência">
+                <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+              <p>O mercado americano é muito literal com senioridade. 2 anos = Junior, 5 anos = Mid-level, 8+ anos = Senior. Isso muda o título sugerido.</p>
+            </TooltipContent>
+          </Tooltip>
         </label>
         <input
           type="number"
@@ -156,10 +193,23 @@ export default function TitleTranslatorPage() {
           </>
         ) : (
           <>
-            <Sparkles size={18} /> Traduzir Titulo (1 Credito)
+            <Sparkles size={18} />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>Traduzir Titulo (1 Credito)</span>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                <p>Cada tradução consome 1 crédito. Créditos não expiram.</p>
+              </TooltipContent>
+            </Tooltip>
           </>
         )}
       </button>
+
+      <div className="mt-3 text-center text-xs text-gray-400 font-medium flex items-center justify-center gap-1.5">
+        <span className="text-brand-500">✦</span>
+        <span>Você receberá: título equivalente em inglês · nível de senioridade · palavras-chave para LinkedIn e currículo</span>
+      </div>
     </div>
   );
 
@@ -306,10 +356,11 @@ export default function TitleTranslatorPage() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8">
-        <div className="animate-fade-in pb-20">
-          {/* Top Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 max-w-5xl mx-auto">
+      <TooltipProvider delayDuration={200}>
+        <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8">
+          <div className="animate-fade-in pb-20">
+            {/* Top Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 max-w-5xl mx-auto">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-100 mb-3">
                 <Award size={14} /> Beta Tool
@@ -318,36 +369,44 @@ export default function TitleTranslatorPage() {
                 Experience Translator
               </h1>
               <p className="text-gray-500 mt-2 text-lg">
-                Traduza sua carreira para o padrao americano com IA.
+                Descubra como seu cargo seria chamado nos EUA — e quais palavras-chave usar no currículo e LinkedIn.
               </p>
             </div>
 
-            <div className="bg-white p-2 pr-6 rounded-full border border-gray-100 shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-bold">
-                {credits}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-900">Creditos Disponiveis</span>
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="text-[10px] font-bold text-brand-600 hover:underline text-left"
-                >
-                  Recarregar agora
-                </button>
-              </div>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="bg-white p-2 pr-6 rounded-full border border-gray-100 shadow-sm flex items-center gap-4 cursor-help">
+                  <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-bold">
+                    {credits}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-gray-900">Creditos Disponiveis</span>
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="text-[10px] font-bold text-brand-600 hover:underline text-left"
+                    >
+                      Recarregar agora
+                    </button>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
+                <p>Créditos são usados a cada tradução realizada. Você tem {credits} disponíveis. Clique em "Recarregar agora" para adquirir mais.</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
-          {result ? renderResults() : renderForm()}
+            {result ? renderResults() : renderForm()}
+          </div>
         </div>
-      </div>
 
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        currentPlanId={quota?.planId}
-        reason="limit_reached"
-      />
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          currentPlanId={quota?.planId}
+          reason="limit_reached"
+        />
+      </TooltipProvider>
     </DashboardLayout>
   );
 }

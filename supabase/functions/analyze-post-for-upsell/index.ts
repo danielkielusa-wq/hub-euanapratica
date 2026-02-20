@@ -163,36 +163,62 @@ serve(async (req) => {
     // ========== ANÁLISE COM CLAUDE ==========
 
     // Buscar configurações
-    const { data: configs } = await adminSupabase
+    const { data: configs, error: configsError } = await adminSupabase
       .from("app_configs")
       .select("key, value")
       .in("key", [
         "upsell_prompt_template",
+        "upsell_api_config",
         "upsell_model",
         "upsell_max_tokens",
         "upsell_temperature",
       ]);
 
+    if (configsError) {
+      console.error("[Upsell] Error fetching configs:", configsError);
+    }
+
     const configMap = Object.fromEntries(
       configs?.map((c) => [c.key, c.value]) || []
     );
 
+    console.log(`[Upsell] Configs loaded: ${JSON.stringify(Object.keys(configMap))}`);
+
     const promptTemplate = configMap.upsell_prompt_template || "";
-    const model = configMap.upsell_model || "claude-haiku-4-5-20251001";
+    const selectedApiKey = configMap.upsell_api_config || "anthropic_api";
     const maxTokens = parseInt(configMap.upsell_max_tokens || "150");
     const temperature = parseFloat(configMap.upsell_temperature || "0");
 
-    // Buscar API config do Anthropic
-    console.log("[Upsell] Step 5 - Fetching Anthropic API config...");
-    const anthropicConfig = await getApiConfig("anthropic_api");
-    const hasApiKey = !!anthropicConfig.credentials?.api_key;
-    const apiKeyPreview = hasApiKey ? anthropicConfig.credentials.api_key.substring(0, 10) + "..." : "MISSING";
-    console.log("[Upsell] API key found:", hasApiKey, "preview:", apiKeyPreview, "base_url:", anthropicConfig.base_url);
-
-    if (!anthropicConfig.credentials.api_key) {
-      console.error("[Upsell] STOPPED: Anthropic API key not configured in api_configs.credentials");
-      throw new Error("Anthropic API key not configured");
+    // Buscar API config (admin-selectable)
+    console.log(`[Upsell] Step 5 - API config from db: ${configMap.upsell_api_config || 'NOT FOUND'}, using: ${selectedApiKey}`);
+    let apiConfig;
+    try {
+      apiConfig = await getApiConfig(selectedApiKey);
+      console.log(`[Upsell] API config loaded successfully: ${apiConfig.name}`);
+    } catch (configErr) {
+      console.error(`[Upsell] Failed to get API config for "${selectedApiKey}":`, configErr);
+      throw new Error(`API "${selectedApiKey}" não encontrada. Verifique em /admin/configuracoes-apis. Details: ${configErr instanceof Error ? configErr.message : String(configErr)}`);
     }
+
+    const hasApiKey = !!apiConfig.credentials?.api_key;
+    const apiKeyPreview = hasApiKey ? apiConfig.credentials.api_key.substring(0, 10) + "..." : "MISSING";
+    console.log("[Upsell] API key found:", hasApiKey, "preview:", apiKeyPreview, "base_url:", apiConfig.base_url);
+
+    if (!apiConfig.credentials.api_key) {
+      console.error(`[Upsell] STOPPED: API key not configured for ${selectedApiKey}`);
+      throw new Error(`API key not configured for ${selectedApiKey}`);
+    }
+
+    // Detect API type
+    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
+    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+
+    // Model: prefer API config model (always compatible with the provider),
+    // then per-app override, then sensible defaults
+    const model = apiConfig.parameters?.model || configMap.upsell_model ||
+      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
+
+    console.log(`[Upsell] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${model}`);
 
     // Preparar serviços para o prompt
     const servicesJson = JSON.stringify(
@@ -214,37 +240,61 @@ serve(async (req) => {
     console.log("[Upsell] Step 5.5 - Prompt template length:", promptTemplate.length, "empty?", !promptTemplate);
     console.log("[Upsell] Step 5.5 - Final prompt (first 500 chars):", prompt.substring(0, 500));
 
-    // Chamar Claude API
-    console.log("[Upsell] Step 6 - Calling Claude API. Model:", model, "Max tokens:", maxTokens);
-    const claudeResponse = await fetch(`${anthropicConfig.base_url}/messages`, {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicConfig.credentials.api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      }),
-    });
+    // Chamar API de IA
+    console.log(`[Upsell] Step 6 - Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API. Model:`, model, "Max tokens:", maxTokens);
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      console.error("[Upsell] Claude API error:", claudeResponse.status, errorText);
-      throw new Error(`Claude API failed: ${claudeResponse.status} - ${errorText}`);
+    let responseText: string;
+
+    if (isAnthropic) {
+      // Anthropic Messages API
+      const claudeResponse = await fetch(`${apiConfig.base_url || "https://api.anthropic.com/v1"}/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiConfig.credentials.api_key,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          temperature,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (!claudeResponse.ok) {
+        const errorText = await claudeResponse.text();
+        console.error("[Upsell] Anthropic API error:", claudeResponse.status, errorText);
+        throw new Error(`Anthropic API failed: ${claudeResponse.status} - ${errorText}`);
+      }
+
+      const claudeData = await claudeResponse.json();
+      responseText = claudeData.content?.[0]?.text || JSON.stringify({ match: false });
+    } else {
+      // OpenAI Chat Completions API
+      const openaiResponse = await fetch(`${apiConfig.base_url || "https://api.openai.com/v1"}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiConfig.credentials.api_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          temperature,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        console.error("[Upsell] OpenAI API error:", openaiResponse.status, errorText);
+        throw new Error(`OpenAI API failed: ${openaiResponse.status} - ${errorText}`);
+      }
+
+      const openaiData = await openaiResponse.json();
+      responseText = openaiData.choices?.[0]?.message?.content || JSON.stringify({ match: false });
     }
-
-    const claudeData = await claudeResponse.json();
-    const responseText =
-      claudeData.content?.[0]?.text || JSON.stringify({ match: false });
 
     console.log("[Upsell] Step 7 - Claude raw response:", responseText);
 

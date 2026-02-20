@@ -764,6 +764,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          image_url: string | null
           is_pinned: boolean | null
           likes_count: number | null
           title: string
@@ -776,6 +777,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_pinned?: boolean | null
           likes_count?: number | null
           title: string
@@ -788,6 +790,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_pinned?: boolean | null
           likes_count?: number | null
           title?: string

@@ -130,7 +130,7 @@ export function UserDetailDrawer({
   const getAppLabel = (appId: string) => {
     switch (appId) {
       case 'curriculo_usa':
-        return 'Currículo USA';
+        return 'ResumePass';
       case 'job_marketplace':
         return 'Job Marketplace';
       default:
@@ -221,7 +221,7 @@ export function UserDetailDrawer({
               <div className="space-y-3">
                 <AppConsumptionCard
                   icon={FileText}
-                  appName="Currículo USA AI"
+                  appName="ResumePass AI"
                   used={user.used_this_month}
                   limit={user.monthly_limit}
                   label="Análises Usadas"

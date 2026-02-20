@@ -26,6 +26,7 @@ const FEATURE_NAMES: Record<PlanFeatureKey, string> = {
   library: 'Biblioteca de Materiais',
   masterclass: 'Masterclass Mensal',
   job_concierge: 'Job Concierge',
+  prime_jobs: 'Prime Jobs',
   show_improvements: 'Melhorias de Impacto',
   show_power_verbs: 'Power Verbs',
   show_cheat_sheet: 'Guia de Entrevistas',
@@ -36,13 +37,14 @@ const FEATURE_PLANS: Record<PlanFeatureKey, string> = {
   hotseats: 'PRO',
   hotseat_priority: 'VIP',
   hotseat_guaranteed: 'VIP',
-  community: 'Starter',
+  community: 'Básico',
   library: 'PRO',
   masterclass: 'PRO',
   job_concierge: 'VIP',
+  prime_jobs: 'PRO',
   show_improvements: 'PRO',
   show_power_verbs: 'PRO',
-  show_cheat_sheet: 'PRO',
+  show_cheat_sheet: 'VIP',
   allow_pdf: 'PRO',
 };
 
@@ -52,7 +54,7 @@ export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
 
   const handleUpgrade = () => {
     // Navigate to pricing/upgrade page or open modal
-    window.open('https://wa.me/5511999999999?text=Quero fazer upgrade do meu plano', '_blank');
+    window.open('https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg', '_blank');
   };
 
   return (
@@ -87,7 +89,7 @@ export function LockedOverlay({ feature, children, className }: LockedOverlayPro
   const requiredPlan = FEATURE_PLANS[feature];
 
   const handleUpgrade = () => {
-    window.open('https://wa.me/5511999999999?text=Quero fazer upgrade do meu plano', '_blank');
+    window.open('https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg', '_blank');
   };
 
   return (

@@ -45,7 +45,7 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
       // Apply sorting based on filter
       switch (filter) {
         case 'popular':
-          query = query.order('likes_count', { ascending: false });
+          query = query.order('likes_count', { ascending: false }).order('created_at', { ascending: false });
           break;
         case 'unanswered':
           query = query.eq('comments_count', 0).order('created_at', { ascending: false });
@@ -90,21 +90,26 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
     fetchPosts();
   }, [fetchPosts]);
 
-  const createPost = async (title: string, content: string, categoryId?: string) => {
+  const createPost = async (title: string, content: string, categoryId?: string, imageUrl?: string) => {
     if (!user) {
       toast({ title: 'Você precisa estar logado', variant: 'destructive' });
       return null;
     }
 
     try {
+      const insertData: Record<string, unknown> = {
+        user_id: user.id,
+        title,
+        content,
+        category_id: categoryId || null,
+      };
+      if (imageUrl) {
+        insertData.image_url = imageUrl;
+      }
+
       const { data, error } = await supabase
         .from('community_posts')
-        .insert({
-          user_id: user.id,
-          title,
-          content,
-          category_id: categoryId || null,
-        })
+        .insert(insertData)
         .select(`
           *,
           profiles:user_id (id, full_name, profile_photo_url),

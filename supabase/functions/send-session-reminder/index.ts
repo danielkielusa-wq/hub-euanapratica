@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
 
 interface NotificationPayload {
   type: "reminder_24h" | "reminder_1h" | "recording_available" | "session_cancelled" | "new_session";
@@ -17,6 +12,10 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SECURITY FIX (VULN-02): Require auth or internal call (cron)
+  const authError = await requireAuthOrInternal(req);
+  if (authError) return authError;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");

@@ -2,6 +2,12 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, X, AlertTriangle, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ResumeUploadCardProps {
   file: File | null;
@@ -141,13 +147,25 @@ export function ResumeUploadCard({
                   (PDF/DOCX) aqui ou clique para enviar.
                 </p>
               </div>
-              
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
-                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Formato preferencial: PDF
-                </span>
-              </div>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted cursor-help">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Formato preferencial: PDF
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p className="text-sm">
+                      Sistemas ATS leem PDFs simples com mais precisão. Evite currículos com colunas,
+                      tabelas, caixas de texto ou ícones — esses elementos confundem o robô.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </>
           )}
         </div>

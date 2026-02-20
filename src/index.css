@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -101,7 +101,7 @@ All colors MUST be HSL.
 
     --sidebar: 248 0.3% 98.4%;
 
-    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
 
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
@@ -355,5 +355,12 @@ All colors MUST be HSL.
   }
   .lf-fade-in-scale {
     animation: lf-fade-in-scale 0.35s ease-out;
+  }
+
+  /* Landing Page Grain Texture Overlay */
+  .grain-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
   }
 }

@@ -14,8 +14,11 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[analyze-resume] === START === Request received");
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[analyze-resume] FAIL: No auth header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -45,6 +48,7 @@ serve(async (req) => {
     }
 
     const userId = claims.user.id;
+    console.log(`[analyze-resume] Step 1 OK: Auth passed, userId=${userId}`);
 
     // ========== SMART GATEKEEPER: Check subscription and quota ==========
     
@@ -101,8 +105,10 @@ serve(async (req) => {
     }
 
     // ========== END GATEKEEPER ==========
+    console.log(`[analyze-resume] Step 2 OK: Quota check passed (used=${currentUsage}/${plan.monthly_limit})`);
 
     const { filePath, jobDescription } = await req.json();
+    console.log(`[analyze-resume] Step 3 OK: Body parsed, filePath=${filePath}, jobDescLen=${jobDescription?.length || 0}`);
 
     if (!filePath || !jobDescription) {
       return new Response(
@@ -128,21 +134,25 @@ serve(async (req) => {
     }
 
     // Get AI prompt from app_configs
+    console.log("[analyze-resume] Step 4: Fetching AI prompt from app_configs...");
     const { data: configData, error: configError } = await supabase
       .from("app_configs")
       .select("value")
       .eq("key", "resume_analyzer_prompt")
-      .single();
+      .maybeSingle();
 
     if (configError) {
-      console.error("Error fetching AI prompt config:", configError);
-      return new Response(
-        JSON.stringify({ error: "Failed to load AI configuration" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("[analyze-resume] Step 4 WARN: Error fetching AI prompt config:", configError.code, configError.message);
     }
 
-    let systemPrompt = configData.value;
+    let systemPrompt = configData?.value || "";
+    if (!systemPrompt) {
+      console.warn("[analyze-resume] Step 4 WARN: No prompt found in app_configs, using default");
+      systemPrompt = `Você é um especialista em recrutamento e ATS (Applicant Tracking Systems) do mercado americano.
+Analise o currículo fornecido em comparação com a descrição da vaga e forneça uma análise detalhada.
+Responda em português brasileiro de forma clara e direta.`;
+    }
+    console.log(`[analyze-resume] Step 4 OK: Prompt loaded (length=${systemPrompt.length})`);
 
     // ========== FEATURE STRIPPING: Modify prompt based on plan features ==========
     if (!features.show_improvements) {
@@ -157,17 +167,19 @@ serve(async (req) => {
     // ========== END FEATURE STRIPPING ==========
 
     // Download the resume file
+    console.log(`[analyze-resume] Step 5: Downloading file from storage: ${filePath}`);
     const { data: fileData, error: fileError } = await supabase.storage
       .from("temp-resumes")
       .download(filePath);
 
     if (fileError) {
-      console.error("Error downloading file:", fileError);
+      console.error("[analyze-resume] Step 5 FAIL: Error downloading file:", fileError.message);
       return new Response(
-        JSON.stringify({ error: "Failed to read resume file" }),
+        JSON.stringify({ error: "Failed to read resume file", detail: fileError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    console.log(`[analyze-resume] Step 5 OK: File downloaded, size=${fileData.size} bytes`);
 
     // Extract text content based on file type
     const arrayBuffer = await fileData.arrayBuffer();
@@ -189,6 +201,7 @@ serve(async (req) => {
       }
       pdfBase64 = btoa(binaryString);
       resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
+      console.log(`[analyze-resume] Step 6 OK: PDF converted to base64 (${pdfBase64.length} chars)`);
     } else if (isDocx) {
       // DOCX is a ZIP archive - properly unzip it using zip.js
       try {
@@ -238,7 +251,8 @@ serve(async (req) => {
         }
         
         resumeContent = extractedText.slice(0, 15000);
-        
+        console.log(`[analyze-resume] Step 6 OK: DOCX extracted (${resumeContent.length} chars)`);
+
       } catch (zipError) {
         console.error("DOCX extraction error:", zipError);
         return new Response(
@@ -263,14 +277,57 @@ serve(async (req) => {
       );
     }
 
-    // Call OpenAI Responses API with structured outputs
-    const openaiConfig = await getApiConfig("openai_api");
-    if (!openaiConfig.credentials.api_key) {
+    // Get API config key from app_configs (admin-selectable)
+    console.log("[analyze-resume] Step 7: Fetching API config key from app_configs...");
+    const { data: apiConfigKey, error: apiConfigError } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "resume_analyzer_api_config")
+      .maybeSingle();
+
+    if (apiConfigError) {
+      console.error(`[analyze-resume] Step 7 WARN: Error fetching API config key:`, apiConfigError.code, apiConfigError.message);
+    }
+
+    const selectedApiKey = apiConfigKey?.value || "openai_api";
+    console.log(`[analyze-resume] Step 7 OK: API config from db: ${apiConfigKey?.value || 'NOT FOUND'}, using: ${selectedApiKey}`);
+
+    // Get API credentials and configuration
+    console.log("[analyze-resume] Step 8: Loading API credentials via getApiConfig...");
+    let apiConfig;
+    try {
+      apiConfig = await getApiConfig(selectedApiKey);
+      console.log(`[analyze-resume] Step 8 OK: API config loaded: ${apiConfig.name}, hasApiKey=${!!apiConfig.credentials?.api_key}, base_url=${apiConfig.base_url}`);
+    } catch (configErr) {
+      console.error(`[analyze-resume] Failed to get API config for "${selectedApiKey}":`, configErr);
       return new Response(
-        JSON.stringify({ error: "AI configuration error: OpenAI API key not configured" }),
+        JSON.stringify({
+          error: `Erro de configuração: API "${selectedApiKey}" não encontrada. Verifique as configurações em /admin/configuracoes-apis.`,
+          error_code: "API_CONFIG_NOT_FOUND",
+          details: configErr instanceof Error ? configErr.message : String(configErr),
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    if (!apiConfig?.credentials?.api_key) {
+      console.error(`[analyze-resume] Missing API key for ${apiConfig?.name || selectedApiKey}`);
+      return new Response(
+        JSON.stringify({
+          error: `Credencial não configurada para "${apiConfig?.name || selectedApiKey}". Edite a API em /admin/configuracoes-apis.`,
+          error_code: "API_KEY_MISSING",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Detect API type
+    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
+    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const selectedModel = apiConfig.parameters?.model ||
+      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
+
+    console.log(`[analyze-resume] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}`);
 
     const responseSchema = {
       name: "resume_analysis",
@@ -436,123 +493,202 @@ serve(async (req) => {
       },
     };
 
-    const userContent = isPdf
-      ? [
-          {
-            type: "input_text",
-            text:
-              `Aqui esta o curriculo do candidato e a descricao da vaga para analise.
+    let result: any;
 
-DESCRICAO DA VAGA:
-${jobDescription}`,
-          },
-          {
-            type: "input_file",
-            file_data: pdfBase64,
-            filename: "resume.pdf",
-          },
-        ]
-      : [
-          {
-            type: "input_text",
-            text:
-              `Aqui esta o curriculo do candidato e a descricao da vaga para analise.
+    console.log(`[analyze-resume] Step 9: Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API, model=${selectedModel}, isPdf=${isPdf}`);
 
-DESCRICAO DA VAGA:
-${jobDescription}
+    if (isAnthropic) {
+      // ========== Anthropic Messages API ==========
+      const anthropicUserContent = isPdf
+        ? [
+            {
+              type: "document",
+              source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+            },
+            {
+              type: "text",
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}`,
+            },
+          ]
+        : [
+            {
+              type: "text",
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
+            },
+          ];
 
-CONTEUDO DO CURRICULO:
-${resumeContent}`,
-          },
-        ];
+      const anthropicSystemPrompt = systemPrompt + "\n\nIMPORTANT: Respond ONLY with valid JSON matching the schema. Do not include any text outside the JSON object.";
 
-    const aiResponse = await fetch(`${openaiConfig.base_url}/responses`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiConfig.credentials.api_key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        instructions: systemPrompt,
-        input: [
-          {
-            role: "user",
-            content: userContent,
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: responseSchema.name,
-            schema: responseSchema.schema,
-            strict: responseSchema.strict,
-          },
+      const aiResponse = await fetch(`${apiConfig.base_url || "https://api.anthropic.com/v1"}/messages`, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiConfig.credentials.api_key,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
         },
-      }),
-    });
+        body: JSON.stringify({
+          model: selectedModel,
+          max_tokens: 8000,
+          system: anthropicSystemPrompt,
+          messages: [{ role: "user", content: anthropicUserContent }],
+        }),
+      });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
+      if (!aiResponse.ok) {
+        if (aiResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const errorText = await aiResponse.text();
+        console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "AI analysis failed" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (aiResponse.status === 402) {
+
+      const aiData = await aiResponse.json();
+      const text = aiData.content?.[0]?.text;
+      if (!text) {
+        console.error("Unexpected Anthropic response:", aiData);
         return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await aiResponse.text();
-      console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
-      return new Response(
-        JSON.stringify({ error: "AI analysis failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    const aiData = await aiResponse.json();
-    console.log("OpenAI response id:", aiData?.id || "unknown");
-
-    const extractOutputText = (data: any): string | null => {
-      if (typeof data?.output_text === "string") {
-        return data.output_text;
+      // Extract JSON from response (may have markdown code fences)
+      let jsonText = text.trim();
+      const jsonBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1].trim();
       }
-      const items = Array.isArray(data?.output) ? data.output : [];
-      for (const item of items) {
-        if (item?.type === "message" && Array.isArray(item.content)) {
-          for (const part of item.content) {
-            if (part?.type === "output_text" && typeof part.text === "string") {
-              return part.text;
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("No JSON found in Anthropic response:", text.slice(0, 500));
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      try {
+        result = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error("Failed to parse Anthropic JSON:", parseError, jsonMatch[0].slice(0, 1000));
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // ========== OpenAI Responses API ==========
+      const userContent = isPdf
+        ? [
+            {
+              type: "input_text",
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}`,
+            },
+            {
+              type: "input_file",
+              file_data: `data:application/pdf;base64,${pdfBase64}`,
+              filename: "resume.pdf",
+            },
+          ]
+        : [
+            {
+              type: "input_text",
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
+            },
+          ];
+
+      const aiResponse = await fetch(`${apiConfig.base_url || "https://api.openai.com/v1"}/responses`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiConfig.credentials.api_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          instructions: systemPrompt,
+          input: [{ role: "user", content: userContent }],
+          text: {
+            format: {
+              type: "json_schema",
+              name: responseSchema.name,
+              schema: responseSchema.schema,
+              strict: responseSchema.strict,
+            },
+          },
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        if (aiResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (aiResponse.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "Payment required. Please add credits." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const errorText = await aiResponse.text();
+        console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
+        return new Response(
+          JSON.stringify({ error: "AI analysis failed" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResponse.json();
+      console.log("OpenAI response id:", aiData?.id || "unknown");
+
+      const extractOutputText = (data: any): string | null => {
+        // Check top-level output_text (must be non-empty)
+        if (typeof data?.output_text === "string" && data.output_text.length > 0) {
+          return data.output_text;
+        }
+        // Fallback: dig into output[].content[].text
+        const items = Array.isArray(data?.output) ? data.output : [];
+        for (const item of items) {
+          if (item?.type === "message" && Array.isArray(item.content)) {
+            for (const part of item.content) {
+              if (part?.type === "output_text" && typeof part.text === "string" && part.text.length > 0) {
+                return part.text;
+              }
             }
           }
         }
+        return null;
+      };
+
+      const outputText = extractOutputText(aiData);
+      if (!outputText) {
+        console.error("Unexpected OpenAI response format:", aiData);
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      return null;
-    };
 
-    const outputText = extractOutputText(aiData);
-    if (!outputText) {
-      console.error("Unexpected OpenAI response format:", aiData);
-      return new Response(
-        JSON.stringify({ error: "Failed to parse AI analysis" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        result = JSON.parse(outputText);
+      } catch (parseError) {
+        console.error("Failed to parse JSON output:", parseError, outputText.slice(0, 1000));
+        return new Response(
+          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    let result: any;
-    try {
-      result = JSON.parse(outputText);
-    } catch (parseError) {
-      console.error("Failed to parse JSON output:", parseError, outputText.slice(0, 1000));
-      return new Response(
-        JSON.stringify({ error: "Failed to parse AI analysis" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    console.log(`[analyze-resume] Step 9 OK: AI analysis complete, score=${result?.header?.score || 'unknown'}`);
 
     // ========== RECORD USAGE: Reliable recording with retry logic ==========
     // CRITICAL: Usage MUST be recorded BEFORE returning the result
@@ -637,9 +773,12 @@ ${resumeContent}`,
     });
 
   } catch (error) {
-    console.error("analyze-resume error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error("[analyze-resume] UNHANDLED ERROR:", errMsg);
+    if (errStack) console.error("[analyze-resume] Stack:", errStack);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: errMsg || "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

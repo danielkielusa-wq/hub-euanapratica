@@ -1,119 +1,169 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap, DollarSign, TrendingUp, Star } from 'lucide-react';
+import { ArrowRight, Star } from 'lucide-react';
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-[hsl(240,5%,96%)] py-20 lg:py-32">
-      {/* Mesh Gradient Background */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute right-1/4 bottom-1/4 h-96 w-96 rounded-full bg-secondary/20 blur-3xl" />
-      </div>
+    <section className="relative min-h-screen overflow-hidden bg-white pt-[72px]">
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-landing-primary-light/60 via-white to-white" />
 
-      <div className="container relative mx-auto px-4">
-        {/* Floating Widget Left */}
-        <div className="absolute left-4 top-32 hidden animate-float lg:block xl:left-16">
-          <div className="rounded-2xl border border-border/50 bg-background/90 p-4 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
-                <DollarSign className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Salário Médio</p>
-                <p className="text-xl font-bold text-foreground">$110k/ano</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating Widget Right */}
-        <div className="absolute right-4 top-48 hidden animate-float lg:block xl:right-16" style={{ animationDelay: '1s' }}>
-          <div className="rounded-2xl border border-border/50 bg-background/90 p-4 shadow-lg backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Jobs Abertos</p>
-                <p className="text-xl font-bold text-foreground">+452 Novas</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="mx-auto max-w-4xl text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-2">
-            <Zap className="h-4 w-4 text-accent" />
-            <span className="text-sm font-medium text-accent">
-              PLATAFORMA 2.0: NOVAS FERRAMENTAS DE IA DISPONÍVEIS
-            </span>
-          </div>
-
-          {/* Title */}
-          <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-foreground md:text-6xl lg:text-7xl">
-            Construa sua carreira{' '}
-            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              nos Estados Unidos.
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            A plataforma definitiva para profissionais brasileiros que desejam conquistar 
-            oportunidades nas maiores empresas americanas. Currículo, mentoria e networking em um só lugar.
-          </p>
-
-          {/* CTAs */}
-          <div className="mb-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link to="/cadastro">
-              <Button size="xl" className="rounded-xl bg-foreground text-background hover:bg-foreground/90">
-                Acessar o Hub
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button size="xl" variant="outline" className="rounded-xl border-foreground/20">
-                Ver Mentorias
-              </Button>
-            </Link>
-          </div>
-
-          {/* Social Proof */}
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            {/* Stacked Avatars with real photos */}
-            <div className="flex -space-x-3">
-              {[
-                'https://randomuser.me/api/portraits/women/44.jpg',
-                'https://randomuser.me/api/portraits/men/32.jpg',
-                'https://randomuser.me/api/portraits/women/68.jpg',
-                'https://randomuser.me/api/portraits/men/75.jpg',
-                'https://randomuser.me/api/portraits/women/17.jpg',
-              ].map((src, i) => (
-                <img
-                  key={i}
-                  src={src}
-                  alt={`User ${i + 1}`}
-                  className="h-10 w-10 rounded-full border-2 border-background object-cover"
-                  style={{ zIndex: 5 - i }}
-                />
-              ))}
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary text-xs font-bold text-primary-foreground">
-                +2k
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                Junte-se a milhares de brasileiros de sucesso
+      <div className="container relative z-10 mx-auto px-4 pb-16 pt-12 sm:pb-20 sm:pt-16 lg:pb-32 lg:pt-24">
+        <div className="relative">
+          {/* Text Content */}
+          <div className="max-w-3xl">
+            {/* Badge */}
+            <div
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-landing-primary/20 bg-landing-primary-light px-3 py-1.5 opacity-0 animate-fade-in-up sm:mb-8 sm:px-4 sm:py-2"
+              style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-landing-primary" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-landing-primary sm:text-xs">
+                Plataforma 2.0 — IA Disponível
               </span>
+            </div>
+
+            {/* Headline */}
+            <h1
+              className="mb-4 text-4xl font-extrabold leading-[1.08] tracking-tight text-landing-text opacity-0 animate-fade-in-up sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl"
+              style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
+            >
+              Construa sua carreira
+              <br />
+              <span className="bg-gradient-to-r from-landing-primary to-landing-primary-dark bg-clip-text text-transparent">
+                nos Estados Unidos.
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              className="mb-8 max-w-xl text-base leading-relaxed text-landing-text-muted opacity-0 animate-fade-in-up sm:mb-10 sm:text-lg"
+              style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}
+            >
+              ResumePass, Title Translator, Prime Jobs e Comunidade — tudo
+              que você precisa para conquistar as maiores empresas americanas.
+            </p>
+
+            {/* CTAs */}
+            <div
+              className="mb-10 flex flex-col gap-3 opacity-0 animate-fade-in-up sm:mb-12 sm:flex-row sm:gap-4"
+              style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}
+            >
+              <Link to="/cadastro">
+                <Button
+                  size="xl"
+                  className="group w-full rounded-full bg-landing-primary px-8 text-white shadow-lg shadow-landing-primary/25 transition-all hover:bg-landing-primary-dark hover:shadow-xl hover:shadow-landing-primary/30 sm:w-auto"
+                >
+                  Acessar o Hub
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button
+                  size="xl"
+                  variant="outline"
+                  className="w-full rounded-full border-landing-border text-landing-text hover:bg-landing-surface sm:w-auto"
+                >
+                  Ver Mentorias
+                </Button>
+              </Link>
+            </div>
+
+            {/* Social Proof */}
+            <div
+              className="flex flex-col gap-3 opacity-0 animate-fade-in-up sm:flex-row sm:items-center sm:gap-4"
+              style={{ animationDelay: '800ms', animationFillMode: 'forwards' }}
+            >
+              <div className="flex -space-x-3">
+                {[
+                  'https://randomuser.me/api/portraits/women/44.jpg',
+                  'https://randomuser.me/api/portraits/men/32.jpg',
+                  'https://randomuser.me/api/portraits/women/68.jpg',
+                  'https://randomuser.me/api/portraits/men/75.jpg',
+                  'https://randomuser.me/api/portraits/women/17.jpg',
+                ].map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt={`User ${i + 1}`}
+                    className="h-9 w-9 rounded-full border-2 border-white object-cover shadow-sm sm:h-10 sm:w-10"
+                    style={{ zIndex: 5 - i }}
+                  />
+                ))}
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-landing-primary font-mono text-[10px] font-bold text-white sm:h-10 sm:w-10 sm:text-xs">
+                  +2k
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400 sm:h-4 sm:w-4" />
+                  ))}
+                </div>
+                <span className="text-xs text-landing-text-muted sm:text-sm">
+                  Junte-se a milhares de brasileiros
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Stat Cards */}
+          <div className="mt-10 flex gap-3 overflow-x-auto pb-2 scrollbar-hide sm:mt-12 lg:mt-0 lg:absolute lg:right-0 lg:top-0 lg:flex lg:h-full lg:w-[420px] lg:flex-col lg:justify-center lg:gap-4 lg:overflow-visible lg:pb-0 xl:w-[460px]">
+            {/* Card 1 — Salary */}
+            <div
+              className="shrink-0 opacity-0 animate-slide-in-right lg:translate-x-8 xl:translate-x-12"
+              style={{ animationDelay: '900ms' }}
+            >
+              <div className="w-[220px] rounded-2xl border border-landing-border bg-white p-4 shadow-lg shadow-landing-text/5 sm:w-auto sm:p-5 lg:w-auto">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-landing-text-muted sm:text-xs">
+                  Salário Médio
+                </p>
+                <p className="font-mono text-2xl font-bold text-landing-text sm:text-3xl">
+                  $110k
+                  <span className="text-sm font-normal text-landing-text-muted sm:text-base">/ano</span>
+                </p>
+                <div className="mt-1.5 flex items-center gap-1 text-landing-success sm:mt-2">
+                  <span className="text-[10px] font-medium sm:text-xs">↑ 23% vs Brasil</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2 — Jobs */}
+            <div
+              className="shrink-0 opacity-0 animate-slide-in-left lg:-translate-x-4 lg:self-end"
+              style={{ animationDelay: '1100ms' }}
+            >
+              <div className="w-[220px] rounded-2xl border border-landing-border bg-white p-4 shadow-lg shadow-landing-text/5 sm:w-auto sm:p-5 lg:w-auto">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-landing-text-muted sm:text-xs">
+                  Prime Jobs
+                </p>
+                <p className="font-mono text-2xl font-bold text-landing-text sm:text-3xl">+452</p>
+                <div className="mt-1.5 flex items-center gap-1 sm:mt-2">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-landing-success" />
+                  <span className="text-[10px] font-medium text-landing-text-muted sm:text-xs">
+                    Atualizando em tempo real
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3 — Success */}
+            <div
+              className="shrink-0 opacity-0 animate-slide-in-right lg:translate-x-12 xl:translate-x-16"
+              style={{ animationDelay: '1300ms' }}
+            >
+              <div className="w-[220px] rounded-2xl border border-landing-primary/20 bg-white p-4 shadow-lg shadow-landing-primary/5 sm:w-auto sm:p-5 lg:w-auto">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-landing-text-muted sm:text-xs">
+                  Taxa de Sucesso
+                </p>
+                <p className="font-mono text-2xl font-bold text-landing-primary sm:text-3xl">94%</p>
+                <div className="mt-1.5 flex items-center gap-1 sm:mt-2">
+                  <span className="text-[10px] font-medium text-landing-text-muted sm:text-xs">
+                    dos nossos alunos
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -206,7 +206,7 @@ export default function AdminSubscriptions() {
                         Plano
                       </TableHead>
                       <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-4">
-                        Consumo: Currículo USA
+                        Consumo: ResumePass
                       </TableHead>
                       <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-4">
                         Consumo: Jobs
