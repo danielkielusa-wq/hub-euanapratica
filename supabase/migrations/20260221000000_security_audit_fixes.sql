@@ -12,6 +12,9 @@
 DROP POLICY IF EXISTS "System inserts gamification" ON public.user_gamification;
 DROP POLICY IF EXISTS "System updates gamification" ON public.user_gamification;
 DROP POLICY IF EXISTS "System inserts badges" ON public.user_badges;
+DROP POLICY IF EXISTS "Users can insert own gamification" ON public.user_gamification;
+DROP POLICY IF EXISTS "Users can update own gamification" ON public.user_gamification;
+DROP POLICY IF EXISTS "Users can insert own badges" ON public.user_badges;
 
 -- user_gamification: INSERT apenas para o próprio usuário ou via service_role
 CREATE POLICY "Users can insert own gamification"
@@ -49,6 +52,7 @@ USING (user_id = auth.uid());
 -- ============================================================================
 
 DROP POLICY IF EXISTS "System can insert history" ON public.booking_history;
+DROP POLICY IF EXISTS "Authorized users can insert booking history" ON public.booking_history;
 
 CREATE POLICY "Authorized users can insert booking history"
 ON public.booking_history FOR INSERT TO authenticated
@@ -305,6 +309,7 @@ $$;
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Anyone can read blocked times for scheduling" ON public.mentor_blocked_times;
+DROP POLICY IF EXISTS "Authenticated users can read blocked times for booking" ON public.mentor_blocked_times;
 
 CREATE POLICY "Authenticated users can read blocked times for booking"
 ON public.mentor_blocked_times FOR SELECT TO authenticated
@@ -323,6 +328,7 @@ USING (
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Anyone can read active categories" ON public.community_categories;
+DROP POLICY IF EXISTS "Authenticated users can read active categories" ON public.community_categories;
 
 CREATE POLICY "Authenticated users can read active categories"
 ON public.community_categories FOR SELECT TO authenticated
