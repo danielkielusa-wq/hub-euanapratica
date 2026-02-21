@@ -54,6 +54,7 @@ export function useCreateHubService() {
           duration: formData.duration || null,
           meeting_type: formData.meeting_type || null,
           landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
+          thank_you_page_data: formData.thank_you_page_data as Record<string, unknown> | null,
           // Upsell fields
           keywords: formData.keywords || [],
           target_tier: formData.target_tier || 'all',
@@ -119,6 +120,7 @@ export function useUpdateHubService() {
           duration: formData.duration || null,
           meeting_type: formData.meeting_type || null,
           landing_page_data: formData.landing_page_data as Record<string, unknown> | null,
+          thank_you_page_data: formData.thank_you_page_data as Record<string, unknown> | null,
           // Upsell fields
           keywords: formData.keywords || [],
           target_tier: formData.target_tier || 'all',

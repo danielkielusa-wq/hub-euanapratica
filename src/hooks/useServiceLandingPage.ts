@@ -27,18 +27,30 @@ export const useServiceLandingPage = ({ serviceId, slug }: UseServiceLandingPage
         return data as HubService;
       }
 
-      // Match by landing_page_url (primary) or route (fallback)
-      const landingPagePath = `/servicos/${slug}`;
-      const { data, error } = await supabase
+      // Primary lookup: match by route slug (most reliable)
+      const { data: byRoute, error: routeError } = await supabase
         .from('hub_services')
         .select('*')
-        .or(`landing_page_url.eq.${landingPagePath},route.eq.${slug}`)
+        .eq('route', slug)
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
-      if (!data) throw new Error('Service not found');
-      return data as HubService;
+      if (routeError) throw routeError;
+      if (byRoute) return byRoute as HubService;
+
+      // Fallback: match by landing_page_url
+      const landingPagePath = `/servicos/${slug}`;
+      const { data: byUrl, error: urlError } = await supabase
+        .from('hub_services')
+        .select('*')
+        .eq('landing_page_url', landingPagePath)
+        .limit(1)
+        .maybeSingle();
+
+      if (urlError) throw urlError;
+      if (byUrl) return byUrl as HubService;
+
+      throw new Error('Service not found');
     },
     enabled: !!(serviceId || slug),
   });

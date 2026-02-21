@@ -1,0 +1,168 @@
+{
+  "name": "ENP Hub - Health Checks (Hostinger)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Schedule (9h diariamente)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/health-check",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "=YOUR_SUPABASE_ANON_KEY"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "name": "HTTP Request - Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Supabase Auth"
+        }
+      },
+      "notes": "Calls Supabase Edge Function instead of local command"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.failed }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.warned }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Has Issues?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#health-checks",
+          "mode": "name"
+        },
+        "text": "=🚨 *ENP Hub Health Check - {{ $json.status.toUpperCase() }}*\n\n📊 *Resumo:*\n• Status: {{ $json.status }}\n• Passed: {{ $json.passed }}/{{ $json.total_checks }}\n• Failed: {{ $json.failed }}\n• Warned: {{ $json.warned }}\n• Duration: {{ $json.total_duration_ms }}ms\n\n{{ $json.failed > 0 ? '❌ *FALHAS:*' : '' }}\n{{ $json.checks.filter(c => c.status === 'fail').map(c => '• ' + c.name + ': ' + (c.error || 'Unknown')).join('\\n') }}\n\n{{ $json.warned > 0 ? '⚠️ *WARNINGS:*' : '' }}\n{{ $json.checks.filter(c => c.status === 'warn').map(c => '• ' + c.name + ': ' + (c.error || 'Warning')).join('\\n') }}\n\n🕐 {{ $json.timestamp }}\n🌍 {{ $json.environment }}",
+        "otherOptions": {}
+      },
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [850, 200],
+      "credentials": {
+        "slackWebhookApi": {
+          "id": "2",
+          "name": "Slack Webhook"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Log Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "notes": "All checks passed - no action needed"
+    }
+  ],
+  "connections": {
+    "Schedule (9h diariamente)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Health Check": {
+      "main": [
+        [
+          {
+            "node": "Has Issues?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Issues?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-20T10:00:00.000Z",
+  "versionId": "1"
+}

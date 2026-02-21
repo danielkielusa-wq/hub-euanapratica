@@ -32,6 +32,33 @@ export interface ServiceLandingPageData {
   };
 }
 
+export interface ThankYouPageData {
+  hero?: {
+    title_line1?: string;
+    title_gradient?: string;
+    description?: string;
+  };
+  product_summary?: {
+    icon?: string;
+    product_name?: string;
+    product_detail?: string;
+  };
+  primary_action?: {
+    label?: string;
+    url?: string;
+  };
+  credit_incentive?: {
+    title?: string;
+    description?: string;
+    validity_days?: number;
+  };
+  next_steps?: Array<{
+    icon?: string;
+    title: string;
+    description: string;
+  }>;
+}
+
 export interface HubService {
   id: string;
   name: string;
@@ -69,6 +96,9 @@ export interface HubService {
   duration: string | null;
   meeting_type: string | null;
   landing_page_data: ServiceLandingPageData | null;
+
+  // Thank-you page data
+  thank_you_page_data: ThankYouPageData | null;
 
   created_at: string;
   updated_at: string;

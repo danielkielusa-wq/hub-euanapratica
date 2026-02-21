@@ -71,6 +71,7 @@ import JobDetailsPage from "./pages/jobs/JobDetailsPage";
 import JobBookmarks from "./pages/jobs/JobBookmarks";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 import ServiceDetail from "./pages/services/ServiceDetail";
+import ThankYouDetail from "./pages/services/ThankYouDetail";
 import TitleTranslator from "./pages/title-translator/TitleTranslator";
 import LeadFormPage from "./pages/lead-form/LeadFormPage";
 
@@ -403,6 +404,8 @@ function AppRoutes() {
       {/* Thank You Pages (public, post-payment redirects) */}
       <Route path="/thank-you/rota60min" element={<ThankYouRota60 />} />
       <Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
+      {/* Dynamic Thank You Pages (generated from hub_services config) */}
+      <Route path="/thank-you/:slug" element={<ThankYouDetail />} />
 
       {/* Service Landing Pages (in-platform) */}
       <Route path="/servicos/:slug" element={

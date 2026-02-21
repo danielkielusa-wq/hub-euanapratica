@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -515,102 +516,300 @@ export type Database = {
           access_token: string
           area: string | null
           atuacao: string | null
+          auto_nurture_sequence: string | null
+          best_contact_time: string | null
+          budget_gap: string | null
+          can_apply_jobs: boolean | null
+          consentimento_marketing: boolean | null
           created_at: string | null
+          critical_blockers: string[] | null
+          device: string | null
           email: string
           english_level: string | null
+          estimated_ltv: number | null
+          estimated_preparation_months: number | null
           experiencia: string | null
           family_status: string | null
+          fbclid: string | null
           first_accessed_at: string | null
+          fit_score: number | null
           formatted_at: string | null
           formatted_report: string | null
-          id: string
+          gclid: string | null
+          has_budget: boolean | null
+          has_clarity_barrier: boolean | null
+          has_english_barrier: boolean | null
+          has_experience_barrier: boolean | null
+          has_family: boolean | null
+          has_family_barrier: boolean | null
+          has_financial_barrier: boolean | null
+          has_time_barrier: boolean | null
+          has_visa_barrier: boolean | null
+          id: string | null
           impediment: string | null
           impediment_other: string | null
           import_batch_id: string | null
           imported_by: string | null
           income_range: string | null
           investment_range: string | null
+          is_high_income: boolean | null
+          is_senior_level: boolean | null
+          is_tech_professional: boolean | null
+          lead_priority_score: number | null
+          lead_temperature: string | null
           main_concern: string | null
           name: string
+          next_milestone_action: string | null
+          next_milestone_deadline: string | null
           objetivo: string | null
+          phase_emoji: string | null
+          phase_id: number | null
+          phase_name: string | null
           phone: string | null
+          preferred_communication: string | null
           processing_error: string | null
           processing_started_at: string | null
           processing_status: string | null
+          raw_llm_response: Json | null
+          readiness_percentual: number | null
+          readiness_score: number | null
+          recheck_recommended_at: string | null
+          recommendation_description: string | null
+          recommendation_landing_page_url: string | null
+          recommendation_status: string | null
+          recommended_first_action: string | null
+          recommended_product_name: string | null
+          recommended_product_price: string | null
+          recommended_product_tier: string | null
+          recommended_product_url: string | null
           report_content: string
+          rota_letter: string | null
+          scheduled_follow_up_1: string | null
+          scheduled_follow_up_2: string | null
+          scheduled_follow_up_3: string | null
+          score_area_bonus: number | null
+          score_english: number | null
+          score_experience: number | null
+          score_international_work: number | null
+          score_objective: number | null
+          score_readiness: number | null
+          score_timeline: number | null
+          score_visa: number | null
+          secondary_fit_score: number | null
+          secondary_product_name: string | null
+          secondary_product_tier: string | null
           timeline: string | null
           trabalha_internacional: boolean | null
           updated_at: string | null
-          user_id: string
+          urgency_level: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
           visa_status: string | null
+          works_remotely: boolean | null
         }
         Insert: {
           access_count?: number | null
           access_token?: string
           area?: string | null
           atuacao?: string | null
+          auto_nurture_sequence?: string | null
+          best_contact_time?: string | null
+          budget_gap?: string | null
+          can_apply_jobs?: boolean | null
+          consentimento_marketing?: boolean | null
           created_at?: string | null
+          critical_blockers?: string[] | null
+          device?: string | null
           email: string
           english_level?: string | null
+          estimated_ltv?: number | null
+          estimated_preparation_months?: number | null
           experiencia?: string | null
           family_status?: string | null
+          fbclid?: string | null
           first_accessed_at?: string | null
+          fit_score?: number | null
           formatted_at?: string | null
           formatted_report?: string | null
-          id?: string
+          gclid?: string | null
+          has_budget?: boolean | null
+          has_clarity_barrier?: boolean | null
+          has_english_barrier?: boolean | null
+          has_experience_barrier?: boolean | null
+          has_family?: boolean | null
+          has_family_barrier?: boolean | null
+          has_financial_barrier?: boolean | null
+          has_time_barrier?: boolean | null
+          has_visa_barrier?: boolean | null
+          id?: string | null
           impediment?: string | null
           impediment_other?: string | null
           import_batch_id?: string | null
           imported_by?: string | null
           income_range?: string | null
           investment_range?: string | null
+          is_high_income?: boolean | null
+          is_senior_level?: boolean | null
+          is_tech_professional?: boolean | null
+          lead_priority_score?: number | null
+          lead_temperature?: string | null
           main_concern?: string | null
           name: string
+          next_milestone_action?: string | null
+          next_milestone_deadline?: string | null
           objetivo?: string | null
+          phase_emoji?: string | null
+          phase_id?: number | null
+          phase_name?: string | null
           phone?: string | null
+          preferred_communication?: string | null
           processing_error?: string | null
           processing_started_at?: string | null
           processing_status?: string | null
+          raw_llm_response?: Json | null
+          readiness_percentual?: number | null
+          readiness_score?: number | null
+          recheck_recommended_at?: string | null
+          recommendation_description?: string | null
+          recommendation_landing_page_url?: string | null
+          recommendation_status?: string | null
+          recommended_first_action?: string | null
+          recommended_product_name?: string | null
+          recommended_product_price?: string | null
+          recommended_product_tier?: string | null
+          recommended_product_url?: string | null
           report_content: string
+          rota_letter?: string | null
+          scheduled_follow_up_1?: string | null
+          scheduled_follow_up_2?: string | null
+          scheduled_follow_up_3?: string | null
+          score_area_bonus?: number | null
+          score_english?: number | null
+          score_experience?: number | null
+          score_international_work?: number | null
+          score_objective?: number | null
+          score_readiness?: number | null
+          score_timeline?: number | null
+          score_visa?: number | null
+          secondary_fit_score?: number | null
+          secondary_product_name?: string | null
+          secondary_product_tier?: string | null
           timeline?: string | null
           trabalha_internacional?: boolean | null
           updated_at?: string | null
-          user_id: string
+          urgency_level?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           visa_status?: string | null
+          works_remotely?: boolean | null
         }
         Update: {
           access_count?: number | null
           access_token?: string
           area?: string | null
           atuacao?: string | null
+          auto_nurture_sequence?: string | null
+          best_contact_time?: string | null
+          budget_gap?: string | null
+          can_apply_jobs?: boolean | null
+          consentimento_marketing?: boolean | null
           created_at?: string | null
+          critical_blockers?: string[] | null
+          device?: string | null
           email?: string
           english_level?: string | null
+          estimated_ltv?: number | null
+          estimated_preparation_months?: number | null
           experiencia?: string | null
           family_status?: string | null
+          fbclid?: string | null
           first_accessed_at?: string | null
+          fit_score?: number | null
           formatted_at?: string | null
           formatted_report?: string | null
-          id?: string
+          gclid?: string | null
+          has_budget?: boolean | null
+          has_clarity_barrier?: boolean | null
+          has_english_barrier?: boolean | null
+          has_experience_barrier?: boolean | null
+          has_family?: boolean | null
+          has_family_barrier?: boolean | null
+          has_financial_barrier?: boolean | null
+          has_time_barrier?: boolean | null
+          has_visa_barrier?: boolean | null
+          id?: string | null
           impediment?: string | null
           impediment_other?: string | null
           import_batch_id?: string | null
           imported_by?: string | null
           income_range?: string | null
           investment_range?: string | null
+          is_high_income?: boolean | null
+          is_senior_level?: boolean | null
+          is_tech_professional?: boolean | null
+          lead_priority_score?: number | null
+          lead_temperature?: string | null
           main_concern?: string | null
           name?: string
+          next_milestone_action?: string | null
+          next_milestone_deadline?: string | null
           objetivo?: string | null
+          phase_emoji?: string | null
+          phase_id?: number | null
+          phase_name?: string | null
           phone?: string | null
+          preferred_communication?: string | null
           processing_error?: string | null
           processing_started_at?: string | null
           processing_status?: string | null
+          raw_llm_response?: Json | null
+          readiness_percentual?: number | null
+          readiness_score?: number | null
+          recheck_recommended_at?: string | null
+          recommendation_description?: string | null
+          recommendation_landing_page_url?: string | null
+          recommendation_status?: string | null
+          recommended_first_action?: string | null
+          recommended_product_name?: string | null
+          recommended_product_price?: string | null
+          recommended_product_tier?: string | null
+          recommended_product_url?: string | null
           report_content?: string
+          rota_letter?: string | null
+          scheduled_follow_up_1?: string | null
+          scheduled_follow_up_2?: string | null
+          scheduled_follow_up_3?: string | null
+          score_area_bonus?: number | null
+          score_english?: number | null
+          score_experience?: number | null
+          score_international_work?: number | null
+          score_objective?: number | null
+          score_readiness?: number | null
+          score_timeline?: number | null
+          score_visa?: number | null
+          secondary_fit_score?: number | null
+          secondary_product_name?: string | null
+          secondary_product_tier?: string | null
           timeline?: string | null
           trabalha_internacional?: boolean | null
           updated_at?: string | null
-          user_id?: string
+          urgency_level?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           visa_status?: string | null
+          works_remotely?: boolean | null
         }
         Relationships: [
           {
@@ -1218,8 +1417,10 @@ export type Database = {
           icon_name: string
           id: string
           is_highlighted: boolean | null
+          is_visible_for_upsell: boolean | null
           is_visible_in_hub: boolean | null
-          landing_page_data: Record<string, unknown> | null
+          keywords: string[] | null
+          landing_page_data: Json | null
           landing_page_url: string | null
           meeting_type: string | null
           name: string
@@ -1232,6 +1433,8 @@ export type Database = {
           service_type: string | null
           status: string
           stripe_price_id: string | null
+          target_tier: string | null
+          thank_you_page_data: Json | null
           ticto_checkout_url: string | null
           ticto_product_id: string | null
           updated_at: string | null
@@ -1248,8 +1451,10 @@ export type Database = {
           icon_name: string
           id?: string
           is_highlighted?: boolean | null
+          is_visible_for_upsell?: boolean | null
           is_visible_in_hub?: boolean | null
-          landing_page_data?: Record<string, unknown> | null
+          keywords?: string[] | null
+          landing_page_data?: Json | null
           landing_page_url?: string | null
           meeting_type?: string | null
           name: string
@@ -1262,6 +1467,8 @@ export type Database = {
           service_type?: string | null
           status?: string
           stripe_price_id?: string | null
+          target_tier?: string | null
+          thank_you_page_data?: Json | null
           ticto_checkout_url?: string | null
           ticto_product_id?: string | null
           updated_at?: string | null
@@ -1278,8 +1485,10 @@ export type Database = {
           icon_name?: string
           id?: string
           is_highlighted?: boolean | null
+          is_visible_for_upsell?: boolean | null
           is_visible_in_hub?: boolean | null
-          landing_page_data?: Record<string, unknown> | null
+          keywords?: string[] | null
+          landing_page_data?: Json | null
           landing_page_url?: string | null
           meeting_type?: string | null
           name?: string
@@ -1292,6 +1501,8 @@ export type Database = {
           service_type?: string | null
           status?: string
           stripe_price_id?: string | null
+          target_tier?: string | null
+          thank_you_page_data?: Json | null
           ticto_checkout_url?: string | null
           ticto_product_id?: string | null
           updated_at?: string | null
@@ -1469,6 +1680,48 @@ export type Database = {
           title?: string
           updated_at?: string | null
           url?: string
+        }
+        Relationships: []
+      }
+      kanban_tasks: {
+        Row: {
+          column_id: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          owner: string | null
+          position: number | null
+          priority: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          column_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          position?: number | null
+          priority?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          column_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          position?: number | null
+          priority?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1860,6 +2113,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          landing_page_url: string | null
           name: string
           price: number | null
           updated_at: string | null
@@ -1871,6 +2125,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          landing_page_url?: string | null
           name: string
           price?: number | null
           updated_at?: string | null
@@ -1882,6 +2137,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          landing_page_url?: string | null
           name?: string
           price?: number | null
           updated_at?: string | null
@@ -1965,25 +2221,25 @@ export type Database = {
       }
       resumepass_reports: {
         Row: {
-          id: string
-          user_id: string
-          title: string
-          report_data: Json
           created_at: string
+          id: string
+          report_data: Json
+          title: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          title?: string
-          report_data: Json
           created_at?: string
+          id?: string
+          report_data: Json
+          title?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          report_data?: Json
           created_at?: string
+          id?: string
+          report_data?: Json
+          title?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -2299,6 +2555,154 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      title_translations: {
+        Row: {
+          all_suggestions: Json | null
+          area: string | null
+          created_at: string | null
+          credits_used: number | null
+          id: string
+          responsibilities: string | null
+          title_br_input: string
+          title_us_recommended: string | null
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          all_suggestions?: Json | null
+          area?: string | null
+          created_at?: string | null
+          credits_used?: number | null
+          id?: string
+          responsibilities?: string | null
+          title_br_input: string
+          title_us_recommended?: string | null
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          all_suggestions?: Json | null
+          area?: string | null
+          created_at?: string | null
+          credits_used?: number | null
+          id?: string
+          responsibilities?: string | null
+          title_br_input?: string
+          title_us_recommended?: string | null
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
+      upsell_blacklist: {
+        Row: {
+          blacklisted_until: string
+          created_at: string
+          id: string
+          reason: string | null
+          service_id: string
+          user_id: string
+        }
+        Insert: {
+          blacklisted_until: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          service_id: string
+          user_id: string
+        }
+        Update: {
+          blacklisted_until?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          service_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upsell_blacklist_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_blacklist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upsell_impressions: {
+        Row: {
+          clicked_at: string | null
+          confidence_score: number
+          converted_at: string | null
+          dismissed_at: string | null
+          id: string
+          metadata: Json | null
+          microcopy: string
+          post_id: string
+          reason: string
+          service_id: string
+          shown_at: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string | null
+          confidence_score: number
+          converted_at?: string | null
+          dismissed_at?: string | null
+          id?: string
+          metadata?: Json | null
+          microcopy: string
+          post_id: string
+          reason: string
+          service_id: string
+          shown_at?: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string | null
+          confidence_score?: number
+          converted_at?: string | null
+          dismissed_at?: string | null
+          id?: string
+          metadata?: Json | null
+          microcopy?: string
+          post_id?: string
+          reason?: string
+          service_id?: string
+          shown_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upsell_impressions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_impressions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_impressions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2759,6 +3163,11 @@ export type Database = {
           used_this_month: number
         }[]
       }
+      check_upsell_blacklist: {
+        Args: { p_service_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      check_upsell_rate_limit: { Args: { p_user_id: string }; Returns: boolean }
       cleanup_old_jobs: { Args: never; Returns: Json }
       complete_booking: {
         Args: {
@@ -2768,16 +3177,27 @@ export type Database = {
         }
         Returns: boolean
       }
-      create_booking: {
-        Args: {
-          p_duration_minutes?: number
-          p_scheduled_start: string
-          p_service_id: string
-          p_student_id: string
-          p_student_notes?: string
-        }
-        Returns: string
-      }
+      create_booking:
+        | {
+            Args: {
+              p_duration_minutes?: number
+              p_scheduled_start: string
+              p_service_id: string
+              p_student_id: string
+              p_student_notes?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_booking_datetime: string
+              p_mentor_service_id: string
+              p_student_notes?: string
+              p_timezone?: string
+              p_user_id: string
+            }
+            Returns: string
+          }
       get_api_config_by_key: {
         Args: { p_api_key: string }
         Returns: {
@@ -2805,6 +3225,17 @@ export type Database = {
           is_active: boolean
           name: string
           parameters: Json
+        }[]
+      }
+      get_app_quota: {
+        Args: { p_app_id: string; p_user_id: string }
+        Returns: {
+          features: Json
+          monthly_limit: number
+          plan_id: string
+          plan_name: string
+          remaining: number
+          used_this_month: number
         }[]
       }
       get_available_slots: {
@@ -3005,6 +3436,18 @@ export type Database = {
         Args: { p_country_code: string; p_phone: string; p_user_id?: string }
         Returns: boolean
       }
+      mark_upsell_click: {
+        Args: { p_impression_id: string }
+        Returns: undefined
+      }
+      mark_upsell_conversion: {
+        Args: { p_impression_id: string }
+        Returns: undefined
+      }
+      mark_upsell_dismiss: {
+        Args: { p_impression_id: string }
+        Returns: undefined
+      }
       record_analytics_event: {
         Args: {
           p_entity_id?: string
@@ -3023,10 +3466,24 @@ export type Database = {
           success: boolean
         }[]
       }
-      reschedule_booking: {
-        Args: { p_booking_id: string; p_new_start: string; p_user_id: string }
-        Returns: boolean
-      }
+      reschedule_booking:
+        | {
+            Args: {
+              p_booking_id: string
+              p_new_start: string
+              p_user_id: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_booking_id: string
+              p_new_datetime: string
+              p_reason?: string
+              p_user_id: string
+            }
+            Returns: boolean
+          }
       test_encryption: {
         Args: never
         Returns: {
@@ -3035,6 +3492,10 @@ export type Database = {
           original: string
           success: boolean
         }[]
+      }
+      user_has_plan_feature: {
+        Args: { p_feature: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
