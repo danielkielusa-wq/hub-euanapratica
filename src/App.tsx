@@ -74,6 +74,11 @@ import ServiceDetail from "./pages/services/ServiceDetail";
 import ThankYouDetail from "./pages/services/ThankYouDetail";
 import TitleTranslator from "./pages/title-translator/TitleTranslator";
 import LeadFormPage from "./pages/lead-form/LeadFormPage";
+import PricingPage from "./pages/pricing/PricingPage";
+import SubscriptionSuccess from "./pages/pricing/SubscriptionSuccess";
+import SubscriptionTerms from "./pages/pricing/SubscriptionTerms";
+import SubscriptionPage from "./pages/account/SubscriptionPage";
+import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
 
 
 const queryClient = new QueryClient();
@@ -218,10 +223,32 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
+      {/* Pricing & Subscription routes */}
+      <Route path="/pricing" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <PricingPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/subscription-success" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <SubscriptionSuccess />
+        </ProtectedRoute>
+      } />
+      <Route path="/termos-assinatura" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <SubscriptionTerms />
+        </ProtectedRoute>
+      } />
+
       {/* Profile route - accessible by all authenticated users */}
       <Route path="/perfil" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ProfilePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/assinatura" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <SubscriptionPage />
         </ProtectedRoute>
       } />
       
@@ -387,6 +414,11 @@ function AppRoutes() {
       <Route path="/admin/ticto-simulator" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminTictoSimulator />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/subscription-health" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminSubscriptionHealth />
         </ProtectedRoute>
       } />
       <Route path="/admin/leads" element={

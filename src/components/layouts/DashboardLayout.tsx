@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
+import { DunningBanner } from '@/components/subscription/DunningBanner';
 import { SpotlightSearch } from './SpotlightSearch';
 import { SidebarNav } from './SidebarNav';
 import { SidebarUserCard } from './SidebarUserCard';
@@ -110,6 +111,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         isImpersonating && "pt-24 lg:pt-10"
       )}>
         <div className="p-4 lg:p-6">
+          <DunningBanner />
           {children}
         </div>
       </main>

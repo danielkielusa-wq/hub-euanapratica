@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Check, Crown, Sparkles, AlertTriangle, Loader2, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Check, Crown, Sparkles, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,14 +24,13 @@ interface UpgradeModalProps {
   reason?: 'limit_reached' | 'upgrade';
 }
 
-const WHATSAPP_GROUP = 'https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg';
-
-export function UpgradeModal({ 
-  open, 
-  onOpenChange, 
+export function UpgradeModal({
+  open,
+  onOpenChange,
   currentPlanId = 'basic',
   reason = 'upgrade'
 }: UpgradeModalProps) {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,10 +63,9 @@ export function UpgradeModal({
     }
   };
 
-  const handleUpgrade = (planId: string, planName: string) => {
-    const message = encodeURIComponent(`Olá! Quero fazer upgrade para o plano ${planName}.`);
-    window.open(`${WHATSAPP_GROUP}?text=${message}`, '_blank');
+  const handleUpgrade = () => {
     onOpenChange(false);
+    navigate('/pricing');
   };
 
   const formatPrice = (price: number) => {
@@ -173,11 +172,11 @@ export function UpgradeModal({
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => handleUpgrade(plan.id, plan.name)}
+                      onClick={handleUpgrade}
                       variant={isPro ? "default" : "outline"}
                       className="w-full gap-2"
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <ExternalLink className="w-4 h-4" />
                       {plan.cta_text}
                     </Button>
                   )}
@@ -188,7 +187,7 @@ export function UpgradeModal({
         )}
 
         <div className="text-center text-sm text-muted-foreground pt-4 border-t border-border mt-4">
-          <p>Dúvidas? Entre em contato pelo WhatsApp e nós ajudamos você!</p>
+          <p>Veja todos os detalhes e assine na página de planos.</p>
         </div>
       </DialogContent>
     </Dialog>

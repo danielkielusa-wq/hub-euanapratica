@@ -2,6 +2,18 @@
 export type PlanTier = 'basic' | 'pro' | 'vip';
 export type PlanTheme = 'gray' | 'blue' | 'purple';
 
+// Subscription lifecycle statuses
+export type SubscriptionStatus =
+  | 'active'
+  | 'inactive'
+  | 'cancelled'
+  | 'past_due'
+  | 'grace_period'
+  | 'trial';
+
+// Billing cycle
+export type BillingCycle = 'monthly' | 'annual';
+
 // Feature keys for access control
 export type PlanFeatureKey =
   | 'hotseats'
@@ -65,6 +77,7 @@ export interface PlanFeatures {
 export interface FullPlanConfig {
   id: string;
   name: string;
+  description: string;
   price_monthly: number;
   price_annual: number;
   theme: PlanTheme;
@@ -74,6 +87,11 @@ export interface FullPlanConfig {
   features: PlanFeatures;
   display_features: string[];
   cta_text: string;
+  // Ticto integration
+  ticto_offer_id_monthly: string;
+  ticto_offer_id_annual: string;
+  ticto_checkout_url_monthly: string;
+  ticto_checkout_url_annual: string;
 }
 
 // User's plan access state
@@ -87,6 +105,27 @@ export interface UserPlanAccess {
   usedThisMonth: number;
   monthlyLimit: number;
   remaining: number;
+  // Subscription lifecycle fields
+  subscriptionStatus: SubscriptionStatus;
+  nextBillingDate: string | null;
+  dunningStage: number;
+  cancelAtPeriodEnd: boolean;
+  billingCycle: BillingCycle | null;
+  tictoChangeCardUrl: string | null;
+  gracePeriodEndsAt: string | null;
+  expiresAt: string | null;
+}
+
+// Subscription event from audit log
+export interface SubscriptionEvent {
+  id: string;
+  userId: string | null;
+  subscriptionId: string | null;
+  tictoTransactionId: string;
+  eventType: string;
+  eventData: Record<string, unknown>;
+  processedAt: string;
+  createdAt: string;
 }
 
 // Default features for fallback

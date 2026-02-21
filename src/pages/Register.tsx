@@ -133,13 +133,23 @@ export default function Register() {
       
       navigate('/dashboard');
     } catch (error) {
-      const err = error as { message?: string; status?: number };
+      const err = error as { message?: string; status?: number; code?: string };
+
+      // Check for specific error types
       const isRateLimit = err?.status === 429 || (err?.message || '').toLowerCase().includes('rate limit');
+      const isDuplicateEmail = err?.status === 409 || err?.code === 'email_already_exists';
+
+      let errorMessage = "Não foi possível criar sua conta. Tente novamente.";
+
+      if (isRateLimit) {
+        errorMessage = "Limite de emails atingido. Aguarde alguns minutos e tente novamente.";
+      } else if (isDuplicateEmail) {
+        errorMessage = err?.message || "Este endereço de email já está cadastrado. Por favor, faça login ou use outro email.";
+      }
+
       toast({
         title: "Erro",
-        description: isRateLimit
-          ? "Limite de emails atingido. Aguarde alguns minutos e tente novamente."
-          : "N?o foi poss?vel criar sua conta. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

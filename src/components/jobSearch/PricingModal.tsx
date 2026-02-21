@@ -44,7 +44,7 @@ const PLANS = [
       '10% de desconto em serviços',
     ],
     unavailable: [
-      'Job Concierge',
+      'Prime Jobs',
     ],
     btn: 'Fazer Upgrade',
     theme: 'blue',
@@ -59,7 +59,7 @@ const PLANS = [
       'Análises ilimitadas',
       'Tudo do Pro incluído',
       'Cheat Sheet de Entrevista',
-      'Job Concierge (20 consultas)',
+      'Prime Jobs (20 consultas)',
       'Prioridade nos Hotseats',
       '20% de desconto em serviços',
     ],

@@ -25,7 +25,7 @@ const FEATURE_NAMES: Record<PlanFeatureKey, string> = {
   community: 'Comunidade Exclusiva',
   library: 'Biblioteca de Materiais',
   masterclass: 'Masterclass Mensal',
-  job_concierge: 'Job Concierge',
+  job_concierge: 'Prime Jobs',
   prime_jobs: 'Prime Jobs',
   show_improvements: 'Melhorias de Impacto',
   show_power_verbs: 'Power Verbs',

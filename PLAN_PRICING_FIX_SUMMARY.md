@@ -50,7 +50,7 @@
 | **Cheat Sheet** | ✗ | ✗ | **✓** |
 | **Biblioteca** | ✗ | **✓** | **✓** |
 | **Hotseats** | ✗ | **✓** | **✓** |
-| **Job Concierge** | ✗ | ✗ | **✓** (20 usos) |
+| **Prime Jobs** | ✗ | ✗ | **✓** (20 usos) |
 | **Limite/mês** | 1 | 10 | 999 (ilimitado) |
 | **Preço** | R$0 | R$47 | R$97 |
 | **Desconto Base** | 0% | 10% | 20% |

@@ -52,6 +52,7 @@ export function useAdminPlans() {
         return {
           id: p.id,
           name: p.name,
+          description: (p as any).description || '',
           price_monthly: Number(p.price) || 0,
           price_annual: Number((p as any).price_annual) || 0,
           theme: ((p as any).theme as PlanTheme) || 'gray',
@@ -61,6 +62,10 @@ export function useAdminPlans() {
           features,
           display_features: Array.isArray(p.display_features) ? p.display_features as string[] : [],
           cta_text: p.cta_text,
+          ticto_offer_id_monthly: (p as any).ticto_offer_id_monthly || '',
+          ticto_offer_id_annual: (p as any).ticto_offer_id_annual || '',
+          ticto_checkout_url_monthly: (p as any).ticto_checkout_url_monthly || '',
+          ticto_checkout_url_annual: (p as any).ticto_checkout_url_annual || '',
         };
       });
 
@@ -84,6 +89,7 @@ export function useAdminPlans() {
         .from('plans')
         .update({
           name: plan.name,
+          description: plan.description,
           price: plan.price_monthly,
           price_annual: plan.price_annual,
           theme: plan.theme,
@@ -93,6 +99,10 @@ export function useAdminPlans() {
           features: JSON.parse(JSON.stringify(plan.features)),
           display_features: plan.display_features,
           cta_text: plan.cta_text,
+          ticto_offer_id_monthly: plan.ticto_offer_id_monthly || null,
+          ticto_offer_id_annual: plan.ticto_offer_id_annual || null,
+          ticto_checkout_url_monthly: plan.ticto_checkout_url_monthly || null,
+          ticto_checkout_url_annual: plan.ticto_checkout_url_annual || null,
         })
         .eq('id', plan.id);
 

@@ -42,14 +42,14 @@ SELECT
   -- Outras features importantes
   (features->>'library')::boolean AS "Biblioteca",
   (features->>'hotseats')::boolean AS "Hotseats",
-  (features->>'job_concierge')::boolean AS "Job Concierge"
+  (features->>'job_concierge')::boolean AS "Prime Jobs"
 FROM public.plans
 WHERE is_active = true
 ORDER BY price;
 
 -- Resultado esperado:
 -- ┌───────┬────────┬────────────┬─────────────┬─────────────┬────────────┬────────────┬──────────┬──────────────┐
--- │ Plano │ Nome   │ Prime Jobs │ Power Verbs │ Cheat Sheet │ PDF Export │ Biblioteca │ Hotseats │ Job Concierge│
+-- │ Plano │ Nome   │ Prime Jobs │ Power Verbs │ Cheat Sheet │ PDF Export │ Biblioteca │ Hotseats │ Prime Jobs│
 -- ├───────┼────────┼────────────┼─────────────┼─────────────┼────────────┼────────────┼──────────┼──────────────┤
 -- │ basic │ Básico │ false      │ false       │ false       │ false      │ false      │ false    │ false        │
 -- │ pro   │ Pro    │ TRUE ✓     │ TRUE ✓      │ false       │ true       │ true       │ true     │ false        │
@@ -64,7 +64,7 @@ SELECT
   id AS "Plano",
   (features->>'resume_pass_limit')::integer AS "Análises CV",
   (features->>'title_translator_limit')::integer AS "Traduções",
-  (features->>'job_concierge_count')::integer AS "Job Concierge Uses"
+  (features->>'job_concierge_count')::integer AS "Prime Jobs Uses"
 FROM public.plans
 WHERE is_active = true
 ORDER BY price;

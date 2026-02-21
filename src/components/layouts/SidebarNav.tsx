@@ -27,7 +27,8 @@ import {
   Upload,
   Briefcase,
   Link2,
-  Globe
+  Globe,
+  Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -99,6 +100,8 @@ const studentNavGroups: NavGroup[] = [
   {
     label: 'MINHA CONTA',
     items: [
+      { label: 'Planos', href: '/pricing', icon: CreditCard },
+      { label: 'Assinatura', href: '/dashboard/assinatura', icon: CreditCard },
       { label: 'Perfil', href: '/perfil', icon: User },
       { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag },
       { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy },
@@ -154,6 +157,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Usuários', href: '/admin/usuarios', icon: Users },
       { label: 'Matrículas', href: '/admin/matriculas', icon: UserCog },
       { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
+      { label: 'Saúde Assinaturas', href: '/admin/subscription-health', icon: Activity },
       { label: 'Leads', href: '/admin/leads', icon: FileText },
     ],
   },

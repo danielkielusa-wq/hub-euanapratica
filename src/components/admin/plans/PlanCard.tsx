@@ -9,7 +9,12 @@ import {
   Briefcase,
   Ticket,
   Languages,
-  Loader2
+  Loader2,
+  Link2,
+  FileText,
+  List,
+  Plus,
+  X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -183,7 +188,61 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
 
       {/* Scrollable Content */}
       <div className="p-6 space-y-8 flex-1 overflow-y-auto max-h-[600px]">
-        
+
+        {/* 0a. Description */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <FileText size={14} className="text-primary" /> Descrição do Plano
+          </h3>
+          <Input
+            value={localPlan.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            placeholder="Ex: Ideal para quem está buscando ativamente."
+            className="text-sm"
+          />
+        </section>
+
+        {/* 0b. Display Features (shown on pricing page) */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <List size={14} className="text-primary" /> Features de Exibição
+          </h3>
+          <p className="text-[10px] text-muted-foreground mb-3">
+            Lista de features exibidas na página de preços e no modal de upgrade.
+          </p>
+          <div className="space-y-2">
+            {localPlan.display_features.map((feature, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <Input
+                  value={feature}
+                  onChange={(e) => {
+                    const updated = [...localPlan.display_features];
+                    updated[idx] = e.target.value;
+                    updateField('display_features', updated);
+                  }}
+                  className="text-sm flex-1"
+                />
+                <button
+                  onClick={() => {
+                    const updated = localPlan.display_features.filter((_, i) => i !== idx);
+                    updateField('display_features', updated);
+                  }}
+                  className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  title="Remover"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => updateField('display_features', [...localPlan.display_features, ''])}
+              className="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary/80 transition-colors mt-2"
+            >
+              <Plus size={14} /> Adicionar Feature
+            </button>
+          </div>
+        </section>
+
         {/* 1. ResumePass AI */}
         <section>
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -242,11 +301,11 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
               </div>
             ))}
 
-            {/* Job Concierge */}
+            {/* Prime Jobs */}
             <div className="border-t border-border pt-3 mt-1">
               <div className="flex items-center justify-between p-3">
                 <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Briefcase size={14} /> Job Concierge
+                  <Briefcase size={14} /> Prime Jobs
                 </span>
                 <Switch
                   checked={localPlan.features.job_concierge}
@@ -337,6 +396,67 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* 5. Ticto Integration */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Link2 size={14} className="text-blue-500" /> Integração Ticto
+          </h3>
+          <div className="space-y-3">
+            <div className="bg-muted/50 rounded-2xl p-4 border border-border space-y-3">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                Offer IDs
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[9px] font-bold text-muted-foreground uppercase mb-1 block">Mensal</label>
+                  <Input
+                    type="text"
+                    placeholder="offer_id mensal"
+                    value={localPlan.ticto_offer_id_monthly}
+                    onChange={(e) => updateField('ticto_offer_id_monthly', e.target.value)}
+                    className="text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-muted-foreground uppercase mb-1 block">Anual</label>
+                  <Input
+                    type="text"
+                    placeholder="offer_id anual"
+                    value={localPlan.ticto_offer_id_annual}
+                    onChange={(e) => updateField('ticto_offer_id_annual', e.target.value)}
+                    className="text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-2xl p-4 border border-border space-y-3">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                Checkout URLs
+              </label>
+              <div>
+                <label className="text-[9px] font-bold text-muted-foreground uppercase mb-1 block">URL Mensal</label>
+                <Input
+                  type="url"
+                  placeholder="https://pay.ticto.com.br/..."
+                  value={localPlan.ticto_checkout_url_monthly}
+                  onChange={(e) => updateField('ticto_checkout_url_monthly', e.target.value)}
+                  className="text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-muted-foreground uppercase mb-1 block">URL Anual</label>
+                <Input
+                  type="url"
+                  placeholder="https://pay.ticto.com.br/..."
+                  value={localPlan.ticto_checkout_url_annual}
+                  onChange={(e) => updateField('ticto_checkout_url_annual', e.target.value)}
+                  className="text-xs font-mono"
+                />
+              </div>
+            </div>
           </div>
         </section>
       </div>

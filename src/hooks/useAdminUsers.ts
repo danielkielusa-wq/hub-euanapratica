@@ -253,8 +253,19 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('Usuário criado com sucesso!');
     },
-    onError: (error) => {
-      toast.error('Erro ao criar usuário: ' + error.message);
+    onError: (error: any) => {
+      // Check if error is due to duplicate email
+      const isDuplicateEmail =
+        error?.status === 409 ||
+        error?.message?.toLowerCase().includes('already registered') ||
+        error?.message?.toLowerCase().includes('already exists') ||
+        error?.message?.toLowerCase().includes('duplicate');
+
+      const errorMessage = isDuplicateEmail
+        ? 'Este endereço de email já está cadastrado no sistema.'
+        : error.message || 'Erro ao criar usuário';
+
+      toast.error(errorMessage);
     }
   });
 }

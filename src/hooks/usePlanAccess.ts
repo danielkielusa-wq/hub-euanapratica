@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  PlanFeatures, 
-  PlanTheme, 
-  PlanFeatureKey, 
+import {
+  PlanFeatures,
+  PlanTheme,
+  PlanFeatureKey,
   LimitedFeature,
   UserPlanAccess,
+  SubscriptionStatus,
+  BillingCycle,
   DEFAULT_PLAN_FEATURES,
   ROUTE_FEATURE_MAP,
   SERVICE_DISCOUNT_MAP,
@@ -18,7 +20,7 @@ interface UsePlanAccessReturn {
   planId: string;
   planName: string;
   theme: PlanTheme;
-  
+
   // Access methods
   hasFeature: (feature: PlanFeatureKey) => boolean;
   getLimit: (feature: LimitedFeature) => number;
@@ -27,21 +29,52 @@ interface UsePlanAccessReturn {
   getDiscountForCategory: (category: keyof PlanDiscounts) => number;
   getDiscountForServiceType: (serviceType: string) => number;
   getCouponCode: () => string;
-  
+
   // UI helpers
   canAccessRoute: (route: string) => boolean;
   shouldShowUpgrade: (feature: PlanFeatureKey) => boolean;
   isPremiumPlan: boolean;
   isVipPlan: boolean;
-  
+
+  // Subscription lifecycle helpers
+  subscriptionStatus: SubscriptionStatus;
+  billingCycle: BillingCycle | null;
+  isDunning: boolean;
+  isInGracePeriod: boolean;
+  willCancelAtPeriodEnd: boolean;
+  dunningStage: number;
+  nextBillingDate: string | null;
+  expiresAt: string | null;
+  tictoChangeCardUrl: string | null;
+
   // State
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  
+
   // Raw data
   planAccess: UserPlanAccess | null;
 }
+
+const DEFAULT_PLAN_ACCESS: UserPlanAccess = {
+  planId: 'basic',
+  planName: 'Básico',
+  theme: 'gray',
+  priceMonthly: 0,
+  priceAnnual: 0,
+  features: DEFAULT_PLAN_FEATURES,
+  usedThisMonth: 0,
+  monthlyLimit: 1,
+  remaining: 1,
+  subscriptionStatus: 'inactive',
+  nextBillingDate: null,
+  dunningStage: 0,
+  cancelAtPeriodEnd: false,
+  billingCycle: null,
+  tictoChangeCardUrl: null,
+  gracePeriodEndsAt: null,
+  expiresAt: null,
+};
 
 export function usePlanAccess(): UsePlanAccessReturn {
   const { user } = useAuth();
@@ -95,20 +128,18 @@ export function usePlanAccess(): UsePlanAccessReturn {
           usedThisMonth: row.used_this_month || 0,
           monthlyLimit: row.monthly_limit || 1,
           remaining: row.remaining || 0,
+          // Subscription lifecycle fields
+          subscriptionStatus: (row.subscription_status as SubscriptionStatus) || 'inactive',
+          nextBillingDate: row.next_billing_date || null,
+          dunningStage: row.dunning_stage || 0,
+          cancelAtPeriodEnd: row.cancel_at_period_end || false,
+          billingCycle: (row.billing_cycle as BillingCycle) || null,
+          tictoChangeCardUrl: row.ticto_change_card_url || null,
+          gracePeriodEndsAt: row.grace_period_ends_at || null,
+          expiresAt: row.expires_at || null,
         });
       } else {
-        // Default to basic plan
-        setPlanAccess({
-          planId: 'basic',
-          planName: 'Básico',
-          theme: 'gray',
-          priceMonthly: 0,
-          priceAnnual: 0,
-          features: DEFAULT_PLAN_FEATURES,
-          usedThisMonth: 0,
-          monthlyLimit: 1,
-          remaining: 1,
-        });
+        setPlanAccess(DEFAULT_PLAN_ACCESS);
       }
     } catch (err) {
       setError('Erro ao carregar plano');
@@ -146,7 +177,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
     if (feature === 'resume_pass') {
       return planAccess.usedThisMonth;
     }
-    // Job concierge usage would need separate tracking
+    // Prime Jobs usage would need separate tracking
     return 0;
   }, [planAccess]);
 
@@ -169,7 +200,6 @@ export function usePlanAccess(): UsePlanAccessReturn {
   const getDiscountForServiceType = useCallback((serviceType: string): number => {
     const category = SERVICE_DISCOUNT_MAP[serviceType];
     if (!category) {
-      // Use base discount for unknown types
       return getDiscountForCategory('base');
     }
     return getDiscountForCategory(category);
@@ -181,7 +211,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
 
   const canAccessRoute = useCallback((route: string): boolean => {
     const requiredFeature = ROUTE_FEATURE_MAP[route];
-    if (!requiredFeature) return true; // No restriction
+    if (!requiredFeature) return true;
     return hasFeature(requiredFeature);
   }, [hasFeature]);
 
@@ -196,6 +226,23 @@ export function usePlanAccess(): UsePlanAccessReturn {
   const isVipPlan = useMemo(() => {
     return planAccess?.planId === 'vip';
   }, [planAccess?.planId]);
+
+  // Subscription lifecycle helpers
+  const subscriptionStatus = useMemo((): SubscriptionStatus => {
+    return planAccess?.subscriptionStatus || 'inactive';
+  }, [planAccess?.subscriptionStatus]);
+
+  const isDunning = useMemo((): boolean => {
+    return subscriptionStatus === 'past_due' || subscriptionStatus === 'grace_period';
+  }, [subscriptionStatus]);
+
+  const isInGracePeriod = useMemo((): boolean => {
+    return subscriptionStatus === 'grace_period';
+  }, [subscriptionStatus]);
+
+  const willCancelAtPeriodEnd = useMemo((): boolean => {
+    return planAccess?.cancelAtPeriodEnd || false;
+  }, [planAccess?.cancelAtPeriodEnd]);
 
   return {
     planId: planAccess?.planId || 'basic',
@@ -212,6 +259,17 @@ export function usePlanAccess(): UsePlanAccessReturn {
     shouldShowUpgrade,
     isPremiumPlan,
     isVipPlan,
+    // Subscription lifecycle
+    subscriptionStatus,
+    billingCycle: planAccess?.billingCycle || null,
+    isDunning,
+    isInGracePeriod,
+    willCancelAtPeriodEnd,
+    dunningStage: planAccess?.dunningStage || 0,
+    nextBillingDate: planAccess?.nextBillingDate || null,
+    expiresAt: planAccess?.expiresAt || null,
+    tictoChangeCardUrl: planAccess?.tictoChangeCardUrl || null,
+    // State
     isLoading,
     error,
     refetch: fetchPlanAccess,

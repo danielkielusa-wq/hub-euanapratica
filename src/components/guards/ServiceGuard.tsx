@@ -48,7 +48,7 @@ export function ServiceGuard({ serviceRoute, children }: ServiceGuardProps) {
             Para acessar este recurso, faça upgrade para um plano Pro ou VIP.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => setShowUpgradeModal(true)}>
+            <Button onClick={() => navigate('/pricing')}>
               Ver planos
             </Button>
             <Button variant="outline" onClick={() => navigate('/dashboard/hub')}>

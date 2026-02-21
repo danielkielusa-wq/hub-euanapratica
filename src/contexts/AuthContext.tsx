@@ -191,6 +191,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
+
+      // Check if error is due to duplicate email
+      if (error.message.toLowerCase().includes('already registered') ||
+          error.message.toLowerCase().includes('already exists') ||
+          error.message.toLowerCase().includes('duplicate') ||
+          error.status === 409) {
+        const duplicateError = new Error('Este endereço de email já está cadastrado no sistema.');
+        (duplicateError as any).status = 409;
+        (duplicateError as any).code = 'email_already_exists';
+        throw duplicateError;
+      }
+
       throw error;
     }
   }, []);
