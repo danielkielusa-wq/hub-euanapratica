@@ -164,7 +164,7 @@ serve(async (req) => {
       if (productId) {
         const { data: serviceData, error: serviceError } = await supabase
           .from("hub_services")
-          .select("id")
+          .select("id, name")
           .eq("ticto_product_id", productId)
           .maybeSingle();
 
@@ -194,6 +194,33 @@ serve(async (req) => {
           console.error("Error granting access:", accessError);
         } else {
           console.log("Access granted:", { userId: profile.id, serviceId: service.id });
+        }
+
+        // Create order record for user-facing history
+        const paidAmount = payload.order?.paid_amount || 0;
+        const amountInCurrency = (paidAmount / 100).toFixed(2);
+
+        const { error: orderError } = await supabase.from("orders").insert({
+          user_id: profile.id,
+          service_id: service.id,
+          product_name: payload.item?.product_name || service.name || "Serviço",
+          product_type: "one_time_service",
+          amount: parseFloat(amountInCurrency),
+          currency: "BRL",
+          status: "paid",
+          ticto_order_id: transactionId,
+          ticto_event_type: eventStatus,
+          paid_at: new Date().toISOString(),
+        });
+
+        if (orderError) {
+          console.error("Error creating order:", orderError);
+        } else {
+          console.log("Order created:", {
+            userId: profile.id,
+            serviceId: service.id,
+            amount: amountInCurrency,
+          });
         }
       } else {
         console.warn("Could not grant access:", {
@@ -246,7 +273,7 @@ serve(async (req) => {
 
         const { data: service } = await supabase
           .from("hub_services")
-          .select("id")
+          .select("id, name")
           .eq("ticto_product_id", productId)
           .maybeSingle();
 
@@ -258,6 +285,25 @@ serve(async (req) => {
             .eq("service_id", service.id);
 
           console.log("Access revoked:", { userId: profile.id, serviceId: service.id });
+
+          // Update order status to refunded
+          const { error: orderUpdateError } = await supabase
+            .from("orders")
+            .update({
+              status: "refunded",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", profile.id)
+            .eq("ticto_order_id", transactionId);
+
+          if (orderUpdateError) {
+            console.error("Error updating order to refunded:", orderUpdateError);
+          } else {
+            console.log("Order status updated to refunded:", {
+              userId: profile.id,
+              transactionId,
+            });
+          }
         }
 
         const refundLogData = {

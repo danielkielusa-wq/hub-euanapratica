@@ -13,25 +13,53 @@ export default function MyOrders() {
   const { user } = useAuth();
   const { data: orders, isLoading } = usePaymentHistory(user?.id);
 
-  const getStatusVariant = (status: string | null) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'processed':
-        return 'default';
-      case 'received':
-        return 'secondary';
+      case 'paid':
+        return 'default'; // Green/success
+      case 'pending':
+        return 'secondary'; // Yellow/warning
+      case 'cancelled':
+        return 'outline'; // Gray
+      case 'refunded':
+        return 'destructive'; // Red
       default:
         return 'outline';
     }
   };
 
-  const getStatusLabel = (status: string | null) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'processed':
-        return 'Aprovado';
-      case 'received':
+      case 'paid':
+        return 'Pago';
+      case 'pending':
         return 'Aguardando';
+      case 'cancelled':
+        return 'Cancelado';
+      case 'refunded':
+        return 'Reembolsado';
       default:
         return status || 'Pendente';
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string = 'BRL') => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  };
+
+  const getProductTypeLabel = (type: string) => {
+    switch (type) {
+      case 'one_time_service':
+        return 'Compra única';
+      case 'subscription_initial':
+        return 'Assinatura';
+      case 'subscription_renewal':
+        return 'Renovação';
+      default:
+        return type;
     }
   };
 
@@ -67,25 +95,41 @@ export default function MyOrders() {
                         <ShoppingBag className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-foreground">
-                          {order.service?.name || 'Serviço'}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-foreground">
+                            {order.product_name}
+                          </h3>
+                          {order.billing_cycle && (
+                            <Badge variant="outline" className="text-xs">
+                              {order.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {format(new Date(order.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
-                        {order.transaction_id && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {formatCurrency(order.amount, order.currency)}
+                          </p>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <p className="text-xs text-muted-foreground">
+                            {getProductTypeLabel(order.product_type)}
+                          </p>
+                        </div>
+                        {order.ticto_order_id && (
                           <p className="text-xs text-muted-foreground font-mono mt-1">
-                            ID: {order.transaction_id}
+                            ID: {order.ticto_order_id}
                           </p>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 ml-16 sm:ml-0">
                       <Badge variant={getStatusVariant(order.status)}>
                         {getStatusLabel(order.status)}
                       </Badge>
-                      {order.status === 'processed' && order.service?.route && (
+                      {order.status === 'paid' && order.service?.route && (
                         <Link to={order.service.route}>
                           <Button size="sm" className="rounded-xl">
                             Acessar

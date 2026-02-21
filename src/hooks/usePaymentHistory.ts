@@ -1,22 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface PaymentOrder {
+export interface Order {
   id: string;
   created_at: string;
-  event_type: string;
-  status: string | null;
-  transaction_id: string | null;
-  processed_at: string | null;
-  user_id: string | null;
+  paid_at: string | null;
+  product_name: string;
+  product_type: 'one_time_service' | 'subscription_initial' | 'subscription_renewal';
+  amount: number;
+  currency: string;
+  status: 'paid' | 'pending' | 'cancelled' | 'refunded';
+  ticto_order_id: string | null;
+  ticto_event_type: string | null;
+  billing_cycle: 'monthly' | 'annual' | null;
+  user_id: string;
   service_id: string | null;
+  plan_id: string | null;
   service: {
     name: string;
     route: string | null;
   } | null;
+  plan: {
+    name: string;
+  } | null;
 }
 
-export interface AdminPaymentOrder extends PaymentOrder {
+export interface AdminOrder extends Order {
   profile: {
     full_name: string;
     email: string;
@@ -25,19 +34,20 @@ export interface AdminPaymentOrder extends PaymentOrder {
 
 export function usePaymentHistory(userId?: string) {
   return useQuery({
-    queryKey: ['payment-history', userId],
+    queryKey: ['orders', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('payment_logs')
+        .from('orders')
         .select(`
           *,
-          service:hub_services(name, route)
+          service:hub_services(name, route),
+          plan:plans(name)
         `)
         .eq('user_id', userId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as PaymentOrder[];
+      return data as Order[];
     },
     enabled: !!userId,
   });
@@ -45,19 +55,20 @@ export function usePaymentHistory(userId?: string) {
 
 export function useAdminPaymentHistory() {
   return useQuery({
-    queryKey: ['admin-payment-history'],
+    queryKey: ['admin-orders'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('payment_logs')
+        .from('orders')
         .select(`
           *,
           profile:profiles(full_name, email),
-          service:hub_services(name, route)
+          service:hub_services(name, route),
+          plan:plans(name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as AdminPaymentOrder[];
+      return data as AdminOrder[];
     },
   });
 }

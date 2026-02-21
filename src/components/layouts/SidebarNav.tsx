@@ -28,7 +28,8 @@ import {
   Briefcase,
   Link2,
   Globe,
-  Activity
+  Activity,
+  Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -182,6 +183,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
+      { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
       { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },

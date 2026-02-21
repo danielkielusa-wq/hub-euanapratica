@@ -62,22 +62,20 @@ async function runCheck(
 
 // ─── Health Check Definitions ────────────────────────────────────────
 
-// 1. Authentication - Verifica se auth está funcionando
+// 1. Authentication
 async function checkAuth() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { error } = await supabase.auth.getSession();
-  // getSession com anon key retorna session null (ok), mas não deve dar erro
   if (error) {
     return { status: "fail" as const, error: `Auth error: ${error.message}` };
   }
   return { status: "pass" as const, details: { auth: "responsive" } };
 }
 
-// 2. Database - Verifica conexão com o banco
+// 2. Database
 async function checkDatabase() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Tenta uma query simples - ajuste a tabela para uma que exista no seu schema
   const tables = ["profiles", "leads", "users"];
   const results: Record<string, string> = {};
 
@@ -104,39 +102,47 @@ async function checkDatabase() {
   };
 }
 
-// 3. APIs & Infrastructure - Verifica se o Supabase REST está respondendo
+// 3. APIs & Infrastructure
 async function checkAPIs() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-    method: "HEAD",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-  });
+  // Use a lightweight query via the Supabase client (bypasses HEAD/401 issue)
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const start = Date.now();
 
-  if (!res.ok) {
+  const { error } = await supabase.from("plans").select("id").limit(1);
+  const latency = Date.now() - start;
+
+  if (error) {
     return {
       status: "fail" as const,
-      error: `REST API returned ${res.status}`,
+      error: `REST API error: ${error.message}`,
     };
   }
+
+  // Also check frontend is reachable
+  let frontendStatus = "unknown";
+  try {
+    const res = await fetch("https://hub.euanapratica.com", { method: "HEAD" });
+    frontendStatus = res.ok ? "online" : `status ${res.status}`;
+  } catch {
+    frontendStatus = "unreachable";
+  }
+
   return {
-    status: "pass" as const,
-    details: { rest_api: "responsive", http_status: res.status },
+    status: frontendStatus === "unreachable" ? ("warn" as const) : ("pass" as const),
+    details: { rest_api: "responsive", latency_ms: latency, frontend: frontendStatus },
+    error: frontendStatus === "unreachable" ? "Frontend unreachable" : undefined,
   };
 }
 
-// 4. ResumePass - Verifica funcionalidade do ResumePass
+// 4. ResumePass
 async function checkResumePass() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Verifica se a tabela/view do ResumePass existe e está acessível
   const { error } = await supabase
     .from("resume_pass")
     .select("id", { count: "exact", head: true });
 
   if (error) {
-    // Se tabela não existe, pode ser warn (não crítico)
     if (error.message.includes("does not exist")) {
       return {
         status: "warn" as const,
@@ -148,7 +154,7 @@ async function checkResumePass() {
   return { status: "pass" as const, details: { resume_pass: "accessible" } };
 }
 
-// 5. Prime Jobs - Verifica sistema de jobs
+// 5. Prime Jobs
 async function checkPrimeJobs() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -171,7 +177,7 @@ async function checkPrimeJobs() {
   };
 }
 
-// 6. Job Title Translator - Verifica tradutor de cargos
+// 6. Job Title Translator
 async function checkJobTitleTranslator() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -194,29 +200,64 @@ async function checkJobTitleTranslator() {
   };
 }
 
-// 7. Community - Verifica módulo de comunidade
+// 7. Community
 async function checkCommunity() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const details: Record<string, unknown> = {};
 
-  const { error } = await supabase
-    .from("community_posts")
-    .select("id", { count: "exact", head: true });
+  // Check multiple community tables
+  const tables = ["community_categories", "community_posts", "community_comments"];
+  const tableResults: Record<string, string> = {};
 
-  if (error) {
-    if (error.message.includes("does not exist")) {
-      return {
-        status: "warn" as const,
-        error: "Table community_posts not found",
-      };
+  for (const table of tables) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id")
+      .limit(1);
+    if (error) {
+      const code = error.code || "";
+      const msg = error.message || error.details || error.hint || "";
+      if (code === "42P01" || msg.includes("does not exist") || msg.includes("relation")) {
+        tableResults[table] = "MISSING";
+      } else if (code === "42501" || msg.includes("permission") || msg.includes("denied") || msg.includes("RLS")) {
+        tableResults[table] = "ok (RLS protected)";
+      } else if (!msg && !code) {
+        // Empty error with service_role — likely missing GRANT but table exists
+        tableResults[table] = "ok (needs grant)";
+      } else {
+        tableResults[table] = `error: ${msg || code}`;
+      }
+    } else {
+      tableResults[table] = `ok (${data?.length ?? 0} rows)`;
     }
-    return { status: "fail" as const, error: error.message };
   }
-  return { status: "pass" as const, details: { community: "accessible" } };
+
+  details.tables = tableResults;
+  const hasMissing = Object.values(tableResults).some((v) => v === "MISSING");
+  const hasError = Object.values(tableResults).some((v) => v.startsWith("error"));
+  const allRLS = Object.values(tableResults).every((v) => v.includes("RLS") || v.startsWith("ok"));
+
+  if (hasMissing) {
+    const missing = Object.entries(tableResults).filter(([, v]) => v === "MISSING").map(([k]) => k);
+    return {
+      status: "warn" as const,
+      error: `Community tables missing: ${missing.join(", ")}`,
+      details,
+    };
+  }
+  if (hasError && !allRLS) {
+    const errTables = Object.entries(tableResults).filter(([, v]) => v.startsWith("error"));
+    return {
+      status: "warn" as const,
+      error: errTables.map(([k, v]) => `${k}: ${v}`).join(" | "),
+      details,
+    };
+  }
+  return { status: "pass" as const, details };
 }
 
 // 8. Payments & TICTO - Verifica edge function de pagamento
 async function checkPayments() {
-  // Verifica se a edge function ticto-webhook responde
   try {
     const res = await fetch(
       `${SUPABASE_URL}/functions/v1/ticto-webhook`,
@@ -230,7 +271,6 @@ async function checkPayments() {
       }
     );
 
-    // Edge function pode retornar 400 para payload inválido, mas 404 = não deployed
     if (res.status === 404) {
       return {
         status: "fail" as const,
@@ -250,9 +290,9 @@ async function checkPayments() {
   }
 }
 
-// 9. Edge Functions - Verifica se edge functions principais estão online
+// 9. Edge Functions
 async function checkEdgeFunctions() {
-  const functions = ["health-check"]; // adicione outras aqui
+  const functions = ["health-check"];
   const results: Record<string, string> = {};
 
   for (const fn of functions) {
@@ -273,9 +313,205 @@ async function checkEdgeFunctions() {
   };
 }
 
+// 10. Ticto & Subscription Lifecycle
+async function checkTictoSubscriptions() {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const errors: string[] = [];
+  const details: Record<string, unknown> = {};
+
+  // 10a. Planos pagos devem ter Ticto offer IDs e checkout URLs
+  const { data: plans } = await supabase
+    .from("plans")
+    .select("id, name, price, ticto_offer_id_monthly, ticto_offer_id_annual, ticto_checkout_url_monthly, ticto_checkout_url_annual")
+    .eq("is_active", true)
+    .gt("price", 0);
+
+  if (plans) {
+    const missingOfferIds: string[] = [];
+    const missingCheckoutUrls: string[] = [];
+
+    for (const plan of plans) {
+      if (!plan.ticto_offer_id_monthly && !plan.ticto_offer_id_annual) {
+        missingOfferIds.push(plan.name || plan.id);
+      }
+      if (!plan.ticto_checkout_url_monthly && !plan.ticto_checkout_url_annual) {
+        missingCheckoutUrls.push(plan.name || plan.id);
+      }
+    }
+
+    details.paid_plans = plans.length;
+
+    if (missingOfferIds.length > 0) {
+      errors.push(`Planos sem Ticto offer ID: ${missingOfferIds.join(", ")}`);
+      details.missing_offer_ids = missingOfferIds;
+    }
+    if (missingCheckoutUrls.length > 0) {
+      errors.push(`Planos sem checkout URL: ${missingCheckoutUrls.join(", ")}`);
+      details.missing_checkout_urls = missingCheckoutUrls;
+    }
+  }
+
+  // 10b. Ticto webhook token configurado?
+  const { data: tictoConfig, error: configError } = await supabase
+    .from("api_configs")
+    .select("id, api_key, is_active")
+    .eq("api_key", "ticto_webhook")
+    .maybeSingle();
+
+  if (configError) {
+    const code = configError.code || "";
+    const msg = configError.message || configError.details || configError.hint || "";
+    if (code === "42P01" || msg.includes("does not exist")) {
+      details.ticto_token = "api_configs table MISSING";
+      errors.push("Tabela api_configs não existe");
+    } else if (code === "42501" || msg.includes("permission") || msg.includes("denied")) {
+      details.ticto_token = "ok (RLS protected)";
+    } else {
+      details.ticto_token = `error: ${msg || code || "unknown"}`;
+    }
+  } else if (!tictoConfig) {
+    errors.push("Ticto webhook token NÃO configurado");
+    details.ticto_token = "NOT_CONFIGURED";
+  } else {
+    details.ticto_token = tictoConfig.is_active ? "active" : "INACTIVE";
+    if (!tictoConfig.is_active) {
+      errors.push("Ticto webhook token INATIVO");
+    }
+  }
+
+  // 10c. Subscription edge functions deployed?
+  const subFunctions = [
+    "cancel-subscription",
+    "reconcile-subscriptions",
+    "send-subscription-email",
+  ];
+  const fnResults: Record<string, string> = {};
+
+  await Promise.all(
+    subFunctions.map(async (fnName) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ healthcheck: true }),
+        });
+        if (res.status === 404) {
+          fnResults[fnName] = "NOT_DEPLOYED";
+          errors.push(`${fnName} NÃO deployed`);
+        } else {
+          fnResults[fnName] = "deployed";
+        }
+      } catch {
+        fnResults[fnName] = "unreachable";
+        errors.push(`${fnName} não acessível`);
+      }
+    })
+  );
+  details.subscription_functions = fnResults;
+
+  // 10d. Subscription lifecycle tables exist?
+  const subTables = ["subscription_events", "subscription_cancellation_surveys"];
+  for (const table of subTables) {
+    const { error } = await supabase.from(table).select("id").limit(1);
+    if (error) {
+      const code = error.code || "";
+      const msg = error.message || "";
+      if (code === "42P01" || msg.includes("does not exist")) {
+        details[table] = "MISSING";
+        errors.push(`Tabela ${table} não existe`);
+      } else if (code === "42501" || msg.includes("permission") || msg.includes("denied")) {
+        details[table] = "ok (RLS protected)";
+      } else {
+        details[table] = `error: ${msg || code}`;
+      }
+    } else {
+      details[table] = "ok";
+    }
+  }
+
+  // 10e. Subscription health metrics
+  const { data: subs } = await supabase
+    .from("user_subscriptions")
+    .select("status, expires_at, dunning_stage, cancel_at_period_end, grace_period_ends_at");
+
+  if (subs) {
+    const now = new Date();
+    const active = subs.filter((s: { status: string }) => s.status === "active");
+    const pastDue = subs.filter((s: { status: string }) => s.status === "past_due");
+    const gracePeriod = subs.filter((s: { status: string }) => s.status === "grace_period");
+    const pendingCancel = subs.filter((s: { cancel_at_period_end: boolean; status: string }) =>
+      s.cancel_at_period_end && s.status !== "cancelled"
+    );
+
+    details.subscription_metrics = {
+      total: subs.length,
+      active: active.length,
+      past_due: pastDue.length,
+      grace_period: gracePeriod.length,
+      pending_cancel: pendingCancel.length,
+    };
+
+    // Active subs past expiry date
+    const expiredActive = active.filter((s: { expires_at: string | null }) =>
+      s.expires_at && new Date(s.expires_at) < now
+    );
+    if (expiredActive.length > 0) {
+      errors.push(`${expiredActive.length} assinatura(s) expirada(s) ainda ativa(s)`);
+      details.expired_active = expiredActive.length;
+    }
+
+    // Grace period past end
+    const expiredGrace = gracePeriod.filter((s: { grace_period_ends_at: string | null }) =>
+      s.grace_period_ends_at && new Date(s.grace_period_ends_at) < now
+    );
+    if (expiredGrace.length > 0) {
+      errors.push(`${expiredGrace.length} grace period(s) expirado(s)`);
+      details.expired_grace = expiredGrace.length;
+    }
+  }
+
+  // 10f. Recent subscription events (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data: recentEvents } = await supabase
+    .from("subscription_events")
+    .select("event_type")
+    .gte("processed_at", sevenDaysAgo.toISOString())
+    .limit(50);
+
+  if (recentEvents) {
+    const eventTypes: Record<string, number> = {};
+    for (const e of recentEvents) {
+      eventTypes[e.event_type] = (eventTypes[e.event_type] || 0) + 1;
+    }
+    details.recent_events_7d = {
+      total: recentEvents.length,
+      by_type: eventTypes,
+    };
+  }
+
+  const hasCritical = errors.some((e) =>
+    e.includes("NÃO configurado") || e.includes("NÃO deployed") ||
+    e.includes("MISSING") || e.includes("offer ID")
+  );
+
+  return {
+    status: errors.length === 0
+      ? ("pass" as const)
+      : hasCritical
+        ? ("fail" as const)
+        : ("warn" as const),
+    details,
+    error: errors.length > 0 ? errors.join(" | ") : undefined,
+  };
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  // CORS headers
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -299,13 +535,13 @@ Deno.serve(async (req) => {
     runCheck("Community", checkCommunity),
     runCheck("Pagamentos & TICTO", checkPayments),
     runCheck("Edge Functions", checkEdgeFunctions),
+    runCheck("Ticto & Assinaturas", checkTictoSubscriptions),
   ]);
 
   const passed = checks.filter((c) => c.status === "pass").length;
   const warned = checks.filter((c) => c.status === "warn").length;
   const failed = checks.filter((c) => c.status === "fail").length;
 
-  // Determine overall status
   let status: "healthy" | "degraded" | "down";
   if (failed >= 3 || checks.find((c) => c.name === "Login & Auth")?.status === "fail") {
     status = "down";

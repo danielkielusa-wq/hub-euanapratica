@@ -145,6 +145,69 @@ async function findProfileByEmail(
   return data;
 }
 
+/**
+ * Create an order record for subscription payment (initial or renewal).
+ * Determines if this is a renewal by checking for existing active subscription.
+ */
+async function createSubscriptionOrder(
+  userId: string,
+  planId: string,
+  subscriptionId: string | null,
+  payload: TictoSubscriptionPayload,
+  cycle: "monthly" | "annual",
+  supabase: SupabaseClient
+): Promise<void> {
+  const paidAmount = payload.order?.paid_amount || 0;
+  const amountInCurrency = (paidAmount / 100).toFixed(2);
+  const transactionId = extractTransactionId(payload);
+  const eventType = (payload.status || payload.event || "").toLowerCase();
+
+  // Get plan name
+  const { data: planData } = await supabase
+    .from("plans")
+    .select("name")
+    .eq("id", planId)
+    .single();
+
+  // Check if user already has an active subscription (this would be a renewal)
+  const { data: existingSub } = await supabase
+    .from("user_subscriptions")
+    .select("id, status")
+    .eq("user_id", userId)
+    .in("status", ["active", "past_due", "grace_period"])
+    .maybeSingle();
+
+  const isRenewal = !!existingSub && existingSub.status === "active";
+
+  const orderData = {
+    user_id: userId,
+    plan_id: planId,
+    subscription_id: subscriptionId,
+    product_name: `${planData?.name || planId} - ${cycle === "monthly" ? "Mensal" : "Anual"}`,
+    product_type: isRenewal ? "subscription_renewal" : "subscription_initial",
+    amount: parseFloat(amountInCurrency),
+    currency: "BRL",
+    status: "paid",
+    ticto_order_id: transactionId,
+    ticto_event_type: eventType,
+    billing_cycle: cycle,
+    paid_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("orders").insert(orderData);
+
+  if (error) {
+    console.error("Failed to create subscription order:", error);
+  } else {
+    console.log("Subscription order created:", {
+      userId,
+      planId,
+      type: orderData.product_type,
+      amount: amountInCurrency,
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Event Handlers
 // ---------------------------------------------------------------------------
@@ -221,6 +284,23 @@ export async function activateSubscription(
     planId: plan.id,
     cycle,
   });
+
+  // Create order record for user-facing transaction history
+  // Get subscription ID after upsert
+  const { data: createdSub } = await supabase
+    .from("user_subscriptions")
+    .select("id")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  await createSubscriptionOrder(
+    profile.id,
+    plan.id,
+    createdSub?.id || null,
+    payload,
+    cycle,
+    supabase
+  );
 
   return { success: true, userId: profile.id };
 }
@@ -379,6 +459,25 @@ export async function handleSubscriptionRefund(
   }
 
   console.log("Subscription refunded, downgraded to basic:", { userId: profile.id });
+
+  // Mark the most recent subscription order as refunded
+  const { error: orderError } = await supabase
+    .from("orders")
+    .update({
+      status: "refunded",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", profile.id)
+    .in("product_type", ["subscription_initial", "subscription_renewal"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (orderError) {
+    console.error("Failed to mark order as refunded:", orderError);
+  } else {
+    console.log("Latest subscription order marked as refunded:", { userId: profile.id });
+  }
+
   return { success: true, userId: profile.id };
 }
 

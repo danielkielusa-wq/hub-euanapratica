@@ -43,6 +43,7 @@ import UploadMaterials from "./pages/admin/UploadMaterials";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminApis from "./pages/admin/AdminApis";
+import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import AdminPlans from "./pages/admin/AdminPlans";
@@ -394,6 +395,11 @@ function AppRoutes() {
       <Route path="/admin/configuracoes-apis" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminApis />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/email-templates" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminEmailTemplates />
         </ProtectedRoute>
       } />
       <Route path="/admin/assinaturas" element={
