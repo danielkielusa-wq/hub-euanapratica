@@ -80,6 +80,8 @@ import SubscriptionSuccess from "./pages/pricing/SubscriptionSuccess";
 import SubscriptionTerms from "./pages/pricing/SubscriptionTerms";
 import SubscriptionPage from "./pages/account/SubscriptionPage";
 import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
+import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
+import AdminLeadsDashboard from "./pages/admin/AdminLeadsDashboard";
 
 
 const queryClient = new QueryClient();
@@ -427,9 +429,19 @@ function AppRoutes() {
           <AdminSubscriptionHealth />
         </ProtectedRoute>
       } />
+      <Route path="/admin/saude-sistema" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminSystemHealth />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/leads" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminLeadsImport />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/leads-dashboard" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLeadsDashboard />
         </ProtectedRoute>
       } />
       

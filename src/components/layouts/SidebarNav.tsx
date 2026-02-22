@@ -45,6 +45,7 @@ interface NavItem {
     variant: 'hot' | 'new' | 'ai';
   };
   isSpecial?: boolean;
+  isExternal?: boolean;
 }
 
 interface NavGroup {
@@ -143,13 +144,15 @@ const adminNavGroups: NavGroup[] = [
     label: 'VISÃO GERAL',
     items: [
       { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-      { label: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
     ],
   },
   {
-    label: 'RELATÓRIOS',
+    label: 'ANALYTICS',
     items: [
-      { label: 'Auditoria do Sistema', href: '/admin/auditoria', icon: BarChart3 },
+      { label: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
+      { label: 'Auditoria do Sistema', href: '/admin/auditoria', icon: FileSearch },
+      { label: 'Saúde do Sistema', href: '/admin/saude-sistema', icon: Activity },
+      { label: 'Leads Dashboard', href: '/admin/leads-dashboard', icon: BarChart3 },
     ],
   },
   {
@@ -270,38 +273,55 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                 onNavigate?.();
               };
 
+              const linkClass = cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+                item.isSpecial
+                  ? active
+                    ? "bg-indigo-50 text-indigo-600"
+                    : "text-indigo-600 hover:bg-indigo-50/50"
+                  : active
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-gray-600 hover:bg-gray-50"
+              );
+
+              const linkContent = (
+                <>
+                  <Icon className={cn(
+                    "w-5 h-5 flex-shrink-0",
+                    item.isSpecial && !active && "text-indigo-500"
+                  )} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className={cn(
+                      "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
+                      badgeClasses[item.badge.variant]
+                    )}>
+                      {item.badge.text}
+                    </span>
+                  )}
+                </>
+              );
+
               return (
                 <li key={item.href + item.label}>
-                  <Link
-                    to={item.href}
-                    onClick={handleClick}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
-                      item.isSpecial
-                        ? active
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-indigo-600 hover:bg-indigo-50/50"
-                        : active
-                        ? "bg-blue-50 text-blue-600"
-                        : "text-gray-600 hover:bg-gray-50"
-                    )}
-                  >
-                    <Icon className={cn(
-                      "w-5 h-5 flex-shrink-0",
-                      item.isSpecial && !active && "text-indigo-500"
-                    )} />
-                    <span className="flex-1">{item.label}</span>
-
-                    {/* Badge */}
-                    {item.badge && (
-                      <span className={cn(
-                        "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
-                        badgeClasses[item.badge.variant]
-                      )}>
-                        {item.badge.text}
-                      </span>
-                    )}
-                  </Link>
+                  {item.isExternal ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={linkClass}
+                    >
+                      {linkContent}
+                    </a>
+                  ) : (
+                    <Link
+                      to={item.href}
+                      onClick={handleClick}
+                      className={linkClass}
+                    >
+                      {linkContent}
+                    </Link>
+                  )}
                 </li>
               );
             })}

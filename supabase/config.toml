@@ -69,3 +69,18 @@ verify_jwt = false
 
 [functions.send-subscription-email]
 verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.send-test-email]
+verify_jwt = false
+
+[functions.create-test-users]
+verify_jwt = false
+
+[functions.recommend-product]
+verify_jwt = false
+
+[functions.send-session-reminder]
+verify_jwt = false
