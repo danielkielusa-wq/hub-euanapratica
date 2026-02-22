@@ -2,7 +2,11 @@
  * Generate Daily Priorities - Edge Function
  *
  * Analisa os leads (career_evaluations), interacoes recentes e tarefas pendentes,
- * e usa Claude Haiku para gerar um briefing diario com acoes prioritarias.
+ * e usa LLM (Anthropic ou OpenAI) para gerar um briefing diario com acoes prioritarias.
+ *
+ * Configuravel via app_configs:
+ *   - daily_priorities_api_config  → qual API usar (default: anthropic_api)
+ *   - daily_priorities_prompt      → system prompt (default: hardcoded)
  *
  * Auth: requireAdmin (somente admins)
  * CORS: getCorsHeaders(req) dinamico
@@ -12,12 +16,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { getCorsHeaders, requireAdmin } from "../_shared/authGuard.ts";
 
-// ── System prompt (module-level constant — LOW-9 pattern) ──────────────
+// ── Default system prompt ────────────────────────────────────────────────
 
-function buildSystemPrompt(todayISO: string): string {
-  return `Voce e o assistente de CRM da EUA na Pratica, uma plataforma de mentoria para brasileiros que querem fazer carreira internacional nos EUA seguindo o Metodo ROTA.
+const DEFAULT_SYSTEM_PROMPT = `Voce e o assistente de CRM da EUA na Pratica, uma plataforma de mentoria para brasileiros que querem fazer carreira internacional nos EUA seguindo o Metodo ROTA.
 
-Hoje e ${todayISO}. Voce recebera dados de leads (career evaluations) ja processados por IA, incluindo scores de prontidao, temperatura, barreiras, produto recomendado, interacoes recentes e tarefas pendentes.
+Hoje e {{today}}. Voce recebera dados de leads (career evaluations) ja processados por IA, incluindo scores de prontidao, temperatura, barreiras, produto recomendado, interacoes recentes e tarefas pendentes.
 
 Sua missao: gerar as PRIORIDADES DO DIA para o admin/mentor, organizadas em categorias de acao.
 
@@ -64,7 +67,7 @@ CATEGORIAS (7):
 
 SCHEMA DO JSON DE RESPOSTA:
 {
-  "generated_at": "${todayISO}T08:00:00Z",
+  "generated_at": "{{today}}T08:00:00Z",
   "summary": "Resumo executivo de 2-3 frases sobre as prioridades do dia",
   "total_actionable_leads": <numero>,
   "categories": [
@@ -107,7 +110,6 @@ EXCECAO - Para "mentoring_groups", items tem formato:
 }
 
 Retorne SOMENTE o JSON. Nada mais.`;
-}
 
 // ── Main handler ───────────────────────────────────────────────────────
 
@@ -129,6 +131,23 @@ Deno.serve(async (req) => {
 
     console.log("[generate-daily-priorities] Starting...");
 
+    // ── 0. Load config from app_configs ─────────────────────────────
+
+    const { data: apiConfigRow } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "daily_priorities_api_config")
+      .single();
+
+    const { data: promptConfigRow } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "daily_priorities_prompt")
+      .single();
+
+    const selectedApiKey = apiConfigRow?.value || "anthropic_api";
+    console.log(`[generate-daily-priorities] API config: ${selectedApiKey} (from db: ${apiConfigRow?.value || 'NOT FOUND, using default'})`);
+
     // ── 1. Query completed career_evaluations ───────────────────────
 
     const { data: leads, error: leadsError } = await supabase
@@ -149,9 +168,10 @@ Deno.serve(async (req) => {
       `)
       .eq("processing_status", "completed")
       .order("lead_priority_score", { ascending: false, nullsFirst: false })
-      .limit(200);
+      .limit(80);
 
     if (leadsError) {
+      console.error("[generate-daily-priorities] Leads query failed:", leadsError.message);
       throw new Error(`Leads query failed: ${leadsError.message}`);
     }
 
@@ -249,62 +269,122 @@ Deno.serve(async (req) => {
       pending_tasks: tasksByLead[l.id] || 0,
     }));
 
-    // ── 5. Call Claude Haiku ────────────────────────────────────────
+    // ── 5. Get API credentials ──────────────────────────────────────
 
-    const apiConfig = await getApiConfig("anthropic_api");
-    const model = apiConfig.parameters?.model || "claude-haiku-4-5-20251001";
-    const baseUrl = apiConfig.base_url || "https://api.anthropic.com/v1";
-    const apiKey = apiConfig.credentials?.api_key;
-
-    if (!apiKey) {
-      throw new Error("Anthropic API key not configured");
+    let apiConfigData;
+    try {
+      apiConfigData = await getApiConfig(selectedApiKey);
+      console.log(`[generate-daily-priorities] API config loaded: ${apiConfigData.name}`);
+    } catch (configErr) {
+      console.error(`[generate-daily-priorities] Failed to get API config for "${selectedApiKey}":`, configErr);
+      return new Response(
+        JSON.stringify({
+          error: `Erro de configuracao: API "${selectedApiKey}" nao encontrada. Verifique em /admin/configuracoes-apis.`,
+          details: configErr instanceof Error ? configErr.message : String(configErr),
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log(`[generate-daily-priorities] Calling ${model} with ${leadsContext.length} leads`);
+    // Detect API type
+    const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
+    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const selectedModel = apiConfigData.parameters?.model ||
+      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    const systemPrompt = buildSystemPrompt(todayISO);
+    console.log(`[generate-daily-priorities] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}, Leads: ${leadsContext.length}`);
+
+    // ── 6. Build prompt ─────────────────────────────────────────────
+
+    const rawPrompt = promptConfigRow?.value || DEFAULT_SYSTEM_PROMPT;
+    const systemPrompt = rawPrompt.replace(/\{\{today\}\}/g, todayISO);
+
     const userMessage = JSON.stringify({ leads: leadsContext, today: todayISO });
+    console.log(`[generate-daily-priorities] User message size: ${(userMessage.length / 1024).toFixed(1)}KB`);
+
+    // ── 7. Call LLM ─────────────────────────────────────────────────
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 50000);
+    const timeout = setTimeout(() => controller.abort(), 55000);
 
     try {
-      const aiResponse = await fetch(`${baseUrl}/messages`, {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 6000,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userMessage }],
-        }),
-        signal: controller.signal,
-      });
+      let responseText: string;
+
+      if (isAnthropic) {
+        // ── Anthropic API ──────────────────────────────────────────
+        const apiKey = apiConfigData.credentials?.api_key;
+        if (!apiKey) throw new Error("Anthropic API key not configured. Verifique /admin/configuracoes-apis.");
+
+        const baseUrl = apiConfigData.base_url || "https://api.anthropic.com/v1";
+        const aiResponse = await fetch(`${baseUrl}/messages`, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 6000,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userMessage }],
+          }),
+          signal: controller.signal,
+        });
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error("[generate-daily-priorities] Anthropic error:", aiResponse.status, errorText.slice(0, 500));
+          throw new Error(`Anthropic API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
+        }
+
+        const aiData = await aiResponse.json();
+        responseText = aiData.content?.[0]?.text || "";
+
+      } else {
+        // ── OpenAI-compatible API ──────────────────────────────────
+        const apiKey = apiConfigData.credentials?.api_key;
+        if (!apiKey) throw new Error("OpenAI API key not configured. Verifique /admin/configuracoes-apis.");
+
+        const baseUrl = apiConfigData.base_url || "https://api.openai.com/v1";
+        const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: 6000,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+          }),
+          signal: controller.signal,
+        });
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error("[generate-daily-priorities] OpenAI error:", aiResponse.status, errorText.slice(0, 500));
+          throw new Error(`OpenAI API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
+        }
+
+        const aiData = await aiResponse.json();
+        responseText = aiData.choices?.[0]?.message?.content || "";
+      }
 
       clearTimeout(timeout);
 
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error("[generate-daily-priorities] AI API error:", aiResponse.status, errorText.slice(0, 500));
-        throw new Error(`AI API error: ${aiResponse.status}`);
-      }
-
-      const aiData = await aiResponse.json();
-      const text = aiData.content?.[0]?.text;
-
-      if (!text) {
+      if (!responseText) {
         throw new Error("Empty AI response");
       }
 
-      console.log(`[generate-daily-priorities] AI response length: ${text.length} chars`);
+      console.log(`[generate-daily-priorities] AI response length: ${responseText.length} chars`);
 
-      // ── 6. Extract JSON from response ───────────────────────────
+      // ── 8. Extract JSON from response ─────────────────────────────
 
-      let jsonText = text.trim();
+      let jsonText = responseText.trim();
 
       // Handle markdown code fences
       const jsonBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -315,7 +395,7 @@ Deno.serve(async (req) => {
       // Find the JSON object
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("[generate-daily-priorities] No JSON found in response:", text.slice(0, 500));
+        console.error("[generate-daily-priorities] No JSON found in response:", responseText.slice(0, 500));
         throw new Error("No valid JSON in AI response");
       }
 
@@ -337,7 +417,7 @@ Deno.serve(async (req) => {
     } catch (fetchError) {
       clearTimeout(timeout);
       if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
-        throw new Error("AI API timeout (50s exceeded)");
+        throw new Error("AI API timeout (55s exceeded). Tente novamente.");
       }
       throw fetchError;
     }

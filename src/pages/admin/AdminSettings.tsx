@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain } from 'lucide-react';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
@@ -44,6 +44,11 @@ export default function AdminSettings() {
   const [ttPrompt, setTtPrompt] = useState('');
   const [ttApiConfig, setTtApiConfig] = useState('openai_api');
   const [hasTtChanges, setHasTtChanges] = useState(false);
+
+  // Daily Priorities config
+  const [dpPrompt, setDpPrompt] = useState('');
+  const [dpApiConfig, setDpApiConfig] = useState('anthropic_api');
+  const [hasDpChanges, setHasDpChanges] = useState(false);
 
   // Upsell config
   const [upsellEnabled, setUpsellEnabled] = useState(true);
@@ -83,6 +88,12 @@ export default function AdminSettings() {
     if (ttPromptValue) setTtPrompt(ttPromptValue);
     const ttApiConfigValue = getConfigValue('title_translator_api_config');
     if (ttApiConfigValue) setTtApiConfig(ttApiConfigValue);
+
+    // Load daily priorities configs
+    const dpPromptValue = getConfigValue('daily_priorities_prompt');
+    if (dpPromptValue) setDpPrompt(dpPromptValue);
+    const dpApiValue = getConfigValue('daily_priorities_api_config');
+    if (dpApiValue) setDpApiConfig(dpApiValue);
 
     // Load upsell configs
     const upsellEnabledValue = getConfigValue('upsell_enabled');
@@ -151,6 +162,15 @@ export default function AdminSettings() {
   }, [ttPrompt, ttApiConfig, configs]);
 
   useEffect(() => {
+    const originalPrompt = getConfigValue('daily_priorities_prompt');
+    const originalApi = getConfigValue('daily_priorities_api_config');
+    setHasDpChanges(
+      dpPrompt !== originalPrompt ||
+      dpApiConfig !== (originalApi || 'anthropic_api')
+    );
+  }, [dpPrompt, dpApiConfig, configs]);
+
+  useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
     const originalPrompt = getConfigValue('upsell_prompt_template');
     const originalApi = getConfigValue('upsell_api_config');
@@ -212,6 +232,14 @@ export default function AdminSettings() {
     setHasTtChanges(false);
   };
 
+  const handleSaveDailyPriorities = async () => {
+    await Promise.all([
+      updateConfig('daily_priorities_prompt', dpPrompt),
+      updateConfig('daily_priorities_api_config', dpApiConfig),
+    ]);
+    setHasDpChanges(false);
+  };
+
   const handleSaveUpsellConfigs = async () => {
     await Promise.all([
       updateConfig('upsell_enabled', upsellEnabled ? 'true' : 'false'),
@@ -263,6 +291,7 @@ export default function AdminSettings() {
             <TabsTrigger value="reports" className="gap-2 rounded-lg"><FileText className="h-4 w-4" />Relatórios de Carreira</TabsTrigger>
             <TabsTrigger value="community" className="gap-2 rounded-lg"><Users className="h-4 w-4" />Comunidade</TabsTrigger>
             <TabsTrigger value="title-translator" className="gap-2 rounded-lg"><Globe className="h-4 w-4" />Title Translator</TabsTrigger>
+            <TabsTrigger value="daily-priorities" className="gap-2 rounded-lg"><Brain className="h-4 w-4" />Prioridades do Dia</TabsTrigger>
             <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
           </TabsList>
 
@@ -684,6 +713,82 @@ export default function AdminSettings() {
                         disabled={!hasTtChanges || isSaving}
                         className="rounded-[12px] gap-2"
                       >
+                        <Save className="w-4 h-4" />
+                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="daily-priorities" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2"><Brain className="w-5 h-5 text-indigo-600" /><CardTitle>Prioridades do Dia - IA</CardTitle></div>
+                <CardDescription>Configure a API e o prompt usados para gerar prioridades diarias de leads no dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={dpApiConfig} onValueChange={setDpApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>System Prompt</Label>
+                      <Textarea
+                        value={dpPrompt}
+                        onChange={(e) => setDpPrompt(e.target.value)}
+                        placeholder="Deixe vazio para usar o prompt padrao embutido na Edge Function..."
+                        className="min-h-[300px] font-mono text-sm rounded-xl"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use {'{{today}}'} como placeholder para a data atual. Deixe vazio para usar o prompt padrao.
+                      </p>
+                    </div>
+
+                    {configs.find(c => c.key === 'daily_priorities_prompt')?.updated_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Ultima atualizacao: {format(new Date(configs.find(c => c.key === 'daily_priorities_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button onClick={handleSaveDailyPriorities} disabled={!hasDpChanges || isSaving} className="rounded-[12px] gap-2">
                         <Save className="w-4 h-4" />
                         {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
                       </Button>
