@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
-const REPORT_BASE = 'https://hub.euanapratica.com/diagnostico/';
+const REPORT_BASE = 'https://hub.euanapratica.com/report/';
 const PER_PAGE = 20;
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 

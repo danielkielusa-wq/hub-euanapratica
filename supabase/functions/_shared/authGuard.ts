@@ -10,10 +10,26 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
-};
+const ALLOWED_ORIGINS = [
+  "https://hub.euanapratica.com",
+  "https://www.euanapratica.com",
+  "https://euanapratica.com",
+];
+
+function getCorsHeaders(req?: Request): Record<string, string> {
+  const origin = req?.headers?.get("origin") || "";
+  // Always allow any localhost origin (any port) for local development
+  const isLocalhost = /^http:\/\/localhost(:\d+)?$/.test(origin);
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) || isLocalhost ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
+    "Vary": "Origin",
+  };
+}
+
+// Legacy export for backward compatibility — callers that don't pass a request
+const corsHeaders = getCorsHeaders();
 
 export interface AuthResult {
   authenticated: boolean;
@@ -74,26 +90,18 @@ export async function validateUserAuth(req: Request): Promise<AuthResult> {
  * variável de ambiente dedicada INTERNAL_FUNCTION_SECRET.
  */
 export function validateInternalCall(req: Request): boolean {
-  // Check for internal secret header
   const internalSecret = req.headers.get("x-internal-secret");
-  const expectedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET")
-    || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!internalSecret) return false;
 
-  if (internalSecret && internalSecret === expectedSecret) {
-    return true;
+  const dedicatedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+  if (dedicatedSecret) {
+    return internalSecret === dedicatedSecret;
   }
 
-  // Also accept service_role key as Bearer token
-  const authHeader = req.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (token === serviceKey) {
-      return true;
-    }
-  }
-
-  return false;
+  // LOW-3: Fallback to service role key (log warning so ops sets INTERNAL_FUNCTION_SECRET)
+  console.warn("[authGuard] INTERNAL_FUNCTION_SECRET not set — falling back to SUPABASE_SERVICE_ROLE_KEY. Set INTERNAL_FUNCTION_SECRET for better security.");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return !!serviceKey && internalSecret === serviceKey;
 }
 
 /**
@@ -111,7 +119,7 @@ export async function requireAuthOrInternal(req: Request): Promise<Response | nu
   if (!auth.authenticated) {
     return new Response(
       JSON.stringify({ error: "Unauthorized: " + (auth.error || "Authentication required") }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 
@@ -131,18 +139,18 @@ export async function requireAdmin(req: Request): Promise<Response | null> {
   if (!auth.authenticated) {
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 
   if (auth.role !== "admin") {
     return new Response(
       JSON.stringify({ error: "Forbidden: Admin role required" }),
-      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 
   return null;
 }
 
-export { corsHeaders };
+export { corsHeaders, getCorsHeaders };

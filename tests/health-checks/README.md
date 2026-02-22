@@ -8,10 +8,13 @@ Sistema completo de health checks para monitorar a plataforma ENP Hub diariament
 |-------|-----------|------------|
 | **Authentication** | Sistema de login e auth | RLS, profiles, session API |
 | **APIs** | Saúde das APIs (Supabase) | Latência, RPC functions, Storage |
+| **Planos & Assinaturas** | Sistema de assinaturas | 3 planos, preços, features, Ticto offer IDs, RPCs, dunning, trial |
 | **ResumePass** | Análise de currículos | Tabelas, quota RPC, feature flags |
 | **Prime Jobs** | Vagas premium | Feature flags, bookmarks, searches |
 | **Job Title Translator** | Tradutor de títulos | Tabelas, quota, feature config |
 | **Community** | Sistema de comunidade | Feature flags, posts, members |
+| **Pagamentos & TICTO** | Gateway de pagamento | payment_logs, orders, webhook fn, event coverage, unknown events |
+| **Agendamentos** | Sistema de bookings | Bookings, availability, email functions |
 
 ## 🚀 Como Usar
 
@@ -117,62 +120,56 @@ crontab -e
 ### Exemplo de Output (Console)
 
 ```
-🏥 HEALTH CHECK REPORT
-============================================================
-Timestamp: 2026-02-20T09:00:00.000Z
-Status: HEALTHY
-Passed: 6/6
-Failed: 0
-Duration: 1234ms
-============================================================
-
-✅ Authentication              120ms
-   profiles_accessible: true
-   rls_active: true
-   session_api_works: true
-
-✅ APIs                        245ms
-   supabase_api: true
-   latency_ms: 89
-
-✅ ResumePass                  178ms
-   table_accessible: true
-   rpc_functional: true
-
-✅ Prime Jobs                  156ms
-   feature_configured: true
-   pro_enabled: true
-   vip_enabled: true
-
-✅ Job Title Translator        134ms
-   table_accessible: true
-   feature_configured: true
-
-✅ Community                   167ms
-   feature_configured: true
-   all_plans_have_access: true
-
-============================================================
+✅ ENP Hub Health Report — HEALTHY
+═════════════════════════════════════════════════════════════════
+  Timestamp:  2026-02-21T09:00:00.000Z
+  Env:        production
+  Duration:   2341ms
+  Results:    9 passed, 0 warned, 0 failed / 9 total
+─────────────────────────────────────────────────────────────────
+  ✅ Login & Auth                    120ms
+  ✅ APIs & Infra                    245ms
+  ✅ Planos & Assinaturas            312ms
+     subscription_metrics: {"total":42,"active":35,"past_due":2,...}
+  ✅ Currículo USA                   178ms
+  ✅ Prime Jobs                      156ms
+  ✅ Job Title Translator            134ms
+  ✅ Comunidade                      167ms
+  ✅ Pagamentos & TICTO              289ms
+     unknown_events: none (all events covered)
+  ✅ Agendamentos                    210ms
+─────────────────────────────────────────────────────────────────
+═════════════════════════════════════════════════════════════════
 ```
 
 ### Exemplo de Output (JSON)
 
 ```json
 {
-  "timestamp": "2026-02-20T09:00:00.000Z",
-  "total_checks": 6,
-  "passed": 6,
+  "timestamp": "2026-02-21T09:00:00.000Z",
+  "total_checks": 9,
+  "passed": 9,
   "failed": 0,
-  "total_duration_ms": 1234,
+  "total_duration_ms": 2341,
   "status": "healthy",
   "checks": [
     {
-      "name": "Authentication",
+      "name": "Login & Auth",
       "status": "pass",
       "duration": 120,
+      "details": { "auth": "responsive" }
+    },
+    {
+      "name": "Pagamentos & TICTO",
+      "status": "pass",
+      "duration": 289,
       "details": {
-        "profiles_accessible": true,
-        "rls_active": true
+        "payment_logs": "ok",
+        "orders_table": "ok",
+        "edge_fn_ticto_webhook": "deployed (status: 401)",
+        "ticto_webhook_token": "configured (active)",
+        "unknown_events": "none (all events covered)",
+        "recent_subscription_events": 8
       }
     }
   ]

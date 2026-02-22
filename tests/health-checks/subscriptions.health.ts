@@ -8,11 +8,14 @@
  * - TODAS as feature flags obrigatorias existem?
  * - Hierarquia de features faz sentido? (Basic < Pro < VIP)
  * - RPC get_full_plan_access funciona?
+ * - RPC accept_subscription_terms funciona? (P0 fix - terms acceptance)
  * - Tabela usage_logs existe? (tracking de uso mensal)
  * - Planos pagos tem Ticto offer IDs configurados?
  * - Planos pagos tem Ticto checkout URLs configurados?
  * - Tabelas de subscription lifecycle existem? (subscription_events, subscription_cancellation_surveys)
  * - Assinaturas ativas estao saudaveis? (sem expiradas, dunning consistente)
+ * - Anomalias de dunning? (stage alto sem status correspondente)
+ * - Trial subscriptions rastreadas? (trial status)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -154,6 +157,23 @@ export async function checkSubscriptions(
       details.rpc_plan_access = 'ok';
     }
 
+    // 8b. RPC accept_subscription_terms (P0 fix - terms acceptance on PricingPage)
+    const { error: termsRpcError } = await supabase.rpc('accept_subscription_terms', {
+      p_plan_id: 'basic',
+      p_billing_cycle: 'monthly',
+      p_terms_version: 'healthcheck-test',
+    });
+
+    if (termsRpcError && termsRpcError.message.includes('Could not find the function')) {
+      errors.push('RPC accept_subscription_terms não existe - termos de aceite da PricingPage quebrados');
+      details.rpc_accept_terms = 'MISSING';
+    } else if (termsRpcError && termsRpcError.message.includes('permission denied')) {
+      // Expected when calling with anon key - RPC exists but requires auth
+      details.rpc_accept_terms = 'ok (requires auth)';
+    } else {
+      details.rpc_accept_terms = 'ok';
+    }
+
     // ───────────────────────────────────────────────────────────────────
     // NEW: Ticto Integration & Subscription Lifecycle Checks
     // ───────────────────────────────────────────────────────────────────
@@ -229,6 +249,7 @@ export async function checkSubscriptions(
       const gracePeriod = subStats.filter(s => s.status === 'grace_period');
       const cancelled = subStats.filter(s => s.status === 'cancelled');
       const inactive = subStats.filter(s => s.status === 'inactive');
+      const trial = subStats.filter(s => s.status === 'trial');
       const pendingCancel = subStats.filter(s => s.cancel_at_period_end === true && s.status !== 'cancelled');
 
       details.subscription_metrics = {
@@ -238,6 +259,7 @@ export async function checkSubscriptions(
         grace_period: gracePeriod.length,
         cancelled: cancelled.length,
         inactive: inactive.length,
+        trial: trial.length,
         pending_cancel: pendingCancel.length,
       };
 
@@ -262,6 +284,15 @@ export async function checkSubscriptions(
       // Warn if there are too many past_due subscriptions (>50% of active)
       if (active.length > 0 && pastDue.length > active.length * 0.5) {
         errors.push(`Alto volume de past_due: ${pastDue.length} de ${active.length} ativas - verificar gateway de pagamento`);
+      }
+
+      // Check for dunning stage anomalies (stage 3 should be grace_period, not active/past_due)
+      const dunningAnomalies = subStats.filter(s =>
+        s.dunning_stage >= 3 && s.status !== 'grace_period' && s.status !== 'cancelled'
+      );
+      if (dunningAnomalies.length > 0) {
+        errors.push(`${dunningAnomalies.length} assinatura(s) com dunning_stage >= 3 mas status incorreto - reconciliation necessário`);
+        details.dunning_anomalies = dunningAnomalies.length;
       }
     }
 

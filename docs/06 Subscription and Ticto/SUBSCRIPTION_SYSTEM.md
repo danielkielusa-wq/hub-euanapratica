@@ -94,7 +94,10 @@ graph TD
 - Fetches active plans from `plans` table
 - Displays 3-card layout with monthly/annual toggle
 - Pre-fills user email in Ticto checkout URL
-- Records terms acceptance timestamp in `user_subscriptions.terms_accepted_at`
+- Records terms acceptance via `accept_subscription_terms` RPC (SECURITY DEFINER to bypass RLS)
+  - Validates plan exists and billing cycle is valid
+  - Creates an `inactive` subscription record that the webhook will later activate
+  - Stores `terms_accepted_at`, `terms_version`, and `billing_cycle`
 
 ### 2. Ticto Checkout
 
@@ -409,15 +412,26 @@ if (receivedToken !== expectedToken) {
 
 **Token Storage**: Encrypted in `api_configs` table using pgcrypto AES-256.
 
+**Security**:
+- ✅ `get_api_config_by_key` RPC is restricted to `service_role` and `admin` users only (prevents credential exposure)
+- ✅ Token mismatch logs do NOT include partial tokens (prevents token leakage in logs)
+- ✅ Webhook returns HTTP 500 on handler failure so Ticto retries (prevents phantom payments)
+
 ### Webhook Events
 
-#### Sale Events (Activate Subscription)
-- `paid`, `completed`, `approved`, `authorized`, `venda_realizada`
+All Ticto webhook events are now comprehensively handled. Each event array includes both English API identifiers and Portuguese variants to handle all possible Ticto payload formats.
 
-**Action**: Create or renew subscription, reset dunning, set `status = 'active'`
+#### Sale Events (Activate Subscription)
+**API Status Codes**: `paid`, `completed`, `approved`, `authorized`, `venda_realizada`, `sale_approved`
+
+**Action**: Create or renew subscription, reset dunning, set `status = 'active'`, calculate next billing date
+
+**Handler**: `activateSubscription()`
+
+---
 
 #### Dunning Events (Payment Failure)
-- `subscription_delayed`
+**API Status Codes**: `subscription_delayed`, `subscription_overdue`
 
 **Action**:
 - Stage 1: `status = 'past_due'`, dunning_stage = 1
@@ -426,15 +440,90 @@ if (receivedToken !== expectedToken) {
 
 **User Access**: **Retained during past_due and grace_period** (feature access continues)
 
-#### Cancellation Events
-- `subscription_canceled` → User/Admin cancellation
-- `refunded`, `chargedback` → Immediate downgrade to basic
+**Handler**: `handleSubscriptionDelayed()`
 
-#### Log-Only Events (No Action)
-- `trial_started`, `trial_ended`
-- `extended`, `card_exchanged`, `uncanceled`
-- `all_charges_paid`, `waiting_payment`
-- `bank_slip_created`, `pix_created`, `pix_expired`
+---
+
+#### Cancellation Events
+**API Status Codes**: `subscription_canceled`, `subscription_cancelled`
+
+**Action**: Mark for end-of-period cancellation (`cancel_at_period_end = true`). User keeps access until `expires_at`.
+
+**Handler**: `handleSubscriptionCancelled()`
+
+---
+
+#### Refund / Chargeback / Dispute (Immediate Revocation)
+**API Status Codes**: `refunded`, `reembolso`, `refund`, `chargedback`, `chargeback`, `disputed`, `reclamado`
+
+**Action**: Immediately downgrade to `basic` plan, set `status = 'cancelled'`, mark latest order as refunded
+
+**Handler**: `handleSubscriptionRefund()`
+
+---
+
+#### Subscription Resumed (Un-Cancel) ✨ NEW
+**API Status Codes**: `uncanceled`, `subscription_resumed`
+
+**Action**: Reverse a pending cancellation, reactivate subscription:
+- Set `status = 'active'`
+- Set `cancel_at_period_end = false`
+- Reset `dunning_stage = 0`
+- Clear `canceled_at` and `grace_period_ends_at`
+
+**Handler**: `handleSubscriptionResumed()`
+
+**Use Case**: User cancelled but changed their mind before the period ended, or Ticto admin manually resumed the subscription.
+
+---
+
+#### Subscription Ended (All Charges Paid) ✨ NEW
+**API Status Codes**: `all_charges_paid`, `subscription_completed`
+
+**Action**: Natural end of subscription (e.g., installment plan completed):
+- Mark for end-of-period expiry (`cancel_at_period_end = true`)
+- Clear `next_billing_date` and `ticto_subscription_id`
+- User keeps access until `expires_at`, then reconciliation downgrades to basic
+
+**Handler**: `handleSubscriptionEnded()`
+
+**Use Case**: Subscription was a limited-time offer or installment plan that has now completed all payments.
+
+---
+
+#### Log-Only Events (No Action Taken)
+These events are logged to `subscription_events` for audit purposes but do not trigger subscription state changes:
+
+**Trial Lifecycle**:
+- `trial_started`, `subscription_trial_started`
+- `trial_ended`, `subscription_trial_ended`
+
+**Subscription Modifications**:
+- `extended`, `subscription_extended` (admin extended the subscription)
+- `card_exchanged`, `subscription_card_updated` (user updated payment method)
+- `plan_changed`, `subscription_plan_changed` (plan tier changed — requires manual review)
+
+**Payment Method Events**:
+- `waiting_payment`, `payment_pending` (awaiting payment confirmation)
+- `bank_slip_created`, `boleto_printed` (boleto generated)
+- `bank_slip_overdue`, `boleto_overdue` (boleto past due date)
+- `boleto_closed` (boleto paid and closed)
+- `pix_created`, `pix_generated` (Pix payment code generated)
+- `pix_expired`, `pix_expirado` (Pix payment window expired)
+
+**Sale Declined**:
+- `sale_declined`, `declined`, `venda_recusada` (payment declined)
+
+**Cart Abandonment**:
+- `cart_abandoned`, `cart_abandonment` (checkout abandoned)
+
+**Affiliate Events**:
+- `affiliate_created` (new affiliate registered)
+- `affiliate_requested` (affiliate commission requested)
+- `affiliate_approved` (affiliate payout approved)
+
+**Test / Misc**:
+- `test_time`, `test_mode` (sandbox/test transactions)
 
 ### Sample Webhook Payload
 
@@ -913,10 +1002,15 @@ curl -X POST http://localhost:54321/functions/v1/ticto-webhook \
 
 ### Pre-Launch
 
-- [ ] Run migrations in production:
+- [ ] Run migrations in production (including P0 security fixes):
   ```bash
   supabase db push
   ```
+  **Critical Migration**: `20260222300000_payment_audit_p0_fixes.sql` includes:
+  - RLS policy for users to read own `payment_logs` (fixes MyOrders page)
+  - `accept_subscription_terms` RPC for terms acceptance (fixes legal compliance gap)
+  - `get_api_config_by_key` security lockdown (prevents credential exposure)
+  - Price validation constraints on `plans` table
 - [ ] Deploy edge functions:
   ```bash
   supabase functions deploy ticto-webhook
@@ -1056,6 +1150,62 @@ For questions about the subscription system implementation, contact the developm
 
 ---
 
-**Last Updated**: 2026-02-20
-**Version**: 1.0
-**Status**: Production Ready
+## Production Readiness Audit (Feb 2026)
+
+A comprehensive payment flow audit was conducted on 2026-02-22. All P0 (critical) security and correctness issues were resolved:
+
+### Fixed Issues
+
+#### P0 — Security & Correctness (ALL FIXED ✅)
+1. ✅ **Credential exposure vulnerability** — `get_api_config_by_key` locked down to service_role/admin only
+2. ✅ **MyOrders page broken** — Added user SELECT policy on `payment_logs`
+3. ✅ **Terms acceptance failing** — Replaced client upsert with `accept_subscription_terms` RPC
+4. ✅ **Missing refund event handling** — Added `reembolso`, `refund`, `disputed`, `reclamado` to subscription refund events
+
+#### P1 — Important (ALL FIXED ✅)
+5. ✅ **Webhook returns 200 on failure** — Now returns 500 so Ticto retries
+6. ✅ **Token logged on mismatch** — Removed partial token values from error logs
+7. ✅ **Missing resume/ended handlers** — Added `handleSubscriptionResumed` and `handleSubscriptionEnded`
+
+#### Comprehensive Event Coverage (50+ Events)
+All Ticto webhook events are now mapped and handled:
+- ✅ 6 sale/activation events
+- ✅ 2 dunning events
+- ✅ 2 cancellation events
+- ✅ 7 refund/chargeback/dispute events
+- ✅ 2 resumption events
+- ✅ 2 subscription-ended events
+- ✅ 30+ log-only events (trial, boleto, pix, cart, affiliate, declined, plan changed, etc.)
+
+### Audit Report
+Full audit report with scorecard available in source code comments.
+
+**Verdict**: ✅ **Production Ready** (after P0 fixes applied)
+
+### Health Check Integration (Feb 2026)
+
+After the audit, the automated health check system was updated to validate all new event coverage:
+
+**Payments & TICTO Health Check** (`tests/health-checks/payments.health.ts`):
+- ✅ `orders` table exists and accessible (user-facing transaction history)
+- ✅ Unknown/unhandled event detection (alerts if Ticto sends events not in any handler)
+- ✅ 50+ known events validated against handler arrays
+
+**Planos & Assinaturas Health Check** (`tests/health-checks/subscriptions.health.ts`):
+- ✅ `accept_subscription_terms` RPC exists (P0 fix validation)
+- ✅ Trial status included in subscription metrics
+- ✅ Dunning stage anomaly detection (stage >= 3 in wrong status)
+
+**Edge Function Health Check** (`supabase/functions/health-check/index.ts`):
+- ✅ Orders table check added to Ticto & Assinaturas check (#10)
+- ✅ Unknown event detection from subscription_events (last 7 days)
+- ✅ `accept_subscription_terms` RPC validation
+- ✅ Trial + dunning anomaly metrics
+
+**N8N Flow**: No structural changes needed — the existing 7-node workflow automatically picks up all new validations.
+
+---
+
+**Last Updated**: 2026-02-21
+**Version**: 1.2
+**Status**: Production Ready (Post-Audit + Health Check Update)

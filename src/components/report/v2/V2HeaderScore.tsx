@@ -45,7 +45,7 @@ export function V2HeaderScore({ scoring, phase, hero, evaluation }: V2HeaderScor
       chips.push({ icon: Target, label: 'Objetivo', value: evaluation.objetivo });
     }
     if (evaluation.timeline) {
-      chips.push({ icon: Globe, label: 'Emprego', value: evaluation.timeline });
+      chips.push({ icon: Globe, label: 'Prazo', value: evaluation.timeline });
     }
     return chips;
   }, [evaluation]);

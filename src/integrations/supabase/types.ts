@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -12,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -514,6 +488,7 @@ export type Database = {
         Row: {
           access_count: number | null
           access_token: string
+          access_token_expires_at: string | null
           area: string | null
           atuacao: string | null
           auto_nurture_sequence: string | null
@@ -614,6 +589,7 @@ export type Database = {
         Insert: {
           access_count?: number | null
           access_token?: string
+          access_token_expires_at?: string | null
           area?: string | null
           atuacao?: string | null
           auto_nurture_sequence?: string | null
@@ -714,6 +690,7 @@ export type Database = {
         Update: {
           access_count?: number | null
           access_token?: string
+          access_token_expires_at?: string | null
           area?: string | null
           atuacao?: string | null
           auto_nurture_sequence?: string | null
@@ -1114,6 +1091,96 @@ export type Database = {
           suites_executed?: Json | null
           total_tests?: number | null
           triggered_by_user_id?: string | null
+        }
+        Relationships: []
+      }
+      email_logs: {
+        Row: {
+          created_at: string | null
+          edge_function: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient: string
+          resend_id: string | null
+          status: string
+          subject: string | null
+          template_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          edge_function?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient: string
+          resend_id?: string | null
+          status: string
+          subject?: string | null
+          template_name: string
+        }
+        Update: {
+          created_at?: string | null
+          edge_function?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient?: string
+          resend_id?: string | null
+          status?: string
+          subject?: string | null
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          design_json: Json | null
+          display_name: string
+          enabled: boolean | null
+          id: string
+          name: string
+          subject: string
+          updated_at: string | null
+          updated_by: string | null
+          variables: Json | null
+        }
+        Insert: {
+          body_html: string
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          design_json?: Json | null
+          display_name: string
+          enabled?: boolean | null
+          id?: string
+          name: string
+          subject: string
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          body_html?: string
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          design_json?: Json | null
+          display_name?: string
+          enabled?: boolean | null
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
         }
         Relationships: []
       }
@@ -1973,6 +2040,88 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          amount: number
+          billing_cycle: string | null
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          plan_id: string | null
+          product_name: string
+          product_type: string
+          service_id: string | null
+          status: string
+          subscription_id: string | null
+          ticto_event_type: string | null
+          ticto_order_id: string | null
+          ticto_transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          billing_cycle?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          plan_id?: string | null
+          product_name: string
+          product_type: string
+          service_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          ticto_event_type?: string | null
+          ticto_order_id?: string | null
+          ticto_transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          plan_id?: string | null
+          product_name?: string
+          product_type?: string
+          service_id?: string | null
+          status?: string
+          subscription_id?: string | null
+          ticto_event_type?: string | null
+          ticto_order_id?: string | null
+          ticto_transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_logs: {
         Row: {
           created_at: string | null
@@ -2024,10 +2173,47 @@ export type Database = {
           },
         ]
       }
+      payment_logs_backup_20260222: {
+        Row: {
+          created_at: string | null
+          event_type: string | null
+          id: string | null
+          payload: Json | null
+          processed_at: string | null
+          service_id: string | null
+          status: string | null
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type?: string | null
+          id?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          service_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string | null
+          id?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          service_id?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           created_at: string
           cta_text: string
+          description: string | null
           display_features: Json
           features: Json
           id: string
@@ -2038,10 +2224,15 @@ export type Database = {
           price: number
           price_annual: number | null
           theme: string | null
+          ticto_checkout_url_annual: string | null
+          ticto_checkout_url_monthly: string | null
+          ticto_offer_id_annual: string | null
+          ticto_offer_id_monthly: string | null
         }
         Insert: {
           created_at?: string
           cta_text?: string
+          description?: string | null
           display_features?: Json
           features?: Json
           id: string
@@ -2052,10 +2243,15 @@ export type Database = {
           price?: number
           price_annual?: number | null
           theme?: string | null
+          ticto_checkout_url_annual?: string | null
+          ticto_checkout_url_monthly?: string | null
+          ticto_offer_id_annual?: string | null
+          ticto_offer_id_monthly?: string | null
         }
         Update: {
           created_at?: string
           cta_text?: string
+          description?: string | null
           display_features?: Json
           features?: Json
           id?: string
@@ -2066,6 +2262,10 @@ export type Database = {
           price?: number
           price_annual?: number | null
           theme?: string | null
+          ticto_checkout_url_annual?: string | null
+          ticto_checkout_url_monthly?: string | null
+          ticto_offer_id_annual?: string | null
+          ticto_offer_id_monthly?: string | null
         }
         Relationships: []
       }
@@ -2559,6 +2759,82 @@ export type Database = {
           },
         ]
       }
+      subscription_cancellation_surveys: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          reason: string
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          reason: string
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          reason?: string
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_cancellation_surveys_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_events: {
+        Row: {
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: string
+          processed_at: string
+          subscription_id: string | null
+          ticto_transaction_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: string
+          processed_at?: string
+          subscription_id?: string | null
+          ticto_transaction_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: string
+          processed_at?: string
+          subscription_id?: string | null
+          ticto_transaction_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       title_translations: {
         Row: {
           all_suggestions: Json | null
@@ -3023,32 +3299,68 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          billing_cycle: string | null
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
           created_at: string
+          dunning_stage: number | null
           expires_at: string | null
+          grace_period_ends_at: string | null
           id: string
+          last_payment_attempt: string | null
+          next_billing_date: string | null
           plan_id: string
           starts_at: string
           status: string
+          terms_accepted_at: string | null
+          terms_version: string | null
+          ticto_change_card_url: string | null
+          ticto_offer_id: string | null
+          ticto_subscription_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
           created_at?: string
+          dunning_stage?: number | null
           expires_at?: string | null
+          grace_period_ends_at?: string | null
           id?: string
+          last_payment_attempt?: string | null
+          next_billing_date?: string | null
           plan_id: string
           starts_at?: string
           status?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          ticto_change_card_url?: string | null
+          ticto_offer_id?: string | null
+          ticto_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          billing_cycle?: string | null
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
           created_at?: string
+          dunning_stage?: number | null
           expires_at?: string | null
+          grace_period_ends_at?: string | null
           id?: string
+          last_payment_attempt?: string | null
+          next_billing_date?: string | null
           plan_id?: string
           starts_at?: string
           status?: string
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          ticto_change_card_url?: string | null
+          ticto_offer_id?: string | null
+          ticto_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -3111,6 +3423,14 @@ export type Database = {
       }
     }
     Functions: {
+      accept_subscription_terms: {
+        Args: {
+          p_billing_cycle: string
+          p_plan_id: string
+          p_terms_version?: string
+        }
+        Returns: undefined
+      }
       admin_change_user_plan: {
         Args: { p_new_plan_id: string; p_user_id: string }
         Returns: boolean
@@ -3280,17 +3600,36 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_email_template_by_name: {
+        Args: { p_template_name: string }
+        Returns: {
+          body_html: string
+          enabled: boolean
+          id: string
+          name: string
+          subject: string
+          variables: Json
+        }[]
+      }
       get_full_plan_access: {
         Args: { p_user_id: string }
         Returns: {
+          billing_cycle: string
+          cancel_at_period_end: boolean
+          dunning_stage: number
+          expires_at: string
           features: Json
+          grace_period_ends_at: string
           monthly_limit: number
+          next_billing_date: string
           plan_id: string
           plan_name: string
           price_annual: number
           price_monthly: number
           remaining: number
+          subscription_status: string
           theme: string
+          ticto_change_card_url: string
           used_this_month: number
         }[]
       }
@@ -3682,9 +4021,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       access_level: ["public", "restricted"],

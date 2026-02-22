@@ -64,9 +64,9 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CT
           <div className="bg-white/5 border border-white/10 p-4 sm:p-6 rounded-xl sm:rounded-2xl w-full max-w-xl backdrop-blur-sm">
             <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
               <div className="text-center md:text-left flex-1 w-full">
-                <h4 className="text-blue-400 font-semibold text-xs sm:text-sm uppercase mb-1">
+                <h3 className="text-blue-400 font-semibold text-xs sm:text-sm uppercase mb-1">
                   Especialmente para você:
-                </h4>
+                </h3>
                 <p className="text-base sm:text-lg font-bold break-words">{productName}</p>
                 {hasLlmRec && (
                   <div className="flex items-center justify-center md:justify-start text-slate-400 text-xs sm:text-sm mt-1">

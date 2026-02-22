@@ -1,5 +1,15 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
-import { getApiConfig } from "../_shared/apiConfigService.ts";
+/**
+ * Send Espaco Invitation
+ *
+ * Creates an invitation for a student to join an espaco and sends
+ * an email notification. Handles auth, permission checks, and
+ * invitation record management.
+ *
+ * Uses centralized email template service for database-driven templates.
+ */
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,10 +33,10 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       console.error("Auth header missing or invalid format");
       return new Response(
-        JSON.stringify({ 
-          error: "Unauthorized", 
+        JSON.stringify({
+          error: "Unauthorized",
           code: "AUTH_MISSING",
-          message: "Sessão não encontrada. Por favor, faça login novamente." 
+          message: "Sessão não encontrada. Por favor, faça login novamente."
         }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -43,14 +53,14 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsError } = await supabaseUser.auth.getUser(token);
-    
+
     if (claimsError || !claims?.user) {
       console.error("Token validation failed:", claimsError?.message || "No user found");
       return new Response(
-        JSON.stringify({ 
-          error: "Unauthorized", 
+        JSON.stringify({
+          error: "Unauthorized",
           code: "AUTH_EXPIRED",
-          message: "Sua sessão expirou. Por favor, faça login novamente." 
+          message: "Sua sessão expirou. Por favor, faça login novamente."
         }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -65,10 +75,10 @@ Deno.serve(async (req) => {
 
     if (!espaco_id || !email) {
       return new Response(
-        JSON.stringify({ 
-          error: "Bad Request", 
+        JSON.stringify({
+          error: "Bad Request",
           code: "MISSING_FIELDS",
-          message: "ID do espaço e email são obrigatórios." 
+          message: "ID do espaço e email são obrigatórios."
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -78,10 +88,10 @@ Deno.serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ 
-          error: "Bad Request", 
+        JSON.stringify({
+          error: "Bad Request",
           code: "INVALID_EMAIL",
-          message: "Formato de email inválido." 
+          message: "Formato de email inválido."
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -97,10 +107,10 @@ Deno.serve(async (req) => {
     if (espacoError || !espaco) {
       console.error("Espaco not found:", espaco_id);
       return new Response(
-        JSON.stringify({ 
-          error: "Not Found", 
+        JSON.stringify({
+          error: "Not Found",
           code: "ESPACO_NOT_FOUND",
-          message: "Espaço não encontrado." 
+          message: "Espaço não encontrado."
         }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -119,10 +129,10 @@ Deno.serve(async (req) => {
     if (!isMentor && !isAdmin) {
       console.error("Permission denied for user:", userId);
       return new Response(
-        JSON.stringify({ 
-          error: "Forbidden", 
+        JSON.stringify({
+          error: "Forbidden",
           code: "PERMISSION_DENIED",
-          message: "Você não tem permissão para convidar alunos neste espaço." 
+          message: "Você não tem permissão para convidar alunos neste espaço."
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -139,15 +149,15 @@ Deno.serve(async (req) => {
     if (existingInvitation) {
       if (existingInvitation.status === "pending") {
         return new Response(
-          JSON.stringify({ 
-            error: "Conflict", 
+          JSON.stringify({
+            error: "Conflict",
             code: "INVITATION_EXISTS",
-            message: "Já existe um convite pendente para este email." 
+            message: "Já existe um convite pendente para este email."
           }),
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       // Update existing invitation to pending
       const { error: updateError } = await supabase
         .from("espaco_invitations")
@@ -202,131 +212,37 @@ Deno.serve(async (req) => {
       .eq("id", userId)
       .single();
 
-    // Try to send email via Resend if configured
-    let resendConfig;
-    try {
-      resendConfig = await getApiConfig("resend_email");
-    } catch (err) {
-      console.warn("Resend not configured:", err);
-    }
-    let emailSent = false;
     const origin = req.headers.get("origin") || "https://enphub.lovable.app";
-    const inviteLink = invitation?.token 
+    const inviteLink = invitation?.token
       ? `${origin}/cadastro?token=${invitation.token}&espaco_id=${espaco_id}`
       : null;
 
     console.log("Invitation created for:", email);
     console.log("Invite link:", inviteLink);
 
-    if (!resendConfig) {
-      console.warn("Resend not configured - email will not be sent");
-    }
+    // Send email via template service
+    let emailSent = false;
 
-    if (resendConfig && invitation?.token) {
-      try {
-        console.log("Sending invitation email via Resend...");
-        
-        const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${resendConfig.credentials.api_key}`,
-          },
-          body: JSON.stringify({
-            from: "EUA Na Prática <noreply@euanapratica.com>",
-            to: [email],
-            subject: `🎉 Você foi convidado para: ${espaco.name}`,
-            html: `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
-                <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
-                  <tr>
-                    <td align="center">
-                      <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
-                        <tr>
-                          <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 48px 30px; text-align: center;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
-                              🎉 Você foi convidado!
-                            </h1>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 40px 30px;">
-                            <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                              Olá${invited_name ? ` <strong>${invited_name}</strong>` : ''},
-                            </p>
-                            <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                              <strong>${mentorProfile?.full_name || 'Um mentor'}</strong> te convidou para participar do espaço:
-                            </p>
-                            <div style="background: linear-gradient(135deg, #f0f0ff, #faf5ff); border-radius: 16px; padding: 24px; margin: 24px 0; text-align: center; border: 1px solid #e4e4e7;">
-                              <h2 style="color: #6366f1; margin: 0; font-size: 22px; font-weight: 700;">
-                                ${espaco.name}
-                              </h2>
-                            </div>
-                            
-                            <div style="background-color: #fafafa; border-radius: 12px; padding: 20px; margin: 24px 0;">
-                              <p style="color: #52525b; font-size: 14px; font-weight: 600; margin: 0 0 12px;">📋 Para começar:</p>
-                              <ol style="color: #71717a; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                                <li>Clique no botão abaixo</li>
-                                <li>Complete seu cadastro</li>
-                                <li>Preencha o onboarding</li>
-                                <li>Acesse "Meus Espaços" e comece!</li>
-                              </ol>
-                            </div>
-                            
-                            <div style="text-align: center; margin: 32px 0;">
-                              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 16px; font-weight: 700; font-size: 18px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-                                Aceitar Convite e Criar Conta
-                              </a>
-                            </div>
-                            
-                            <p style="color: #a1a1aa; font-size: 13px; line-height: 1.6; margin: 30px 0 0; text-align: center;">
-                              ⏰ Este convite expira em <strong>7 dias</strong>.
-                            </p>
-                            
-                            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e4e4e7;">
-                              <p style="color: #a1a1aa; font-size: 12px; margin: 0; text-align: center;">
-                                Se o botão não funcionar, copie e cole este link no navegador:
-                              </p>
-                              <p style="color: #6366f1; font-size: 11px; word-break: break-all; margin: 8px 0 0; text-align: center;">
-                                <a href="${inviteLink}" style="color: #6366f1;">${inviteLink}</a>
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
-                            <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
-                              © ${new Date().getFullYear()} EUA Na Prática. Todos os direitos reservados.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </body>
-              </html>
-            `,
-          }),
-        });
+    if (invitation?.token && inviteLink) {
+      const invitedNameGreeting = invited_name ? ` <strong>${invited_name}</strong>` : "";
 
-        const emailResult = await emailResponse.json();
-        console.log("Resend API response:", JSON.stringify(emailResult));
+      const result = await sendTemplatedEmail({
+        templateName: "espaco_invitation",
+        to: email,
+        variables: {
+          "{{invitedNameGreeting}}": invitedNameGreeting,
+          "{{mentorName}}": mentorProfile?.full_name || "Um mentor",
+          "{{espacoName}}": espaco.name,
+          "{{inviteLink}}": inviteLink,
+        },
+      });
 
-        if (emailResponse.ok) {
-          emailSent = true;
-          console.log("✅ Invitation email sent successfully to:", email);
-        } else {
-          console.error("❌ Failed to send email. Status:", emailResponse.status, "Response:", JSON.stringify(emailResult));
-        }
-      } catch (emailError) {
-        console.error("❌ Error sending email:", emailError);
+      emailSent = result.emailSent;
+
+      if (result.emailSent) {
+        console.log("✅ Invitation email sent successfully to:", email);
+      } else {
+        console.warn("Email not sent:", result.message);
       }
     }
 

@@ -48,10 +48,7 @@ serve(async (req) => {
     }
 
     if (!receivedToken || receivedToken !== expectedToken) {
-      console.error("Token mismatch:", {
-        received: receivedToken?.substring(0, 20) + "...",
-        expected: expectedToken?.substring(0, 20) + "...",
-      });
+      console.error("Token mismatch: received token does not match expected token");
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -102,10 +99,13 @@ serve(async (req) => {
 
       const result = await handleSubscriptionEvent(payload, matchedPlan, supabase);
 
+      // Return 500 on failure so Ticto retries the event
+      const httpStatus = result.success ? 200 : 500;
+
       return new Response(
         JSON.stringify({ success: result.success, action: result.action }),
         {
-          status: 200,
+          status: httpStatus,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -126,7 +126,10 @@ serve(async (req) => {
     console.log("Parsed data:", { eventStatus, customerEmail, productId, transactionId });
 
     // Process sale event
-    const saleEvents = ["paid", "completed", "approved", "authorized", "venda_realizada"];
+    const saleEvents = [
+      "paid", "completed", "approved", "authorized",
+      "venda_realizada", "sale_approved",
+    ];
 
     if (saleEvents.includes(eventStatus)) {
       console.log("Processing sale event:", eventStatus);
@@ -259,8 +262,13 @@ serve(async (req) => {
       }
     }
 
-    // Process refund event
-    const refundEvents = ["reembolso", "refunded", "chargedback", "cancelled"];
+    // Process refund / chargeback / dispute event
+    const refundEvents = [
+      "reembolso", "refunded", "refund",
+      "chargedback", "chargeback",
+      "disputed", "reclamado",
+      "cancelled",
+    ];
     if (refundEvents.includes(eventStatus)) {
       console.log("Processing refund event:", eventStatus);
 

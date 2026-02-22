@@ -1,13 +1,16 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
 import type { EmailTemplate } from '@/hooks/useAdminEmailTemplates';
 
 interface EmailTemplatePreviewDialogProps {
   template: EmailTemplate | null;
   onClose: () => void;
+  onSendTest?: (template: EmailTemplate) => void;
 }
 
-export function EmailTemplatePreviewDialog({ template, onClose }: EmailTemplatePreviewDialogProps) {
+export function EmailTemplatePreviewDialog({ template, onClose, onSendTest }: EmailTemplatePreviewDialogProps) {
   if (!template) return null;
 
   return (
@@ -40,6 +43,19 @@ export function EmailTemplatePreviewDialog({ template, onClose }: EmailTemplateP
             sandbox="allow-same-origin"
           />
         </div>
+
+        {onSendTest && (
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2"
+              onClick={() => onSendTest(template)}
+            >
+              <Send className="w-4 h-4" />
+              Enviar Teste
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -7,11 +7,12 @@
  * - payment_failure: Dunning notification
  * - cancellation: Cancellation confirmed
  *
+ * Uses centralized email template service for database-driven templates.
  * Called internally by webhook handlers or admin triggers.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
 
 type EmailType = "confirmation" | "renewal_reminder" | "payment_failure" | "cancellation";
@@ -21,100 +22,11 @@ interface EmailRequest {
   user_id: string;
 }
 
-const EMAIL_TEMPLATES: Record<EmailType, {
-  subject: string;
-  buildHtml: (data: { name: string; planName: string; expiresAt?: string; changeCardUrl?: string }) => string;
-}> = {
-  confirmation: {
-    subject: "Assinatura ativada com sucesso!",
-    buildHtml: ({ name, planName }) => `
-      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <h1 style="color: #1a1a1a; font-size: 24px;">Bem-vindo ao ${planName}!</h1>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Olá ${name},<br><br>
-          Sua assinatura do plano <strong>${planName}</strong> foi ativada com sucesso.
-          Você já tem acesso a todos os benefícios do seu plano.
-        </p>
-        <a href="https://hub.euanapratica.com/dashboard/hub"
-           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; margin: 20px 0;">
-          Acessar Meu Hub
-        </a>
-        <p style="color: #888; font-size: 13px; margin-top: 30px;">
-          Equipe EUA na Prática
-        </p>
-      </div>
-    `,
-  },
-  renewal_reminder: {
-    subject: "Sua assinatura será renovada em breve",
-    buildHtml: ({ name, planName, expiresAt }) => `
-      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <h1 style="color: #1a1a1a; font-size: 24px;">Lembrete de Renovação</h1>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Olá ${name},<br><br>
-          Sua assinatura do plano <strong>${planName}</strong> será renovada automaticamente
-          ${expiresAt ? `em <strong>${expiresAt}</strong>` : 'em breve'}.
-        </p>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Se desejar fazer alguma alteração, acesse sua conta antes da data de renovação.
-        </p>
-        <a href="https://hub.euanapratica.com/dashboard/assinatura"
-           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; margin: 20px 0;">
-          Gerenciar Assinatura
-        </a>
-        <p style="color: #888; font-size: 13px; margin-top: 30px;">
-          Equipe EUA na Prática
-        </p>
-      </div>
-    `,
-  },
-  payment_failure: {
-    subject: "Problema com seu pagamento",
-    buildHtml: ({ name, planName, changeCardUrl }) => `
-      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <h1 style="color: #dc2626; font-size: 24px;">Problema com Pagamento</h1>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Olá ${name},<br><br>
-          Houve um problema ao processar o pagamento da sua assinatura do plano <strong>${planName}</strong>.
-          Para evitar a suspensão do seu acesso, atualize seus dados de pagamento.
-        </p>
-        ${changeCardUrl ? `
-        <a href="${changeCardUrl}"
-           style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; margin: 20px 0;">
-          Atualizar Cartão
-        </a>
-        ` : ''}
-        <p style="color: #888; font-size: 13px; margin-top: 30px;">
-          Se precisar de ajuda, entre em contato pelo suporte.<br>
-          Equipe EUA na Prática
-        </p>
-      </div>
-    `,
-  },
-  cancellation: {
-    subject: "Cancelamento confirmado",
-    buildHtml: ({ name, planName, expiresAt }) => `
-      <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <h1 style="color: #1a1a1a; font-size: 24px;">Cancelamento Confirmado</h1>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Olá ${name},<br><br>
-          Confirmamos o cancelamento da sua assinatura do plano <strong>${planName}</strong>.
-          ${expiresAt ? `Você manterá acesso até <strong>${expiresAt}</strong>.` : ''}
-        </p>
-        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-          Se mudar de ideia, você pode reativar sua assinatura a qualquer momento.
-        </p>
-        <a href="https://hub.euanapratica.com/pricing"
-           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: bold; margin: 20px 0;">
-          Reativar Assinatura
-        </a>
-        <p style="color: #888; font-size: 13px; margin-top: 30px;">
-          Sentiremos sua falta!<br>
-          Equipe EUA na Prática
-        </p>
-      </div>
-    `,
-  },
+const TEMPLATE_MAP: Record<EmailType, string> = {
+  confirmation: "subscription_confirmation",
+  renewal_reminder: "subscription_renewal_reminder",
+  payment_failure: "subscription_payment_failure",
+  cancellation: "subscription_cancellation",
 };
 
 Deno.serve(async (req) => {
@@ -128,7 +40,7 @@ Deno.serve(async (req) => {
   try {
     const { type, user_id }: EmailRequest = await req.json();
 
-    if (!type || !user_id || !EMAIL_TEMPLATES[type]) {
+    if (!type || !user_id || !TEMPLATE_MAP[type]) {
       return new Response(
         JSON.stringify({ error: "Invalid request. Required: type, user_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -175,61 +87,24 @@ Deno.serve(async (req) => {
     // Format dates
     const expiresAt = sub?.expires_at
       ? new Date(sub.expires_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
-      : undefined;
+      : "em breve";
 
-    // Get Resend API key
-    let resendApiKey: string | null = null;
-    try {
-      const resendConfig = await getApiConfig("resend_email");
-      resendApiKey = resendConfig.credentials.api_key;
-    } catch {
-      console.warn("Resend not configured");
-    }
-
-    if (!resendApiKey) {
-      console.warn("RESEND_API_KEY not configured — email will not be sent");
-      return new Response(
-        JSON.stringify({ success: true, emailSent: false, message: "Email not configured" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const template = EMAIL_TEMPLATES[type];
-    const html = template.buildHtml({
-      name: profile.full_name || "Aluno(a)",
-      planName,
-      expiresAt,
-      changeCardUrl: sub?.ticto_change_card_url || undefined,
-    });
-
-    // Send via Resend
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+    // Send templated email
+    const result = await sendTemplatedEmail({
+      templateName: TEMPLATE_MAP[type],
+      to: profile.email,
+      variables: {
+        "{{name}}": profile.full_name || "Aluno(a)",
+        "{{planName}}": planName,
+        "{{expiresAt}}": expiresAt,
+        "{{changeCardUrl}}": sub?.ticto_change_card_url || "https://hub.euanapratica.com/dashboard/assinatura",
       },
-      body: JSON.stringify({
-        from: "EUA na Prática <noreply@euanapratica.com>",
-        to: [profile.email],
-        subject: template.subject,
-        html,
-      }),
     });
 
-    if (!emailResponse.ok) {
-      const errorBody = await emailResponse.text();
-      console.error("Resend error:", errorBody);
-      return new Response(
-        JSON.stringify({ success: false, error: "Email send failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log("Subscription email sent:", { type, userId: user_id, to: profile.email });
+    console.log("Subscription email result:", { type, userId: user_id, to: profile.email, ...result });
 
     return new Response(
-      JSON.stringify({ success: true, emailSent: true }),
+      JSON.stringify({ success: result.success, emailSent: result.emailSent, message: result.message }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

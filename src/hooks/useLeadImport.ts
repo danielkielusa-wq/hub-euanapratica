@@ -129,9 +129,19 @@ export function useLeadImport() {
     }
 
     const batchId = crypto.randomUUID();
-    const processedEvaluationIds: string[] = [];
 
-    for (const lead of leads.filter(l => l.isValid)) {
+    // CRIT-1: Process in small batches with delay to avoid trigger cascade storm
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY_MS = 1000;
+    const validLeads = leads.filter(l => l.isValid);
+    let leadIndex = 0;
+
+    for (const lead of validLeads) {
+      leadIndex++;
+      // Pause between batches to let pg_net triggers drain
+      if (leadIndex > 1 && (leadIndex - 1) % BATCH_SIZE === 0) {
+        await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
+      }
       try {
         const email = lead.data.email.trim().toLowerCase();
 
@@ -256,13 +266,8 @@ export function useLeadImport() {
       }
     }
 
-    // Fire-and-forget: trigger report pre-processing for updated evaluations
-    // (New inserts are handled by the DB trigger; this covers updates/re-imports)
-    processedEvaluationIds.forEach(id => {
-      supabase.functions.invoke('format-lead-report', {
-        body: { evaluationId: id }
-      }).catch(() => {}); // Silent - DB trigger is the primary path
-    });
+    // HIGH-2: DB trigger already handles report pre-processing on INSERT/UPDATE.
+    // Removed duplicate fire-and-forget that was doubling LLM API calls.
 
     // Add validation errors
     leads.filter(l => !l.isValid).forEach(lead => {

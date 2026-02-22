@@ -100,12 +100,12 @@ HEALTH_CHECK_NOTIFY_ON=failures
 |---|-------|----------|--------------|
 | 1 | **Login & Auth** | ✅ Sim | Auth API, profiles, roles, RLS, RPC get_full_plan_access |
 | 2 | **APIs & Infra** | ✅ Sim | Frontend online (hub.euanapratica.com), latência Supabase, Storage |
-| 3 | **Planos & Assinaturas** | ✅ Sim | 3 planos (Básico/Pro/VIP), preços (0/47/97), features, usage_logs |
+| 3 | **Planos & Assinaturas** | ✅ Sim | 3 planos (Básico/Pro/VIP), preços (0/47/97), features, usage_logs, RPC accept_subscription_terms, Ticto offer IDs, dunning anomalies, trial status |
 | 4 | **Currículo USA** | ⚠️ Não | ResumePass: RPC get_user_quota, resumepass_reports, edge fn |
 | 5 | **Prime Jobs** | ⚠️ Não | Feature flags, RPCs de quota/stats, job_bookmarks |
 | 6 | **Job Title Translator** | ⚠️ Não | Tabela, feature flags, edge function translate-title |
 | 7 | **Comunidade** | ⚠️ Não | Posts, comments, categories, ranking, gamificação |
-| 8 | **Pagamentos & TICTO** | ✅ Sim | payment_logs, ticto-webhook fn, checkout URLs |
+| 8 | **Pagamentos & TICTO** | ✅ Sim | payment_logs, orders table, ticto-webhook fn, checkout URLs, unknown event detection, 50+ event coverage validation |
 | 9 | **Agendamentos** | ⚠️ Não | Bookings, mentor_availability, email functions |
 
 **Status Geral:**

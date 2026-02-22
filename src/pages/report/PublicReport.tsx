@@ -36,17 +36,15 @@ export default function PublicReport() {
     if (!evaluation || !formattedContent) return;
     if (evaluation.recommendation_status === 'completed') return;
 
-    // Check if V2 report with a product tier
+    // Check if report has a product tier (works for both V2 and N8N-generated reports)
     let hasTier = false;
     try {
       const parsed = JSON.parse(formattedContent);
-      if (parsed?.report_metadata?.report_version === '2.0') {
-        const tier =
-          parsed?.product_recommendation?.primary_offer?.recommended_product_tier ||
-          parsed?.lead_qualification?.recommended_product_tier;
-        hasTier = !!tier;
-      }
-    } catch { /* not V2 */ }
+      const tier =
+        parsed?.product_recommendation?.primary_offer?.recommended_product_tier ||
+        parsed?.lead_qualification?.recommended_product_tier;
+      hasTier = !!tier;
+    } catch { /* not parseable */ }
 
     if (!hasTier) return;
 
@@ -98,7 +96,7 @@ export default function PublicReport() {
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
+      clearTimeout(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
   }, []);
@@ -107,16 +105,35 @@ export default function PublicReport() {
     stopPolling();
     setProcessingStatus('processing');
 
-    pollIntervalRef.current = setInterval(async () => {
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // ~3 minutes with backoff
+
+    const poll = async () => {
+      attempts++;
+      if (attempts > MAX_ATTEMPTS) {
+        stopPolling();
+        setProcessingStatus(null);
+        setError('O relatório está demorando mais que o esperado. Recarregue a página para tentar novamente.');
+        return;
+      }
+
       try {
         const { data, error: pollError } = await supabase.functions.invoke('format-lead-report', {
           body: { evaluationId }
         });
 
-        if (pollError) return; // Keep polling on transient errors
+        if (pollError) {
+          // Schedule next poll with backoff
+          const delay = Math.min(3000 * Math.pow(1.5, Math.min(attempts, 8)), 30000);
+          pollIntervalRef.current = setTimeout(poll, delay);
+          return;
+        }
 
         if (data?.status === 'processing') {
-          return; // Still processing, keep polling
+          // Still processing — backoff: 3s → 4.5s → 6.75s → ... → max 30s
+          const delay = Math.min(3000 * Math.pow(1.5, Math.min(attempts, 8)), 30000);
+          pollIntervalRef.current = setTimeout(poll, delay);
+          return;
         }
 
         if (data?.content) {
@@ -130,9 +147,14 @@ export default function PublicReport() {
           );
         }
       } catch {
-        // Keep polling on network errors
+        // Schedule next poll with backoff on network errors
+        const delay = Math.min(3000 * Math.pow(1.5, Math.min(attempts, 8)), 30000);
+        pollIntervalRef.current = setTimeout(poll, delay);
       }
-    }, 3000);
+    };
+
+    // Start first poll after 3s
+    pollIntervalRef.current = setTimeout(poll, 3000);
   }, [stopPolling]);
 
   const triggerOnDemand = useCallback(async (evaluationId: string, forceRefresh: boolean) => {

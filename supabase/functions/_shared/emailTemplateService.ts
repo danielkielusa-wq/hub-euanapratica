@@ -53,6 +53,7 @@ export async function sendTemplatedEmail(
   options: SendTemplatedEmailOptions
 ): Promise<EmailResult> {
   const { templateName, to, variables, from } = options;
+  const recipient = Array.isArray(to) ? to.join(", ") : to;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -78,6 +79,7 @@ export async function sendTemplatedEmail(
 
     if (templateError) {
       console.error(`Template fetch error (${templateName}):`, templateError);
+      await logEmail(supabase, { template_name: templateName, recipient, status: "failed", error_message: templateError.message });
       return {
         success: false,
         message: `Template error: ${templateError.message}`,
@@ -89,6 +91,7 @@ export async function sendTemplatedEmail(
 
     if (!template) {
       console.warn(`Template not found or disabled: ${templateName}`);
+      await logEmail(supabase, { template_name: templateName, recipient, status: "skipped", error_message: "Template not found" });
       return {
         success: true,
         message: `Template '${templateName}' not found or disabled`,
@@ -99,6 +102,7 @@ export async function sendTemplatedEmail(
     // Check if template is enabled
     if (!template.enabled) {
       console.warn(`Template disabled: ${templateName}`);
+      await logEmail(supabase, { template_name: templateName, recipient, status: "skipped", error_message: "Template disabled" });
       return {
         success: true,
         message: `Template '${templateName}' is disabled`,
@@ -126,6 +130,7 @@ export async function sendTemplatedEmail(
 
     if (!resendApiKey) {
       console.warn("Resend API key not configured");
+      await logEmail(supabase, { template_name: templateName, recipient, subject, status: "skipped", error_message: "Resend API key not configured" });
       return {
         success: true,
         message: "Email service not configured",
@@ -137,7 +142,7 @@ export async function sendTemplatedEmail(
     const fromAddress = from || resendConfig.parameters?.from || "EUA na Prática <noreply@euanapratica.com>";
 
     // Send email via Resend
-    console.log(`[sendTemplatedEmail] Sending to: ${Array.isArray(to) ? to.join(", ") : to}`);
+    console.log(`[sendTemplatedEmail] Sending to: ${recipient}`);
     const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
       method: "POST",
       headers: {
@@ -155,6 +160,7 @@ export async function sendTemplatedEmail(
     if (!emailResponse.ok) {
       const errorBody = await emailResponse.text();
       console.error("Resend API error:", errorBody);
+      await logEmail(supabase, { template_name: templateName, recipient, subject, status: "failed", error_message: `Resend HTTP ${emailResponse.status}: ${errorBody.slice(0, 500)}` });
       return {
         success: false,
         message: "Failed to send email",
@@ -165,6 +171,8 @@ export async function sendTemplatedEmail(
     const emailResult = await emailResponse.json();
     console.log(`✅ Email sent successfully using template: ${templateName}`, emailResult);
 
+    await logEmail(supabase, { template_name: templateName, recipient, subject, status: "sent", resend_id: emailResult.id });
+
     return {
       success: true,
       message: "Email sent successfully",
@@ -172,11 +180,48 @@ export async function sendTemplatedEmail(
     };
   } catch (error) {
     console.error("Error in sendTemplatedEmail:", error);
+    // Best-effort logging — create a fresh client if needed
+    try {
+      const url = Deno.env.get("SUPABASE_URL");
+      const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (url && key) {
+        const sb = createClient(url, key);
+        await logEmail(sb, { template_name: templateName, recipient, status: "failed", error_message: error instanceof Error ? error.message : "Unknown error" });
+      }
+    } catch { /* never block */ }
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unknown error",
       emailSent: false,
     };
+  }
+}
+
+/**
+ * Best-effort logging to email_logs table. Never throws.
+ */
+async function logEmail(
+  supabase: ReturnType<typeof createClient>,
+  log: {
+    template_name: string;
+    recipient: string;
+    subject?: string;
+    status: "sent" | "failed" | "skipped";
+    error_message?: string;
+    resend_id?: string;
+  }
+) {
+  try {
+    await supabase.from("email_logs").insert({
+      template_name: log.template_name,
+      recipient: log.recipient,
+      subject: log.subject || null,
+      status: log.status,
+      error_message: log.error_message || null,
+      resend_id: log.resend_id || null,
+    });
+  } catch (err) {
+    console.warn("[logEmail] Failed to write email_logs:", err);
   }
 }
 

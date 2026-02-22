@@ -31,12 +31,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Mail, Plus, Edit, Trash2, MoreVertical, Search, Eye } from 'lucide-react';
+import { Mail, Plus, Edit, Trash2, MoreVertical, Search, Eye, Send } from 'lucide-react';
 import { useAdminEmailTemplates, type EmailTemplate } from '@/hooks/useAdminEmailTemplates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EmailTemplateDialog } from '@/components/admin/email-templates/EmailTemplateDialog';
 import { EmailTemplatePreviewDialog } from '@/components/admin/email-templates/EmailTemplatePreviewDialog';
+import { SendTestEmailDialog } from '@/components/admin/email-templates/SendTestEmailDialog';
 
 const CATEGORY_LABELS: Record<string, string> = {
   subscription: 'Assinatura',
@@ -60,6 +61,7 @@ export default function AdminEmailTemplates() {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [testEmailTemplate, setTestEmailTemplate] = useState<EmailTemplate | null>(null);
 
   const filteredTemplates = templates.filter(t =>
     t.display_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -217,6 +219,13 @@ export default function AdminEmailTemplates() {
                             Visualizar
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => setTestEmailTemplate(template)}
+                            className="gap-2"
+                          >
+                            <Send className="w-4 h-4" />
+                            Enviar Teste
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => setEditingTemplate(template)}
                             className="gap-2"
                           >
@@ -256,6 +265,15 @@ export default function AdminEmailTemplates() {
         <EmailTemplatePreviewDialog
           template={previewTemplate}
           onClose={() => setPreviewTemplate(null)}
+          onSendTest={(t) => {
+            setPreviewTemplate(null);
+            setTestEmailTemplate(t);
+          }}
+        />
+
+        <SendTestEmailDialog
+          template={testEmailTemplate}
+          onClose={() => setTestEmailTemplate(null)}
         />
 
         {/* Delete Confirmation */}

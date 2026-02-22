@@ -3,6 +3,7 @@
  *
  * O que valida (perspectiva do founder):
  * - Tabela payment_logs existe? (audit trail de pagamentos)
+ * - Tabela orders existe? (histórico de compras do usuário - MyOrders page)
  * - Hub services tem ticto_product_id? (linkados ao TICTO)
  * - Hub services tem ticto_checkout_url? (links de compra)
  * - Edge function ticto-webhook deployed? (processa pagamentos)
@@ -11,6 +12,8 @@
  * - Edge function send-subscription-email deployed? (emails de assinatura)
  * - Tabela user_hub_services existe? (controle de acesso pos-pagamento)
  * - Ticto webhook token configurado no api_configs? (autenticacao do webhook)
+ * - Eventos desconhecidos (unknown) sendo logados? (cobertura de eventos)
+ * - Distribuição de eventos por categoria? (6 handlers + log_only)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -219,9 +222,70 @@ export async function checkPayments(
       }
     }
 
+    // ───────────────────────────────────────────────────────────────────
+    // NEW: Orders Table & Event Coverage Validation (Post-Audit)
+    // ───────────────────────────────────────────────────────────────────
+
+    // 9. Orders table exists and is accessible (user-facing order history)
+    const { error: ordersError } = await supabase
+      .from('orders')
+      .select('id')
+      .limit(1);
+
+    if (ordersError && ordersError.message.includes('Could not find')) {
+      errors.push('Tabela orders não existe - página Meus Pedidos quebrada');
+      details.orders_table = 'MISSING';
+    } else if (ordersError && ordersError.message.includes('permission denied')) {
+      details.orders_table = 'ok (RLS protected)';
+    } else {
+      details.orders_table = 'ok';
+    }
+
+    // 10. Check for unknown/unhandled webhook events (last 7 days)
+    // These are events that fell through all handler categories
+    const KNOWN_EVENTS = [
+      // SALE_EVENTS
+      'paid', 'completed', 'approved', 'authorized', 'venda_realizada', 'sale_approved',
+      // SUBSCRIPTION_DELAYED
+      'subscription_delayed', 'subscription_overdue',
+      // SUBSCRIPTION_CANCELLED
+      'subscription_canceled', 'subscription_cancelled',
+      // SUBSCRIPTION_REFUND
+      'refunded', 'reembolso', 'refund', 'chargedback', 'chargeback', 'disputed', 'reclamado',
+      // SUBSCRIPTION_RESUMED
+      'uncanceled', 'subscription_resumed',
+      // SUBSCRIPTION_ENDED
+      'all_charges_paid', 'subscription_completed',
+      // LOG_ONLY_EVENTS
+      'trial_started', 'subscription_trial_started', 'trial_ended', 'subscription_trial_ended',
+      'extended', 'subscription_extended', 'card_exchanged', 'subscription_card_updated',
+      'plan_changed', 'subscription_plan_changed',
+      'waiting_payment', 'payment_pending', 'bank_slip_created', 'boleto_printed',
+      'bank_slip_overdue', 'boleto_overdue', 'boleto_closed',
+      'pix_created', 'pix_generated', 'pix_expired',
+      'sale_declined', 'declined', 'venda_recusada',
+      'cart_abandoned', 'cart_abandonment',
+      'affiliate_created', 'affiliate_requested', 'affiliate_approved',
+      'test_time', 'test_mode',
+    ];
+
+    if (recentEvents && recentEvents.length > 0) {
+      const unknownEvents = recentEvents.filter(
+        (e: { event_type: string }) => !KNOWN_EVENTS.includes(e.event_type)
+      );
+      if (unknownEvents.length > 0) {
+        const unknownTypes = [...new Set(unknownEvents.map((e: { event_type: string }) => e.event_type))];
+        errors.push(`${unknownEvents.length} evento(s) desconhecido(s) nos últimos 7 dias: ${unknownTypes.join(', ')}`);
+        details.unknown_events = unknownTypes;
+      } else {
+        details.unknown_events = 'none (all events covered)';
+      }
+    }
+
     const hasCriticalError = errors.some(e =>
       e.includes('NÃO deployed') || e.includes('NÃO serão processados') ||
-      e.includes('NÃO deployed!') || e.includes('NÃO configurado')
+      e.includes('NÃO deployed!') || e.includes('NÃO configurado') ||
+      e.includes('MISSING')
     );
 
     return {

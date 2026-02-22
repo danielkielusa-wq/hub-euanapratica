@@ -423,9 +423,111 @@ export async function handleSubscriptionCancelled(
 }
 
 /**
- * Handle subscription refund / chargeback.
+ * Handle subscription resumption (user un-cancels).
+ * Reverses a pending cancellation and reactivates the subscription.
+ * Called on: uncanceled, subscription_resumed
+ */
+export async function handleSubscriptionResumed(
+  payload: TictoSubscriptionPayload,
+  supabase: SupabaseClient
+): Promise<{ success: boolean; userId?: string }> {
+  const email = payload.customer?.email;
+  if (!email) return { success: false };
+
+  const profile = await findProfileByEmail(email, supabase);
+  if (!profile) return { success: false };
+
+  const { data: sub } = await supabase
+    .from("user_subscriptions")
+    .select("id, status, cancel_at_period_end, ticto_change_card_url")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  if (!sub) {
+    console.warn("handleSubscriptionResumed: No subscription for:", profile.id);
+    return { success: false, userId: profile.id };
+  }
+
+  const tictoSub = payload.subscriptions?.[0];
+
+  const { error } = await supabase
+    .from("user_subscriptions")
+    .update({
+      status: "active",
+      cancel_at_period_end: false,
+      canceled_at: null,
+      dunning_stage: 0,
+      grace_period_ends_at: null,
+      ticto_change_card_url: tictoSub?.change_card_url || sub.ticto_change_card_url || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+
+  if (error) {
+    console.error("handleSubscriptionResumed: Update failed:", error);
+    return { success: false, userId: profile.id };
+  }
+
+  console.log("Subscription resumed:", { userId: profile.id });
+  return { success: true, userId: profile.id };
+}
+
+/**
+ * Handle subscription ended (all charges paid / natural completion).
+ * The subscription has completed its billing cycle naturally.
+ * Keeps access until expires_at, then reconciliation will downgrade.
+ * Called on: all_charges_paid, subscription_completed
+ */
+export async function handleSubscriptionEnded(
+  payload: TictoSubscriptionPayload,
+  supabase: SupabaseClient
+): Promise<{ success: boolean; userId?: string }> {
+  const email = payload.customer?.email;
+  if (!email) return { success: false };
+
+  const profile = await findProfileByEmail(email, supabase);
+  if (!profile) return { success: false };
+
+  const { data: sub } = await supabase
+    .from("user_subscriptions")
+    .select("id, expires_at")
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  if (!sub) {
+    console.warn("handleSubscriptionEnded: No subscription for:", profile.id);
+    return { success: false, userId: profile.id };
+  }
+
+  // Mark as ending at period end — user keeps access until expires_at
+  // Reconciliation will later downgrade to basic once expires_at passes
+  const { error } = await supabase
+    .from("user_subscriptions")
+    .update({
+      cancel_at_period_end: true,
+      canceled_at: new Date().toISOString(),
+      next_billing_date: null,
+      ticto_subscription_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+
+  if (error) {
+    console.error("handleSubscriptionEnded: Update failed:", error);
+    return { success: false, userId: profile.id };
+  }
+
+  console.log("Subscription ended (all charges paid):", {
+    userId: profile.id,
+    accessUntil: sub.expires_at,
+  });
+  return { success: true, userId: profile.id };
+}
+
+/**
+ * Handle subscription refund / chargeback / dispute.
  * Immediately revokes access.
- * Called on: refunded, chargedback
+ * Called on: refunded, reembolso, refund, chargedback, chargeback, disputed, reclamado
  */
 export async function handleSubscriptionRefund(
   payload: TictoSubscriptionPayload,
@@ -482,29 +584,94 @@ export async function handleSubscriptionRefund(
 }
 
 // ---------------------------------------------------------------------------
-// Main Router
+// Main Router — Ticto Event Mapping
+// ---------------------------------------------------------------------------
+// Full reference of Ticto webhook events and their API status codes.
+// Each array includes both English API identifiers and Portuguese variants
+// to handle all possible Ticto payload formats.
 // ---------------------------------------------------------------------------
 
-/** Subscription-related sale events */
-const SALE_EVENTS = ["paid", "completed", "approved", "authorized", "venda_realizada"];
+/** Subscription-related sale events → activate subscription */
+const SALE_EVENTS = [
+  "paid", "completed", "approved", "authorized",
+  "venda_realizada",   // Ticto PT: Venda Realizada
+  "sale_approved",     // Ticto API variant
+];
 
-/** Subscription lifecycle events */
-const SUBSCRIPTION_DELAYED = ["subscription_delayed"];
-const SUBSCRIPTION_CANCELLED = ["subscription_canceled"];
-const SUBSCRIPTION_REFUND = ["refunded", "chargedback"];
+/** Payment failure → increment dunning stage */
+const SUBSCRIPTION_DELAYED = [
+  "subscription_delayed",   // Ticto API
+  "subscription_overdue",   // Ticto API variant: [Assinatura] - Atrasada
+];
+
+/** Subscription cancellation → cancel at period end */
+const SUBSCRIPTION_CANCELLED = [
+  "subscription_canceled",  // Ticto API: [Assinatura] - Cancelada
+  "subscription_cancelled", // UK English variant
+];
+
+/** Refund / chargeback / dispute → immediately revoke access */
+const SUBSCRIPTION_REFUND = [
+  "refunded",       // Ticto API
+  "reembolso",      // Ticto PT: Reembolso
+  "refund",         // Ticto API variant
+  "chargedback",    // Ticto API: Chargeback
+  "chargeback",     // Ticto API variant
+  "disputed",       // Ticto API: Reclamado
+  "reclamado",      // Ticto PT: Reclamado
+];
+
+/** Subscription un-cancelled / resumed → reactivate */
+const SUBSCRIPTION_RESUMED = [
+  "uncanceled",             // Ticto API
+  "subscription_resumed",   // Ticto API: [Assinatura] - Retomada
+];
+
+/** All charges paid / natural end → keep access until expiry, stop billing */
+const SUBSCRIPTION_ENDED = [
+  "all_charges_paid",         // Ticto API
+  "subscription_completed",   // Ticto API: [Assinatura] - Encerrada
+];
 
 /** Events that are logged but take no action */
 const LOG_ONLY_EVENTS = [
-  "trial_started",
-  "trial_ended",
-  "extended",
-  "card_exchanged",
-  "uncanceled",
-  "all_charges_paid",
-  "waiting_payment",
-  "bank_slip_created",
-  "pix_created",
-  "pix_expired",
+  // Trial lifecycle
+  "trial_started",                // Ticto API: Tempo de Teste
+  "subscription_trial_started",   // Ticto API: [Assinatura] - Período de Testes Iniciado
+  "trial_ended",                  // Ticto API
+  "subscription_trial_ended",     // Ticto API: [Assinatura] - Período de Testes Encerrado
+  // Subscription modifications
+  "extended",                     // Ticto API: [Assinatura] - Extendida
+  "subscription_extended",        // Ticto API variant
+  "card_exchanged",               // Ticto API: [Assinatura] - Cartão atualizado
+  "subscription_card_updated",    // Ticto API variant
+  "plan_changed",                 // Ticto API: [Assinatura] - Plano Alterado
+  "subscription_plan_changed",    // Ticto API variant
+  // Payment method events
+  "waiting_payment",      // Ticto API: Aguardando Pagamento
+  "payment_pending",      // Ticto API variant
+  "bank_slip_created",    // Ticto API: Boleto Impresso
+  "boleto_printed",       // Ticto API variant
+  "bank_slip_overdue",    // Ticto API: Boleto Atrasado
+  "boleto_overdue",       // Ticto API variant
+  "boleto_closed",        // Ticto API: Encerrado (boleto)
+  "pix_created",          // Ticto API: Pix Gerado
+  "pix_generated",        // Ticto API variant
+  "pix_expired",          // Ticto API: Pix Expirado
+  // Sale declined
+  "sale_declined",        // Ticto API: Venda Recusada
+  "declined",             // Ticto API variant
+  "venda_recusada",       // Ticto PT variant
+  // Cart abandonment
+  "cart_abandoned",       // Ticto API: Abandono de Carrinho
+  "cart_abandonment",     // Ticto API variant
+  // Affiliate events
+  "affiliate_created",    // Ticto API: [Afiliação] - Criada
+  "affiliate_requested",  // Ticto API: [Afiliação] - Solicitada
+  "affiliate_approved",   // Ticto API: [Afiliação] - Aprovada
+  // Test / misc
+  "test_time",            // Ticto API: Tempo de Teste (test mode)
+  "test_mode",            // Ticto API variant
 ];
 
 /**
@@ -528,7 +695,7 @@ export async function handleSubscriptionEvent(
     return { success: true, action: "already_processed" };
   }
 
-  let result = { success: true, userId: undefined as string | undefined };
+  let result: { success: boolean; userId?: string } = { success: true };
   let action = "logged";
 
   if (SALE_EVENTS.includes(eventStatus)) {
@@ -543,6 +710,12 @@ export async function handleSubscriptionEvent(
   } else if (SUBSCRIPTION_REFUND.includes(eventStatus)) {
     result = await handleSubscriptionRefund(payload, supabase);
     action = "refunded";
+  } else if (SUBSCRIPTION_RESUMED.includes(eventStatus)) {
+    result = await handleSubscriptionResumed(payload, supabase);
+    action = "resumed";
+  } else if (SUBSCRIPTION_ENDED.includes(eventStatus)) {
+    result = await handleSubscriptionEnded(payload, supabase);
+    action = "ended";
   } else if (LOG_ONLY_EVENTS.includes(eventStatus)) {
     // Find user for logging
     const email = payload.customer?.email;

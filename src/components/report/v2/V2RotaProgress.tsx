@@ -15,23 +15,24 @@ const phaseDescriptions: Record<string, string> = {
 };
 
 const phaseColors: Record<string, { bg: string; ring: string; text: string }> = {
-  R: { bg: 'bg-blue-600', ring: '#3b82f6', text: 'text-white' },
-  O: { bg: 'bg-amber-500', ring: '#f59e0b', text: 'text-white' },
-  T: { bg: 'bg-gray-300 dark:bg-gray-700', ring: '#9ca3af', text: 'text-gray-500 dark:text-gray-400' },
-  A: { bg: 'bg-gray-300 dark:bg-gray-700', ring: '#9ca3af', text: 'text-gray-500 dark:text-gray-400' },
+  R: { bg: 'bg-blue-600',    ring: '#3b82f6', text: 'text-white' },
+  O: { bg: 'bg-amber-500',   ring: '#f59e0b', text: 'text-white' },
+  T: { bg: 'bg-emerald-500', ring: '#10b981', text: 'text-white' },
+  A: { bg: 'bg-violet-500',  ring: '#8b5cf6', text: 'text-white' },
 };
 
-function PhaseCircle({ phase, isActive, isPast, isInView }: {
+function PhaseCircle({ phase, isActive, isPast, isInView, completion }: {
   phase: V2RotaPhase;
   isActive: boolean;
   isPast: boolean;
   isInView: boolean;
+  completion: number;
 }) {
   const size = 48;
   const strokeWidth = 3;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const targetOffset = circumference - (phase.completion_percentage / 100) * circumference;
+  const targetOffset = circumference - (completion / 100) * circumference;
   const isLocked = !isActive && !isPast;
   const colors = (isActive || isPast) ? phaseColors[phase.letter] || phaseColors.T : phaseColors.T;
 
@@ -84,13 +85,15 @@ export function V2RotaProgress({ progress }: V2RotaProgressProps) {
           const isActive = index === currentIdx;
           const isPast = index < currentIdx;
           const isLocked = index > currentIdx;
+          // Derive completion from position, not AI output (AI can write wrong values)
+          const completion = isPast ? 100 : isActive ? phase.completion_percentage : 0;
           const description = phaseDescriptions[phase.letter] || '';
 
           return (
             <div key={phase.letter} className="flex gap-3 sm:gap-4">
               {/* Left: circle + vertical line */}
               <div className="flex flex-col items-center">
-                <PhaseCircle phase={phase} isActive={isActive} isPast={isPast} isInView={isInView} />
+                <PhaseCircle phase={phase} isActive={isActive} isPast={isPast} isInView={isInView} completion={completion} />
                 {index < phases.length - 1 && (
                   <div className={cn(
                     'w-0.5 flex-1 min-h-[32px]',
@@ -123,14 +126,14 @@ export function V2RotaProgress({ progress }: V2RotaProgressProps) {
                           isActive ? 'bg-blue-500' : 'bg-amber-400'
                         )}
                         style={{
-                          width: isInView ? `${phase.completion_percentage}%` : '0%',
+                          width: isInView ? `${completion}%` : '0%',
                           transition: 'width 1s ease-out',
                           transitionDelay: `${index * 150}ms`,
                         }}
                       />
                     </div>
                     <span className="text-xs font-semibold text-muted-foreground tabular-nums">
-                      {phase.completion_percentage}%
+                      {completion}%
                     </span>
                   </div>
                 )}

@@ -19,7 +19,7 @@ export function V2ReportFooter({ userName, generatedAt, reportVersion }: V2Repor
       <div className="flex flex-col items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="w-4 h-4" />
-          <span>Relatorio de <strong className="text-foreground">{userName}</strong> gerado em {formattedDate}</span>
+          <span>Relatório de <strong className="text-foreground">{userName}</strong> gerado em {formattedDate}</span>
         </div>
         <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
           v{reportVersion}
@@ -27,7 +27,7 @@ export function V2ReportFooter({ userName, generatedAt, reportVersion }: V2Repor
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        &copy; {new Date().getFullYear()} EUA na Pratica - Relatorio gerado com IA
+        &copy; {new Date().getFullYear()} EUA na Prática - Relatório gerado com IA
       </p>
     </footer>
   );

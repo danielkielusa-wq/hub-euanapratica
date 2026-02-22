@@ -61,8 +61,9 @@ LEFT JOIN public.hub_services hs ON pl.service_id = hs.id
 WHERE
   -- Only migrate one-time purchases (subscriptions have no service_id)
   pl.service_id IS NOT NULL
-  -- Must have user
+  -- Must have user that still exists in auth.users (skip orphaned records)
   AND pl.user_id IS NOT NULL
+  AND pl.user_id IN (SELECT id FROM auth.users)
   -- Only actionable events
   AND pl.event_type IN (
     'paid', 'completed', 'approved', 'authorized', 'venda_realizada',

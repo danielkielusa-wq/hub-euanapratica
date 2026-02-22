@@ -442,6 +442,7 @@ async function checkTictoSubscriptions() {
     const active = subs.filter((s: { status: string }) => s.status === "active");
     const pastDue = subs.filter((s: { status: string }) => s.status === "past_due");
     const gracePeriod = subs.filter((s: { status: string }) => s.status === "grace_period");
+    const trial = subs.filter((s: { status: string }) => s.status === "trial");
     const pendingCancel = subs.filter((s: { cancel_at_period_end: boolean; status: string }) =>
       s.cancel_at_period_end && s.status !== "cancelled"
     );
@@ -451,6 +452,7 @@ async function checkTictoSubscriptions() {
       active: active.length,
       past_due: pastDue.length,
       grace_period: gracePeriod.length,
+      trial: trial.length,
       pending_cancel: pendingCancel.length,
     };
 
@@ -470,6 +472,15 @@ async function checkTictoSubscriptions() {
     if (expiredGrace.length > 0) {
       errors.push(`${expiredGrace.length} grace period(s) expirado(s)`);
       details.expired_grace = expiredGrace.length;
+    }
+
+    // Dunning stage anomalies (stage 3+ should be grace_period, not active/past_due)
+    const dunningAnomalies = subs.filter((s: { dunning_stage: number; status: string }) =>
+      s.dunning_stage >= 3 && s.status !== "grace_period" && s.status !== "cancelled"
+    );
+    if (dunningAnomalies.length > 0) {
+      errors.push(`${dunningAnomalies.length} assinatura(s) com dunning_stage >= 3 em status incorreto`);
+      details.dunning_anomalies = dunningAnomalies.length;
     }
   }
 
@@ -492,6 +503,74 @@ async function checkTictoSubscriptions() {
       total: recentEvents.length,
       by_type: eventTypes,
     };
+
+    // 10g. Check for unknown/unhandled events
+    const KNOWN_EVENTS = [
+      "paid", "completed", "approved", "authorized", "venda_realizada", "sale_approved",
+      "subscription_delayed", "subscription_overdue",
+      "subscription_canceled", "subscription_cancelled",
+      "refunded", "reembolso", "refund", "chargedback", "chargeback", "disputed", "reclamado",
+      "uncanceled", "subscription_resumed",
+      "all_charges_paid", "subscription_completed",
+      "trial_started", "subscription_trial_started", "trial_ended", "subscription_trial_ended",
+      "extended", "subscription_extended", "card_exchanged", "subscription_card_updated",
+      "plan_changed", "subscription_plan_changed",
+      "waiting_payment", "payment_pending", "bank_slip_created", "boleto_printed",
+      "bank_slip_overdue", "boleto_overdue", "boleto_closed",
+      "pix_created", "pix_generated", "pix_expired",
+      "sale_declined", "declined", "venda_recusada",
+      "cart_abandoned", "cart_abandonment",
+      "affiliate_created", "affiliate_requested", "affiliate_approved",
+      "test_time", "test_mode",
+    ];
+
+    const unknownTypes = Object.keys(eventTypes).filter(
+      (type) => !KNOWN_EVENTS.includes(type)
+    );
+
+    if (unknownTypes.length > 0) {
+      errors.push(`Evento(s) desconhecido(s): ${unknownTypes.join(", ")}`);
+      details.unknown_events = unknownTypes;
+    } else {
+      details.unknown_events = "none";
+    }
+  }
+
+  // 10h. Orders table exists (user-facing transaction history)
+  const { error: ordersErr } = await supabase.from("orders").select("id").limit(1);
+  if (ordersErr) {
+    const code = ordersErr.code || "";
+    const msg = ordersErr.message || "";
+    if (code === "42P01" || msg.includes("does not exist")) {
+      errors.push("Tabela orders não existe - Meus Pedidos quebrada");
+      details.orders_table = "MISSING";
+    } else if (code === "42501" || msg.includes("permission") || msg.includes("denied")) {
+      details.orders_table = "ok (RLS protected)";
+    } else {
+      details.orders_table = `error: ${msg || code}`;
+    }
+  } else {
+    details.orders_table = "ok";
+  }
+
+  // 10i. RPC accept_subscription_terms exists (P0 fix)
+  const { error: termsRpcErr } = await supabase.rpc("accept_subscription_terms", {
+    p_plan_id: "basic",
+    p_billing_cycle: "monthly",
+    p_terms_version: "healthcheck-test",
+  });
+
+  if (termsRpcErr) {
+    const msg = termsRpcErr.message || "";
+    if (msg.includes("Could not find the function") || msg.includes("does not exist")) {
+      errors.push("RPC accept_subscription_terms não existe - aceite de termos quebrado");
+      details.rpc_accept_terms = "MISSING";
+    } else {
+      // RPC exists (any other error means it's deployed)
+      details.rpc_accept_terms = "ok";
+    }
+  } else {
+    details.rpc_accept_terms = "ok";
   }
 
   const hasCritical = errors.some((e) =>

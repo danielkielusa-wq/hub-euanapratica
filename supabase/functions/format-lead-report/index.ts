@@ -1,9 +1,446 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+
+// LOW-9: Module-level constant — avoids re-allocating ~430-line schema on every request
+const RESPONSE_SCHEMA = {
+  name: "format_career_report_v2",
+  strict: true,
+  schema: {
+    type: "object",
+    properties: {
+      report_metadata: {
+        type: "object",
+        properties: {
+          generated_at: { type: "string", description: "ISO timestamp de geracao" },
+          report_version: { type: "string", enum: ["2.0"], description: "Versao do relatorio (sempre 2.0)" },
+          ai_model_used: { type: "string", description: "Modelo de IA usado" },
+          prompt_version: { type: "string", description: "Versao do prompt usado" }
+        },
+        required: ["generated_at", "report_version", "ai_model_used", "prompt_version"],
+        additionalProperties: false
+      },
+      user_data: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+          phone: { type: "string" },
+          area: { type: "string" },
+          atuacao: { type: "string" },
+          trabalha_internacional: { type: "boolean" },
+          experiencia: { type: "string" },
+          english_level: { type: "string" },
+          objetivo: { type: "string" },
+          visa_status: { type: "string" },
+          timeline: { type: "string" },
+          family_status: { type: "string" },
+          income_range: { type: "string" },
+          investment_range: { type: "string" },
+          impediment: { type: "string" },
+          main_concern: { type: "string" }
+        },
+        required: ["name", "email", "phone", "area", "atuacao", "trabalha_internacional", "experiencia", "english_level", "objetivo", "visa_status", "timeline", "family_status", "income_range", "investment_range", "impediment", "main_concern"],
+        additionalProperties: false
+      },
+      scoring: {
+        type: "object",
+        properties: {
+          readiness_score: { type: "number", description: "Score total de prontidao (0-100)" },
+          readiness_percentual: { type: "number", description: "Percentual de prontidao (0-100)" },
+          max_score: { type: "number", description: "Score maximo possivel" },
+          score_breakdown: {
+            type: "object",
+            properties: {
+              score_english: { type: "number" },
+              score_experience: { type: "number" },
+              score_international_work: { type: "number" },
+              score_timeline: { type: "number" },
+              score_objective: { type: "number" },
+              score_visa: { type: "number" },
+              score_readiness: { type: "number" },
+              score_area_bonus: { type: "number" }
+            },
+            required: ["score_english", "score_experience", "score_international_work", "score_timeline", "score_objective", "score_visa", "score_readiness", "score_area_bonus"],
+            additionalProperties: false
+          }
+        },
+        required: ["readiness_score", "readiness_percentual", "max_score", "score_breakdown"],
+        additionalProperties: false
+      },
+      phase_classification: {
+        type: "object",
+        properties: {
+          phase_id: { type: "number", description: "ID da fase (1-5)" },
+          phase_name: { type: "string", description: "Nome da fase" },
+          phase_emoji: { type: "string", description: "Emoji representativo" },
+          phase_color: { type: "string", description: "Cor em hex" },
+          rota_letter: { type: "string", enum: ["R", "O", "T", "A"], description: "Letra ROTA" },
+          urgency_level: { type: "string", enum: ["baixa", "media", "alta", "urgente"], description: "Nivel de urgencia" },
+          can_apply_jobs: { type: "boolean", description: "Pode aplicar para vagas?" },
+          estimated_preparation_months: { type: "number", description: "Meses estimados de preparacao" },
+          short_diagnosis: { type: "string", description: "Diagnostico resumido (1-2 frases)" },
+          full_diagnosis: { type: "string", description: "Diagnostico completo e detalhado" }
+        },
+        required: ["phase_id", "phase_name", "phase_emoji", "phase_color", "rota_letter", "urgency_level", "can_apply_jobs", "estimated_preparation_months", "short_diagnosis", "full_diagnosis"],
+        additionalProperties: false
+      },
+      barriers_analysis: {
+        type: "object",
+        properties: {
+          has_english_barrier: { type: "boolean" },
+          has_experience_barrier: { type: "boolean" },
+          has_financial_barrier: { type: "boolean" },
+          has_family_barrier: { type: "boolean" },
+          has_visa_barrier: { type: "boolean" },
+          has_time_barrier: { type: "boolean" },
+          has_clarity_barrier: { type: "boolean" },
+          critical_blockers: {
+            type: "array",
+            items: { type: "string" },
+            description: "Lista de bloqueadores criticos (max 5)"
+          },
+          recommended_first_action: { type: "string", description: "Proxima acao recomendada" }
+        },
+        required: ["has_english_barrier", "has_experience_barrier", "has_financial_barrier", "has_family_barrier", "has_visa_barrier", "has_time_barrier", "has_clarity_barrier", "critical_blockers", "recommended_first_action"],
+        additionalProperties: false
+      },
+      detailed_analysis: {
+        type: "object",
+        properties: {
+          english: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          experience: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          objective: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          timeline: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          visa_immigration: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          financial_context: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          mental_readiness: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          },
+          family_context: {
+            type: "object",
+            properties: {
+              current_level: { type: "string" },
+              score_contribution: { type: "number" },
+              assessment: { type: "string" },
+              is_barrier: { type: "boolean" },
+              priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+              recommendation: { type: "string" }
+            },
+            required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
+            additionalProperties: false
+          }
+        },
+        required: ["english", "experience", "objective", "timeline", "visa_immigration", "financial_context", "mental_readiness", "family_context"],
+        additionalProperties: false
+      },
+      product_recommendation: {
+        type: "object",
+        properties: {
+          primary_offer: {
+            type: "object",
+            properties: {
+              recommended_product_tier: { type: "string", description: "Tier do produto (ex: basico, intermediario, avancado)" },
+              recommended_product_name: { type: "string", description: "Nome do produto/servico" },
+              recommended_product_price: { type: "string", description: "Preco formatado" },
+              recommended_product_url: { type: "string", description: "URL de checkout" },
+              fit_score: { type: "number", description: "Score de fit (0-100)" },
+              why_this_fits: { type: "string", description: "Por que este produto e ideal" },
+              cta: { type: "string", description: "Texto do CTA" }
+            },
+            required: ["recommended_product_tier", "recommended_product_name", "recommended_product_price", "recommended_product_url", "fit_score", "why_this_fits", "cta"],
+            additionalProperties: false
+          },
+          secondary_offer: {
+            type: "object",
+            properties: {
+              secondary_product_tier: { type: "string" },
+              secondary_product_name: { type: "string" },
+              secondary_fit_score: { type: "number" },
+              why_alternative: { type: "string" }
+            },
+            required: ["secondary_product_tier", "secondary_product_name", "secondary_fit_score", "why_alternative"],
+            additionalProperties: false
+          },
+          financial_fit: {
+            type: "object",
+            properties: {
+              has_budget: { type: "boolean", description: "Tem budget para investir?" },
+              budget_gap: { type: "string", description: "Gap de budget se houver" },
+              estimated_ltv: { type: "number", description: "Lifetime value estimado" }
+            },
+            required: ["has_budget", "budget_gap", "estimated_ltv"],
+            additionalProperties: false
+          }
+        },
+        required: ["primary_offer", "secondary_offer", "financial_fit"],
+        additionalProperties: false
+      },
+      lead_qualification: {
+        type: "object",
+        properties: {
+          lead_temperature: { type: "string", enum: ["frio", "morno", "quente", "muito-quente"], description: "Temperatura do lead" },
+          lead_priority_score: { type: "number", description: "Score de prioridade (0-100)" },
+          is_tech_professional: { type: "boolean" },
+          is_senior_level: { type: "boolean" },
+          works_remotely: { type: "boolean" },
+          has_family: { type: "boolean" },
+          is_high_income: { type: "boolean" },
+          best_contact_time: { type: "string", description: "Melhor horario de contato" },
+          preferred_communication: { type: "string", enum: ["whatsapp", "email", "call", "video"], description: "Canal preferido" }
+        },
+        required: ["lead_temperature", "lead_priority_score", "is_tech_professional", "is_senior_level", "works_remotely", "has_family", "is_high_income", "best_contact_time", "preferred_communication"],
+        additionalProperties: false
+      },
+      timeline_milestones: {
+        type: "object",
+        properties: {
+          next_milestone_action: { type: "string" },
+          next_milestone_deadline: { type: "string" },
+          recheck_recommended_at: { type: "string" },
+          scheduled_follow_up_1: { type: "string" },
+          scheduled_follow_up_2: { type: "string" },
+          scheduled_follow_up_3: { type: "string" },
+          auto_nurture_sequence: { type: "string" }
+        },
+        required: ["next_milestone_action", "next_milestone_deadline", "recheck_recommended_at", "scheduled_follow_up_1", "scheduled_follow_up_2", "scheduled_follow_up_3", "auto_nurture_sequence"],
+        additionalProperties: false
+      },
+      action_plan: {
+        type: "object",
+        properties: {
+          next_30_days: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                step_number: { type: "number" },
+                title: { type: "string" },
+                description: { type: "string" },
+                priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                estimated_hours_week: { type: "number" },
+                milestone: { type: "string" }
+              },
+              required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+              additionalProperties: false
+            }
+          },
+          next_90_days: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                step_number: { type: "number" },
+                title: { type: "string" },
+                description: { type: "string" },
+                priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                estimated_hours_week: { type: "number" },
+                milestone: { type: "string" }
+              },
+              required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+              additionalProperties: false
+            }
+          },
+          next_6_months: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                step_number: { type: "number" },
+                title: { type: "string" },
+                description: { type: "string" },
+                priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
+                estimated_hours_week: { type: "number" },
+                milestone: { type: "string" }
+              },
+              required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["next_30_days", "next_90_days", "next_6_months"],
+        additionalProperties: false
+      },
+      web_report_data: {
+        type: "object",
+        properties: {
+          hero_section: {
+            type: "object",
+            properties: {
+              headline: { type: "string" },
+              subheadline: { type: "string" },
+              score_display: { type: "string" },
+              phase_badge: { type: "string" }
+            },
+            required: ["headline", "subheadline", "score_display", "phase_badge"],
+            additionalProperties: false
+          },
+          rota_framework_progress: {
+            type: "object",
+            properties: {
+              current_phase: { type: "string" },
+              phases: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    letter: { type: "string", enum: ["R", "O", "T", "A"] },
+                    name: { type: "string" },
+                    status: { type: "string", enum: ["concluido", "atual", "futuro"] },
+                    completion_percentage: { type: "number", description: "0-100" }
+                  },
+                  required: ["letter", "name", "status", "completion_percentage"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["current_phase", "phases"],
+            additionalProperties: false
+          },
+          key_metrics: {
+            type: "object",
+            properties: {
+              strengths: { type: "array", items: { type: "string" } },
+              critical_gaps: { type: "array", items: { type: "string" } },
+              estimated_timeline_months: { type: "number" },
+              can_start_applying: { type: "boolean" }
+            },
+            required: ["strengths", "critical_gaps", "estimated_timeline_months", "can_start_applying"],
+            additionalProperties: false
+          },
+          resources: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: { type: "string" },
+                title: { type: "string" },
+                url: { type: "string" },
+                price: { type: "string" }
+              },
+              required: ["type", "title", "url", "price"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["hero_section", "rota_framework_progress", "key_metrics", "resources"],
+        additionalProperties: false
+      },
+      database_fields: {
+        type: "object",
+        properties: {
+          processing_status: { type: "string", enum: ["pending", "processing", "completed", "error"] },
+          processing_error: { type: "string" },
+          formatted_at: { type: "string" }
+        },
+        required: ["processing_status", "processing_error", "formatted_at"],
+        additionalProperties: false
+      }
+    },
+    required: [
+      "report_metadata",
+      "user_data",
+      "scoring",
+      "phase_classification",
+      "barriers_analysis",
+      "detailed_analysis",
+      "product_recommendation",
+      "lead_qualification",
+      "timeline_milestones",
+      "action_plan",
+      "web_report_data",
+      "database_fields"
+    ],
+    additionalProperties: false
+  }
+} as const;
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -157,15 +594,38 @@ serve(async (req) => {
       // If > 5 min, consider stale and re-process
     }
 
-    // Mark as processing
-    await supabase
+    // HIGH-1: Atomic claim — only one instance can claim a pending/error/stale report
+    const { data: claimed } = await supabase
       .from("career_evaluations")
       .update({
         processing_status: 'processing',
         processing_started_at: new Date().toISOString(),
         processing_error: null
       })
-      .eq("id", evaluationId);
+      .eq("id", evaluationId)
+      .in("processing_status", ["pending", "error"])
+      .select("id")
+      .maybeSingle();
+
+    if (!claimed && !forceRefresh) {
+      // Another instance already claimed this report
+      return new Response(
+        JSON.stringify({ status: 'processing', message: 'Relatório sendo gerado...' }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If forceRefresh but not claimed, still mark as processing
+    if (!claimed && forceRefresh) {
+      await supabase
+        .from("career_evaluations")
+        .update({
+          processing_status: 'processing',
+          processing_started_at: new Date().toISOString(),
+          processing_error: null
+        })
+        .eq("id", evaluationId);
+    }
 
     // Fetch sellable hub services (free + paid) for recommendations
     const { data: hubServices } = await supabase
@@ -310,445 +770,19 @@ ${servicesContext}
 INSTRUCAO FINAL:
 Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase ROTA, identificando barreiras, criando planos de acao detalhados e qualificando comercialmente o lead. Seja especifico, personalizado e orientado a resultados concretos.`;
 
-    const responseSchema = {
-      name: "format_career_report_v2",
-      strict: true,
-      schema: {
-        type: "object",
-        properties: {
-          report_metadata: {
-            type: "object",
-            properties: {
-              generated_at: { type: "string", description: "ISO timestamp de geracao" },
-              report_version: { type: "string", enum: ["2.0"], description: "Versao do relatorio (sempre 2.0)" },
-              ai_model_used: { type: "string", description: "Modelo de IA usado" },
-              prompt_version: { type: "string", description: "Versao do prompt usado" }
-            },
-            required: ["generated_at", "report_version", "ai_model_used", "prompt_version"],
-            additionalProperties: false
-          },
-          user_data: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              email: { type: "string" },
-              phone: { type: "string" },
-              area: { type: "string" },
-              atuacao: { type: "string" },
-              trabalha_internacional: { type: "boolean" },
-              experiencia: { type: "string" },
-              english_level: { type: "string" },
-              objetivo: { type: "string" },
-              visa_status: { type: "string" },
-              timeline: { type: "string" },
-              family_status: { type: "string" },
-              income_range: { type: "string" },
-              investment_range: { type: "string" },
-              impediment: { type: "string" },
-              main_concern: { type: "string" }
-            },
-            required: ["name", "email", "phone", "area", "atuacao", "trabalha_internacional", "experiencia", "english_level", "objetivo", "visa_status", "timeline", "family_status", "income_range", "investment_range", "impediment", "main_concern"],
-            additionalProperties: false
-          },
-          scoring: {
-            type: "object",
-            properties: {
-              readiness_score: { type: "number", description: "Score total de prontidao (0-100)" },
-              readiness_percentual: { type: "number", description: "Percentual de prontidao (0-100)" },
-              max_score: { type: "number", description: "Score maximo possivel" },
-              score_breakdown: {
-                type: "object",
-                properties: {
-                  score_english: { type: "number" },
-                  score_experience: { type: "number" },
-                  score_international_work: { type: "number" },
-                  score_timeline: { type: "number" },
-                  score_objective: { type: "number" },
-                  score_visa: { type: "number" },
-                  score_readiness: { type: "number" },
-                  score_area_bonus: { type: "number" }
-                },
-                required: ["score_english", "score_experience", "score_international_work", "score_timeline", "score_objective", "score_visa", "score_readiness", "score_area_bonus"],
-                additionalProperties: false
-              }
-            },
-            required: ["readiness_score", "readiness_percentual", "max_score", "score_breakdown"],
-            additionalProperties: false
-          },
-          phase_classification: {
-            type: "object",
-            properties: {
-              phase_id: { type: "number", description: "ID da fase (1-5)" },
-              phase_name: { type: "string", description: "Nome da fase" },
-              phase_emoji: { type: "string", description: "Emoji representativo" },
-              phase_color: { type: "string", description: "Cor em hex" },
-              rota_letter: { type: "string", enum: ["R", "O", "T", "A"], description: "Letra ROTA" },
-              urgency_level: { type: "string", enum: ["baixa", "media", "alta", "urgente"], description: "Nivel de urgencia" },
-              can_apply_jobs: { type: "boolean", description: "Pode aplicar para vagas?" },
-              estimated_preparation_months: { type: "number", description: "Meses estimados de preparacao" },
-              short_diagnosis: { type: "string", description: "Diagnostico resumido (1-2 frases)" },
-              full_diagnosis: { type: "string", description: "Diagnostico completo e detalhado" }
-            },
-            required: ["phase_id", "phase_name", "phase_emoji", "phase_color", "rota_letter", "urgency_level", "can_apply_jobs", "estimated_preparation_months", "short_diagnosis", "full_diagnosis"],
-            additionalProperties: false
-          },
-          barriers_analysis: {
-            type: "object",
-            properties: {
-              has_english_barrier: { type: "boolean" },
-              has_experience_barrier: { type: "boolean" },
-              has_financial_barrier: { type: "boolean" },
-              has_family_barrier: { type: "boolean" },
-              has_visa_barrier: { type: "boolean" },
-              has_time_barrier: { type: "boolean" },
-              has_clarity_barrier: { type: "boolean" },
-              critical_blockers: {
-                type: "array",
-                items: { type: "string" },
-                description: "Lista de bloqueadores criticos (max 5)"
-              },
-              recommended_first_action: { type: "string", description: "Proxima acao recomendada" }
-            },
-            required: ["has_english_barrier", "has_experience_barrier", "has_financial_barrier", "has_family_barrier", "has_visa_barrier", "has_time_barrier", "has_clarity_barrier", "critical_blockers", "recommended_first_action"],
-            additionalProperties: false
-          },
-          detailed_analysis: {
-            type: "object",
-            properties: {
-              english: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              experience: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              objective: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              timeline: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              visa_immigration: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              financial_context: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              mental_readiness: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              },
-              family_context: {
-                type: "object",
-                properties: {
-                  current_level: { type: "string" },
-                  score_contribution: { type: "number" },
-                  assessment: { type: "string" },
-                  is_barrier: { type: "boolean" },
-                  priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                  recommendation: { type: "string" }
-                },
-                required: ["current_level", "score_contribution", "assessment", "is_barrier", "priority", "recommendation"],
-                additionalProperties: false
-              }
-            },
-            required: ["english", "experience", "objective", "timeline", "visa_immigration", "financial_context", "mental_readiness", "family_context"],
-            additionalProperties: false
-          },
-          product_recommendation: {
-            type: "object",
-            properties: {
-              primary_offer: {
-                type: "object",
-                properties: {
-                  recommended_product_tier: { type: "string", description: "Tier do produto (ex: basico, intermediario, avancado)" },
-                  recommended_product_name: { type: "string", description: "Nome do produto/servico" },
-                  recommended_product_price: { type: "string", description: "Preco formatado" },
-                  recommended_product_url: { type: "string", description: "URL de checkout" },
-                  fit_score: { type: "number", description: "Score de fit (0-100)" },
-                  why_this_fits: { type: "string", description: "Por que este produto e ideal" },
-                  cta: { type: "string", description: "Texto do CTA" }
-                },
-                required: ["recommended_product_tier", "recommended_product_name", "recommended_product_price", "recommended_product_url", "fit_score", "why_this_fits", "cta"],
-                additionalProperties: false
-              },
-              secondary_offer: {
-                type: "object",
-                properties: {
-                  secondary_product_tier: { type: "string" },
-                  secondary_product_name: { type: "string" },
-                  secondary_fit_score: { type: "number" },
-                  why_alternative: { type: "string" }
-                },
-                required: ["secondary_product_tier", "secondary_product_name", "secondary_fit_score", "why_alternative"],
-                additionalProperties: false
-              },
-              financial_fit: {
-                type: "object",
-                properties: {
-                  has_budget: { type: "boolean", description: "Tem budget para investir?" },
-                  budget_gap: { type: "string", description: "Gap de budget se houver" },
-                  estimated_ltv: { type: "number", description: "Lifetime value estimado" }
-                },
-                required: ["has_budget", "budget_gap", "estimated_ltv"],
-                additionalProperties: false
-              }
-            },
-            required: ["primary_offer", "secondary_offer", "financial_fit"],
-            additionalProperties: false
-          },
-          lead_qualification: {
-            type: "object",
-            properties: {
-              lead_temperature: { type: "string", enum: ["frio", "morno", "quente", "muito-quente"], description: "Temperatura do lead" },
-              lead_priority_score: { type: "number", description: "Score de prioridade (0-100)" },
-              is_tech_professional: { type: "boolean" },
-              is_senior_level: { type: "boolean" },
-              works_remotely: { type: "boolean" },
-              has_family: { type: "boolean" },
-              is_high_income: { type: "boolean" },
-              best_contact_time: { type: "string", description: "Melhor horario de contato" },
-              preferred_communication: { type: "string", enum: ["whatsapp", "email", "call", "video"], description: "Canal preferido" }
-            },
-            required: ["lead_temperature", "lead_priority_score", "is_tech_professional", "is_senior_level", "works_remotely", "has_family", "is_high_income", "best_contact_time", "preferred_communication"],
-            additionalProperties: false
-          },
-          timeline_milestones: {
-            type: "object",
-            properties: {
-              next_milestone_action: { type: "string" },
-              next_milestone_deadline: { type: "string" },
-              recheck_recommended_at: { type: "string" },
-              scheduled_follow_up_1: { type: "string" },
-              scheduled_follow_up_2: { type: "string" },
-              scheduled_follow_up_3: { type: "string" },
-              auto_nurture_sequence: { type: "string" }
-            },
-            required: ["next_milestone_action", "next_milestone_deadline", "recheck_recommended_at", "scheduled_follow_up_1", "scheduled_follow_up_2", "scheduled_follow_up_3", "auto_nurture_sequence"],
-            additionalProperties: false
-          },
-          action_plan: {
-            type: "object",
-            properties: {
-              next_30_days: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    step_number: { type: "number" },
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                    estimated_hours_week: { type: "number" },
-                    milestone: { type: "string" }
-                  },
-                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
-                  additionalProperties: false
-                }
-              },
-              next_90_days: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    step_number: { type: "number" },
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                    estimated_hours_week: { type: "number" },
-                    milestone: { type: "string" }
-                  },
-                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
-                  additionalProperties: false
-                }
-              },
-              next_6_months: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    step_number: { type: "number" },
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    priority: { type: "string", enum: ["baixa", "media", "alta", "critica"] },
-                    estimated_hours_week: { type: "number" },
-                    milestone: { type: "string" }
-                  },
-                  required: ["step_number", "title", "description", "priority", "estimated_hours_week", "milestone"],
-                  additionalProperties: false
-                }
-              }
-            },
-            required: ["next_30_days", "next_90_days", "next_6_months"],
-            additionalProperties: false
-          },
-          web_report_data: {
-            type: "object",
-            properties: {
-              hero_section: {
-                type: "object",
-                properties: {
-                  headline: { type: "string" },
-                  subheadline: { type: "string" },
-                  score_display: { type: "string" },
-                  phase_badge: { type: "string" }
-                },
-                required: ["headline", "subheadline", "score_display", "phase_badge"],
-                additionalProperties: false
-              },
-              rota_framework_progress: {
-                type: "object",
-                properties: {
-                  current_phase: { type: "string" },
-                  phases: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        letter: { type: "string", enum: ["R", "O", "T", "A"] },
-                        name: { type: "string" },
-                        status: { type: "string", enum: ["concluido", "atual", "futuro"] },
-                        completion_percentage: { type: "number", description: "0-100" }
-                      },
-                      required: ["letter", "name", "status", "completion_percentage"],
-                      additionalProperties: false
-                    }
-                  }
-                },
-                required: ["current_phase", "phases"],
-                additionalProperties: false
-              },
-              key_metrics: {
-                type: "object",
-                properties: {
-                  strengths: { type: "array", items: { type: "string" } },
-                  critical_gaps: { type: "array", items: { type: "string" } },
-                  estimated_timeline_months: { type: "number" },
-                  can_start_applying: { type: "boolean" }
-                },
-                required: ["strengths", "critical_gaps", "estimated_timeline_months", "can_start_applying"],
-                additionalProperties: false
-              },
-              resources: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    type: { type: "string" },
-                    title: { type: "string" },
-                    url: { type: "string" },
-                    price: { type: "string" }
-                  },
-                  required: ["type", "title", "url", "price"],
-                  additionalProperties: false
-                }
-              }
-            },
-            required: ["hero_section", "rota_framework_progress", "key_metrics", "resources"],
-            additionalProperties: false
-          },
-          database_fields: {
-            type: "object",
-            properties: {
-              processing_status: { type: "string", enum: ["pending", "processing", "completed", "error"] },
-              processing_error: { type: "string" },
-              formatted_at: { type: "string" }
-            },
-            required: ["processing_status", "processing_error", "formatted_at"],
-            additionalProperties: false
-          }
-        },
-        required: [
-          "report_metadata",
-          "user_data",
-          "scoring",
-          "phase_classification",
-          "barriers_analysis",
-          "detailed_analysis",
-          "product_recommendation",
-          "lead_qualification",
-          "timeline_milestones",
-          "action_plan",
-          "web_report_data",
-          "database_fields"
-        ],
-        additionalProperties: false
-      }
-    };
+    // LOW-9: Use module-level RESPONSE_SCHEMA constant (avoids ~430-line re-allocation per request)
+    const responseSchema = RESPONSE_SCHEMA;
+
 
     let formattedReport;
 
     if (isAnthropic) {
       // ========== Anthropic Messages API ==========
       const anthropicSystemPrompt = systemPrompt + "\n\nIMPORTANT: Respond ONLY with valid JSON matching the schema described. Do not include any text outside the JSON object.";
+
+      // CRIT-2: Abort after 50s to prevent Edge Function timeout
+      const anthropicController = new AbortController();
+      const anthropicTimeout = setTimeout(() => anthropicController.abort(), 50000);
 
       const aiResponse = await fetch(`${apiConfigData.base_url || "https://api.anthropic.com/v1"}/messages`, {
         method: "POST",
@@ -763,7 +797,9 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
           system: anthropicSystemPrompt,
           messages: [{ role: "user", content: userContext }],
         }),
+        signal: anthropicController.signal,
       });
+      clearTimeout(anthropicTimeout);
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
@@ -826,6 +862,10 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       }
     } else {
       // ========== OpenAI Responses API ==========
+      // CRIT-2: Abort after 50s to prevent Edge Function timeout
+      const openaiController = new AbortController();
+      const openaiTimeout = setTimeout(() => openaiController.abort(), 50000);
+
       const aiResponse = await fetch(`${apiConfigData.base_url || "https://api.openai.com/v1"}/responses`, {
         method: "POST",
         headers: {
@@ -855,7 +895,9 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
             },
           },
         }),
+        signal: openaiController.signal,
       });
+      clearTimeout(openaiTimeout);
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
@@ -920,7 +962,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
     }
 
     // V2 reports: enrich product recommendations with live hub_services data
-    const enrichedReport = await enrichV2Recommendations(supabase, formattedReport, evaluationId);
+    const enrichedReport = await enrichV2Recommendations(supabase, formattedReport, evaluationId, hubServices);
 
     // Cache the formatted report and mark as completed
     await supabase
@@ -954,8 +996,9 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         }).eq("id", body.evaluationId);
       }
     } catch { /* best-effort */ }
+    // MED-6: Generic error message, never expose internals
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -972,14 +1015,20 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 async function enrichV2Recommendations(
   supabase: ReturnType<typeof createClient>,
   reportData: Record<string, any>,
-  evaluationId: string
+  evaluationId: string,
+  preloadedServices?: any[] | null
 ): Promise<Record<string, any>> {
   try {
-    const { data: hubServices } = await supabase
-      .from("hub_services")
-      .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
-      .in("status", ["available", "premium"])
-      .eq("is_visible_in_hub", true);
+    // MED-9: Reuse preloaded services if available, avoiding duplicate query
+    let hubServices = preloadedServices;
+    if (!hubServices) {
+      const { data } = await supabase
+        .from("hub_services")
+        .select("id, name, description, category, service_type, price, price_display, cta_text, ticto_checkout_url")
+        .in("status", ["available", "premium"])
+        .eq("is_visible_in_hub", true);
+      hubServices = data;
+    }
 
     if (!hubServices?.length) {
       return reportData;

@@ -1,6 +1,6 @@
 # Sistema de Pedidos (Orders System)
 
-**Versão:** 1.0
+**Versão:** 1.1
 **Data:** 2026-02-22
 **Autor:** Claude Code
 
@@ -577,6 +577,34 @@ CREATE POLICY "Admins can read all orders"
 - Admins têm acesso irrestrito para suporte
 - Usado em páginas admin como `/admin/pedidos`
 
+### RLS para Auditoria (payment_logs)
+
+**⚠️ Contexto (P0 Fix - Feb 2026):** A tabela `payment_logs` inicialmente só tinha política para admins, causando erro na página "Meus Pedidos" para usuários não-admin. Foi adicionada política de leitura para usuários.
+
+**Política 1: Usuários leem próprios logs**
+```sql
+CREATE POLICY "Users can read own payment logs"
+  ON payment_logs FOR SELECT
+  USING (user_id = auth.uid());
+```
+
+**Como funciona:**
+- Permite usuários visualizarem logs de auditoria dos próprios pagamentos
+- Necessário caso o frontend precise acessar `payment_logs` diretamente
+- Mantém separação: `orders` para UI, `payment_logs` para debug/auditoria
+
+**Política 2: Admins gerenciam todos os logs**
+```sql
+CREATE POLICY "Admins can manage payment logs"
+  ON payment_logs FOR ALL
+  USING (has_role(auth.uid(), 'admin'::app_role));
+```
+
+**Como funciona:**
+- Admins têm acesso total (SELECT, INSERT, UPDATE, DELETE)
+- Usado para investigações e correções manuais
+- Acesso ao payload completo do webhook TICTO
+
 ### Proteção do Webhook
 
 **1. Validação de Token**
@@ -1048,6 +1076,7 @@ LIMIT 10;
 
 - [ ] **Banco de Dados**
   - [ ] Rodar migration: `20260222000000_create_orders_table.sql`
+  - [ ] Rodar migration de segurança: `20260222300000_payment_audit_p0_fixes.sql` (RLS payment_logs)
   - [ ] Verificar RLS policies ativas: `SELECT * FROM orders LIMIT 1`
   - [ ] Rodar backfill (opcional): `20260222000001_backfill_orders_from_payment_logs.sql`
 
@@ -1073,6 +1102,27 @@ LIMIT 10;
   - [ ] Configurar alertas no Supabase
   - [ ] Monitorar taxa de erro do webhook (target: <1%)
   - [ ] Checar performance de queries (target: <100ms)
+
+---
+
+## ✅ Production Readiness Audit (Feb 2026)
+
+### P0 Critical Fixes Applied
+
+**Issue #2: MyOrders Page Broken for Non-Admin Users**
+- **Problem:** `payment_logs` table only had admin-only RLS policy, causing empty page for regular users
+- **Impact:** All users saw empty "Meus Pedidos" page despite having valid purchases
+- **Fix:** Added `CREATE POLICY "Users can read own payment logs" ON payment_logs FOR SELECT USING (user_id = auth.uid())`
+- **Migration:** `20260222300000_payment_audit_p0_fixes.sql`
+- **Status:** ✅ RESOLVED
+
+### Related Documentation Updates
+
+This document was updated to reflect:
+- ✅ RLS policies for both `orders` and `payment_logs` tables
+- ✅ Security context for P0 fix (line 580-608)
+- ✅ Deployment checklist includes P0 migration (line 1052)
+- ✅ Version bumped to 1.1 to reflect security improvements
 
 ---
 

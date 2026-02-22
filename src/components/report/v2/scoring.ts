@@ -33,7 +33,7 @@ export const BREAKDOWN_DIMENSIONS: DimensionConfig[] = [
   { breakdownKey: 'score_english', analysisKey: 'english', label: 'Inglês', maxScore: SCORE_MAX.score_english },
   { breakdownKey: 'score_experience', analysisKey: 'experience', label: 'Experiência', maxScore: SCORE_MAX.score_experience },
   { breakdownKey: 'score_international_work', label: 'Trabalho Internacional', maxScore: SCORE_MAX.score_international_work },
-  { breakdownKey: 'score_timeline', analysisKey: 'timeline', label: 'Timeline', maxScore: SCORE_MAX.score_timeline },
+  { breakdownKey: 'score_timeline', analysisKey: 'timeline', label: 'Cronograma', maxScore: SCORE_MAX.score_timeline },
   { breakdownKey: 'score_objective', analysisKey: 'objective', label: 'Objetivo', maxScore: SCORE_MAX.score_objective },
   { breakdownKey: 'score_visa', analysisKey: 'visa_immigration', label: 'Visto', maxScore: SCORE_MAX.score_visa },
   { breakdownKey: 'score_readiness', analysisKey: 'mental_readiness', label: 'Prontidão Mental', maxScore: SCORE_MAX.score_readiness },
@@ -47,7 +47,7 @@ export const ANALYSIS_DIMENSIONS: DimensionConfig[] = [
   { breakdownKey: 'score_readiness', analysisKey: 'mental_readiness', label: 'Prontidão Mental', maxScore: SCORE_MAX.score_readiness },
   { breakdownKey: 'score_experience', analysisKey: 'experience', label: 'Experiência', maxScore: SCORE_MAX.score_experience },
   { breakdownKey: 'score_objective', analysisKey: 'objective', label: 'Objetivo', maxScore: SCORE_MAX.score_objective },
-  { breakdownKey: 'score_timeline', analysisKey: 'timeline', label: 'Timeline', maxScore: SCORE_MAX.score_timeline },
+  { breakdownKey: 'score_timeline', analysisKey: 'timeline', label: 'Cronograma', maxScore: SCORE_MAX.score_timeline },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

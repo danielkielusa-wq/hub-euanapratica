@@ -20,7 +20,7 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
           <Zap size={22} className="fill-current" />
         </div>
         <h3 className="text-2xl font-black tracking-tight text-foreground">
-          Proximos Passos Estrategicos
+          Próximos Passos Estratégicos
         </h3>
       </div>
 
@@ -31,7 +31,7 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
-              <Sparkles size={12} className="fill-current" /> Recomendacao Para Voce
+              <Sparkles size={12} className="fill-current" /> Recomendação Para Você
             </div>
 
             <div className="flex items-start gap-4 mb-4">
@@ -39,9 +39,11 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
                 <FileText size={24} className="text-primary/80" />
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-background/50 mb-1">
-                  {primary.recommended_product_tier}
-                </p>
+                {primary.recommended_product_tier && (
+                  <p className="text-[10px] uppercase tracking-widest text-background/50 mb-1">
+                    {primary.recommended_product_tier.replace(/_/g, ' ')}
+                  </p>
+                )}
                 <h4 className="text-xl font-black mb-1">{primary.recommended_product_name}</h4>
                 <p className="text-background/60 text-sm">{primary.why_this_fits}</p>
               </div>
@@ -87,9 +89,11 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
               <Badge variant="secondary" className="text-[9px] uppercase mb-3">
                 Alternativa
               </Badge>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-                {secondary.secondary_product_tier}
-              </p>
+              {secondary.secondary_product_tier && (
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                  {secondary.secondary_product_tier.replace(/_/g, ' ')}
+                </p>
+              )}
               <h4 className="font-bold text-sm mb-2 text-foreground">
                 {secondary.secondary_product_name}
               </h4>
@@ -107,9 +111,14 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
                   metadata: {
                     cta_text: 'Saiba mais',
                     placement: 'report_v2_secondary',
-                    product_name: secondary.secondary_product_name
+                    product_name: secondary.secondary_product_name,
+                    url: secondary._enriched_checkout_url || null
                   }
                 });
+                const url = secondary._enriched_checkout_url;
+                if (url) {
+                  window.open(url, '_blank');
+                }
               }}
             >
               Saiba mais
@@ -119,7 +128,7 @@ export function V2ProductRecommendation({ recommendation }: V2ProductRecommendat
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-8 font-medium">
-        Todos os servicos contam com garantia de satisfacao de 7 dias.
+        Todos os serviços contam com garantia de satisfação de 7 dias.
       </p>
     </section>
   );

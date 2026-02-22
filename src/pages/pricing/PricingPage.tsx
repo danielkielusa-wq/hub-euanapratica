@@ -178,20 +178,16 @@ export default function PricingPage() {
       return;
     }
 
-    // Record terms acceptance
+    // Record terms acceptance via SECURITY DEFINER RPC (bypasses RLS)
     if (user?.id) {
-      await supabase.from('user_subscriptions').upsert(
-        {
-          user_id: user.id,
-          plan_id: plan.id,
-          status: 'inactive',
-          billing_cycle: billingCycle,
-          terms_accepted_at: new Date().toISOString(),
-          terms_version: 'v1.0-2026-02',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      );
+      const { error: termsError } = await supabase.rpc('accept_subscription_terms', {
+        p_plan_id: plan.id,
+        p_billing_cycle: billingCycle,
+        p_terms_version: 'v1.0-2026-02',
+      });
+      if (termsError) {
+        console.error('Failed to record terms acceptance:', termsError);
+      }
     }
 
     // Build checkout URL with pre-filled email

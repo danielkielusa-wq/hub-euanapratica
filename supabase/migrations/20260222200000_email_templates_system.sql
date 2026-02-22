@@ -366,6 +366,398 @@ INSERT INTO public.email_templates (name, display_name, subject, body_html, vari
 )
 ON CONFLICT (name) DO NOTHING;
 
+-- BOOKING REMINDER TEMPLATES
+INSERT INTO public.email_templates (name, display_name, subject, body_html, variables, category, description) VALUES
+(
+  'booking_reminder',
+  'Agendamento - Lembrete 24h',
+  '📅 Lembrete: Sessão amanhã - {{serviceName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                📅 Lembrete de Sessão
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá <strong>{{studentName}}</strong>,
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Este é um lembrete da sua sessão de mentoria agendada para amanhã.
+              </p>
+              <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 16px; padding: 24px; margin: 24px 0; border: 1px solid #e9d5ff;">
+                <h2 style="color: #7c3aed; margin: 0 0 16px; font-size: 20px;">{{serviceName}}</h2>
+                <p style="color: #6b21a8; font-size: 16px; margin: 0;">
+                  📅 {{formattedDate}}<br>
+                  ⏰ {{formattedTime}}<br>
+                  👤 com {{mentorName}}
+                </p>
+              </div>
+              {{meetingLinkSection}}
+              <div style="background-color: #fafafa; border-radius: 12px; padding: 16px; margin: 24px 0;">
+                <p style="color: #71717a; font-size: 13px; margin: 0;">
+                  💡 <strong>Dica:</strong> Prepare suas dúvidas e materiais com antecedência para aproveitar ao máximo sua sessão.
+                </p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{studentName}}", "{{serviceName}}", "{{formattedDate}}", "{{formattedTime}}", "{{mentorName}}", "{{meetingLinkSection}}"]'::JSONB,
+  'booking',
+  'Enviado 24 horas antes da sessão agendada'
+),
+(
+  'booking_reminder_1h',
+  'Agendamento - Lembrete 1h',
+  '⏰ Sua sessão começa em 1 hora: {{serviceName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                ⏰ Sua sessão começa em breve!
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá <strong>{{studentName}}</strong>,
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Sua sessão de mentoria começa em aproximadamente 1 hora!
+              </p>
+              <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 16px; padding: 24px; margin: 24px 0; border: 1px solid #e9d5ff;">
+                <h2 style="color: #7c3aed; margin: 0 0 16px; font-size: 20px;">{{serviceName}}</h2>
+                <p style="color: #6b21a8; font-size: 16px; margin: 0;">
+                  📅 {{formattedDate}}<br>
+                  ⏰ {{formattedTime}}<br>
+                  👤 com {{mentorName}}
+                </p>
+              </div>
+              {{meetingLinkSection}}
+              <div style="background-color: #fafafa; border-radius: 12px; padding: 16px; margin: 24px 0;">
+                <p style="color: #71717a; font-size: 13px; margin: 0;">
+                  💡 <strong>Dica:</strong> Prepare suas dúvidas e materiais com antecedência para aproveitar ao máximo sua sessão.
+                </p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{studentName}}", "{{serviceName}}", "{{formattedDate}}", "{{formattedTime}}", "{{mentorName}}", "{{meetingLinkSection}}"]'::JSONB,
+  'booking',
+  'Enviado 1 hora antes da sessão agendada'
+)
+ON CONFLICT (name) DO NOTHING;
+
+-- BOOKING RESCHEDULED TEMPLATE
+INSERT INTO public.email_templates (name, display_name, subject, body_html, variables, category, description) VALUES
+(
+  'booking_rescheduled',
+  'Agendamento - Reagendado',
+  '🔄 Agendamento Reagendado: {{serviceName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                🔄 Agendamento Reagendado
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá <strong>{{studentName}}</strong>,
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Sua sessão de <strong>{{serviceName}}</strong> foi reagendada.
+              </p>
+              {{oldDateSection}}
+              <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 16px; padding: 24px; margin: 16px 0; border: 1px solid #93c5fd;">
+                <p style="color: #1e40af; font-size: 12px; font-weight: 600; margin: 0 0 8px;">✅ Novo Horário:</p>
+                <h2 style="color: #1d4ed8; margin: 0 0 8px; font-size: 18px;">{{formattedDate}}</h2>
+                <p style="color: #1e40af; font-size: 16px; font-weight: 600; margin: 0;">{{formattedTime}}</p>
+                <p style="color: #3b82f6; font-size: 14px; margin: 12px 0 0;">👤 com {{mentorName}}</p>
+              </div>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="{{manageBookingLink}}" style="display: inline-block; background: #18181b; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+                  Ver Meus Agendamentos
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{studentName}}", "{{serviceName}}", "{{oldDateSection}}", "{{formattedDate}}", "{{formattedTime}}", "{{mentorName}}", "{{manageBookingLink}}"]'::JSONB,
+  'booking',
+  'Enviado quando um agendamento é reagendado'
+)
+ON CONFLICT (name) DO NOTHING;
+
+-- BOOKING CANCELLED / NO-SHOW TEMPLATES
+INSERT INTO public.email_templates (name, display_name, subject, body_html, variables, category, description) VALUES
+(
+  'booking_cancelled',
+  'Agendamento - Cancelado',
+  '❌ Agendamento Cancelado: {{serviceName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden;">
+          <tr>
+            <td style="background: #71717a; padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                ❌ Agendamento Cancelado
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá <strong>{{studentName}}</strong>,
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Seu agendamento foi cancelado conforme solicitado.
+              </p>
+              <div style="background: #f4f4f5; border-radius: 16px; padding: 24px; margin: 24px 0;">
+                <h2 style="color: #18181b; margin: 0 0 16px; font-size: 18px;">{{serviceName}}</h2>
+                <p style="color: #71717a; font-size: 14px; margin: 0;">
+                  📅 {{formattedDate}}<br>
+                  ⏰ {{formattedTime}}<br>
+                  👤 {{mentorName}}
+                </p>
+              </div>
+              {{cancellationReasonSection}}
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{studentName}}", "{{serviceName}}", "{{formattedDate}}", "{{formattedTime}}", "{{mentorName}}", "{{cancellationReasonSection}}"]'::JSONB,
+  'booking',
+  'Enviado quando um agendamento é cancelado'
+),
+(
+  'booking_no_show',
+  'Agendamento - Não Comparecimento',
+  '⚠️ Não Comparecimento: {{serviceName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden;">
+          <tr>
+            <td style="background: #dc2626; padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                ⚠️ Não Comparecimento
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá <strong>{{studentName}}</strong>,
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Seu agendamento foi cancelado dentro do período mínimo e foi registrado como não comparecimento.
+              </p>
+              <div style="background: #f4f4f5; border-radius: 16px; padding: 24px; margin: 24px 0;">
+                <h2 style="color: #18181b; margin: 0 0 16px; font-size: 18px;">{{serviceName}}</h2>
+                <p style="color: #71717a; font-size: 14px; margin: 0;">
+                  📅 {{formattedDate}}<br>
+                  ⏰ {{formattedTime}}<br>
+                  👤 {{mentorName}}
+                </p>
+              </div>
+              {{cancellationReasonSection}}
+              <div style="background-color: #fef2f2; border-radius: 12px; padding: 16px; margin: 24px 0; border: 1px solid #fecaca;">
+                <p style="color: #991b1b; font-size: 13px; margin: 0;">
+                  ⚠️ Cancelamentos tardios podem afetar suas futuras opções de agendamento.
+                  Por favor, tente cancelar com mais antecedência na próxima vez.
+                </p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{studentName}}", "{{serviceName}}", "{{formattedDate}}", "{{formattedTime}}", "{{mentorName}}", "{{cancellationReasonSection}}"]'::JSONB,
+  'booking',
+  'Enviado quando há não comparecimento em agendamento'
+)
+ON CONFLICT (name) DO NOTHING;
+
+-- ESPACO INVITATION TEMPLATE
+INSERT INTO public.email_templates (name, display_name, subject, body_html, variables, category, description) VALUES
+(
+  'espaco_invitation',
+  'Espaço - Convite',
+  '🎉 Você foi convidado para: {{espacoName}}',
+  '<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: ''Inter'', -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 48px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">
+                🎉 Você foi convidado!
+              </h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                Olá {{invitedNameGreeting}},
+              </p>
+              <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                <strong>{{mentorName}}</strong> te convidou para participar do espaço:
+              </p>
+              <div style="background: linear-gradient(135deg, #f0f0ff, #faf5ff); border-radius: 16px; padding: 24px; margin: 24px 0; text-align: center; border: 1px solid #e4e4e7;">
+                <h2 style="color: #6366f1; margin: 0; font-size: 22px; font-weight: 700;">
+                  {{espacoName}}
+                </h2>
+              </div>
+              <div style="background-color: #fafafa; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                <p style="color: #52525b; font-size: 14px; font-weight: 600; margin: 0 0 12px;">📋 Para começar:</p>
+                <ol style="color: #71717a; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                  <li>Clique no botão abaixo</li>
+                  <li>Complete seu cadastro</li>
+                  <li>Preencha o onboarding</li>
+                  <li>Acesse "Meus Espaços" e comece!</li>
+                </ol>
+              </div>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="{{inviteLink}}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff; text-decoration: none; padding: 18px 40px; border-radius: 16px; font-weight: 700; font-size: 18px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+                  Aceitar Convite e Criar Conta
+                </a>
+              </div>
+              <p style="color: #a1a1aa; font-size: 13px; line-height: 1.6; margin: 30px 0 0; text-align: center;">
+                ⏰ Este convite expira em <strong>7 dias</strong>.
+              </p>
+              <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e4e4e7;">
+                <p style="color: #a1a1aa; font-size: 12px; margin: 0; text-align: center;">
+                  Se o botão não funcionar, copie e cole este link no navegador:
+                </p>
+                <p style="color: #6366f1; font-size: 11px; word-break: break-all; margin: 8px 0 0; text-align: center;">
+                  <a href="{{inviteLink}}" style="color: #6366f1;">{{inviteLink}}</a>
+                </p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
+              <p style="color: #a1a1aa; font-size: 12px; margin: 0;">© 2026 EUA Na Prática. Todos os direitos reservados.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>',
+  '["{{invitedNameGreeting}}", "{{mentorName}}", "{{espacoName}}", "{{inviteLink}}"]'::JSONB,
+  'espaco',
+  'Enviado ao convidar aluno para um espaço'
+)
+ON CONFLICT (name) DO NOTHING;
+
 -- Comments
 COMMENT ON TABLE public.email_templates IS 'Templates de email centralizados com editor WYSIWYG (Unlayer)';
 COMMENT ON COLUMN public.email_templates.name IS 'Identificador único usado no código (ex: booking_confirmation)';

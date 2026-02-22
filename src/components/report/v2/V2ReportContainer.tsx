@@ -41,56 +41,70 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
 
       <main className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 md:space-y-10 print:space-y-6">
         {/* 1. Hero + Score + Profile Chips */}
-        <V2HeaderScore
-          scoring={data.scoring}
-          phase={data.phase_classification}
-          hero={data.web_report_data.hero_section}
-          evaluation={evaluation}
-        />
+        {data.scoring && data.phase_classification && data.web_report_data?.hero_section && (
+          <V2HeaderScore
+            scoring={data.scoring}
+            phase={data.phase_classification}
+            hero={data.web_report_data.hero_section}
+            evaluation={evaluation}
+          />
+        )}
 
         {/* 2. Pontuação por dimensão */}
-        <ScrollReveal>
-          <V2ScoreBreakdown
-            breakdown={data.scoring.score_breakdown}
-            analysis={data.detailed_analysis}
-          />
-        </ScrollReveal>
+        {data.scoring?.score_breakdown && (
+          <ScrollReveal>
+            <V2ScoreBreakdown
+              breakdown={data.scoring.score_breakdown}
+              analysis={data.detailed_analysis}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 3. Jornada ROTA */}
-        <ScrollReveal>
-          <V2RotaProgress
-            progress={rotaProgress}
-          />
-        </ScrollReveal>
+        {data.web_report_data?.rota_framework_progress && (
+          <ScrollReveal>
+            <V2RotaProgress
+              progress={rotaProgress}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 4. Bloqueadores críticos */}
-        <ScrollReveal>
-          <V2CriticalBlockers
-            barriers={data.barriers_analysis}
-          />
-        </ScrollReveal>
+        {data.barriers_analysis && (
+          <ScrollReveal>
+            <V2CriticalBlockers
+              barriers={data.barriers_analysis}
+            />
+          </ScrollReveal>
+        )}
 
-        {/* 5. Forças e gaps */}
-        <ScrollReveal>
-          <V2StrengthsGaps
-            metrics={data.web_report_data.key_metrics}
-          />
-        </ScrollReveal>
+        {/* 5. Pontos Fortes e Lacunas */}
+        {data.web_report_data?.key_metrics && (
+          <ScrollReveal>
+            <V2StrengthsGaps
+              metrics={data.web_report_data.key_metrics}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 6. Análise detalhada (accordion) */}
-        <ScrollReveal>
-          <V2DetailedAnalysis
-            analysis={data.detailed_analysis}
-            breakdown={data.scoring.score_breakdown}
-          />
-        </ScrollReveal>
+        {data.detailed_analysis && data.scoring?.score_breakdown && (
+          <ScrollReveal>
+            <V2DetailedAnalysis
+              analysis={data.detailed_analysis}
+              breakdown={data.scoring.score_breakdown}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 7. Plano de ação */}
-        <ScrollReveal>
-          <V2ActionPlan
-            actionPlan={data.action_plan}
-          />
-        </ScrollReveal>
+        {data.action_plan && (
+          <ScrollReveal>
+            <V2ActionPlan
+              actionPlan={data.action_plan}
+            />
+          </ScrollReveal>
+        )}
 
         {/* 8. Próximos checkpoints */}
         {data.timeline_milestones && (

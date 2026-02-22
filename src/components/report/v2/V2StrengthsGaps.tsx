@@ -9,7 +9,7 @@ interface V2StrengthsGapsProps {
 export function V2StrengthsGaps({ metrics }: V2StrengthsGapsProps) {
   return (
     <div className="space-y-3">
-      <h2 className="text-xl font-bold text-foreground">Forças e gaps</h2>
+      <h2 className="text-xl font-bold text-foreground">Pontos Fortes e Lacunas</h2>
 
       <Card className="rounded-3xl shadow-sm">
         <CardContent className="p-4 sm:p-5 md:p-8">
@@ -25,7 +25,7 @@ export function V2StrengthsGaps({ metrics }: V2StrengthsGapsProps) {
               {metrics.strengths.length > 0 ? (
                 <ul className="space-y-2.5">
                   {metrics.strengths.map((s, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                    <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground leading-relaxed">
                       <span className="mt-2 w-1 h-1 rounded-full bg-green-500 shrink-0" />
                       {s}
                     </li>

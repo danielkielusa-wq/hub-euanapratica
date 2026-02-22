@@ -196,11 +196,19 @@ export default function Onboarding() {
         await refreshUser();
       }
       toast.success('Perfil configurado com sucesso!');
+
+      // Fire-and-forget: send welcome email (don't block navigation)
+      if (user?.id) {
+        supabase.functions.invoke('send-welcome-email', {
+          body: { user_id: user.id },
+        }).catch((err) => console.error('Welcome email error:', err));
+      }
+
       navigate(getDashboardPath(), { replace: true });
     } catch (error) {
       toast.error('Erro ao finalizar. Tente novamente.');
     }
-  }, [saveProgress, completeOnboarding, navigate, getDashboardPath]);
+  }, [saveProgress, completeOnboarding, navigate, getDashboardPath, user?.id]);
 
   if (isLoading) {
     return (

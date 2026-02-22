@@ -44,7 +44,7 @@ export function V2CriticalBlockers({ barriers }: V2CriticalBlockersProps) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-xs sm:text-sm text-foreground">{blocker}</h3>
                     <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5">
-                      {index < 2 ? 'Prioritário' : 'Importante'}
+                      {index < Math.ceil(blockers.length / 2) ? 'Prioritário' : 'Importante'}
                     </Badge>
                   </div>
                 </div>

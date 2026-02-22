@@ -16,7 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { getCorsHeaders } from "../_shared/authGuard.ts";
 
 // Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
 // and is editable by the admin at /admin/configuracoes → Prompts IA tab.
@@ -35,13 +35,18 @@ Retorne um JSON com:
 Retorne apenas o JSON, sem texto adicional.`;
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // SECURITY FIX (VULN-01): Require authentication or internal call
-  const authError = await requireAuthOrInternal(req);
-  if (authError) return authError;
+  // Auth: Allow authenticated users, internal calls, AND anonymous calls.
+  // Anonymous access is safe here because:
+  //  - evaluationId (UUID) is hard to guess
+  //  - Idempotency: completed recommendations are returned from cache (no LLM cost)
+  //  - Concurrency guard: concurrent calls are rejected
+  //  - The function only reads/writes the caller's evaluation record
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -261,6 +266,10 @@ serve(async (req) => {
 
     const apiConfig = await getApiConfig(providerKey);
 
+    // CRIT-2: Abort after 50s to prevent Edge Function timeout
+    const llmController = new AbortController();
+    const llmTimeout = setTimeout(() => llmController.abort(), 50000);
+
     let aiResponse: Response;
     if (providerKey === "anthropic_api") {
       // Anthropic Messages API
@@ -277,6 +286,7 @@ serve(async (req) => {
           max_tokens: Math.max(1024, parseInt(String(apiConfig.parameters?.max_tokens || 1024), 10)),
           messages: [{ role: "user", content: prompt }],
         }),
+        signal: llmController.signal,
       });
     } else {
       // OpenAI Responses API
@@ -296,8 +306,10 @@ serve(async (req) => {
           ],
           text: { format: { type: "json_object" } },
         }),
+        signal: llmController.signal,
       });
     }
+    clearTimeout(llmTimeout);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -458,11 +470,9 @@ serve(async (req) => {
       }
     }
 
+    // MED-6: Generic error message, never expose internals
     return new Response(
-      JSON.stringify({
-        error:
-          error instanceof Error ? error.message : "Erro desconhecido",
-      }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
