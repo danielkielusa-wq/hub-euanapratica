@@ -62,7 +62,15 @@ export function useAIDailyPriorities() {
         { body: {} }
       );
 
-      if (error) throw error;
+      if (error) {
+        // Extract actual error message from response body
+        let detail = '';
+        try {
+          const body = await error.context?.json?.();
+          detail = body?.error || body?.message || '';
+        } catch { /* ignore parse errors */ }
+        throw new Error(detail || error.message);
+      }
       if (result?.error) throw new Error(result.error);
 
       // Validate basic structure
