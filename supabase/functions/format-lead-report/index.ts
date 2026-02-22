@@ -1008,7 +1008,7 @@ async function enrichV2Recommendations(
             recommended_product_tier: tier,
             recommended_product_name: evaluation.recommended_product_name,
             recommended_product_price: matched?.price_display || '',
-            recommended_product_url: matched?.ticto_checkout_url || evaluation.recommendation_landing_page_url || '/hub',
+            recommended_product_url: matched?.ticto_checkout_url || evaluation.recommendation_landing_page_url || 'https://hub.euanapratica.com',
             fit_score: 80,
             why_this_fits: evaluation.recommendation_description || '',
             cta: matched?.cta_text || `Conhecer ${evaluation.recommended_product_name}`,

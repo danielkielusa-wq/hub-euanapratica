@@ -533,6 +533,9 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
+      {/* Legacy /hub redirect */}
+      <Route path="/hub" element={<Navigate to="/" replace />} />
+
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>

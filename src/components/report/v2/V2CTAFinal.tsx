@@ -26,8 +26,8 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CT
     ? `Conhecer ${llmRecommendation.productName}`
     : primary?.cta || 'Acessar o Hub Gratuito';
   const ctaUrl = hasLlmRec
-    ? llmRecommendation.landingPageUrl || primary?.recommended_product_url || '/hub'
-    : primary?.recommended_product_url || '/hub';
+    ? llmRecommendation.landingPageUrl || primary?.recommended_product_url || 'https://hub.euanapratica.com'
+    : primary?.recommended_product_url || 'https://hub.euanapratica.com';
   const description = hasLlmRec && llmRecommendation.description
     ? llmRecommendation.description
     : primary?.why_this_fits || 'Acesse o Hub gratuito e comece sua preparação hoje. Materiais, comunidade e suporte — tudo que você precisa para dar o primeiro passo.';
@@ -113,7 +113,7 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CT
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                euanapratica.com/hub
+                {ctaUrl.replace(/^https?:\/\//, '')}
               </a>
             </p>
           </div>
@@ -142,7 +142,7 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CT
               entity_type: 'explorer_program',
               metadata: { placement: 'report_v2_explorer_invite' },
             });
-            window.open('/hub?explorer=1', '_blank');
+            window.open('https://hub.euanapratica.com', '_blank');
           }}
         >
           Quero ser Explorer
