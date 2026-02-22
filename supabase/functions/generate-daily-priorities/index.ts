@@ -145,8 +145,15 @@ Deno.serve(async (req) => {
       .eq("key", "daily_priorities_prompt")
       .single();
 
+    const { data: leadLimitRow } = await supabase
+      .from("app_configs")
+      .select("value")
+      .eq("key", "daily_priorities_lead_limit")
+      .single();
+
     const selectedApiKey = apiConfigRow?.value || "anthropic_api";
-    console.log(`[generate-daily-priorities] API config: ${selectedApiKey} (from db: ${apiConfigRow?.value || 'NOT FOUND, using default'})`);
+    const leadLimit = Math.min(500, Math.max(10, parseInt(leadLimitRow?.value || "80", 10) || 80));
+    console.log(`[generate-daily-priorities] API config: ${selectedApiKey}, lead limit: ${leadLimit}`);
 
     // ── 1. Query completed career_evaluations ───────────────────────
 
@@ -168,7 +175,7 @@ Deno.serve(async (req) => {
       `)
       .eq("processing_status", "completed")
       .order("lead_priority_score", { ascending: false, nullsFirst: false })
-      .limit(80);
+      .limit(leadLimit);
 
     if (leadsError) {
       console.error("[generate-daily-priorities] Leads query failed:", leadsError.message);

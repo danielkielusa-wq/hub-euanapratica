@@ -48,6 +48,7 @@ export default function AdminSettings() {
   // Daily Priorities config
   const [dpPrompt, setDpPrompt] = useState('');
   const [dpApiConfig, setDpApiConfig] = useState('anthropic_api');
+  const [dpLeadLimit, setDpLeadLimit] = useState('80');
   const [hasDpChanges, setHasDpChanges] = useState(false);
 
   // Upsell config
@@ -94,6 +95,8 @@ export default function AdminSettings() {
     if (dpPromptValue) setDpPrompt(dpPromptValue);
     const dpApiValue = getConfigValue('daily_priorities_api_config');
     if (dpApiValue) setDpApiConfig(dpApiValue);
+    const dpLimitValue = getConfigValue('daily_priorities_lead_limit');
+    if (dpLimitValue) setDpLeadLimit(dpLimitValue);
 
     // Load upsell configs
     const upsellEnabledValue = getConfigValue('upsell_enabled');
@@ -164,11 +167,13 @@ export default function AdminSettings() {
   useEffect(() => {
     const originalPrompt = getConfigValue('daily_priorities_prompt');
     const originalApi = getConfigValue('daily_priorities_api_config');
+    const originalLimit = getConfigValue('daily_priorities_lead_limit');
     setHasDpChanges(
       dpPrompt !== originalPrompt ||
-      dpApiConfig !== (originalApi || 'anthropic_api')
+      dpApiConfig !== (originalApi || 'anthropic_api') ||
+      dpLeadLimit !== (originalLimit || '80')
     );
-  }, [dpPrompt, dpApiConfig, configs]);
+  }, [dpPrompt, dpApiConfig, dpLeadLimit, configs]);
 
   useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
@@ -236,6 +241,7 @@ export default function AdminSettings() {
     await Promise.all([
       updateConfig('daily_priorities_prompt', dpPrompt),
       updateConfig('daily_priorities_api_config', dpApiConfig),
+      updateConfig('daily_priorities_lead_limit', dpLeadLimit),
     ]);
     setHasDpChanges(false);
   };
@@ -765,6 +771,21 @@ export default function AdminSettings() {
                       )}
                       <p className="text-xs text-muted-foreground">
                         A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Limite de Leads</Label>
+                      <Input
+                        type="number"
+                        min="10"
+                        max="500"
+                        value={dpLeadLimit}
+                        onChange={(e) => setDpLeadLimit(e.target.value)}
+                        className="w-32 rounded-xl"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade maxima de leads enviados para a IA analisar (ordenados por priority score). Valores maiores geram analises mais completas mas custam mais tokens.
                       </p>
                     </div>
 
