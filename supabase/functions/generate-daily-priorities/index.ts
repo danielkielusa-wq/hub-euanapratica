@@ -286,13 +286,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Detect API type
+    // Detect API type from base_url only (not from key name)
+    // OpenRouter, Together, etc. are OpenAI-compatible — only direct anthropic.com uses Anthropic SDK format
     const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
-    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const isAnthropic = baseUrlLower.includes("anthropic.com");
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[generate-daily-priorities] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}, Leads: ${leadsContext.length}`);
+    console.log(`[generate-daily-priorities] API key: "${selectedApiKey}", name: "${apiConfigData.name}", base_url: "${apiConfigData.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}, leads: ${leadsContext.length}`);
 
     // ── 6. Build prompt ─────────────────────────────────────────────
 

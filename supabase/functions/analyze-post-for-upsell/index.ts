@@ -209,16 +209,16 @@ serve(async (req) => {
       throw new Error(`API key not configured for ${selectedApiKey}`);
     }
 
-    // Detect API type
+    // Detect API type from base_url only (not from key name)
     const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const isAnthropic = baseUrlLower.includes("anthropic.com");
 
     // Model: prefer API config model (always compatible with the provider),
     // then per-app override, then sensible defaults
     const model = apiConfig.parameters?.model || configMap.upsell_model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
-    console.log(`[Upsell] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${model}`);
+    console.log(`[Upsell] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${model}`);
 
     // Preparar serviços para o prompt
     const servicesJson = JSON.stringify(

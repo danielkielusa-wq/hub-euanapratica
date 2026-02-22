@@ -495,13 +495,13 @@ serve(async (req) => {
       );
     }
 
-    // Detect API type
+    // Detect API type from base_url only (not from key name)
     const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
-    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const isAnthropic = baseUrlLower.includes("anthropic.com");
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[format-lead-report] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}`);
+    console.log(`[format-lead-report] API: "${selectedApiKey}" (${apiConfigData.name}), base_url: "${apiConfigData.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
 
     // Fetch evaluation first
     const { data: evaluation, error: evalError } = await supabase

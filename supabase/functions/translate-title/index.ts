@@ -172,11 +172,15 @@ serve(async (req) => {
       );
     }
 
+    // Detect API type from base_url only (not from key name)
+    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
+    const isAnthropic = baseUrlLower.includes("anthropic.com");
+
     // Get model from API parameters (fallback to defaults)
     const selectedModel = apiConfig.parameters?.model ||
-      (selectedApiKey === "anthropic_api" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
+      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
-    console.log(`[translate-title] Using API: ${selectedApiKey}, Model: ${selectedModel}`);
+    console.log(`[translate-title] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
 
     // JSON schema for structured output
     const responseSchema = {
@@ -211,12 +215,6 @@ serve(async (req) => {
     };
 
     let result: any;
-
-    // Detect API type: check slug first, then base_url for custom slugs
-    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
-
-    console.log(`[translate-title] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, base_url: ${apiConfig.base_url}`);
 
     // Route to the appropriate API
     if (isAnthropic) {

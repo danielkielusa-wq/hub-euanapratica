@@ -321,13 +321,13 @@ Responda em português brasileiro de forma clara e direta.`;
       );
     }
 
-    // Detect API type
+    // Detect API type from base_url only (not from key name)
     const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = selectedApiKey === "anthropic_api" || baseUrlLower.includes("anthropic.com");
+    const isAnthropic = baseUrlLower.includes("anthropic.com");
     const selectedModel = apiConfig.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[analyze-resume] API type: ${isAnthropic ? "Anthropic" : "OpenAI"}, Model: ${selectedModel}`);
+    console.log(`[analyze-resume] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
 
     const responseSchema = {
       name: "resume_analysis",
