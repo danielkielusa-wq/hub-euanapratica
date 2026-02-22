@@ -1792,6 +1792,119 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_interactions: {
+        Row: {
+          channel: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          direction: string | null
+          id: string
+          lead_id: string
+          metadata: Json | null
+          type: string
+        }
+        Insert: {
+          channel?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json | null
+          type: string
+        }
+        Update: {
+          channel?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_interactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_tasks: {
+        Row: {
+          ai_generation_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lead_id: string
+          priority: string
+          source: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          ai_generation_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id: string
+          priority?: string
+          source?: string
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          ai_generation_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lead_id?: string
+          priority?: string
+          source?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_downloads: {
         Row: {
           downloaded_at: string | null
@@ -3374,6 +3487,57 @@ export type Database = {
           },
         ]
       }
+      waitlist_mentoriarota: {
+        Row: {
+          contacted_at: string | null
+          created_at: string
+          email: string
+          enrolled_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          referrer: string | null
+          status: Database["public"]["Enums"]["waitlist_mentoriarota_status"]
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          whatsapp: string
+        }
+        Insert: {
+          contacted_at?: string | null
+          created_at?: string
+          email: string
+          enrolled_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          referrer?: string | null
+          status?: Database["public"]["Enums"]["waitlist_mentoriarota_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp: string
+        }
+        Update: {
+          contacted_at?: string | null
+          created_at?: string
+          email?: string
+          enrolled_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          referrer?: string | null
+          status?: Database["public"]["Enums"]["waitlist_mentoriarota_status"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       brazil_friendly_jobs: {
@@ -3896,6 +4060,11 @@ export type Database = {
       submission_status: "draft" | "submitted" | "reviewed"
       submission_type: "file" | "text" | "both"
       visibility_scope: "space_all" | "mentor_and_owner"
+      waitlist_mentoriarota_status:
+        | "waiting"
+        | "contacted"
+        | "enrolled"
+        | "declined"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4078,6 +4247,12 @@ export const Constants = {
       submission_status: ["draft", "submitted", "reviewed"],
       submission_type: ["file", "text", "both"],
       visibility_scope: ["space_all", "mentor_and_owner"],
+      waitlist_mentoriarota_status: [
+        "waiting",
+        "contacted",
+        "enrolled",
+        "declined",
+      ],
     },
   },
 } as const

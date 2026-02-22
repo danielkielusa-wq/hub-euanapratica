@@ -84,3 +84,6 @@ verify_jwt = false
 
 [functions.send-session-reminder]
 verify_jwt = false
+
+[functions.generate-daily-priorities]
+verify_jwt = false

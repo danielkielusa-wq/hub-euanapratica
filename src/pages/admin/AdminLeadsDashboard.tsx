@@ -4,10 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, CheckCircle2, AlertCircle, Eye, RefreshCw, Search,
-  ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink
+  ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink, Info, Brain
 } from 'lucide-react';
+import { AIDailyPrioritiesPanel } from '@/components/admin/ai-priorities/AIDailyPrioritiesPanel';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import { cn } from '@/lib/utils';
@@ -15,6 +17,21 @@ import { cn } from '@/lib/utils';
 const REPORT_BASE = 'https://hub.euanapratica.com/report/';
 const PER_PAGE = 20;
 const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className="text-gray-300 hover:text-gray-500 transition-colors focus:outline-none" type="button">
+          <Info className="w-3.5 h-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[240px] whitespace-pre-line leading-relaxed">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface LeadRow {
   id: string;
@@ -47,8 +64,8 @@ interface LeadRow {
 
 type PeriodDays = 7 | 30 | 90 | 0;
 
-function KPICard({ label, value, subValue, icon: Icon, colorClass }: {
-  label: string; value: string | number; subValue: string; icon: React.ElementType; colorClass: string;
+function KPICard({ label, value, subValue, icon: Icon, colorClass, tooltip }: {
+  label: string; value: string | number; subValue: string; icon: React.ElementType; colorClass: string; tooltip?: string;
 }) {
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:border-blue-100 transition-all">
@@ -56,6 +73,7 @@ function KPICard({ label, value, subValue, icon: Icon, colorClass }: {
         <div className={cn("p-3 rounded-2xl", colorClass)}>
           <Icon className="w-6 h-6" />
         </div>
+        {tooltip && <InfoTip text={tooltip} />}
       </div>
       <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
       <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{value}</h3>
@@ -64,18 +82,21 @@ function KPICard({ label, value, subValue, icon: Icon, colorClass }: {
   );
 }
 
-function Card({ children, className, title, icon: Icon, subtitle }: {
-  children: React.ReactNode; className?: string; title?: string; icon?: React.ElementType; subtitle?: string;
+function Card({ children, className, title, icon: Icon, subtitle, tooltip }: {
+  children: React.ReactNode; className?: string; title?: string; icon?: React.ElementType; subtitle?: string; tooltip?: string;
 }) {
   return (
     <div className={cn("bg-white rounded-3xl border border-gray-100 shadow-sm p-6", className)}>
       {(title || Icon) && (
-        <div className="flex items-center gap-2 mb-6">
-          {Icon && <Icon className="w-5 h-5 text-gray-400" />}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+        <div className="flex items-start justify-between gap-2 mb-6">
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="w-5 h-5 text-gray-400" />}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+              {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+            </div>
           </div>
+          {tooltip && <InfoTip text={tooltip} />}
         </div>
       )}
       {children}
@@ -94,6 +115,7 @@ export default function AdminLeadsDashboard() {
   const [tempFilter, setTempFilter] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [prioritiesOpen, setPrioritiesOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -235,6 +257,7 @@ export default function AdminLeadsDashboard() {
   }
 
   return (
+    <TooltipProvider delayDuration={200}>
     <DashboardLayout>
       <div className="space-y-8 max-w-[1600px] mx-auto">
         {/* Header */}
@@ -258,6 +281,11 @@ export default function AdminLeadsDashboard() {
               className={cn("p-2.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all", loading && "animate-pulse")}>
               <RefreshCw className={cn("w-5 h-5 text-gray-500", loading && "animate-spin")} />
             </button>
+            <button onClick={() => setPrioritiesOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
+              <Brain className="w-4 h-4" />
+              Prioridades do Dia
+            </button>
             {lastUpdate && <span className="text-xs text-gray-400 font-medium hidden sm:block">Atualizado: {lastUpdate}</span>}
           </div>
         </div>
@@ -266,21 +294,26 @@ export default function AdminLeadsDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard label="Total de Avaliações" value={stats.total}
             subValue={period === 0 ? "Histórico total" : `Últimos ${period} dias`}
-            icon={Users} colorClass="bg-blue-50 text-blue-600" />
+            icon={Users} colorClass="bg-blue-50 text-blue-600"
+            tooltip="Total de leads no período selecionado, independente do status de processamento." />
           <KPICard label="Concluídas" value={stats.completed}
             subValue={`${stats.completedPct}% do total`}
-            icon={CheckCircle2} colorClass="bg-emerald-50 text-emerald-600" />
+            icon={CheckCircle2} colorClass="bg-emerald-50 text-emerald-600"
+            tooltip="Leads cujo relatório foi processado com sucesso.\nInclui leads processados pelo N8N e pela IA diretamente." />
           <KPICard label="Com Erro" value={stats.errors}
             subValue={`${stats.errorPct}% do total`}
-            icon={AlertCircle} colorClass="bg-red-50 text-red-600" />
+            icon={AlertCircle} colorClass="bg-red-50 text-red-600"
+            tooltip="Leads onde houve falha no processamento automático.\nO usuário pode ainda ter acesso ao relatório se ele existia anteriormente." />
           <KPICard label="Relatórios Acessados" value={stats.accessed}
             subValue={`${stats.accessPct}% dos concluídos`}
-            icon={Eye} colorClass="bg-amber-50 text-amber-600" />
+            icon={Eye} colorClass="bg-amber-50 text-amber-600"
+            tooltip="Leads que abriram o link do relatório pelo menos uma vez.\nBaseia-se no campo access_count > 0." />
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card title="Volume de Avaliações" subtitle="Frequência diária de novos leads" className="lg:col-span-2">
+          <Card title="Volume de Avaliações" subtitle="Frequência diária de novos leads" className="lg:col-span-2"
+            tooltip="Quantidade de novos leads criados por dia no período selecionado.">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={volumeChartData}>
@@ -293,14 +326,15 @@ export default function AdminLeadsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} />
-                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                  <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                   <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
-          <Card title="Distribuição Fase ROTA" subtitle="Estágio atual dos candidatos">
+          <Card title="Distribuição Fase ROTA" subtitle="Estágio atual dos candidatos"
+            tooltip={"Classifica os leads nas 4 fases do método ROTA com base no score de prontidão:\n❌ Pré-R: 0–35 pts\n🟡 R-O: 36–60 pts\n🟢 O-T: 61–85 pts\n🚀 T-A: 86–100 pts\n\nApenas leads com score calculado aparecem aqui."}>
             <div className="h-[300px] w-full flex flex-col items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -309,7 +343,7 @@ export default function AdminLeadsDashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 w-full">
@@ -327,7 +361,8 @@ export default function AdminLeadsDashboard() {
 
         {/* Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card title="LTV Estimado" icon={DollarSign} subtitle="Potencial financeiro dos leads">
+          <Card title="LTV Estimado" icon={DollarSign} subtitle="Potencial financeiro dos leads"
+            tooltip={"Potencial de receita estimado por lead com base no score e orçamento:\n≥71 pts + orçamento → R$10.000\n≥71 pts → R$3.000\n≥51 pts + orçamento → R$2.500\n≥51 pts → R$500\n≥31 pts + orçamento → R$700\n≥31 pts → R$200\n\n'Com orçamento': investment_range acima de R$1.500."}>
             <div className="space-y-6">
               <div>
                 <h4 className="text-4xl font-bold tracking-tight text-gray-900">
@@ -353,7 +388,8 @@ export default function AdminLeadsDashboard() {
             </div>
           </Card>
 
-          <Card title="Barreiras Comuns" icon={ShieldAlert} subtitle="Principais dificuldades detectadas">
+          <Card title="Barreiras Comuns" icon={ShieldAlert} subtitle="Principais dificuldades detectadas"
+            tooltip={"Calculado a partir das respostas do formulário:\n• Inglês: nível Básico ou Intermediário\n• Visto: nunca iniciou o processo\n• Financeiro: renda até R$5k ou impedimento financeiro\n• Experiência: menos de 5 anos na área\n• Família: tem filhos ou impedimento familiar\n• Clareza: objetivo de entender direção\n• Tempo: impedimento de tempo/rotina\n\nUm lead pode ter múltiplas barreiras."}>
             <div className="space-y-4">
               {barriersData.slice(0, 5).map(b => (
                 <div key={b.label} className="space-y-1.5">
@@ -369,7 +405,8 @@ export default function AdminLeadsDashboard() {
             </div>
           </Card>
 
-          <Card title="Produtos Sugeridos" icon={Package} subtitle="Top recomendações da IA">
+          <Card title="Produtos Sugeridos" icon={Package} subtitle="Top recomendações da IA"
+            tooltip={"Somente leads que acessaram o relatório recebem uma recomendação de produto (gerada pela IA no momento do acesso).\n\nLeads que nunca abriram o link não aparecem aqui — por isso o total é menor que o número de avaliações."}>
             <div className="space-y-3">
               {productsData.map(([name, count]) => (
                 <div key={name} className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
@@ -504,6 +541,8 @@ export default function AdminLeadsDashboard() {
           </div>
         </div>
       </div>
+      <AIDailyPrioritiesPanel open={prioritiesOpen} onOpenChange={setPrioritiesOpen} />
     </DashboardLayout>
+    </TooltipProvider>
   );
 }
