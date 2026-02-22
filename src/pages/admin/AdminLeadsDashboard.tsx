@@ -1,107 +1,84 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Search } from 'lucide-react';
-import { Chart, registerables } from 'chart.js';
-
-Chart.register(...registerables);
+import {
+  Users, CheckCircle2, AlertCircle, Eye, RefreshCw, Search,
+  ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink
+} from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar
+} from 'recharts';
+import { cn } from '@/lib/utils';
 
 const REPORT_BASE = 'https://hub.euanapratica.com/diagnostico/';
 const PER_PAGE = 20;
+const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 
 interface LeadRow {
   id: string;
   created_at: string;
-  full_name: string | null;
+  name: string | null;
   email: string | null;
   phone: string | null;
-  current_phase: string | null;
+  area: string | null;
+  phase_name: string | null;
+  phase_emoji: string | null;
+  rota_letter: string | null;
   lead_temperature: string | null;
-  recommended_product: string | null;
-  investment_capacity: string | null;
-  main_barrier: string | null;
+  recommended_product_name: string | null;
+  investment_range: string | null;
+  impediment: string | null;
   access_token: string | null;
-  status: string | null;
+  processing_status: string | null;
+  readiness_score: number | null;
+  estimated_ltv: number | null;
+  has_budget: boolean | null;
+  has_english_barrier: boolean | null;
+  has_experience_barrier: boolean | null;
+  has_financial_barrier: boolean | null;
+  has_family_barrier: boolean | null;
+  has_visa_barrier: boolean | null;
+  has_time_barrier: boolean | null;
+  has_clarity_barrier: boolean | null;
+  access_count: number | null;
 }
 
 type PeriodDays = 7 | 30 | 90 | 0;
 
-function parseInvestment(v: string | null): number {
-  if (!v) return 0;
-  const m = String(v).match(/([\d.,]+)/);
-  if (m) return parseFloat(m[1].replace('.', '').replace(',', '.'));
-  return 0;
-}
-
-function countBy<T>(arr: T[], key: (item: T) => string | null): Record<string, number> {
-  const map: Record<string, number> = {};
-  arr.forEach(item => {
-    const k = key(item);
-    if (k) map[k] = (map[k] || 0) + 1;
-  });
-  return map;
-}
-
-// Animated counter hook
-function useAnimatedValue(target: number) {
-  const [display, setDisplay] = useState(0);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    const start = display;
-    const duration = 600;
-    const startTime = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min((now - startTime) / duration, 1);
-      setDisplay(Math.round(start + (target - start) * p));
-      if (p < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target]);
-
-  return display;
-}
-
-function KPICard({ label, value, suffix, sub, accent }: { label: string; value: number; suffix?: string; sub: string; accent: string }) {
-  const animated = useAnimatedValue(value);
+function KPICard({ label, value, subValue, icon: Icon, colorClass }: {
+  label: string; value: string | number; subValue: string; icon: React.ElementType; colorClass: string;
+}) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-[#21262d] bg-[#0d1117] p-5">
-      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: accent }} />
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8b949e] mb-2">{label}</p>
-      <p className="font-mono text-3xl font-bold text-[#e6edf3]">{animated.toLocaleString('pt-BR')}{suffix}</p>
-      <p className="font-mono text-xs text-[#8b949e] mt-2">{sub}</p>
-    </div>
-  );
-}
-
-function KPICardText({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-[#21262d] bg-[#0d1117] p-5">
-      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: accent }} />
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8b949e] mb-2">{label}</p>
-      <p className="font-mono text-lg font-bold text-[#e6edf3] leading-tight">{value}</p>
-      <p className="font-mono text-xs text-[#8b949e] mt-2">{sub}</p>
-    </div>
-  );
-}
-
-function MetricBars({ entries, color }: { entries: { label: string; value: number; display: string }[]; color: string }) {
-  const max = Math.max(...entries.map(e => e.value), 1);
-  if (!entries.length) return <span className="text-sm text-[#8b949e]">Sem dados</span>;
-  return (
-    <div className="space-y-2.5">
-      {entries.map(e => (
-        <div key={e.label} className="flex items-center gap-2.5">
-          <span className="text-xs text-[#8b949e] w-36 flex-shrink-0 truncate" title={e.label}>{e.label}</span>
-          <div className="flex-1 h-2 bg-[#161b22] rounded overflow-hidden">
-            <div className="h-full rounded transition-all duration-500" style={{ width: `${(e.value / max) * 100}%`, background: color }} />
-          </div>
-          <span className="font-mono text-xs text-[#e6edf3] w-10 text-right flex-shrink-0">{e.display}</span>
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:border-blue-100 transition-all">
+      <div className="flex justify-between items-start mb-4">
+        <div className={cn("p-3 rounded-2xl", colorClass)}>
+          <Icon className="w-6 h-6" />
         </div>
-      ))}
+      </div>
+      <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+      <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{value}</h3>
+      <p className="text-xs text-gray-400 mt-2 font-medium">{subValue}</p>
+    </div>
+  );
+}
+
+function Card({ children, className, title, icon: Icon, subtitle }: {
+  children: React.ReactNode; className?: string; title?: string; icon?: React.ElementType; subtitle?: string;
+}) {
+  return (
+    <div className={cn("bg-white rounded-3xl border border-gray-100 shadow-sm p-6", className)}>
+      {(title || Icon) && (
+        <div className="flex items-center gap-2 mb-6">
+          {Icon && <Icon className="w-5 h-5 text-gray-400" />}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
+      )}
+      {children}
     </div>
   );
 }
@@ -111,25 +88,19 @@ export default function AdminLeadsDashboard() {
   const [allData, setAllData] = useState<LeadRow[]>([]);
   const [period, setPeriod] = useState<PeriodDays>(7);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState('');
   const [search, setSearch] = useState('');
-  const [filterTemp, setFilterTemp] = useState('');
-  const [filterPhase, setFilterPhase] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [tempFilter, setTempFilter] = useState('');
+  const [phaseFilter, setPhaseFilter] = useState('');
   const [page, setPage] = useState(1);
 
-  const volumeCanvasRef = useRef<HTMLCanvasElement>(null);
-  const phasesCanvasRef = useRef<HTMLCanvasElement>(null);
-  const tempCanvasRef = useRef<HTMLCanvasElement>(null);
-  const chartsRef = useRef<{ volume?: Chart; phases?: Chart; temp?: Chart }>({});
-
-  // Fetch data
   const fetchData = useCallback(async () => {
     try {
-      setRefreshing(true);
+      setLoading(true);
       const { data, error } = await supabase
         .from('career_evaluations')
-        .select('id,created_at,full_name,email,phone,current_phase,lead_temperature,recommended_product,investment_capacity,main_barrier,access_token,status')
+        .select('id,created_at,name,email,phone,area,phase_name,phase_emoji,rota_letter,lead_temperature,recommended_product_name,investment_range,impediment,access_token,processing_status,readiness_score,estimated_ltv,has_budget,has_english_barrier,has_experience_barrier,has_financial_barrier,has_family_barrier,has_visa_barrier,has_time_barrier,has_clarity_barrier,access_count')
         .order('created_at', { ascending: false })
         .limit(1000);
       if (error) throw error;
@@ -139,134 +110,112 @@ export default function AdminLeadsDashboard() {
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filtered by period
-  const filteredData = useMemo(() => {
+  // Period filter
+  const periodData = useMemo(() => {
     if (period === 0) return allData;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - period);
     return allData.filter(d => new Date(d.created_at) >= cutoff);
   }, [allData, period]);
 
-  // KPIs
-  const kpis = useMemo(() => {
-    const total = filteredData.length;
-    const hot = filteredData.filter(d => (d.lead_temperature || '').toLowerCase() === 'quente').length;
-    const completed = filteredData.filter(d => d.status === 'completed' || d.access_token).length;
-    const rate = total ? Math.round((completed / total) * 100) : 0;
-    const prods = countBy(filteredData, d => d.recommended_product);
-    const sorted = Object.entries(prods).sort((a, b) => b[1] - a[1]);
-    return { total, hot, completed, rate, topProduct: sorted[0]?.[0] || '—', topProductCount: sorted[0]?.[1] || 0 };
-  }, [filteredData]);
+  // Stats
+  const stats = useMemo(() => {
+    const total = periodData.length;
+    const completed = periodData.filter(d => d.processing_status === 'completed').length;
+    const errors = periodData.filter(d => d.processing_status === 'error').length;
+    const accessed = periodData.filter(d => (d.access_count || 0) > 0).length;
+    const totalLTV = periodData.reduce((s, d) => s + (Number(d.estimated_ltv) || 0), 0);
+    const withBudget = periodData.filter(d => d.has_budget).length;
+    return {
+      total, completed, errors, accessed, totalLTV, withBudget,
+      completedPct: total > 0 ? Math.round((completed / total) * 100) : 0,
+      errorPct: total > 0 ? Math.round((errors / total) * 100) : 0,
+      accessPct: completed > 0 ? Math.round((accessed / completed) * 100) : 0,
+      avgLTV: total > 0 ? Math.round(totalLTV / total) : 0,
+    };
+  }, [periodData]);
 
-  // Phases list for filter
-  const phases = useMemo(() => [...new Set(filteredData.map(d => d.current_phase).filter(Boolean))].sort() as string[], [filteredData]);
-
-  // Business metrics
-  const metrics = useMemo(() => {
-    // LTV by phase
-    const ltvMap: Record<string, { sum: number; count: number }> = {};
-    filteredData.forEach(d => {
-      const p = d.current_phase || 'Não definido';
-      if (!ltvMap[p]) ltvMap[p] = { sum: 0, count: 0 };
-      ltvMap[p].sum += parseInvestment(d.investment_capacity);
-      ltvMap[p].count++;
-    });
-    const ltv = Object.entries(ltvMap)
-      .map(([k, v]) => ({ label: k, value: v.count ? Math.round(v.sum / v.count) : 0, display: `R$${v.count ? Math.round(v.sum / v.count) : 0}` }))
-      .sort((a, b) => b.value - a.value).slice(0, 5);
-
-    const barriers = Object.entries(countBy(filteredData, d => d.main_barrier))
-      .sort((a, b) => b[1] - a[1]).slice(0, 5)
-      .map(([k, v]) => ({ label: k, value: v, display: String(v) }));
-
-    const products = Object.entries(countBy(filteredData, d => d.recommended_product))
-      .sort((a, b) => b[1] - a[1]).slice(0, 5)
-      .map(([k, v]) => ({ label: k, value: v, display: String(v) }));
-
-    return { ltv, barriers, products };
-  }, [filteredData]);
-
-  // Table filtered + paginated
-  const tableData = useMemo(() => {
-    let data = filteredData;
-    if (search) {
-      const s = search.toLowerCase();
-      data = data.filter(d => (d.full_name || '').toLowerCase().includes(s) || (d.email || '').toLowerCase().includes(s));
+  // Volume chart
+  const volumeChartData = useMemo(() => {
+    const days = period === 0 ? 30 : period;
+    const map: Record<string, number> = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      map[d.toISOString().split('T')[0]] = 0;
     }
-    if (filterTemp) data = data.filter(d => (d.lead_temperature || '').toLowerCase() === filterTemp);
-    if (filterPhase) data = data.filter(d => d.current_phase === filterPhase);
-    return data;
-  }, [filteredData, search, filterTemp, filterPhase]);
+    periodData.forEach(d => {
+      const key = d.created_at?.split('T')[0];
+      if (key && map.hasOwnProperty(key)) map[key]++;
+    });
+    return Object.entries(map).map(([date, count]) => ({
+      date: date.split('-').slice(1).reverse().join('/'), count
+    }));
+  }, [periodData, period]);
+
+  // Phase chart
+  const phaseChartData = useMemo(() => {
+    const phases: Record<string, number> = {};
+    periodData.forEach(d => {
+      if (d.phase_emoji && d.rota_letter) {
+        const key = `${d.phase_emoji} ${d.rota_letter}`;
+        phases[key] = (phases[key] || 0) + 1;
+      }
+    });
+    return Object.entries(phases).map(([name, value]) => ({ name, value }));
+  }, [periodData]);
+
+  // Barriers
+  const barriersData = useMemo(() => {
+    const barriers = [
+      { label: 'Inglês', key: 'has_english_barrier' as const },
+      { label: 'Experiência', key: 'has_experience_barrier' as const },
+      { label: 'Clareza', key: 'has_clarity_barrier' as const },
+      { label: 'Financeiro', key: 'has_financial_barrier' as const },
+      { label: 'Visto', key: 'has_visa_barrier' as const },
+      { label: 'Família', key: 'has_family_barrier' as const },
+      { label: 'Tempo', key: 'has_time_barrier' as const },
+    ];
+    return barriers.map(b => ({
+      label: b.label,
+      count: periodData.filter(d => d[b.key]).length
+    })).sort((a, b) => b.count - a.count);
+  }, [periodData]);
+
+  // Products
+  const productsData = useMemo(() => {
+    const products: Record<string, number> = {};
+    periodData.forEach(d => {
+      if (d.recommended_product_name) products[d.recommended_product_name] = (products[d.recommended_product_name] || 0) + 1;
+    });
+    return Object.entries(products).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [periodData]);
+
+  // Unique phases for filter
+  const uniquePhases = useMemo(() =>
+    [...new Set(periodData.map(d => d.phase_name).filter(Boolean))] as string[]
+  , [periodData]);
+
+  // Table filtering + pagination
+  const tableData = useMemo(() => {
+    return periodData.filter(d => {
+      if (search && !(d.name || '').toLowerCase().includes(search.toLowerCase()) && !(d.email || '').toLowerCase().includes(search.toLowerCase())) return false;
+      if (statusFilter && d.processing_status !== statusFilter) return false;
+      if (tempFilter && (d.lead_temperature || '').toUpperCase() !== tempFilter) return false;
+      if (phaseFilter && d.phase_name !== phaseFilter) return false;
+      return true;
+    });
+  }, [periodData, search, statusFilter, tempFilter, phaseFilter]);
 
   const totalPages = Math.max(1, Math.ceil(tableData.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageSlice = tableData.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
-  useEffect(() => { setPage(1); }, [search, filterTemp, filterPhase, period]);
-
-  // Charts
-  useEffect(() => {
-    const refs = chartsRef.current;
-    if (refs.volume) { refs.volume.destroy(); refs.volume = undefined; }
-    if (refs.phases) { refs.phases.destroy(); refs.phases = undefined; }
-    if (refs.temp) { refs.temp.destroy(); refs.temp = undefined; }
-
-    Chart.defaults.color = '#8b949e';
-    Chart.defaults.borderColor = '#21262d';
-    Chart.defaults.font.family = "'JetBrains Mono', monospace";
-    Chart.defaults.font.size = 11;
-
-    // Volume line
-    if (volumeCanvasRef.current) {
-      const volMap: Record<string, number> = {};
-      filteredData.forEach(d => { const day = d.created_at?.slice(0, 10); if (day) volMap[day] = (volMap[day] || 0) + 1; });
-      const days = Object.keys(volMap).sort();
-      const ctx = volumeCanvasRef.current.getContext('2d')!;
-      const grad = ctx.createLinearGradient(0, 0, 0, 260);
-      grad.addColorStop(0, 'rgba(0,212,255,.3)');
-      grad.addColorStop(1, 'rgba(0,212,255,0)');
-      refs.volume = new Chart(ctx, {
-        type: 'line',
-        data: { labels: days.map(d => d.slice(5)), datasets: [{ data: days.map(d => volMap[d]), borderColor: '#00d4ff', backgroundColor: grad, fill: true, tension: .4, pointRadius: 2, pointHoverRadius: 5 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-      });
-    }
-
-    // Phases donut
-    if (phasesCanvasRef.current) {
-      const phaseMap = countBy(filteredData, d => d.current_phase || 'Não definido');
-      const labels = Object.keys(phaseMap);
-      const colors = ['#00d4ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#db6d28', '#8b949e', '#58a6ff'];
-      refs.phases = new Chart(phasesCanvasRef.current, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data: labels.map(l => phaseMap[l]), backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } } } }
-      });
-    }
-
-    // Temperature bar
-    if (tempCanvasRef.current) {
-      const tempMap = { quente: 0, morno: 0, frio: 0 };
-      filteredData.forEach(d => { const t = (d.lead_temperature || '').toLowerCase() as keyof typeof tempMap; if (tempMap[t] !== undefined) tempMap[t]++; });
-      refs.temp = new Chart(tempCanvasRef.current, {
-        type: 'bar',
-        data: { labels: ['Quente', 'Morno', 'Frio'], datasets: [{ data: [tempMap.quente, tempMap.morno, tempMap.frio], backgroundColor: ['#f85149', '#d29922', '#00d4ff'], borderRadius: 6, barThickness: 24 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false } } } }
-      });
-    }
-
-    return () => {
-      if (refs.volume) { refs.volume.destroy(); refs.volume = undefined; }
-      if (refs.phases) { refs.phases.destroy(); refs.phases = undefined; }
-      if (refs.temp) { refs.temp.destroy(); refs.temp = undefined; }
-    };
-  }, [filteredData]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, tempFilter, phaseFilter, period]);
 
   const openReport = (accessToken: string, email: string | null) => {
     if (email) {
@@ -275,23 +224,11 @@ export default function AdminLeadsDashboard() {
     window.open(REPORT_BASE + accessToken, '_blank');
   };
 
-  const tempBadgeClass = (t: string) => {
-    const v = t.toLowerCase();
-    if (v === 'quente') return 'bg-red-500/15 text-red-400';
-    if (v === 'morno') return 'bg-yellow-500/15 text-yellow-400';
-    if (v === 'frio') return 'bg-cyan-500/15 text-cyan-400';
-    return '';
-  };
-
-  const periodButtons: { label: string; days: PeriodDays }[] = [
-    { label: '7D', days: 7 }, { label: '30D', days: 30 }, { label: '90D', days: 90 }, { label: 'Tudo', days: 0 },
-  ];
-
-  if (loading) {
+  if (loading && !allData.length) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <RefreshCw className="h-8 w-8 animate-spin text-cyan-400" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
         </div>
       </DashboardLayout>
     );
@@ -299,132 +236,271 @@ export default function AdminLeadsDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-[1400px] mx-auto" style={{ fontFamily: "'Syne', sans-serif" }}>
+      <div className="space-y-8 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <h1 className="text-2xl font-extrabold tracking-tight">Leads Dashboard</h1>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
-              {periodButtons.map(b => (
-                <button key={b.days} onClick={() => setPeriod(b.days)}
-                  className={`px-4 py-2 text-xs font-semibold transition-all ${period === b.days ? 'bg-cyan-500 text-[#080c10]' : 'text-[#8b949e] hover:text-[#e6edf3]'}`}
-                >{b.label}</button>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Leads Dashboard</h2>
+            <p className="text-gray-500 mt-1">Confira a atividade mais recente dos seus leads.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center bg-gray-50 rounded-2xl p-1 border border-gray-100">
+              {([7, 30, 90, 0] as PeriodDays[]).map(d => (
+                <button key={d} onClick={() => setPeriod(d)}
+                  className={cn(
+                    "px-4 py-1.5 rounded-xl text-xs font-semibold transition-all",
+                    period === d ? "bg-white text-blue-600 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"
+                  )}
+                >{d === 0 ? 'Tudo' : `${d}D`}</button>
               ))}
             </div>
-            <button onClick={fetchData} title="Atualizar"
-              className="w-9 h-9 flex items-center justify-center bg-[#0d1117] border border-[#21262d] rounded-lg text-[#8b949e] hover:border-cyan-500 hover:text-cyan-500 transition-all">
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <button onClick={fetchData}
+              className={cn("p-2.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all", loading && "animate-pulse")}>
+              <RefreshCw className={cn("w-5 h-5 text-gray-500", loading && "animate-spin")} />
             </button>
-            {lastUpdate && <span className="font-mono text-xs text-[#8b949e]">Atualizado: {lastUpdate}</span>}
+            {lastUpdate && <span className="text-xs text-gray-400 font-medium hidden sm:block">Atualizado: {lastUpdate}</span>}
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard label="Total Leads" value={kpis.total} sub={period ? `Últimos ${period} dias` : 'Todo o período'} accent="#00d4ff" />
-          <KPICard label="Leads Quentes" value={kpis.hot} sub={kpis.total ? `${Math.round((kpis.hot / kpis.total) * 100)}% do total` : ''} accent="#3fb950" />
-          <KPICard label="Taxa Conclusão" value={kpis.rate} suffix="%" sub={`${kpis.completed} de ${kpis.total}`} accent="#d29922" />
-          <KPICardText label="Produto Top" value={kpis.topProduct} sub={kpis.topProductCount ? `${kpis.topProductCount} leads` : ''} accent="#a371f7" />
+        {/* KPI Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <KPICard label="Total de Avaliações" value={stats.total}
+            subValue={period === 0 ? "Histórico total" : `Últimos ${period} dias`}
+            icon={Users} colorClass="bg-blue-50 text-blue-600" />
+          <KPICard label="Concluídas" value={stats.completed}
+            subValue={`${stats.completedPct}% do total`}
+            icon={CheckCircle2} colorClass="bg-emerald-50 text-emerald-600" />
+          <KPICard label="Com Erro" value={stats.errors}
+            subValue={`${stats.errorPct}% do total`}
+            icon={AlertCircle} colorClass="bg-red-50 text-red-600" />
+          <KPICard label="Relatórios Acessados" value={stats.accessed}
+            subValue={`${stats.accessPct}% dos concluídos`}
+            icon={Eye} colorClass="bg-amber-50 text-amber-600" />
         </div>
 
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-            <h3 className="text-sm font-bold mb-4">Volume de Leads</h3>
-            <div className="relative h-[260px]"><canvas ref={volumeCanvasRef} /></div>
-          </div>
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-            <h3 className="text-sm font-bold mb-4">Fases do Funil</h3>
-            <div className="relative h-[260px]"><canvas ref={phasesCanvasRef} /></div>
-          </div>
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card title="Volume de Avaliações" subtitle="Frequência diária de novos leads" className="lg:col-span-2">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={volumeChartData}>
+                  <defs>
+                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }} />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                  <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card title="Distribuição Fase ROTA" subtitle="Estágio atual dos candidatos">
+            <div className="h-[300px] w-full flex flex-col items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={phaseChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {phaseChartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 w-full">
+                {phaseChartData.map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span className="text-[10px] font-bold text-gray-500 truncate">{item.name}</span>
+                    <span className="text-[10px] font-bold text-gray-900 ml-auto">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
         </div>
 
-        {/* Charts Row 2 */}
-        <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-          <h3 className="text-sm font-bold mb-4">Temperatura dos Leads</h3>
-          <div className="relative h-[180px]"><canvas ref={tempCanvasRef} /></div>
-        </div>
+        {/* Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card title="LTV Estimado" icon={DollarSign} subtitle="Potencial financeiro dos leads">
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-4xl font-bold tracking-tight text-gray-900">
+                  R$ {stats.totalLTV.toLocaleString('pt-BR')}
+                </h4>
+                <p className="text-xs text-gray-400 font-medium mt-1">
+                  Média de R$ {stats.avgLTV.toLocaleString('pt-BR')} por lead
+                </p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-medium">Com orçamento</span>
+                  <span className="text-emerald-600 font-bold">{stats.withBudget}</span>
+                </div>
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${stats.total ? (stats.withBudget / stats.total) * 100 : 0}%` }} />
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <span>Taxa de Conversão Budget</span>
+                  <span>{stats.total ? Math.round((stats.withBudget / stats.total) * 100) : 0}%</span>
+                </div>
+              </div>
+            </div>
+          </Card>
 
-        {/* Business Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-            <h3 className="text-sm font-bold mb-4">LTV Estimado por Fase</h3>
-            <MetricBars entries={metrics.ltv} color="#00d4ff" />
-          </div>
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-            <h3 className="text-sm font-bold mb-4">Principais Barreiras</h3>
-            <MetricBars entries={metrics.barriers} color="#d29922" />
-          </div>
-          <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-            <h3 className="text-sm font-bold mb-4">Produtos Recomendados</h3>
-            <MetricBars entries={metrics.products} color="#3fb950" />
-          </div>
+          <Card title="Barreiras Comuns" icon={ShieldAlert} subtitle="Principais dificuldades detectadas">
+            <div className="space-y-4">
+              {barriersData.slice(0, 5).map(b => (
+                <div key={b.label} className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-700">{b.label}</span>
+                    <span className="text-xs font-bold text-gray-400">{b.count}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats.total ? (b.count / stats.total) * 100 : 0}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card title="Produtos Sugeridos" icon={Package} subtitle="Top recomendações da IA">
+            <div className="space-y-3">
+              {productsData.map(([name, count]) => (
+                <div key={name} className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <span className="text-xs font-bold text-gray-700 truncate max-w-[180px]">{name}</span>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                    {count} leads
+                  </span>
+                </div>
+              ))}
+              {!productsData.length && <p className="text-center text-gray-400 text-sm py-8">Sem dados de produtos</p>}
+            </div>
+          </Card>
         </div>
 
         {/* Table */}
-        <div className="bg-[#0d1117] border border-[#21262d] rounded-xl p-5">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-            <h3 className="text-sm font-bold">Leads Recentes</h3>
-            <div className="flex gap-2 flex-wrap">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8b949e]" />
-                <input type="text" placeholder="Buscar nome/email..." value={search} onChange={e => setSearch(e.target.value)}
-                  className="pl-9 pr-3 py-2 bg-[#161b22] border border-[#21262d] rounded-lg text-xs text-[#e6edf3] font-mono outline-none focus:border-cyan-500 w-52" />
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Leads Recentes</h3>
+              <p className="text-xs text-gray-400 font-medium">Gerencie e filtre suas avaliações</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl">
+                <Search className="w-4 h-4 text-gray-400" />
+                <input type="text" placeholder="Buscar lead..." value={search} onChange={e => setSearch(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs font-bold w-36 placeholder:text-gray-400" />
               </div>
-              <select value={filterTemp} onChange={e => setFilterTemp(e.target.value)}
-                className="px-3 py-2 bg-[#161b22] border border-[#21262d] rounded-lg text-xs text-[#e6edf3] font-mono outline-none focus:border-cyan-500">
-                <option value="">Temperatura</option>
-                <option value="quente">Quente</option>
-                <option value="morno">Morno</option>
-                <option value="frio">Frio</option>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                className="text-xs font-bold bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100">
+                <option value="">Status</option>
+                <option value="completed">Concluído</option>
+                <option value="error">Erro</option>
+                <option value="pending">Pendente</option>
               </select>
-              <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)}
-                className="px-3 py-2 bg-[#161b22] border border-[#21262d] rounded-lg text-xs text-[#e6edf3] font-mono outline-none focus:border-cyan-500">
+              <select value={tempFilter} onChange={e => setTempFilter(e.target.value)}
+                className="text-xs font-bold bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100">
+                <option value="">Temperatura</option>
+                <option value="QUENTE">Quente</option>
+                <option value="MORNO">Morno</option>
+                <option value="FRIO">Frio</option>
+              </select>
+              <select value={phaseFilter} onChange={e => setPhaseFilter(e.target.value)}
+                className="text-xs font-bold bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-100">
                 <option value="">Fase</option>
-                {phases.map(p => <option key={p} value={p}>{p}</option>)}
+                {uniquePhases.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[#21262d]">
-                  {['Data', 'Nome', 'Email', 'Telefone', 'Fase', 'Temperatura', 'Produto', 'Relatório'].map(h => (
-                    <th key={h} className="text-left px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-[#8b949e] whitespace-nowrap">{h}</th>
+                <tr className="bg-gray-50/50">
+                  {['Lead', 'Área', 'Fase', 'Score', 'Temperatura', 'Status', 'Ações'].map(h => (
+                    <th key={h} className={cn("px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider", h === 'Ações' && 'text-right')}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-50">
                 {pageSlice.map(d => (
-                  <tr key={d.id} className="border-b border-[#21262d] hover:bg-[#161b22] transition-colors">
-                    <td className="px-3 py-2.5 font-mono whitespace-nowrap">{d.created_at ? new Date(d.created_at).toLocaleDateString('pt-BR') : '—'}</td>
-                    <td className="px-3 py-2.5 font-mono">{d.full_name || '—'}</td>
-                    <td className="px-3 py-2.5 font-mono">{d.email || '—'}</td>
-                    <td className="px-3 py-2.5 font-mono">{d.phone || '—'}</td>
-                    <td className="px-3 py-2.5"><span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400">{d.current_phase || '—'}</span></td>
-                    <td className="px-3 py-2.5"><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${tempBadgeClass(d.lead_temperature || '')}`}>{d.lead_temperature || '—'}</span></td>
-                    <td className="px-3 py-2.5 font-mono">{d.recommended_product || '—'}</td>
-                    <td className="px-3 py-2.5">
+                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
+                          {(d.name || '?').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{d.name || '—'}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">{d.email || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4"><span className="text-xs font-medium text-gray-500">{d.area || '—'}</span></td>
+                    <td className="px-6 py-4"><span className="text-sm">{d.phase_emoji} {d.rota_letter || '—'}</span></td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full",
+                            (d.readiness_score || 0) > 70 ? "bg-emerald-500" : (d.readiness_score || 0) > 40 ? "bg-amber-500" : "bg-red-500"
+                          )} style={{ width: `${d.readiness_score || 0}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{d.readiness_score ?? '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn("text-[10px] font-bold px-2 py-1 rounded-lg border",
+                        (d.lead_temperature || '').toUpperCase() === 'QUENTE' ? "bg-red-50 text-red-600 border-red-100" :
+                        (d.lead_temperature || '').toUpperCase() === 'MORNO' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                        "bg-blue-50 text-blue-600 border-blue-100"
+                      )}>{(d.lead_temperature || '—').toUpperCase()}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn("w-1.5 h-1.5 rounded-full",
+                          d.processing_status === 'completed' ? "bg-emerald-500" :
+                          d.processing_status === 'error' ? "bg-red-500" : "bg-amber-500"
+                        )} />
+                        <span className="text-xs font-bold text-gray-700 capitalize">{d.processing_status || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
                       {d.access_token ? (
-                        <button onClick={() => openReport(d.access_token!, d.email)} className="text-cyan-400 font-mono font-semibold hover:underline">Ver →</button>
-                      ) : '—'}
+                        <button onClick={() => openReport(d.access_token!, d.email)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:bg-gray-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm">
+                          Ver Relatório <ExternalLink className="w-3 h-3" />
+                        </button>
+                      ) : <span className="text-xs text-gray-300">—</span>}
                     </td>
                   </tr>
                 ))}
                 {!pageSlice.length && (
-                  <tr><td colSpan={8} className="px-3 py-8 text-center text-[#8b949e]">Nenhum lead encontrado</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-sm">Nenhum lead encontrado</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
-              className="px-3 py-1.5 bg-[#161b22] border border-[#21262d] rounded-md text-xs disabled:opacity-30 hover:border-cyan-500 transition-all">← Anterior</button>
-            <span className="font-mono text-xs text-[#8b949e]">{safePage}/{totalPages} ({tableData.length})</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
-              className="px-3 py-1.5 bg-[#161b22] border border-[#21262d] rounded-md text-xs disabled:opacity-30 hover:border-cyan-500 transition-all">Próxima →</button>
+          <div className="p-6 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+              Página {safePage} de {totalPages} ({tableData.length} leads)
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
+                className="p-2 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+                className="p-2 rounded-xl border border-gray-100 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
