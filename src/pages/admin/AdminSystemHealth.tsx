@@ -18,6 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
+  MessageSquare,
+  ListTodo,
+  Send,
+  ArrowDownLeft,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
@@ -84,6 +88,7 @@ const API_ICONS: Record<string, React.ElementType> = {
   anthropic_api: Sparkles,
   resend_email: Mail,
   ticto_webhook: CreditCard,
+  evolution_api: MessageSquare,
 };
 
 const API_COLORS: Record<string, string> = {
@@ -91,6 +96,7 @@ const API_COLORS: Record<string, string> = {
   anthropic_api: 'text-purple-600 bg-purple-50',
   resend_email: 'text-blue-600 bg-blue-50',
   ticto_webhook: 'text-amber-600 bg-amber-50',
+  evolution_api: 'text-green-600 bg-green-50',
 };
 
 // ─── Chart config for email volume ───────────────────────────────────
@@ -124,6 +130,8 @@ function AdminSystemHealthContent() {
     isLoadingEmails,
     webhookMetrics,
     isLoadingWebhooks,
+    whatsappMetrics,
+    isLoadingWhatsApp,
     refetchAll,
   } = useSystemHealth();
 
@@ -326,7 +334,79 @@ function AdminSystemHealthContent() {
           ) : null}
         </div>
 
-        {/* ─── Section 5: Health Check Details ────────────────────── */}
+        {/* ─── Section 5: WhatsApp & CRM ──────────────────────────── */}
+        <div>
+          <h2 className="text-sm font-black text-foreground mb-3 uppercase tracking-widest">WhatsApp & CRM</h2>
+          {isLoadingWhatsApp ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : whatsappMetrics ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <MetricCard label="Enviadas (24h)" value={String(whatsappMetrics.sent24h)} icon={Send} color="text-green-600 bg-green-50" />
+                <MetricCard label="Recebidas (24h)" value={String(whatsappMetrics.received24h)} icon={ArrowDownLeft} color="text-blue-600 bg-blue-50" />
+                <MetricCard label="Falharam (24h)" value={String(whatsappMetrics.failed24h)} icon={XCircle} color={whatsappMetrics.failed24h > 0 ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-50'} />
+                <MetricCard label="Lidas (24h)" value={String(whatsappMetrics.read24h)} icon={CheckCircle2} color="text-emerald-600 bg-emerald-50" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Tasks summary */}
+                <div className="bg-card rounded-[28px] border border-border p-6">
+                  <h3 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">
+                    <ListTodo className="w-4 h-4" />
+                    Tarefas de Leads
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Pendentes</span>
+                      <Badge variant="secondary">{whatsappMetrics.pendingTasks}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Vencidas</span>
+                      <Badge variant={whatsappMetrics.overdueTasks > 0 ? 'destructive' : 'secondary'}>
+                        {whatsappMetrics.overdueTasks}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent WhatsApp messages */}
+                {whatsappMetrics.recentMessages.length > 0 && (
+                  <div className="bg-card rounded-[28px] border border-border p-6">
+                    <h3 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Últimas Mensagens
+                    </h3>
+                    <div className="space-y-2">
+                      {whatsappMetrics.recentMessages.map(msg => (
+                        <div key={msg.id} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <StatusDot status={msg.status === 'read' || msg.status === 'delivered' ? 'pass' : msg.status === 'sent' || msg.status === 'received' ? 'warn' : msg.status === 'failed' ? 'fail' : 'unknown'} />
+                            <span className="font-mono text-muted-foreground text-xs">
+                              {msg.direction === 'outbound' ? '↗' : '↙'} {msg.phone?.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4') || '—'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(msg.created_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {whatsappMetrics.sent24h === 0 && whatsappMetrics.received24h === 0 && (
+                <div className="bg-card rounded-[28px] border border-border p-6 text-center text-muted-foreground text-sm">
+                  Nenhuma mensagem WhatsApp nas últimas 24 horas.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* ─── Section 6: Health Check Details ────────────────────── */}
         {healthReport && (
           <div>
             <button

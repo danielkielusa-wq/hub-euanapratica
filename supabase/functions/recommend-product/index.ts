@@ -16,6 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
 import { getCorsHeaders } from "../_shared/authGuard.ts";
 
 // Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
@@ -269,6 +270,7 @@ serve(async (req) => {
     // CRIT-2: Abort after 50s to prevent Edge Function timeout
     const llmController = new AbortController();
     const llmTimeout = setTimeout(() => llmController.abort(), 50000);
+    const llmStartTime = Date.now();
 
     let aiResponse: Response;
     if (providerKey === "anthropic_api") {
@@ -338,6 +340,10 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
+    const rpProvider = providerKey === "anthropic_api" ? "anthropic" : "openai";
+    const rpModel = apiConfig.parameters?.model || (rpProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
+    const { inputTokens: rpIn, outputTokens: rpOut } = extractTokenUsage(aiData, rpProvider);
+    logApiCost({ edgeFunction: 'recommend-product', provider: rpProvider, model: rpModel, inputTokens: rpIn, outputTokens: rpOut, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
 
     // Extract output text from LLM response (supports both providers)
     const outputText = providerKey === "anthropic_api"

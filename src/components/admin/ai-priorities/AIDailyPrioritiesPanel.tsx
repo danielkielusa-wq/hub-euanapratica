@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Brain, RefreshCw, Sparkles } from 'lucide-react';
+import { Brain, RefreshCw, Sparkles, Check, Loader2, Database, MessageSquare, Settings2 } from 'lucide-react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
@@ -8,24 +8,76 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useAIDailyPriorities } from '@/hooks/useAIDailyPriorities';
+import { useAIDailyPriorities, type ProgressPhase, PHASE_LABELS } from '@/hooks/useAIDailyPriorities';
 import { PriorityCategorySection } from './PriorityCategorySection';
 import { cn } from '@/lib/utils';
 
-// ── Loading animation ──────────────────────────────────────────────────
+// ── Progress steps ────────────────────────────────────────────────────
 
-function PrioritiesLoader() {
+const STEPS: { phase: ProgressPhase; icon: typeof Brain }[] = [
+  { phase: 'loading_config', icon: Settings2 },
+  { phase: 'querying_leads', icon: Database },
+  { phase: 'querying_interactions', icon: MessageSquare },
+  { phase: 'calling_ai', icon: Sparkles },
+  { phase: 'parsing_response', icon: Check },
+];
+
+const PHASE_ORDER: ProgressPhase[] = STEPS.map(s => s.phase);
+
+function PrioritiesLoader({ currentPhase }: { currentPhase: ProgressPhase | null }) {
+  const currentIdx = currentPhase ? PHASE_ORDER.indexOf(currentPhase) : -1;
+
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-5">
+    <div className="flex flex-col items-center justify-center py-10 gap-6">
       <div className="relative">
-        <div className="absolute inset-0 w-24 h-24 bg-indigo-100 rounded-full animate-ping opacity-40" />
-        <div className="relative flex items-center justify-center w-24 h-24 bg-white rounded-full shadow-lg border border-indigo-100">
-          <Sparkles className="w-10 h-10 text-indigo-500 animate-pulse" />
+        <div className="absolute inset-0 w-20 h-20 bg-indigo-100 rounded-full animate-ping opacity-40" />
+        <div className="relative flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg border border-indigo-100">
+          <Sparkles className="w-8 h-8 text-indigo-500 animate-pulse" />
         </div>
       </div>
-      <div className="text-center space-y-1">
-        <p className="text-sm font-semibold text-gray-700">Analisando seus leads...</p>
-        <p className="text-xs text-gray-400">Gerando prioridades com IA (5-15s)</p>
+
+      <div className="w-full max-w-xs space-y-2">
+        {STEPS.map((step, idx) => {
+          const Icon = step.icon;
+          const isActive = idx === currentIdx;
+          const isDone = idx < currentIdx;
+          const isPending = idx > currentIdx;
+
+          return (
+            <div
+              key={step.phase}
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-300',
+                isActive && 'bg-indigo-50 border border-indigo-200',
+                isDone && 'opacity-60',
+                isPending && 'opacity-30',
+              )}
+            >
+              <div className={cn(
+                'flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center',
+                isDone && 'bg-green-100',
+                isActive && 'bg-indigo-100',
+                isPending && 'bg-gray-100',
+              )}>
+                {isDone ? (
+                  <Check className="w-3 h-3 text-green-600" />
+                ) : isActive ? (
+                  <Loader2 className="w-3 h-3 text-indigo-600 animate-spin" />
+                ) : (
+                  <Icon className="w-3 h-3 text-gray-400" />
+                )}
+              </div>
+              <span className={cn(
+                'text-xs',
+                isActive && 'font-medium text-indigo-700',
+                isDone && 'text-gray-500 line-through',
+                isPending && 'text-gray-400',
+              )}>
+                {PHASE_LABELS[step.phase]}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -40,7 +92,7 @@ interface AIDailyPrioritiesPanelProps {
 
 export function AIDailyPrioritiesPanel({ open, onOpenChange }: AIDailyPrioritiesPanelProps) {
   const {
-    data, isGenerating, completedItems, generatePriorities, markAsDone,
+    data, isGenerating, progressPhase, completedItems, generatePriorities, markAsDone,
   } = useAIDailyPriorities();
 
   // Auto-generate on first open
@@ -97,8 +149,8 @@ export function AIDailyPrioritiesPanel({ open, onOpenChange }: AIDailyPriorities
 
         {/* Content */}
         <div className="px-6 py-4 space-y-4">
-          {/* Loading */}
-          {isGenerating && <PrioritiesLoader />}
+          {/* Loading with progress steps */}
+          {isGenerating && <PrioritiesLoader currentPhase={progressPhase} />}
 
           {/* Results */}
           {data && !isGenerating && (

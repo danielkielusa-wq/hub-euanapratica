@@ -144,6 +144,28 @@ export function useUpdateHubService() {
   });
 }
 
+export function useToggleHubServiceVisibility() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, is_visible_in_hub }: { id: string; is_visible_in_hub: boolean }) => {
+      const { error } = await supabase
+        .from('hub_services')
+        .update({ is_visible_in_hub })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-hub-services'] });
+      queryClient.invalidateQueries({ queryKey: ['hub-services'] });
+    },
+    onError: () => {
+      toast.error('Erro ao alterar visibilidade');
+    },
+  });
+}
+
 export function useDeleteHubService() {
   const queryClient = useQueryClient();
 

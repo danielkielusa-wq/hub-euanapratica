@@ -29,7 +29,9 @@ import {
   Link2,
   Globe,
   Activity,
-  Mail
+  Mail,
+  DollarSign,
+  ListTodo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -141,28 +143,12 @@ const mentorNavGroups: NavGroup[] = [
 // Admin Navigation
 const adminNavGroups: NavGroup[] = [
   {
-    label: 'VISÃO GERAL',
-    items: [
-      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-    ],
-  },
-  {
     label: 'ANALYTICS',
     items: [
-      { label: 'Relatórios', href: '/admin/relatorios', icon: BarChart3 },
-      { label: 'Auditoria do Sistema', href: '/admin/auditoria', icon: FileSearch },
       { label: 'Saúde do Sistema', href: '/admin/saude-sistema', icon: Activity },
       { label: 'Leads Dashboard', href: '/admin/leads-dashboard', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'GESTÃO DE USUÁRIOS',
-    items: [
-      { label: 'Usuários', href: '/admin/usuarios', icon: Users },
-      { label: 'Matrículas', href: '/admin/matriculas', icon: UserCog },
-      { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
-      { label: 'Saúde Assinaturas', href: '/admin/subscription-health', icon: Activity },
-      { label: 'Leads', href: '/admin/leads', icon: FileText },
+      { label: 'Atividades', href: '/admin/atividades', icon: ListTodo },
+      { label: 'Custos de API', href: '/admin/custos-api', icon: DollarSign },
     ],
   },
   {
@@ -182,11 +168,22 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'GESTÃO DE USUÁRIOS',
+    items: [
+      { label: 'Usuários', href: '/admin/usuarios', icon: Users },
+      { label: 'Matrículas', href: '/admin/matriculas', icon: UserCog },
+      { label: 'Assinaturas', href: '/admin/assinaturas', icon: CreditCard },
+      { label: 'Saúde Assinaturas', href: '/admin/subscription-health', icon: Activity },
+      { label: 'Leads', href: '/admin/leads', icon: FileText },
+    ],
+  },
+  {
     label: 'CONFIGURAÇÕES',
     items: [
       { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
+      { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
       { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },

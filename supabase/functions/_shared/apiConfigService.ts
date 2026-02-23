@@ -19,6 +19,7 @@ export interface ApiConfig {
   parameters: Record<string, any>;
   description: string | null;
   is_active: boolean;
+  fallback_api_key: string | null;
 }
 
 /**
@@ -71,6 +72,7 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
       parameters: data.parameters || {},
       description: data.description,
       is_active: data.is_active,
+      fallback_api_key: data.fallback_api_key || null,
     };
   }
 
@@ -88,6 +90,7 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
       parameters: data.parameters || legacy.parameters,
       description: data.description,
       is_active: data.is_active,
+      fallback_api_key: data.fallback_api_key || null,
     };
   } catch {
     throw new Error(
@@ -117,6 +120,7 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
         parameters: { model: "gpt-4o-mini", max_tokens: 4000 },
         description: "Legacy env var configuration",
         is_active: true,
+        fallback_api_key: null,
       };
     }
 
@@ -132,6 +136,7 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
         parameters: { from: "EUA na Prática <contato@euanapratica.com>" },
         description: "Legacy env var configuration",
         is_active: true,
+        fallback_api_key: null,
       };
     }
 
@@ -147,6 +152,7 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
         parameters: {},
         description: "Legacy env var configuration",
         is_active: true,
+        fallback_api_key: null,
       };
     }
 
@@ -162,6 +168,7 @@ export function getApiConfigLegacy(apiKey: string): ApiConfig {
         parameters: { model: "claude-haiku-4-5-20251001", max_tokens: 150 },
         description: "Legacy env var configuration",
         is_active: true,
+        fallback_api_key: null,
       };
     }
 

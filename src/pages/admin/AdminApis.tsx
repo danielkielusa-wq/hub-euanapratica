@@ -10,7 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminApis, type ApiConfigInput, type ApiConfig } from '@/hooks/useAdminApis';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,6 +39,7 @@ export default function AdminApis() {
   const [formDescription, setFormDescription] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
   const [formParameters, setFormParameters] = useState<Record<string, any>>({});
+  const [formFallback, setFormFallback] = useState<string | null>(null);
 
   // Credential rows: array of { key, value } for direct editing
   const [credRows, setCredRows] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
@@ -51,6 +54,7 @@ export default function AdminApis() {
     setFormDescription('');
     setFormIsActive(true);
     setFormParameters({});
+    setFormFallback(null);
     setCredRows([{ key: '', value: '' }]);
     setParamRows([]);
   };
@@ -67,6 +71,7 @@ export default function AdminApis() {
     setFormDescription(api.description || '');
     setFormIsActive(api.is_active);
     setFormParameters(api.parameters || {});
+    setFormFallback(api.fallback_api_key || null);
 
     // Pre-populate credential rows based on known keys or existing credential keys
     const knownKeys = KNOWN_CREDENTIAL_KEYS[api.api_key];
@@ -114,6 +119,7 @@ export default function AdminApis() {
       parameters: buildParameters(),
       description: formDescription || undefined,
       is_active: formIsActive,
+      fallback_api_key: formFallback,
     };
     await createApi(input);
     setShowCreateDialog(false);
@@ -131,6 +137,7 @@ export default function AdminApis() {
       parameters: buildParameters(),
       description: formDescription || undefined,
       is_active: formIsActive,
+      fallback_api_key: formFallback,
     };
     await updateApi(editingApi.id, input);
     setEditingApi(null);
@@ -213,6 +220,40 @@ export default function AdminApis() {
     </div>
   );
 
+  // Non-LLM API slugs that shouldn't appear as fallback options
+  const NON_LLM_SLUGS = ['resend_email', 'ticto_webhook'];
+
+  // Fallback select component
+  const FallbackSelect = () => {
+    const fallbackOptions = apis.filter(
+      a => a.api_key !== formApiKey && a.is_active && !NON_LLM_SLUGS.includes(a.api_key)
+    );
+    return (
+      <div className="space-y-2">
+        <Label>API de Fallback</Label>
+        <p className="text-xs text-muted-foreground">
+          Se esta API falhar (créditos, rate limit, erro de servidor), o sistema tentará automaticamente a API de fallback.
+        </p>
+        <Select
+          value={formFallback || '_none'}
+          onValueChange={v => setFormFallback(v === '_none' ? null : v)}
+        >
+          <SelectTrigger className="rounded-xl">
+            <SelectValue placeholder="Nenhum (sem fallback)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">Nenhum (sem fallback)</SelectItem>
+            {fallbackOptions.map(api => (
+              <SelectItem key={api.api_key} value={api.api_key}>
+                {api.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   // Shared parameter fields component
   const ParameterFields = () => (
     <div className="space-y-2">
@@ -266,6 +307,99 @@ export default function AdminApis() {
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-[12px] gap-2">
+                  <HelpCircle className="w-4 h-4" />
+                  Documentação
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Documentação — APIs Externas
+                  </SheetTitle>
+                  <SheetDescription>Slugs do sistema, fallback automático e troubleshooting</SheetDescription>
+                </SheetHeader>
+                <div className="mt-6 space-y-6 text-sm">
+                  <section className="space-y-2">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</span>
+                      Propósito
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Gerencia as credenciais de APIs externas usadas pelas Edge Functions. As chaves são armazenadas de forma criptografada e acessíveis apenas por admins e Edge Functions via RLS. Alterações entram em vigor imediatamente, sem redeploy.
+                    </p>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</span>
+                      Slugs reservados do sistema
+                    </h3>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead><tr className="bg-muted/50"><th className="text-left px-3 py-2 font-medium">Slug (api_key)</th><th className="text-left px-3 py-2 font-medium">Uso</th></tr></thead>
+                        <tbody className="divide-y">
+                          {[
+                            ["openai_api", "OpenAI — GPT-4o, embeddings, etc."],
+                            ["anthropic_api", "Anthropic — Claude Haiku, Sonnet, etc."],
+                            ["resend_email", "Resend — envio de todos os emails transacionais."],
+                            ["ticto_webhook", "Ticto — validação de assinatura nos callbacks de pagamento."],
+                          ].map(([s, d], i) => (
+                            <tr key={i}><td className="px-3 py-2 font-mono text-[10px] text-foreground">{s}</td><td className="px-3 py-2 text-muted-foreground">{d}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-muted-foreground">O slug deve corresponder exatamente ao que as Edge Functions usam em <code className="bg-muted px-1 rounded">getApiConfig("slug")</code>.</p>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
+                      Sistema de Fallback (LLMs)
+                    </h3>
+                    <ul className="space-y-2 text-muted-foreground">
+                      {[
+                        { item: "Como configurar", detail: "No formulário de edição, selecione a \"API de Fallback\". Ex: openai_api → anthropic_api e vice-versa." },
+                        { item: "Quando é acionado", detail: "HTTP 402, 429, 500+, timeout, ou body contendo insufficient_quota / overloaded_error." },
+                        { item: "Registro de custo", detail: "Ambas as tentativas são registradas em api_cost_logs. O fallback inclui metadata.used_fallback: true." },
+                        { item: "Não se aplica a", detail: "resend_email e ticto_webhook — apenas LLMs têm fallback." },
+                      ].map((i, idx) => (
+                        <li key={idx} className="flex gap-3">
+                          <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                          <div><span className="font-medium text-foreground">{i.item}: </span>{i.detail}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-primary" />
+                      Troubleshooting
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { p: "Botão \"Testar Conexão\" falha com 401", c: "Credencial inválida ou expirada.", f: "Regenere a chave no painel do provedor, clique em Editar e atualize o valor." },
+                        { p: "Edge Function não encontra a API", c: "O slug cadastrado não corresponde ao que a função usa em getApiConfig().", f: "Verifique o slug (campo Identificador) — deve ser idêntico ao string passado para getApiConfig." },
+                        { p: "Fallback não é acionado", c: "A API de fallback está inativa ou não foi configurada.", f: "Confirme que a API de fallback está Ativa e que o campo \"API de Fallback\" está preenchido." },
+                        { p: "Credencial atualizada mas função ainda usa a antiga", c: "As Edge Functions leem as credenciais em tempo de execução — não há cache persistente.", f: "Verifique se o valor foi salvo corretamente (observe o toast de sucesso). Tente o botão de teste." },
+                      ].map((item, i) => (
+                        <div key={i} className="rounded-lg border p-3 space-y-1">
+                          <p className="font-medium text-destructive text-xs">{item.p}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Causa:</span> {item.c}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Fix:</span> {item.f}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              </SheetContent>
+            </Sheet>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button className="rounded-[12px] gap-2" onClick={openCreateDialog}>
@@ -313,6 +447,7 @@ export default function AdminApis() {
 
                 <CredentialFields />
                 <ParameterFields />
+                <FallbackSelect />
 
                 <div className="space-y-2">
                   <Label>Descrição</Label>
@@ -392,6 +527,7 @@ export default function AdminApis() {
 
                 <CredentialFields isEdit />
                 <ParameterFields />
+                <FallbackSelect />
 
                 <div className="space-y-2">
                   <Label>Descrição</Label>
@@ -451,6 +587,7 @@ export default function AdminApis() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </div>
         </div>
 
         {/* API Cards Grid */}
@@ -574,6 +711,15 @@ export default function AdminApis() {
                     </div>
                   )}
 
+                  {api.fallback_api_key && (
+                    <div className="flex items-center gap-1.5 pt-2 border-t">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs text-amber-600 font-medium">
+                        Fallback: {apis.find(a => a.api_key === api.fallback_api_key)?.name || api.fallback_api_key}
+                      </span>
+                    </div>
+                  )}
+
                   {api.description && (
                     <p className="text-sm text-muted-foreground pt-2 border-t">{api.description}</p>
                   )}
@@ -607,6 +753,10 @@ export default function AdminApis() {
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
               <p>Alterações nas configurações não requerem redeploy das funções</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <p>APIs LLM com fallback configurado tentam automaticamente a API secundária em caso de falha (créditos, rate limit, erro de servidor)</p>
             </div>
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />

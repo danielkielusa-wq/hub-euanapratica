@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     const { test_email, user_ids } = requestBody;
 
-    if (!resendApiKey) {
+    if (!resendConfig?.credentials?.api_key) {
       console.warn("RESEND_API_KEY not configured - emails will not be sent");
       return new Response(
         JSON.stringify({ success: false, message: "Email not configured", emailsSent: 0 }),

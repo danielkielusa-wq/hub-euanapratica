@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 // LOW-9: Module-level constant — avoids re-allocating ~430-line schema on every request
@@ -775,6 +776,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 
 
     let formattedReport;
+    const llmStartTime = Date.now();
 
     if (isAnthropic) {
       // ========== Anthropic Messages API ==========
@@ -815,9 +817,11 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       }
 
       const aiData = await aiResponse.json();
+      const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
       const text = aiData.content?.[0]?.text;
       if (!text) {
         console.error("Unexpected Anthropic response:", aiData);
+        logApiCost({ edgeFunction: 'format-lead-report', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { evaluation_id: evaluationId } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
@@ -860,6 +864,8 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      logApiCost({ edgeFunction: 'format-lead-report', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
     } else {
       // ========== OpenAI Responses API ==========
       // CRIT-2: Abort after 50s to prevent Edge Function timeout
@@ -913,6 +919,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       }
 
       const aiData = await aiResponse.json();
+      const { inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens } = extractTokenUsage(aiData, 'openai');
 
       const extractOutputText = (data: any): string | null => {
         // Check top-level output_text (must be non-empty)
@@ -959,6 +966,8 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      logApiCost({ edgeFunction: 'format-lead-report', provider: 'openai', model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
     }
 
     // V2 reports: enrich product recommendations with live hub_services data

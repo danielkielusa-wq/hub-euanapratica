@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, CheckCircle2, AlertCircle, Eye, RefreshCw, Search,
-  ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink, Info, Brain
+  ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink, Info, Brain,
+  HelpCircle, BookOpen, Wrench
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { AIDailyPrioritiesPanel } from '@/components/admin/ai-priorities/AIDailyPrioritiesPanel';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -105,6 +109,7 @@ function Card({ children, className, title, icon: Icon, subtitle, tooltip }: {
 }
 
 export default function AdminLeadsDashboard() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [allData, setAllData] = useState<LeadRow[]>([]);
   const [period, setPeriod] = useState<PeriodDays>(7);
@@ -281,6 +286,103 @@ export default function AdminLeadsDashboard() {
               className={cn("p-2.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all", loading && "animate-pulse")}>
               <RefreshCw className={cn("w-5 h-5 text-gray-500", loading && "animate-spin")} />
             </button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 rounded-2xl border-gray-100 text-xs font-semibold">
+                  <HelpCircle className="w-4 h-4" />
+                  Docs
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Documentação — Leads Dashboard
+                  </SheetTitle>
+                  <SheetDescription>Métricas, filtros e troubleshooting</SheetDescription>
+                </SheetHeader>
+                <div className="mt-6 space-y-6 text-sm">
+                  <section className="space-y-2">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+                      Propósito
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Dashboard analítico de leads captados via formulário de Avaliação de Carreira. Exibe KPIs de volume, distribuição por fase ROTA, barreiras identificadas, produtos recomendados pela IA e tabela de leads com filtros.
+                    </p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Os dados vêm da tabela <code className="bg-muted px-1 rounded text-xs">career_evaluations</code> (limite de 1.000 registros mais recentes por carregamento).
+                    </p>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+                      Como usar
+                    </h3>
+                    <ul className="space-y-2 text-muted-foreground">
+                      {[
+                        { item: "Período (7D / 30D / 90D / Tudo)", detail: "Filtra os leads pelo campo created_at. \"Tudo\" carrega os 1.000 mais recentes." },
+                        { item: "Atualizar (↻)", detail: "Recarrega os dados do banco. Use após importar novos leads." },
+                        { item: "Prioridades do Dia", detail: "Painel de IA que analisa os leads e sugere com quem falar hoje, com base em score e temperatura." },
+                        { item: "Filtros da tabela", detail: "Combine busca por nome/email, Status, Temperatura e Fase para segmentar leads." },
+                        { item: "Ver Relatório", detail: "Abre o relatório do lead em nova aba. O email é copiado automaticamente para usar no gate." },
+                        { item: "Clique na linha", detail: "Navega para a página de detalhes do lead (/admin/leads/:id)." },
+                      ].map((i, idx) => (
+                        <li key={idx} className="flex gap-3">
+                          <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+                          <div><span className="font-medium text-foreground">{i.item}: </span>{i.detail}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+                      Métricas explicadas
+                    </h3>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead><tr className="bg-muted/50"><th className="text-left px-3 py-2 font-medium">Métrica</th><th className="text-left px-3 py-2 font-medium">Como é calculada</th></tr></thead>
+                        <tbody className="divide-y">
+                          {[
+                            ["Score (0–100)", "Calculado pela IA no momento do processamento. ≥71 = Quente, 51–70 = Morno, ≤50 = Frio."],
+                            ["Temperatura", "Derivada do score. Quente = alta prontidão de compra."],
+                            ["LTV Estimado", "Score + presença de orçamento: ≥71+budget→R$10k, ≥71→R$3k, etc."],
+                            ["Fase ROTA", "Baseada no score: Pré-R (0–35), R-O (36–60), O-T (61–85), T-A (86–100)."],
+                            ["Relatórios Acessados", "Leads com access_count > 0 (abriram o link pelo menos uma vez)."],
+                          ].map(([m, d], i) => (
+                            <tr key={i}><td className="px-3 py-2 font-medium text-foreground">{m}</td><td className="px-3 py-2 text-muted-foreground">{d}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-blue-500" />
+                      Troubleshooting
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { p: "Gráfico/tabela vazia no período selecionado", c: "Nenhum lead criado nesse intervalo de datas.", f: "Amplie o período ou selecione \"Tudo\"." },
+                        { p: "Status \"error\" em muitos leads", c: "Falha no processamento automático (N8N ou Edge Function).", f: "Verifique os logs do Supabase e do N8N. O lead ainda existe e pode ter relatório antigo." },
+                        { p: "Gráfico de fase ROTA vazio", c: "Leads sem campo phase_emoji ou rota_letter preenchido.", f: "Esses leads ainda não foram processados ou não possuem score." },
+                        { p: "Produtos sugeridos com total menor que esperado", c: "Apenas leads que abriram o relatório recebem recomendação de produto.", f: "É comportamento esperado — confira os Relatórios Acessados." },
+                      ].map((item, i) => (
+                        <div key={i} className="rounded-lg border p-3 space-y-1">
+                          <p className="font-medium text-red-600 text-xs">{item.p}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Causa:</span> {item.c}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Fix:</span> {item.f}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              </SheetContent>
+            </Sheet>
             <button onClick={() => setPrioritiesOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
               <Brain className="w-4 h-4" />
@@ -467,7 +569,7 @@ export default function AdminLeadsDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {pageSlice.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => navigate(`/admin/leads/${d.id}`)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
@@ -509,7 +611,7 @@ export default function AdminLeadsDashboard() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {d.access_token ? (
-                        <button onClick={() => openReport(d.access_token!, d.email)}
+                        <button onClick={(e) => { e.stopPropagation(); openReport(d.access_token!, d.email); }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:bg-gray-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm">
                           Ver Relatório <ExternalLink className="w-3 h-3" />
                         </button>

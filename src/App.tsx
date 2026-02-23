@@ -82,6 +82,10 @@ import SubscriptionPage from "./pages/account/SubscriptionPage";
 import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminLeadsDashboard from "./pages/admin/AdminLeadsDashboard";
+import AdminCustosApi from "./pages/admin/AdminCustosApi";
+import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
+import AdminAtividades from "./pages/admin/AdminAtividades";
+import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
 
 
 const queryClient = new QueryClient();
@@ -444,7 +448,27 @@ function AppRoutes() {
           <AdminLeadsDashboard />
         </ProtectedRoute>
       } />
-      
+      <Route path="/admin/leads/:id" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLeadDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/atividades" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAtividades />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/custos-api" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminCustosApi />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/whatsapp-templates" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWhatsAppTemplates />
+        </ProtectedRoute>
+      } />
+
       {/* Public Report Access (no auth required) */}
       <Route path="/report/:token" element={<PublicReport />} />
 

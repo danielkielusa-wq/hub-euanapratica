@@ -31,7 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Mail, Plus, Edit, Trash2, MoreVertical, Search, Eye, Send } from 'lucide-react';
+import { Mail, Plus, Edit, Trash2, MoreVertical, Search, Eye, Send, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminEmailTemplates, type EmailTemplate } from '@/hooks/useAdminEmailTemplates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -92,13 +93,125 @@ export default function AdminEmailTemplates() {
             </div>
           </div>
 
-          <Button
-            className="rounded-[12px] gap-2"
-            onClick={() => setShowCreateDialog(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Novo Template
-          </Button>
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-[12px] gap-2">
+                  <HelpCircle className="w-4 h-4" />
+                  Documentação
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Documentação — Templates de Email
+                  </SheetTitle>
+                  <SheetDescription>Variáveis, templates do sistema e troubleshooting</SheetDescription>
+                </SheetHeader>
+                <div className="mt-6 space-y-6 text-sm">
+                  <section className="space-y-2">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</span>
+                      Propósito
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Gerencia os templates HTML enviados pelo sistema via Resend. Cada template é editado no editor visual Unlayer. As variáveis <code className="bg-muted px-1 rounded text-xs">{'{{nome}}'}</code> são substituídas pela Edge Function antes do envio.
+                    </p>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</span>
+                      Como usar
+                    </h3>
+                    <ul className="space-y-2 text-muted-foreground">
+                      {[
+                        { item: "Novo Template", detail: "Abre o editor Unlayer para criar um template do zero." },
+                        { item: "Editar (⋮ → Editar)", detail: "Reabre o editor visual com o design salvo. Alterações são salvas ao clicar em Salvar." },
+                        { item: "Visualizar (⋮ → Visualizar)", detail: "Exibe o HTML renderizado com variáveis de exemplo preenchidas." },
+                        { item: "Enviar Teste (⋮ → Enviar Teste)", detail: "Envia um email real para o endereço informado. O assunto é prefixado com [TESTE]." },
+                        { item: "Toggle de Status", detail: "Desabilita o template sem excluí-lo. Templates desabilitados não são enviados pelo sistema." },
+                      ].map((i, idx) => (
+                        <li key={idx} className="flex gap-3">
+                          <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                          <div><span className="font-medium text-foreground">{i.item}: </span>{i.detail}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
+                      Templates do sistema (12 seeds)
+                    </h3>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead><tr className="bg-muted/50"><th className="text-left px-3 py-2 font-medium">Nome (slug)</th><th className="text-left px-3 py-2 font-medium">Acionado por</th></tr></thead>
+                        <tbody className="divide-y">
+                          {[
+                            ["onboarding_welcome", "Conclusão do onboarding (Onboarding.tsx → send-welcome-email)"],
+                            ["subscription_activated", "Assinatura ativada via Ticto webhook"],
+                            ["subscription_cancelled", "Assinatura cancelada"],
+                            ["subscription_*", "Outros eventos de assinatura"],
+                            ["booking_confirmation", "Confirmação de agendamento"],
+                            ["booking_reminder / reminder_1h", "Lembretes 24h e 1h antes"],
+                            ["booking_rescheduled", "Reagendamento de sessão"],
+                            ["booking_cancelled / no_show", "Cancelamento ou não comparecimento"],
+                            ["espaco_invitation", "Convite para o Espaço"],
+                          ].map(([n, d], i) => (
+                            <tr key={i}><td className="px-3 py-2 font-mono text-[10px] text-foreground">{n}</td><td className="px-3 py-2 text-muted-foreground">{d}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-2">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">4</span>
+                      Variáveis
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Sintaxe: <code className="bg-muted px-1 rounded text-xs">{'{{nomeVariavel}}'}</code>. As variáveis são substituídas por regex na Edge Function antes do envio. Declare as variáveis usadas no campo "Variáveis" ao criar/editar o template — isso serve como documentação para quem editar a Edge Function.
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Blocos condicionais HTML (ex: seção de link de reunião) devem ser pré-renderizados na Edge Function e passados como variável (ex: <code className="bg-muted px-1 rounded">{'{{meetingLinkSection}}'}</code>).
+                    </p>
+                  </section>
+                  <div className="border-t" />
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-primary" />
+                      Troubleshooting
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { p: "Email não enviado pelo sistema", c: "Template desabilitado ou nome (slug) incorreto na Edge Function.", f: "Ative o toggle e confirme que o slug no código corresponde ao campo \"name\" do template." },
+                        { p: "Variável não substituída (aparece {{nome}} no email)", c: "A Edge Function não está passando a variável correta.", f: "Verifique o código da Edge Function — o objeto variables deve incluir a chave correspondente." },
+                        { p: "Email com layout quebrado", c: "HTML inválido gerado pelo editor ou variável com conteúdo que quebra a estrutura.", f: "Use \"Visualizar\" para inspecionar o HTML. Escapeie caracteres especiais nas variáveis." },
+                        { p: "Erro 500 ao enviar (Edge Function)", c: "Falha no Resend (chave inválida, template malformado) ou erro interno.", f: "Verifique os logs em Supabase → Edge Functions → send-[nome] → Logs. Use \"Enviar Teste\" para isolar o problema." },
+                      ].map((item, i) => (
+                        <div key={i} className="rounded-lg border p-3 space-y-1">
+                          <p className="font-medium text-destructive text-xs">{item.p}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Causa:</span> {item.c}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Fix:</span> {item.f}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Button
+              className="rounded-[12px] gap-2"
+              onClick={() => setShowCreateDialog(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Novo Template
+            </Button>
+          </div>
         </div>
 
         {/* Search */}

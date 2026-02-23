@@ -13,6 +13,7 @@ export interface ApiConfig {
   is_active: boolean;
   updated_at: string;
   updated_by: string | null;
+  fallback_api_key: string | null;
 }
 
 export interface ApiConfigInput {
@@ -23,6 +24,7 @@ export interface ApiConfigInput {
   parameters?: Record<string, any>;
   description?: string;
   is_active?: boolean;
+  fallback_api_key?: string | null;
 }
 
 /**
@@ -79,6 +81,7 @@ export function useAdminApis() {
           parameters: input.parameters || {},
           description: input.description || null,
           is_active: input.is_active !== false,
+          fallback_api_key: input.fallback_api_key || null,
           updated_by: user?.id,
         })
         .select();
@@ -136,6 +139,7 @@ export function useAdminApis() {
           parameters: input.parameters || {},
           description: input.description || null,
           is_active: input.is_active,
+          fallback_api_key: input.fallback_api_key === undefined ? undefined : (input.fallback_api_key || null),
           updated_by: user?.id || null,
         })
         .eq('id', id)

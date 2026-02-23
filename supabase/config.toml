@@ -76,6 +76,9 @@ verify_jwt = false
 [functions.send-test-email]
 verify_jwt = false
 
+[functions.suggest-lead-tasks]
+verify_jwt = false
+
 [functions.create-test-users]
 verify_jwt = false
 
@@ -86,4 +89,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-daily-priorities]
+verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
+
+[functions.receive-whatsapp-webhook]
+verify_jwt = false
+
+[functions.check-whatsapp-status]
+verify_jwt = false
+
+[functions.suggest-whatsapp-messages]
 verify_jwt = false

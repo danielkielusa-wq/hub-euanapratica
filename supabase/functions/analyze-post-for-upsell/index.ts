@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,6 +245,7 @@ serve(async (req) => {
     console.log(`[Upsell] Step 6 - Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API. Model:`, model, "Max tokens:", maxTokens);
 
     let responseText: string;
+    const llmStartTime = Date.now();
 
     if (isAnthropic) {
       // Anthropic Messages API
@@ -269,6 +271,8 @@ serve(async (req) => {
       }
 
       const claudeData = await claudeResponse.json();
+      const { inputTokens, outputTokens } = extractTokenUsage(claudeData, 'anthropic');
+      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: 'anthropic', model, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
       responseText = claudeData.content?.[0]?.text || JSON.stringify({ match: false });
     } else {
       // OpenAI Chat Completions API
@@ -293,6 +297,8 @@ serve(async (req) => {
       }
 
       const openaiData = await openaiResponse.json();
+      const { inputTokens: oaiIn, outputTokens: oaiOut } = extractTokenUsage(openaiData, 'openai');
+      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: 'openai', model, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
       responseText = openaiData.choices?.[0]?.message?.content || JSON.stringify({ match: false });
     }
 

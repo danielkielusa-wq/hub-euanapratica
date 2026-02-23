@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -497,6 +498,8 @@ Responda em português brasileiro de forma clara e direta.`;
 
     console.log(`[analyze-resume] Step 9: Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API, model=${selectedModel}, isPdf=${isPdf}`);
 
+    const llmStartTime = Date.now();
+
     if (isAnthropic) {
       // ========== Anthropic Messages API ==========
       const anthropicUserContent = isPdf
@@ -550,9 +553,11 @@ Responda em português brasileiro de forma clara e direta.`;
       }
 
       const aiData = await aiResponse.json();
+      const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
       const text = aiData.content?.[0]?.text;
       if (!text) {
         console.error("Unexpected Anthropic response:", aiData);
+        logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { app_id: 'curriculo_usa' } });
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -583,6 +588,9 @@ Responda em português brasileiro de forma clara e direta.`;
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Fire-and-forget cost logging
+      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
     } else {
       // ========== OpenAI Responses API ==========
       const userContent = isPdf
@@ -647,6 +655,7 @@ Responda em português brasileiro de forma clara e direta.`;
       }
 
       const aiData = await aiResponse.json();
+      const { inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens } = extractTokenUsage(aiData, 'openai');
       console.log("OpenAI response id:", aiData?.id || "unknown");
 
       const extractOutputText = (data: any): string | null => {
@@ -686,6 +695,9 @@ Responda em português brasileiro de forma clara e direta.`;
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Fire-and-forget cost logging
+      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'openai', model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
     }
 
     console.log(`[analyze-resume] Step 9 OK: AI analysis complete, score=${result?.header?.score || 'unknown'}`);

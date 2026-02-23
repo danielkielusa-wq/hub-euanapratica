@@ -57,6 +57,81 @@ export interface CareerEvaluation {
   recommendation_status?: 'pending' | 'processing' | 'completed' | 'error' | 'skipped';
   created_at: string;
   updated_at: string;
+
+  // Scores
+  readiness_score?: number;
+  readiness_percentual?: number;
+  fit_score?: number;
+  secondary_fit_score?: number;
+  lead_priority_score?: number;
+  score_english?: number;
+  score_experience?: number;
+  score_international_work?: number;
+  score_timeline?: number;
+  score_objective?: number;
+  score_visa?: number;
+  score_readiness?: number;
+  score_area_bonus?: number;
+
+  // Phase
+  phase_id?: number;
+  phase_name?: string;
+  phase_emoji?: string;
+  rota_letter?: string;
+
+  // Lead qualification
+  lead_temperature?: string;
+  urgency_level?: string;
+  estimated_ltv?: number;
+  estimated_preparation_months?: number;
+  has_budget?: boolean;
+  can_apply_jobs?: boolean;
+  is_tech_professional?: boolean;
+  is_senior_level?: boolean;
+  works_remotely?: boolean;
+  is_high_income?: boolean;
+  has_family?: boolean;
+
+  // Barriers
+  has_english_barrier?: boolean;
+  has_experience_barrier?: boolean;
+  has_financial_barrier?: boolean;
+  has_family_barrier?: boolean;
+  has_visa_barrier?: boolean;
+  has_time_barrier?: boolean;
+  has_clarity_barrier?: boolean;
+  critical_blockers?: string[];
+  recommended_first_action?: string;
+
+  // Contact preferences
+  preferred_communication?: string;
+  best_contact_time?: string;
+  auto_nurture_sequence?: string;
+
+  // Product recommendations
+  recommended_product_tier?: string;
+  recommended_product_price?: string;
+  recommended_product_url?: string;
+  secondary_product_name?: string;
+  secondary_product_tier?: string;
+
+  // Follow-ups
+  scheduled_follow_up_1?: string;
+  scheduled_follow_up_2?: string;
+  scheduled_follow_up_3?: string;
+  recheck_recommended_at?: string;
+  next_milestone_action?: string;
+  next_milestone_deadline?: string;
+
+  // UTM / Attribution
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  fbclid?: string;
+  gclid?: string;
+  device?: string;
 }
 
 export interface ServiceRecommendation {
@@ -373,4 +448,41 @@ export function isV2Report(data: unknown): data is V2FormattedReportData {
   const hasBarriers = obj.barriers_analysis != null && typeof obj.barriers_analysis === 'object';
 
   return hasScoring && hasPhase && hasBarriers;
+}
+
+// ============================================================
+// CRM Types (lead_interactions + lead_tasks)
+// ============================================================
+
+export interface LeadInteraction {
+  id: string;
+  lead_id: string;
+  type: string;
+  content: string | null;
+  direction: string | null;
+  channel: string | null;
+  metadata: Record<string, any> | null;
+  created_by: string | null;
+  created_at: string;
+  creator_name?: string;
+}
+
+export interface LeadTask {
+  id: string;
+  lead_id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  priority: string;
+  due_date: string | null;
+  status: string;
+  source: string;
+  ai_generation_id: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  creator_name?: string;
+  completer_name?: string;
 }

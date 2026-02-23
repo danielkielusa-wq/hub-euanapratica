@@ -49,6 +49,17 @@ export interface WebhookMetrics {
   recentEvents: { id: string; event_type: string; status: string; created_at: string }[];
 }
 
+export interface WhatsAppMetrics {
+  sent24h: number;
+  received24h: number;
+  failed24h: number;
+  delivered24h: number;
+  read24h: number;
+  pendingTasks: number;
+  overdueTasks: number;
+  recentMessages: { id: string; phone: string; direction: string; status: string; created_at: string }[];
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────
 
 export function useSystemHealth() {
@@ -183,6 +194,61 @@ export function useSystemHealth() {
     },
   });
 
+  // 5. WhatsApp / CRM metrics
+  const whatsappQuery = useQuery<WhatsAppMetrics>({
+    queryKey: ['system-health-whatsapp'],
+    queryFn: async () => {
+      const h24 = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const now = new Date().toISOString();
+
+      // WhatsApp logs (last 24h)
+      const { data: waLogs } = await supabase
+        .from('whatsapp_logs')
+        .select('id, phone, direction, status, created_at')
+        .gte('created_at', h24)
+        .order('created_at', { ascending: false });
+
+      const items = waLogs || [];
+      const sent24h = items.filter((l: any) => l.direction === 'outbound').length;
+      const received24h = items.filter((l: any) => l.direction === 'inbound').length;
+      const failed24h = items.filter((l: any) => l.status === 'failed').length;
+      const delivered24h = items.filter((l: any) => l.status === 'delivered').length;
+      const read24h = items.filter((l: any) => l.status === 'read').length;
+
+      // Pending lead tasks
+      const { count: pendingTasks } = await supabase
+        .from('lead_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      // Overdue tasks (pending + past due_date)
+      const { count: overdueTasks } = await supabase
+        .from('lead_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .lt('due_date', now);
+
+      const recentMessages = items.slice(0, 10).map((l: any) => ({
+        id: l.id,
+        phone: l.phone,
+        direction: l.direction,
+        status: l.status,
+        created_at: l.created_at,
+      }));
+
+      return {
+        sent24h,
+        received24h,
+        failed24h,
+        delivered24h,
+        read24h,
+        pendingTasks: pendingTasks ?? 0,
+        overdueTasks: overdueTasks ?? 0,
+        recentMessages,
+      };
+    },
+  });
+
   // Test individual API connection via existing test-api-connection Edge Function
   //   Uses raw fetch (invoke can discard non-2xx bodies / return Blob).
   //   Requires admin auth — refreshSession() ensures a fresh JWT.
@@ -249,7 +315,8 @@ export function useSystemHealth() {
     emailQuery.refetch();
     webhookQuery.refetch();
     apisQuery.refetch();
-  }, [emailQuery, webhookQuery, apisQuery]);
+    whatsappQuery.refetch();
+  }, [emailQuery, webhookQuery, apisQuery, whatsappQuery]);
 
   return {
     // Health check
@@ -272,6 +339,10 @@ export function useSystemHealth() {
     // Webhook metrics
     webhookMetrics: webhookQuery.data ?? null,
     isLoadingWebhooks: webhookQuery.isLoading,
+
+    // WhatsApp / CRM metrics
+    whatsappMetrics: whatsappQuery.data ?? null,
+    isLoadingWhatsApp: whatsappQuery.isLoading,
 
     // Global
     refetchAll,

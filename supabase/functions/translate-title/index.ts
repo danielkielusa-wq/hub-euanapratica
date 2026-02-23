@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { callLLM, LLMError } from "../_shared/llmService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,44 +145,7 @@ serve(async (req) => {
       .replace("{responsibilities}", responsibilities || "Not provided")
       .replace("{years_experience}", years ? String(years) : "Not specified");
 
-    // Get API credentials and configuration
-    console.log(`[translate-title] Fetching API config for: ${selectedApiKey}`);
-    let apiConfig;
-    try {
-      apiConfig = await getApiConfig(selectedApiKey);
-    } catch (configErr) {
-      console.error(`[translate-title] Failed to get API config for "${selectedApiKey}":`, configErr);
-      return new Response(
-        JSON.stringify({
-          error: `Erro de configuração: API "${selectedApiKey}" não encontrada. Verifique as configurações em /admin/configuracoes-apis.`,
-          error_code: "API_CONFIG_NOT_FOUND",
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!apiConfig.credentials.api_key) {
-      console.error(`[translate-title] No API key credential for: ${selectedApiKey}`);
-      return new Response(
-        JSON.stringify({
-          error: `Credencial não configurada para "${apiConfig.name}". Edite a API em /admin/configuracoes-apis e adicione a API key.`,
-          error_code: "API_KEY_MISSING",
-        }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Detect API type from base_url only (not from key name)
-    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = baseUrlLower.includes("anthropic.com");
-
-    // Get model from API parameters (fallback to defaults)
-    const selectedModel = apiConfig.parameters?.model ||
-      (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
-
-    console.log(`[translate-title] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
-
-    // JSON schema for structured output
+    // JSON schema for structured output (used by OpenAI, ignored for Anthropic)
     const responseSchema = {
       name: "title_translation",
       strict: true,
@@ -214,119 +177,43 @@ serve(async (req) => {
       },
     };
 
-    let result: any;
-
-    // Route to the appropriate API
-    if (isAnthropic) {
-      // Anthropic Claude API
-      const aiResponse = await fetch(`${apiConfig.base_url || "https://api.anthropic.com/v1"}/messages`, {
-        method: "POST",
-        headers: {
-          "x-api-key": apiConfig.credentials.api_key,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          max_tokens: 4000,
-          messages: [
-            {
-              role: "user",
-              content: systemPrompt,
-            },
-          ],
-        }),
+    // Call LLM with automatic fallback
+    let llmResult;
+    try {
+      llmResult = await callLLM({
+        apiKey: selectedApiKey,
+        systemPrompt: "You are an expert career consultant specializing in translating Brazilian job titles to US market equivalents. Respond only with valid JSON.",
+        userMessage: systemPrompt,
+        maxTokens: 4000,
+        responseFormat: responseSchema,
+        userId,
+        edgeFunction: "translate-title",
+        metadata: { app_id: "title_translator" },
       });
-
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
-        return new Response(
-          JSON.stringify({ error: "AI analysis failed" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const aiData = await aiResponse.json();
-      const text = aiData.content?.[0]?.text;
-      if (!text) {
-        console.error("Unexpected Anthropic response:", aiData);
-        return new Response(
-          JSON.stringify({ error: "Failed to parse AI response" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Extract JSON from response (may have markdown code fences)
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("No JSON found in Anthropic response:", text.slice(0, 500));
-        return new Response(
-          JSON.stringify({ error: "Failed to parse AI response" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      result = JSON.parse(jsonMatch[0]);
-    } else {
-      // OpenAI Chat Completions API (default)
-      const aiResponse = await fetch(`${apiConfig.base_url || "https://api.openai.com/v1"}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiConfig.credentials.api_key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: "system",
-              content: "You are an expert career consultant specializing in translating Brazilian job titles to US market equivalents. Respond only with valid JSON.",
-            },
-            {
-              role: "user",
-              content: systemPrompt,
-            },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: responseSchema.name,
-              schema: responseSchema.schema,
-              strict: responseSchema.strict,
-            },
-          },
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        if (aiResponse.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const errorText = await aiResponse.text();
-        console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
-        return new Response(
-          JSON.stringify({ error: "AI analysis failed" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const aiData = await aiResponse.json();
-
-      // Extract content from chat completion response
-      const content = aiData.choices?.[0]?.message?.content;
-      if (!content) {
-        console.error("Unexpected OpenAI response format:", aiData);
-        return new Response(
-          JSON.stringify({ error: "Failed to parse AI response" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      result = JSON.parse(content);
+    } catch (llmErr) {
+      const errMsg = llmErr instanceof Error ? llmErr.message : "AI analysis failed";
+      const statusCode = llmErr instanceof LLMError ? (llmErr.statusCode || 500) : 500;
+      console.error(`[translate-title] LLM call failed:`, errMsg);
+      return new Response(
+        JSON.stringify({ error: errMsg, error_code: "LLM_ERROR" }),
+        { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    if (llmResult.usedFallback) {
+      console.log(`[translate-title] Used fallback provider: ${llmResult.provider}/${llmResult.model}`);
+    }
+
+    // Parse JSON from response (may have markdown code fences from Anthropic)
+    const jsonMatch = llmResult.content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in LLM response:", llmResult.content.slice(0, 500));
+      return new Response(
+        JSON.stringify({ error: "Failed to parse AI response" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const result = JSON.parse(jsonMatch[0]);
 
     // Validate result structure
     if (!result.suggestions || !Array.isArray(result.suggestions) || !result.recommended) {

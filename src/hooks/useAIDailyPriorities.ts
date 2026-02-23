@@ -46,10 +46,37 @@ export interface DailyPrioritiesResponse {
 
 // ── Hook ───────────────────────────────────────────────────────────────
 
+export type ProgressPhase =
+  | 'loading_config'
+  | 'querying_leads'
+  | 'querying_interactions'
+  | 'calling_ai'
+  | 'parsing_response'
+  | 'done';
+
+export const PHASE_LABELS: Record<ProgressPhase, string> = {
+  loading_config: 'Carregando configurações...',
+  querying_leads: 'Buscando leads no banco de dados...',
+  querying_interactions: 'Verificando interações recentes...',
+  calling_ai: 'Enviando para IA — aguardando resposta...',
+  parsing_response: 'Interpretando resposta da IA...',
+  done: 'Pronto!',
+};
+
+const PHASE_ORDER: ProgressPhase[] = [
+  'loading_config',
+  'querying_leads',
+  'querying_interactions',
+  'calling_ai',
+  'parsing_response',
+  'done',
+];
+
 export function useAIDailyPriorities() {
   const { toast } = useToast();
   const [data, setData] = useState<DailyPrioritiesResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
 
   const generatePriorities = useCallback(async () => {
@@ -57,10 +84,22 @@ export function useAIDailyPriorities() {
       setIsGenerating(true);
       setCompletedItems(new Set());
 
+      // Simulate progress phases while waiting for the single Edge Function call
+      setProgressPhase('loading_config');
+      const phaseTimer1 = setTimeout(() => setProgressPhase('querying_leads'), 800);
+      const phaseTimer2 = setTimeout(() => setProgressPhase('querying_interactions'), 2000);
+      const phaseTimer3 = setTimeout(() => setProgressPhase('calling_ai'), 3500);
+
       const { data: result, error } = await supabase.functions.invoke(
         'generate-daily-priorities',
         { body: {} }
       );
+
+      // Clear timers and move to final phase
+      clearTimeout(phaseTimer1);
+      clearTimeout(phaseTimer2);
+      clearTimeout(phaseTimer3);
+      setProgressPhase('parsing_response');
 
       if (error) {
         // Extract actual error message from response body
@@ -78,6 +117,7 @@ export function useAIDailyPriorities() {
         throw new Error('Resposta da IA em formato inesperado');
       }
 
+      setProgressPhase('done');
       setData(result as DailyPrioritiesResponse);
 
       toast({
@@ -93,6 +133,7 @@ export function useAIDailyPriorities() {
       });
     } finally {
       setIsGenerating(false);
+      setProgressPhase(null);
     }
   }, [toast]);
 
@@ -168,6 +209,7 @@ export function useAIDailyPriorities() {
   return {
     data,
     isGenerating,
+    progressPhase,
     completedItems,
     generatePriorities,
     markAsDone,

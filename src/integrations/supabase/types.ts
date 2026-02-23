@@ -59,6 +59,7 @@ export type Database = {
           created_at: string | null
           credentials: Json | null
           description: string | null
+          fallback_api_key: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -72,6 +73,7 @@ export type Database = {
           created_at?: string | null
           credentials?: Json | null
           description?: string | null
+          fallback_api_key?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -85,12 +87,72 @@ export type Database = {
           created_at?: string | null
           credentials?: Json | null
           description?: string | null
+          fallback_api_key?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           parameters?: Json | null
           updated_at?: string | null
           updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_configs_fallback_api_key_fkey"
+            columns: ["fallback_api_key"]
+            isOneToOne: false
+            referencedRelation: "api_configs"
+            referencedColumns: ["api_key"]
+          },
+        ]
+      }
+      api_cost_logs: {
+        Row: {
+          cost_usd: number | null
+          created_at: string | null
+          duration_ms: number | null
+          edge_function: string
+          error_message: string | null
+          id: string
+          input_tokens: number | null
+          metadata: Json | null
+          model: string | null
+          output_tokens: number | null
+          provider: string
+          status: string
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          edge_function: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          metadata?: Json | null
+          model?: string | null
+          output_tokens?: number | null
+          provider: string
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string | null
+          duration_ms?: number | null
+          edge_function?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          metadata?: Json | null
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3538,6 +3600,107 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_logs: {
+        Row: {
+          created_at: string
+          direction: string
+          error_message: string | null
+          evolution_message_id: string | null
+          id: string
+          interaction_id: string | null
+          lead_id: string | null
+          message_text: string | null
+          metadata: Json | null
+          phone: string
+          status: string
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          error_message?: string | null
+          evolution_message_id?: string | null
+          id?: string
+          interaction_id?: string | null
+          lead_id?: string | null
+          message_text?: string | null
+          metadata?: Json | null
+          phone: string
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          evolution_message_id?: string | null
+          id?: string
+          interaction_id?: string | null
+          lead_id?: string | null
+          message_text?: string | null
+          metadata?: Json | null
+          phone?: string
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_logs_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "lead_interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_name: string
+          enabled: boolean | null
+          id: string
+          name: string
+          updated_at: string | null
+          updated_by: string | null
+          variables: Json | null
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          enabled?: boolean | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          enabled?: boolean | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       brazil_friendly_jobs: {
@@ -3690,6 +3853,7 @@ export type Database = {
           created_at: string
           credentials: Json
           description: string
+          fallback_api_key: string
           id: string
           is_active: boolean
           name: string
@@ -3917,6 +4081,16 @@ export type Database = {
           plan_name: string
           remaining: number
           used_this_month: number
+        }[]
+      }
+      get_whatsapp_template_by_name: {
+        Args: { p_template_name: string }
+        Returns: {
+          body: string
+          enabled: boolean
+          id: string
+          name: string
+          variables: Json
         }[]
       }
       has_role: {

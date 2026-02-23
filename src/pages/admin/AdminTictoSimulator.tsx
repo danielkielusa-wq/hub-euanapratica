@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Copy, Check, AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Play, Copy, Check, AlertCircle, CheckCircle2, Clock, Loader2, HelpCircle, BookOpen, ChevronRight, Wrench } from "lucide-react";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAdminHubServices } from "@/hooks/useAdminHubServices";
 import { useSearchUsers } from "@/hooks/useAdminUsers";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,12 +145,168 @@ export default function AdminTictoSimulator() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold">Simulador de Callbacks Ticto</h1>
               <p className="text-muted-foreground">
                 Teste o fluxo de pagamento sem transações reais
               </p>
             </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 shrink-0">
+                  <HelpCircle className="h-4 w-4" />
+                  Documentação
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Documentação do Simulador
+                  </SheetTitle>
+                  <SheetDescription>
+                    Guia de uso, comportamentos e troubleshooting
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-6 text-sm">
+                  {/* Propósito */}
+                  <section className="space-y-2">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</span>
+                      Propósito
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Este simulador dispara um webhook falso diretamente na Edge Function <code className="bg-muted px-1 rounded text-xs">ticto-callback</code>, como se a Ticto tivesse notificado o sistema sobre um evento de pagamento.
+                    </p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Use-o para testar o fluxo completo de liberação/revogação de acesso a um produto <strong>sem realizar uma transação real</strong> — útil para onboarding de novos produtos, debug de integrações e validação de RLS.
+                    </p>
+                  </section>
+
+                  <Separator />
+
+                  {/* Como executar */}
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</span>
+                      Como executar
+                    </h3>
+                    <ol className="space-y-2 text-muted-foreground">
+                      {[
+                        { step: "Selecione o produto", detail: "Escolha o serviço que deseja testar. O Ticto Product ID será usado no payload." },
+                        { step: "Informe o e-mail", detail: "Digite ou busque o e-mail do usuário que receberá (ou perderá) o acesso." },
+                        { step: "Escolha o status", detail: "Selecione o evento de pagamento a simular (veja tabela abaixo)." },
+                        { step: "Clique em Simular", detail: "O sistema chamará a Edge Function e exibirá a resposta do webhook." },
+                        { step: "Valide o resultado", detail: "Acesse o Hub do usuário ou a tabela user_hub_services para confirmar a mudança de acesso." },
+                      ].map((item, i) => (
+                        <li key={i} className="flex gap-3">
+                          <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                          <div>
+                            <span className="font-medium text-foreground">{item.step}: </span>
+                            {item.detail}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+
+                  <Separator />
+
+                  {/* Comportamentos por status */}
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <span className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
+                      Comportamentos por status
+                    </h3>
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left px-3 py-2 font-medium">Status</th>
+                            <th className="text-left px-3 py-2 font-medium">Efeito</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          <tr>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {["paid", "completed", "approved", "authorized", "venda_realizada"].map(s => (
+                                  <Badge key={s} variant="outline" className="text-[10px] border-green-500 text-green-600">{s}</Badge>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">Libera acesso ao produto</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2">
+                              <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600">waiting_payment</Badge>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">Registra log, sem alterar acesso</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {["refunded", "chargedback", "cancelled"].map(s => (
+                                  <Badge key={s} variant="outline" className="text-[10px] border-red-500 text-red-600">{s}</Badge>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">Revoga acesso ao produto</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  {/* Troubleshooting */}
+                  <section className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-primary" />
+                      Troubleshooting
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        {
+                          problema: "Status 401 / FunctionsFetchError",
+                          causa: "A Edge Function pode estar sem verify_jwt = false no config.toml, ou o token de admin expirou.",
+                          fix: "Recarregue a página para renovar o token. Se persistir, verifique o config.toml.",
+                        },
+                        {
+                          problema: "Simulação retorna sucesso mas o acesso não foi liberado",
+                          causa: "O produto não tem Ticto Product ID configurado, ou o e-mail do usuário não existe na base.",
+                          fix: "Verifique o ticto_product_id do produto em Admin → Serviços. Certifique-se de que o usuário está cadastrado.",
+                        },
+                        {
+                          problema: "Produto não aparece na lista",
+                          causa: "Produtos sem ticto_product_id podem não aparecer ou não funcionar corretamente.",
+                          fix: "Cadastre o ID do produto Ticto em Admin → Serviços antes de simular.",
+                        },
+                        {
+                          problema: "Status 500 na resposta do webhook",
+                          causa: "Erro interno na Edge Function (ex: falha no banco, RLS, FK).",
+                          fix: "Verifique os logs em Supabase → Edge Functions → ticto-callback → Logs.",
+                        },
+                      ].map((item, i) => (
+                        <div key={i} className="rounded-lg border p-3 space-y-1">
+                          <p className="font-medium text-destructive text-xs">{item.problema}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Causa:</span> {item.causa}</p>
+                          <p className="text-muted-foreground text-xs"><span className="font-medium text-foreground">Fix:</span> {item.fix}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <p className="text-xs text-muted-foreground pb-4">
+                    Esta simulação <strong>não gera cobranças reais</strong> e <strong>não notifica o usuário por e-mail</strong>. Apenas os registros internos de acesso (tabela <code className="bg-muted px-1 rounded">user_hub_services</code>) são afetados.
+                  </p>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
           {/* Configuration Card */}

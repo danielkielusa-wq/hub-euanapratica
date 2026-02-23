@@ -14,6 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
 import { getCorsHeaders, requireAdmin } from "../_shared/authGuard.ts";
 
 // ── Default system prompt ────────────────────────────────────────────────
@@ -25,45 +26,38 @@ Hoje e {{today}}. Voce recebera dados de leads (career evaluations) ja processad
 Sua missao: gerar as PRIORIDADES DO DIA para o admin/mentor, organizadas em categorias de acao.
 
 REGRAS CRITICAS:
-1. Retorne APENAS um JSON valido, sem texto antes ou depois, sem markdown code fences.
-2. Cada lead mencionado DEVE incluir lead_id, lead_name, lead_email, lead_phone EXATAMENTE como recebidos nos dados (nao invente dados).
-3. Foque em leads ACIONAVEIS - nao inclua leads que ja foram contatados recentemente (last_contact nos ultimos 3 dias) EXCETO se tem follow-up vencendo hoje.
-4. Mensagens sugeridas devem ser em portugues brasileiro, tom profissional e acolhedor, personalizadas com o nome do lead e contexto.
-5. Para telefones no campo lead_phone, mantenha o valor exato recebido. O frontend formatara para WhatsApp.
-6. Limite: maximo 5 items por categoria. Priorize por priority_score e urgency.
-7. Se uma categoria nao tiver items relevantes, inclua-a com items: [] vazio.
-8. Nao repita o mesmo lead em multiplas categorias (exceto ready_messages que pode repetir leads de outras categorias para fornecer mensagens prontas).
+1. Retorne APENAS JSON valido. Sem texto fora do JSON, sem markdown code fences.
+2. Use os dados EXATOS recebidos: id como lead_id, name como lead_name, email como lead_email, phone como lead_phone. Nao invente dados.
+3. Foque em leads ACIONAVEIS - ignore leads com last_contact nos ultimos 3 dias EXCETO se tem follow-up vencendo hoje.
+4. Mensagens em portugues brasileiro, tom profissional e acolhedor, personalizadas.
+5. Maximo 5 items por categoria. Priorize por prio (priority_score) e urgency.
+6. Categorias sem items relevantes: inclua com items: [].
+7. Nao repita o mesmo lead em multiplas categorias (exceto ready_messages).
+8. Campos nos dados: id, name, email, phone, score, temp (temperatura), prio (priority_score), phase, rota, urgency, budget, ltv, product, channel, best_time, created, follow_ups, recheck, barriers (array de nomes), blockers, interactions (count), last_contact, pending_tasks.
+9. Seja CONCISO: mensagens curtas (max 2 frases), razoes curtas (1 frase), summary max 3 frases. Evite repeticao. O JSON DEVE ser completo - nao truncado.
 
 CATEGORIAS (7):
 
 1. "immediate_action" (Acao Imediata) - icon: "flame"
-   Leads muito-quente ou quente que NAO foram contatados (recent_interactions = 0 ou last_contact = null) E tem alto score (>= 60).
-   Para cada lead: explique POR QUE precisa de atencao agora e sugira a acao + mensagem.
+   Leads com temp muito-quente ou quente, sem contato (interactions ausente ou 0, last_contact ausente) E score >= 60.
 
 2. "follow_ups_due" (Follow-ups Vencendo) - icon: "clock"
-   Leads cujas datas de follow_up sao hoje ou ja passaram, OU cujo recheck_at e hoje/passado.
-   Para cada lead: indique qual follow-up (#1, #2, #3 ou recheck) e sugira abordagem.
+   Leads com follow_ups vencidos (data <= hoje) OU recheck <= hoje.
 
 3. "mentoring_groups" (Agrupamento Mentoria) - icon: "users"
-   Identifique 1-3 grupos de 2-5 leads em fases ROTA similares (mesma rota_letter) que poderiam formar um grupo de mentoria.
-   Use formato DIFERENTE: { group_theme, rota_phase, leads: [{lead_id, lead_name, score, phase}], suggested_session_topic }
+   1-3 grupos de 2-5 leads com mesmo rota. Formato DIFERENTE: { group_theme, rota_phase, leads: [{lead_id, lead_name, score, phase}], suggested_session_topic }
 
 4. "revenue_opportunities" (Oportunidades Receita) - icon: "dollar-sign"
-   Leads com alto LTV estimado (>= 5000), has_budget = true, temperatura quente ou muito-quente, que NAO converteram ainda.
-   Foque no produto recomendado e na abordagem de venda.
+   Leads com ltv >= 5000, budget = true, temp quente/muito-quente, nao convertidos. Foque no product.
 
 5. "new_arrivals" (Resumo de Ontem) - icon: "bell"
-   Leads criados nas ultimas 48 horas (created_at recente).
-   Resumo breve de cada novo lead com score, temperatura e primeira impressao.
+   Leads com created nas ultimas 48h. Resumo breve.
 
 6. "ready_messages" (Mensagens Prontas) - icon: "message-square"
-   Para os top 3-5 leads MAIS prioritarios (de qualquer categoria), gere mensagens PRONTAS para copiar.
-   Respeite o preferred_channel do lead (whatsapp = curta e direta, email = mais elaborada).
-   Personalize com nome, fase ROTA, produto recomendado e barreiras.
+   Top 3-5 leads mais prioritarios: mensagens PRONTAS para copiar. Respeite channel (whatsapp=curta, email=elaborada).
 
 7. "call_preparation" (Preparacao Calls) - icon: "phone"
-   Para leads com follow-ups proximos (dentro de 7 dias) ou que precisam de call:
-   Gere um BRIEFING: perfil resumido, fase ROTA, barreiras principais, produto adequado, 3 pontos para abordar na conversa.
+   Leads com follow_ups proximos (7 dias) ou que precisam de call: briefing resumido, 3 pontos.
 
 SCHEMA DO JSON DE RESPOSTA:
 {
@@ -133,27 +127,30 @@ Deno.serve(async (req) => {
 
     // ── 0. Load config from app_configs ─────────────────────────────
 
-    const { data: apiConfigRow } = await supabase
+    const { data: apiConfigRow, error: apiConfigErr } = await supabase
       .from("app_configs")
       .select("value")
       .eq("key", "daily_priorities_api_config")
-      .single();
+      .maybeSingle();
+
+    console.log(`[generate-daily-priorities] app_configs lookup: daily_priorities_api_config = ${JSON.stringify(apiConfigRow?.value)}, error: ${apiConfigErr?.message || "none"}`);
 
     const { data: promptConfigRow } = await supabase
       .from("app_configs")
       .select("value")
       .eq("key", "daily_priorities_prompt")
-      .single();
+      .maybeSingle();
 
     const { data: leadLimitRow } = await supabase
       .from("app_configs")
       .select("value")
       .eq("key", "daily_priorities_lead_limit")
-      .single();
+      .maybeSingle();
 
     const selectedApiKey = apiConfigRow?.value || "anthropic_api";
-    const leadLimit = Math.min(500, Math.max(10, parseInt(leadLimitRow?.value || "80", 10) || 80));
-    console.log(`[generate-daily-priorities] API config: ${selectedApiKey}, lead limit: ${leadLimit}`);
+    const rawLimitValue = leadLimitRow?.value;
+    const leadLimit = Math.min(500, Math.max(5, parseInt(rawLimitValue || "80", 10) || 80));
+    console.log(`[generate-daily-priorities] RESOLVED: selectedApiKey="${selectedApiKey}" (from db: ${!!apiConfigRow?.value}), lead limit: ${leadLimit} (raw db value: ${JSON.stringify(rawLimitValue)})`);
 
     // ── 1. Query completed career_evaluations ───────────────────────
 
@@ -237,44 +234,54 @@ Deno.serve(async (req) => {
 
     const todayISO = new Date().toISOString().split("T")[0];
 
-    const leadsContext = leads.map((l: any) => ({
-      id: l.id,
-      name: l.name,
-      email: l.email,
-      phone: l.phone,
-      area: l.area,
-      score: l.readiness_score,
-      temperature: l.lead_temperature,
-      priority_score: l.lead_priority_score,
-      phase: l.phase_name,
-      rota: l.rota_letter,
-      urgency: l.urgency_level,
-      has_budget: l.has_budget,
-      ltv: l.estimated_ltv,
-      product: l.recommended_product_name,
-      product_tier: l.recommended_product_tier,
-      preferred_channel: l.preferred_communication,
-      best_time: l.best_contact_time,
-      created_at: l.created_at,
-      first_accessed: l.first_accessed_at,
-      access_count: l.access_count,
-      follow_ups: [l.scheduled_follow_up_1, l.scheduled_follow_up_2, l.scheduled_follow_up_3].filter(Boolean),
-      recheck_at: l.recheck_recommended_at,
-      next_action: l.next_milestone_action,
-      barriers: {
-        english: l.has_english_barrier,
-        experience: l.has_experience_barrier,
-        financial: l.has_financial_barrier,
-        family: l.has_family_barrier,
-        visa: l.has_visa_barrier,
-        time: l.has_time_barrier,
-        clarity: l.has_clarity_barrier,
-      },
-      blockers: l.critical_blockers,
-      recent_interactions: interactionsByLead[l.id]?.count || 0,
-      last_contact: interactionsByLead[l.id]?.last_contact || null,
-      pending_tasks: tasksByLead[l.id] || 0,
-    }));
+    // Compact lead context — strip nulls/falsy to reduce token count
+    const leadsContext = leads.map((l: any) => {
+      // Only include true barriers as array of names (saves ~70% vs object with 7 booleans)
+      const barriers: string[] = [];
+      if (l.has_english_barrier) barriers.push("english");
+      if (l.has_experience_barrier) barriers.push("experience");
+      if (l.has_financial_barrier) barriers.push("financial");
+      if (l.has_family_barrier) barriers.push("family");
+      if (l.has_visa_barrier) barriers.push("visa");
+      if (l.has_time_barrier) barriers.push("time");
+      if (l.has_clarity_barrier) barriers.push("clarity");
+
+      const follow_ups = [l.scheduled_follow_up_1, l.scheduled_follow_up_2, l.scheduled_follow_up_3].filter(Boolean);
+      const interactionData = interactionsByLead[l.id];
+
+      // Build compact object — omit null/undefined/empty fields
+      const entry: Record<string, any> = {
+        id: l.id,
+        name: l.name,
+        email: l.email,
+        score: l.readiness_score,
+        temp: l.lead_temperature,
+        prio: l.lead_priority_score,
+        phase: l.phase_name,
+        rota: l.rota_letter,
+      };
+
+      // Only include if present (saves tokens for sparse data)
+      if (l.phone) entry.phone = l.phone;
+      if (l.area) entry.area = l.area;
+      if (l.urgency_level) entry.urgency = l.urgency_level;
+      if (l.has_budget) entry.budget = true;
+      if (l.estimated_ltv) entry.ltv = l.estimated_ltv;
+      if (l.recommended_product_name) entry.product = l.recommended_product_name;
+      if (l.preferred_communication) entry.channel = l.preferred_communication;
+      if (l.best_contact_time) entry.best_time = l.best_contact_time;
+      if (l.created_at) entry.created = l.created_at.split("T")[0]; // date only
+      if (follow_ups.length) entry.follow_ups = follow_ups.map((f: string) => f.split("T")[0]);
+      if (l.recheck_recommended_at) entry.recheck = l.recheck_recommended_at.split("T")[0];
+      if (l.next_milestone_action) entry.next_action = l.next_milestone_action;
+      if (barriers.length) entry.barriers = barriers;
+      if (l.critical_blockers) entry.blockers = l.critical_blockers;
+      if (interactionData?.count) entry.interactions = interactionData.count;
+      if (interactionData?.last_contact) entry.last_contact = interactionData.last_contact.split("T")[0];
+      if (tasksByLead[l.id]) entry.pending_tasks = tasksByLead[l.id];
+
+      return entry;
+    });
 
     // ── 5. Get API credentials ──────────────────────────────────────
 
@@ -312,8 +319,14 @@ Deno.serve(async (req) => {
 
     // ── 7. Call LLM ─────────────────────────────────────────────────
 
+    // Scale max_tokens based on lead count to avoid truncation
+    // ~500 tokens base (summary + structure) + ~300 tokens per lead (across 7 categories)
+    const dynamicMaxTokens = Math.min(8000, Math.max(3000, 500 + leadsContext.length * 300));
+    console.log(`[generate-daily-priorities] Dynamic max_tokens: ${dynamicMaxTokens} (for ${leadsContext.length} leads)`);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
+    const llmStartTime = Date.now();
 
     try {
       let responseText: string;
@@ -333,7 +346,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             model: selectedModel,
-            max_tokens: 6000,
+            max_tokens: dynamicMaxTokens,
             system: systemPrompt,
             messages: [{ role: "user", content: userMessage }],
           }),
@@ -347,6 +360,11 @@ Deno.serve(async (req) => {
         }
 
         const aiData = await aiResponse.json();
+        const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
+        const stopReason = aiData.stop_reason || "unknown";
+        console.log(`[generate-daily-priorities] Anthropic stop_reason: ${stopReason}, tokens: ${inputTokens}/${outputTokens}`);
+        if (stopReason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
+        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.content?.[0]?.text || "";
 
       } else {
@@ -363,7 +381,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             model: selectedModel,
-            max_tokens: 6000,
+            max_tokens: dynamicMaxTokens,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userMessage },
@@ -379,6 +397,11 @@ Deno.serve(async (req) => {
         }
 
         const aiData = await aiResponse.json();
+        const { inputTokens: oaiIn, outputTokens: oaiOut } = extractTokenUsage(aiData, 'openai');
+        const finishReason = aiData.choices?.[0]?.finish_reason || "unknown";
+        console.log(`[generate-daily-priorities] OpenAI finish_reason: ${finishReason}, tokens: ${oaiIn}/${oaiOut}`);
+        if (finishReason === "length") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
+        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: 'openai', model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.choices?.[0]?.message?.content || "";
       }
 
@@ -407,7 +430,46 @@ Deno.serve(async (req) => {
         throw new Error("No valid JSON in AI response");
       }
 
-      const priorities = JSON.parse(jsonMatch[0]);
+      // Try parsing, with repair for truncated responses
+      let priorities: any;
+      try {
+        priorities = JSON.parse(jsonMatch[0]);
+      } catch (parseErr) {
+        console.warn("[generate-daily-priorities] JSON parse failed, attempting repair...");
+        // Attempt to repair truncated JSON by closing unclosed brackets/braces
+        let repaired = jsonMatch[0];
+        // Remove trailing incomplete string values (e.g. `"some text` without closing quote)
+        repaired = repaired.replace(/,\s*"[^"]*$/, "");
+        // Remove trailing incomplete key-value (e.g. `"key": ` without value)
+        repaired = repaired.replace(/,\s*"[^"]*":\s*$/, "");
+        // Count unclosed brackets
+        const opens = { "{": 0, "[": 0 };
+        const closes: Record<string, string> = { "{": "}", "[": "]" };
+        const stack: string[] = [];
+        let inString = false;
+        let escape = false;
+        for (const ch of repaired) {
+          if (escape) { escape = false; continue; }
+          if (ch === "\\") { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{" || ch === "[") stack.push(ch);
+          else if (ch === "}" || ch === "]") stack.pop();
+        }
+        // Close in reverse order
+        while (stack.length) {
+          const open = stack.pop()!;
+          repaired += closes[open];
+        }
+        try {
+          priorities = JSON.parse(repaired);
+          console.log("[generate-daily-priorities] JSON repair succeeded");
+        } catch (repairErr) {
+          console.error("[generate-daily-priorities] JSON repair also failed:", (repairErr as Error).message);
+          console.error("[generate-daily-priorities] Raw response (last 500 chars):", responseText.slice(-500));
+          throw new Error("Failed to parse AI response JSON (truncated output)");
+        }
+      }
 
       // Validate basic structure
       if (!priorities.categories || !Array.isArray(priorities.categories)) {

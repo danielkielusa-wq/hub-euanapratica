@@ -589,6 +589,292 @@ async function checkTictoSubscriptions() {
   };
 }
 
+// 11. CRM & Leads System
+async function checkCRMSystem() {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const errors: string[] = [];
+  const details: Record<string, unknown> = {};
+
+  // 11a. CRM tables exist?
+  const crmTables = ["lead_interactions", "lead_tasks", "whatsapp_templates", "whatsapp_logs"];
+  const tableResults: Record<string, string> = {};
+
+  await Promise.all(
+    crmTables.map(async (table) => {
+      const { error, count } = await supabase
+        .from(table)
+        .select("id", { count: "exact", head: true });
+      if (error) {
+        const code = error.code || "";
+        const msg = error.message || "";
+        if (code === "42P01" || msg.includes("does not exist")) {
+          tableResults[table] = "MISSING";
+          errors.push(`Tabela ${table} não existe`);
+        } else if (code === "42501" || msg.includes("permission") || msg.includes("denied")) {
+          tableResults[table] = "ok (RLS protected)";
+        } else {
+          tableResults[table] = `error: ${msg || code}`;
+        }
+      } else {
+        tableResults[table] = `ok (${count ?? 0} rows)`;
+      }
+    })
+  );
+  details.tables = tableResults;
+
+  // 11b. WhatsApp connection state (from app_configs)
+  const { data: whatsappState } = await supabase
+    .from("app_configs")
+    .select("value")
+    .eq("key", "whatsapp_connection_state")
+    .maybeSingle();
+
+  if (whatsappState?.value) {
+    try {
+      const state = typeof whatsappState.value === "string"
+        ? JSON.parse(whatsappState.value)
+        : whatsappState.value;
+      details.whatsapp_connection = state.state || state;
+      if (state.state === "close" || state.state === "disconnected") {
+        errors.push("WhatsApp desconectado");
+      }
+    } catch {
+      details.whatsapp_connection = String(whatsappState.value);
+    }
+  } else {
+    details.whatsapp_connection = "not_configured";
+  }
+
+  // 11c. WhatsApp enabled?
+  const { data: whatsappEnabled } = await supabase
+    .from("app_configs")
+    .select("value")
+    .eq("key", "whatsapp_enabled")
+    .maybeSingle();
+  details.whatsapp_enabled = whatsappEnabled?.value === "true";
+
+  // 11d. Evolution API config active?
+  const { data: evolutionConfig } = await supabase
+    .from("api_configs")
+    .select("is_active")
+    .eq("api_key", "evolution_api")
+    .maybeSingle();
+
+  if (!evolutionConfig) {
+    details.evolution_api = "NOT_CONFIGURED";
+  } else {
+    details.evolution_api = evolutionConfig.is_active ? "active" : "INACTIVE";
+  }
+
+  // 11e. Failed WhatsApp messages (last 24h)
+  const h24 = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: failedWA } = await supabase
+    .from("whatsapp_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "failed")
+    .gte("created_at", h24);
+
+  details.whatsapp_failed_24h = failedWA ?? 0;
+  if ((failedWA ?? 0) > 5) {
+    errors.push(`${failedWA} mensagens WhatsApp falharam nas últimas 24h`);
+  }
+
+  // 11f. Overdue high-priority tasks
+  const now = new Date().toISOString();
+  const { count: overdueTasks } = await supabase
+    .from("lead_tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .in("priority", ["high", "urgent"])
+    .lt("due_date", now);
+
+  details.overdue_high_priority_tasks = overdueTasks ?? 0;
+  if ((overdueTasks ?? 0) > 10) {
+    errors.push(`${overdueTasks} tarefas de alta prioridade vencidas`);
+  }
+
+  // 11g. Leads without interaction in 30+ days
+  const d30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { count: totalLeads } = await supabase
+    .from("career_evaluations")
+    .select("id", { count: "exact", head: true })
+    .not("lead_temperature", "is", null);
+
+  const { count: activeLeads } = await supabase
+    .from("lead_interactions")
+    .select("lead_id", { count: "exact", head: true })
+    .gte("created_at", d30);
+
+  details.total_leads_scored = totalLeads ?? 0;
+  details.leads_with_recent_interaction = activeLeads ?? 0;
+
+  const hasMissing = Object.values(tableResults).some((v) => v === "MISSING");
+
+  return {
+    status: hasMissing
+      ? ("fail" as const)
+      : errors.length > 0
+        ? ("warn" as const)
+        : ("pass" as const),
+    details,
+    error: errors.length > 0 ? errors.join(" | ") : undefined,
+  };
+}
+
+// 12. AI / LLM Services
+async function checkAIServices() {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const errors: string[] = [];
+  const details: Record<string, unknown> = {};
+
+  // 12a. Check LLM API configs (OpenAI + Anthropic)
+  const { data: llmConfigs, error: llmConfigErr } = await supabase
+    .from("api_configs")
+    .select("api_key, name, is_active, fallback_api_key")
+    .in("api_key", ["openai_api", "anthropic_api"]);
+
+  const configResults: Record<string, unknown> = {};
+  if (llmConfigErr) {
+    const msg = llmConfigErr.message || llmConfigErr.code || "unknown";
+    errors.push(`Erro ao consultar api_configs: ${msg}`);
+    details.api_configs_error = msg;
+  } else if (llmConfigs && llmConfigs.length > 0) {
+    for (const cfg of llmConfigs) {
+      configResults[cfg.api_key] = {
+        active: cfg.is_active,
+        fallback: cfg.fallback_api_key || "none",
+      };
+      if (!cfg.is_active) {
+        errors.push(`${cfg.name} está INATIVO`);
+      }
+    }
+    // Check if both are inactive (no LLM available)
+    const allInactive = llmConfigs.every((c) => !c.is_active);
+    if (allInactive) {
+      errors.push("TODOS os provedores LLM estão inativos — IA indisponível");
+    }
+    // Check fallback configuration
+    const hasFallback = llmConfigs.some((c) => c.fallback_api_key);
+    details.fallback_configured = hasFallback;
+    if (!hasFallback) {
+      errors.push("Nenhum fallback LLM configurado");
+    }
+  } else {
+    errors.push("Nenhuma configuração LLM encontrada (openai_api / anthropic_api ausentes em api_configs)");
+  }
+  details.llm_providers = configResults;
+
+  // 12b. api_cost_logs table + recent errors
+  const h24 = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: totalCalls24h, error: costTableErr } = await supabase
+    .from("api_cost_logs")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", h24);
+
+  if (costTableErr) {
+    const code = costTableErr.code || "";
+    const msg = costTableErr.message || "";
+    if (code === "42P01" || msg.includes("does not exist")) {
+      details.cost_logs = "TABLE_MISSING";
+      errors.push("Tabela api_cost_logs não existe");
+    } else {
+      details.cost_logs = `error: ${msg || code}`;
+    }
+  } else {
+    details.api_calls_24h = totalCalls24h ?? 0;
+
+    // Error rate
+    const { count: errorCalls } = await supabase
+      .from("api_cost_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "error")
+      .gte("created_at", h24);
+
+    details.api_errors_24h = errorCalls ?? 0;
+    const total = totalCalls24h ?? 0;
+    const errs = errorCalls ?? 0;
+    if (total > 0 && errs / total > 0.3) {
+      errors.push(`Taxa de erro LLM alta: ${errs}/${total} (${Math.round(errs / total * 100)}%)`);
+    }
+  }
+
+  // 12c. LLM model pricing configured?
+  const { data: pricingConfig } = await supabase
+    .from("app_configs")
+    .select("value")
+    .eq("key", "llm_model_pricing")
+    .maybeSingle();
+
+  details.pricing_configured = !!pricingConfig?.value;
+  if (!pricingConfig?.value) {
+    errors.push("Pricing de modelos LLM não configurado (app_configs.llm_model_pricing)");
+  }
+
+  const allLLMDown = llmConfigs?.every((c) => !c.is_active) && (llmConfigs?.length ?? 0) > 0;
+
+  return {
+    status: allLLMDown
+      ? ("fail" as const)
+      : errors.length > 0
+        ? ("warn" as const)
+        : ("pass" as const),
+    details,
+    error: errors.length > 0 ? errors.join(" | ") : undefined,
+  };
+}
+
+// 13. CRM Edge Functions Deployment
+async function checkCRMEdgeFunctions() {
+  const crmFunctions = [
+    "send-whatsapp",
+    "receive-whatsapp-webhook",
+    "check-whatsapp-status",
+    "suggest-lead-tasks",
+    "suggest-whatsapp-messages",
+    "format-lead-report",
+    "create-lead-user",
+  ];
+
+  const fnResults: Record<string, string> = {};
+  const errors: string[] = [];
+
+  await Promise.all(
+    crmFunctions.map(async (fnName) => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/${fnName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ healthcheck: true }),
+        });
+        if (res.status === 404) {
+          fnResults[fnName] = "NOT_DEPLOYED";
+          errors.push(`${fnName} NÃO deployed`);
+        } else {
+          fnResults[fnName] = "deployed";
+        }
+      } catch {
+        fnResults[fnName] = "unreachable";
+        errors.push(`${fnName} não acessível`);
+      }
+    })
+  );
+
+  const notDeployed = Object.values(fnResults).filter((v) => v === "NOT_DEPLOYED").length;
+
+  return {
+    status: notDeployed >= 3
+      ? ("fail" as const)
+      : errors.length > 0
+        ? ("warn" as const)
+        : ("pass" as const),
+    details: { functions: fnResults, deployed: crmFunctions.length - notDeployed, total: crmFunctions.length },
+    error: errors.length > 0 ? errors.join(" | ") : undefined,
+  };
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   const corsHeaders = {
@@ -615,6 +901,9 @@ Deno.serve(async (req) => {
     runCheck("Pagamentos & TICTO", checkPayments),
     runCheck("Edge Functions", checkEdgeFunctions),
     runCheck("Ticto & Assinaturas", checkTictoSubscriptions),
+    runCheck("CRM & Leads", checkCRMSystem),
+    runCheck("AI / LLM Services", checkAIServices),
+    runCheck("CRM Edge Functions", checkCRMEdgeFunctions),
   ]);
 
   const passed = checks.filter((c) => c.status === "pass").length;
