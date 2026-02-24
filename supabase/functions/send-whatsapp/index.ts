@@ -176,7 +176,7 @@ serve(async (req) => {
   } catch (err) {
     console.error("[send-whatsapp] Error:", err);
     return new Response(
-      JSON.stringify({ success: false, error: err instanceof Error ? err.message : "Erro interno" }),
+      JSON.stringify({ success: false, error: "Erro interno ao enviar WhatsApp" }),
       { status: 200, headers: { ...headers, "Content-Type": "application/json" } }
     );
   }

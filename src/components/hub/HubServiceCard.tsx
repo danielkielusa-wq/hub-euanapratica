@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
+import { PriceDisplay } from './PriceDisplay';
 
 interface HubServiceCardProps {
   service: HubService;
@@ -89,16 +90,6 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
   const canAccess = service.status === 'available' || hasAccess;
   const serviceType = (service.service_type as ServiceType) || 'ai_tool';
   const typeConf = serviceTypeConfig[serviceType] || serviceTypeConfig.ai_tool;
-
-  const formatPrice = (price: number, currency: string) => {
-    if (!price || price === 0) return null;
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: currency || 'BRL',
-    }).format(price);
-  };
-
-  const displayPrice = service.price_display || formatPrice(service.price, service.currency);
 
   const handleUnlock = () => {
     // Priority 1: Landing page URL (presentation page)
@@ -196,8 +187,15 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
       </p>
 
       {/* Price Display */}
-      {displayPrice && (
-        <p className="mb-4 text-sm font-semibold text-foreground">{displayPrice}</p>
+      {(service.price > 0 || service.price_display) && (
+        <PriceDisplay
+          price={service.price}
+          currency={service.currency}
+          priceDisplay={service.price_display}
+          anchorPrice={service.anchor_price}
+          size="md"
+          className="mb-4"
+        />
       )}
 
       {/* Action Button */}

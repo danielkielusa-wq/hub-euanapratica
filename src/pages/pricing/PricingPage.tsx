@@ -394,15 +394,24 @@ export default function PricingPage() {
                   className="text-brand-600 underline font-medium"
                 >
                   Termos de Assinatura
-                </a>{' '}
-                e a{' '}
+                </a>
+                , a{' '}
                 <a
-                  href="/termos-assinatura"
+                  href="/politica-cancelamento"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand-600 underline font-medium"
                 >
                   Política de Cancelamento
+                </a>{' '}
+                e a{' '}
+                <a
+                  href="/politica-privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 underline font-medium"
+                >
+                  Política de Privacidade
                 </a>
                 .
               </span>

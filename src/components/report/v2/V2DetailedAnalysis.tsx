@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useInView } from '@/hooks/useInView';
+import { ReportSectionLock } from './ReportSectionLock';
 import type {
   V2DetailedAnalysis as V2DetailedAnalysisType,
   V2ScoreBreakdown,
@@ -12,6 +13,7 @@ import { ANALYSIS_DIMENSIONS, clampScore, getScorePercent, getBarColor, getScore
 interface V2DetailedAnalysisProps {
   analysis: V2DetailedAnalysisType;
   breakdown: V2ScoreBreakdown;
+  isLimited?: boolean;
 }
 
 interface DimensionEntry {
@@ -22,7 +24,7 @@ interface DimensionEntry {
   maxScore: number;
 }
 
-export function V2DetailedAnalysis({ analysis, breakdown }: V2DetailedAnalysisProps) {
+export function V2DetailedAnalysis({ analysis, breakdown, isLimited = false }: V2DetailedAnalysisProps) {
   const { ref, isInView } = useInView();
 
   const entries: DimensionEntry[] = ANALYSIS_DIMENSIONS
@@ -102,13 +104,20 @@ export function V2DetailedAnalysis({ analysis, breakdown }: V2DetailedAnalysisPr
                         <p className="text-sm font-semibold text-foreground">{dimension.current_level}</p>
                       </div>
                       <p className="text-sm text-muted-foreground leading-relaxed">{dimension.assessment}</p>
-                      {dimension.recommendation && (
+                      {dimension.recommendation && !isLimited && (
                         <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 p-4 border border-blue-100 dark:border-blue-900/30">
                           <p className="text-[10px] uppercase tracking-widest font-bold text-blue-600 dark:text-blue-400 mb-1">
                             Recomendação
                           </p>
                           <p className="text-sm text-foreground leading-relaxed">{dimension.recommendation}</p>
                         </div>
+                      )}
+                      {dimension.recommendation && isLimited && (
+                        <ReportSectionLock
+                          variant="inline"
+                          title="Recomendação bloqueada"
+                          description="Acesse o relatório completo para ver a recomendação personalizada para esta dimensão."
+                        />
                       )}
                     </div>
                   </AccordionContent>

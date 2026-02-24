@@ -1,4 +1,4 @@
-import { Target, CheckCircle2 } from 'lucide-react';
+import { Target, CheckCircle2, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useInView } from '@/hooks/useInView';
@@ -6,9 +6,10 @@ import type { V2BarriersAnalysis } from '@/types/leads';
 
 interface V2CriticalBlockersProps {
   barriers: V2BarriersAnalysis;
+  isLimited?: boolean;
 }
 
-export function V2CriticalBlockers({ barriers }: V2CriticalBlockersProps) {
+export function V2CriticalBlockers({ barriers, isLimited = false }: V2CriticalBlockersProps) {
   const { ref, isInView } = useInView();
   const blockers = barriers.critical_blockers;
 
@@ -54,7 +55,7 @@ export function V2CriticalBlockers({ barriers }: V2CriticalBlockersProps) {
         ))}
       </div>
 
-      {barriers.recommended_first_action && (
+      {!isLimited && barriers.recommended_first_action && (
         <Card className="rounded-2xl border-l-4 border-l-green-400 bg-green-50/50 dark:bg-green-950/10">
           <CardContent className="p-3 sm:p-4 md:p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -68,6 +69,15 @@ export function V2CriticalBlockers({ barriers }: V2CriticalBlockersProps) {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {isLimited && (
+        <div className="flex items-center gap-3 rounded-xl bg-muted/50 border border-dashed border-muted-foreground/20 p-3 select-none">
+          <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A primeira ação recomendada está disponível no relatório completo — desbloqueie com um plano ativo.
+          </p>
+        </div>
       )}
     </div>
   );

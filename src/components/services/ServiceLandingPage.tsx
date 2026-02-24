@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import {
   ArrowLeft,
   Clock,
@@ -18,6 +19,7 @@ import {
   Zap
 } from 'lucide-react';
 import { HubService } from '@/types/hub';
+import { PriceDisplay } from '@/components/hub/PriceDisplay';
 import { useNavigate } from 'react-router-dom';
 
 interface ServiceLandingPageProps {
@@ -204,7 +206,7 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
                <MessageCircle size={32} className="mx-auto text-indigo-600 mb-4" />
                <h3 className="text-2xl font-black text-indigo-900 mb-4">{faqSection.title}</h3>
                <p className="text-indigo-800 text-sm max-w-2xl mx-auto leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: faqSection.description }} />
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(faqSection.description || '') }} />
            </div>
          )}
 
@@ -216,9 +218,13 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
             <div className="hidden md:block">
                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Investimento</p>
                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-black text-gray-900">
-                    {service.price_display || `${service.currency} ${service.price}`}
-                  </span>
+                  <PriceDisplay
+                    price={service.price}
+                    currency={service.currency}
+                    priceDisplay={service.price_display}
+                    anchorPrice={service.anchor_price}
+                    size="lg"
+                  />
                   {service.status === 'premium' && (
                     <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
                       Exclusivo Membros
@@ -229,9 +235,13 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
 
             <div className="flex-1 md:flex-none flex gap-4 w-full md:w-auto">
                <div className="md:hidden flex flex-col justify-center">
-                  <span className="text-lg font-black text-gray-900">
-                    {service.price_display || `${service.currency} ${service.price}`}
-                  </span>
+                  <PriceDisplay
+                    price={service.price}
+                    currency={service.currency}
+                    priceDisplay={service.price_display}
+                    anchorPrice={service.anchor_price}
+                    size="md"
+                  />
                </div>
                <button
                  onClick={handleBook}

@@ -14,7 +14,7 @@ export function FeedbackFloatingButton() {
           <Button
             onClick={() => setModalOpen(true)}
             size="icon"
-            className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            className="fixed bottom-6 left-6 z-40 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
             aria-label="Enviar feedback"
           >
             <div className="relative">
@@ -23,7 +23,7 @@ export function FeedbackFloatingButton() {
             </div>
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="left">
+        <TooltipContent side="right">
           <p>Reportar Bug ou Sugestão</p>
         </TooltipContent>
       </Tooltip>

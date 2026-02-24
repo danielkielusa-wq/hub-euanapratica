@@ -546,6 +546,99 @@ export type Database = {
           },
         ]
       }
+      business_ideas: {
+        Row: {
+          attachments: Json | null
+          column_status: string
+          competition: string | null
+          created_at: string | null
+          distribution_hypothesis: string | null
+          existing_assets: string | null
+          gate_answers: Json | null
+          id: string
+          integrations: string | null
+          interest_score: number | null
+          key_metric: string | null
+          kill_criteria: string | null
+          market_size: string | null
+          mvp_scope: string | null
+          name: string
+          notes: string | null
+          one_liner: string | null
+          persona: string | null
+          pricing_model: string | null
+          problem: string | null
+          revenue_model: string | null
+          signals_collected: string | null
+          strongest_objection: string | null
+          tags: string[] | null
+          unfair_advantage: string | null
+          updated_at: string | null
+          user_id: string
+          validation_method: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          column_status?: string
+          competition?: string | null
+          created_at?: string | null
+          distribution_hypothesis?: string | null
+          existing_assets?: string | null
+          gate_answers?: Json | null
+          id?: string
+          integrations?: string | null
+          interest_score?: number | null
+          key_metric?: string | null
+          kill_criteria?: string | null
+          market_size?: string | null
+          mvp_scope?: string | null
+          name?: string
+          notes?: string | null
+          one_liner?: string | null
+          persona?: string | null
+          pricing_model?: string | null
+          problem?: string | null
+          revenue_model?: string | null
+          signals_collected?: string | null
+          strongest_objection?: string | null
+          tags?: string[] | null
+          unfair_advantage?: string | null
+          updated_at?: string | null
+          user_id: string
+          validation_method?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          column_status?: string
+          competition?: string | null
+          created_at?: string | null
+          distribution_hypothesis?: string | null
+          existing_assets?: string | null
+          gate_answers?: Json | null
+          id?: string
+          integrations?: string | null
+          interest_score?: number | null
+          key_metric?: string | null
+          kill_criteria?: string | null
+          market_size?: string | null
+          mvp_scope?: string | null
+          name?: string
+          notes?: string | null
+          one_liner?: string | null
+          persona?: string | null
+          pricing_model?: string | null
+          problem?: string | null
+          revenue_model?: string | null
+          signals_collected?: string | null
+          strongest_objection?: string | null
+          tags?: string[] | null
+          unfair_advantage?: string | null
+          updated_at?: string | null
+          user_id?: string
+          validation_method?: string | null
+        }
+        Relationships: []
+      }
       career_evaluations: {
         Row: {
           access_count: number | null
@@ -3932,7 +4025,8 @@ export type Database = {
         Args: { p_template_name: string }
         Returns: {
           body_html: string
-          enabled: boolean
+          design_json: Json
+          display_name: string
           id: string
           name: string
           subject: string
@@ -4046,6 +4140,28 @@ export type Database = {
           tech_stack: string[]
           title: string
           total_count: number
+        }[]
+      }
+      get_legal_page_content: {
+        Args: { p_page_key: string }
+        Returns: {
+          value: string
+        }[]
+      }
+      get_masked_api_configs: {
+        Args: never
+        Returns: {
+          api_key: string
+          base_url: string
+          credentials: Json
+          description: string
+          fallback_api_key: string
+          id: string
+          is_active: boolean
+          name: string
+          parameters: Json
+          updated_at: string
+          updated_by: string
         }[]
       }
       get_mentor_for_service: {

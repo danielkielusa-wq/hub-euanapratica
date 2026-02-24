@@ -1,4 +1,5 @@
-import { ArrowRight, Sparkles, Clock } from 'lucide-react';
+import { ArrowRight, Sparkles, Clock, Lock, CalendarCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import type { V2ProductRecommendation } from '@/types/leads';
 
@@ -12,10 +13,12 @@ interface V2CTAFinalProps {
   userName: string;
   recommendation?: V2ProductRecommendation | null;
   llmRecommendation?: LlmRecommendation;
+  isLimited?: boolean;
 }
 
-export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CTAFinalProps) {
+export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimited = false }: V2CTAFinalProps) {
   const { logEvent } = useAnalytics();
+  const navigate = useNavigate();
   const firstName = userName.split(' ')[0];
   const primary = recommendation?.primary_offer;
 
@@ -32,6 +35,129 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation }: V2CT
     ? llmRecommendation.description
     : primary?.why_this_fits || 'Acesse o Hub gratuito e comece sua preparação hoje. Materiais, comunidade e suporte — tudo que você precisa para dar o primeiro passo.';
 
+  // Limited mode: dual CTA (consultoria + assinatura)
+  if (isLimited) {
+    return (
+      <div className="space-y-4 sm:space-y-6 print:hidden">
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 text-white shadow-2xl transition-all duration-300">
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-violet-600/20 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-600/20 rounded-full blur-[80px]" />
+
+          <div className="relative z-10 p-6 sm:p-8 md:p-12 flex flex-col items-center text-center space-y-6 sm:space-y-8">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="inline-flex items-center space-x-2 bg-violet-500/10 border border-violet-500/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-violet-400 text-xs sm:text-sm font-semibold uppercase tracking-wider">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Relatório Completo Disponível</span>
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight px-4 sm:px-0">
+                Seu plano de ação está pronto,{' '}
+                <span className="text-violet-400">{firstName}.</span>
+              </h2>
+
+              <p className="max-w-2xl mx-auto text-slate-300 text-base sm:text-lg leading-relaxed px-4 sm:px-0">
+                Identificamos seus bloqueadores e criamos um plano personalizado. Para transformar esse diagnóstico em resultados, escolha como avançar:
+              </p>
+            </div>
+
+            {/* Dual CTA */}
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+              {/* Consultoria */}
+              <div className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-5 flex flex-col gap-4 text-left">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CalendarCheck className="w-4 h-4 text-blue-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Quero ajuda profissional</span>
+                  </div>
+                  <h3 className="font-bold text-base text-white">Sessão de diagnóstico</h3>
+                  <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+                    45 min com especialista para revisar seu diagnóstico e criar um plano de ação sob medida.
+                  </p>
+                </div>
+                <button
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm rounded-xl transition-all duration-200 hover:scale-[1.02]"
+                  onClick={() => {
+                    logEvent({
+                      event_type: 'cta_click',
+                      entity_type: 'consulting',
+                      metadata: { placement: 'report_v2_limited_dual_cta', cta: 'consultoria' },
+                    });
+                    window.open('https://hub.euanapratica.com/consultoria', '_blank');
+                  }}
+                >
+                  Agendar sessão
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Assinatura */}
+              <div className="bg-white/5 border border-violet-500/30 rounded-xl sm:rounded-2xl p-5 flex flex-col gap-4 text-left relative overflow-hidden">
+                <div className="absolute top-2 right-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded-full">Recomendado</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Quero o relatório completo</span>
+                  </div>
+                  <h3 className="font-bold text-base text-white">Assinar o Hub</h3>
+                  <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+                    Acesse o relatório completo com plano de ação, checkpoints e recomendações detalhadas por dimensão.
+                  </p>
+                </div>
+                <button
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-sm rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-[0_0_20px_-5px_rgba(139,92,246,0.5)]"
+                  onClick={() => {
+                    logEvent({
+                      event_type: 'cta_click',
+                      entity_type: 'subscription',
+                      metadata: { placement: 'report_v2_limited_dual_cta', cta: 'assinatura' },
+                    });
+                    navigate('/assinar');
+                  }}
+                >
+                  Ver planos
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Explorer invite */}
+        <div className="rounded-xl sm:rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:p-6 md:p-8 text-center space-y-2 sm:space-y-3">
+          <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+            <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            Programa Explorer
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-foreground px-4 sm:px-0">
+            Faça parte do grupo Explorer
+          </h3>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed px-2 sm:px-0">
+            Nossa plataforma está em estágio experimental e estamos buscando pessoas como você para
+            nos ajudar a validar a experiência. Explorers recebem acesso antecipado a novas funcionalidades,
+            suporte prioritário e benefícios exclusivos por contribuírem com feedback.
+          </p>
+          <button
+            className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full border border-primary/30 bg-background hover:bg-primary/5 text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] mt-2 sm:mt-0"
+            onClick={() => {
+              logEvent({
+                event_type: 'cta_click',
+                entity_type: 'explorer_program',
+                metadata: { placement: 'report_v2_explorer_invite' },
+              });
+              window.open('https://hub.euanapratica.com', '_blank');
+            }}
+          >
+            Quero ser Explorer
+            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full access: original product CTA
   return (
     <div className="space-y-4 sm:space-y-6 print:hidden">
       {/* Main CTA banner - Premium design matching reference */}

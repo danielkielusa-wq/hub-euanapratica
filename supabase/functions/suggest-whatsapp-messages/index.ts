@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("[suggest-whatsapp] Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
+      JSON.stringify({ error: "Erro interno ao gerar sugestões" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

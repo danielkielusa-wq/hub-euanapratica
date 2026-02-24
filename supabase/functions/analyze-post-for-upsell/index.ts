@@ -1,12 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
+import { getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface AnalyzePostRequest {
   postId: string;
@@ -24,6 +20,8 @@ interface ClaudeResponse {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -211,15 +209,15 @@ serve(async (req) => {
     }
 
     // Detect API type from base_url only (not from key name)
-    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = baseUrlLower.includes("anthropic.com");
+    const detectedProvider = detectProviderFromUrl(apiConfig.base_url || "");
+    const isAnthropic = detectedProvider === "anthropic";
 
     // Model: prefer API config model (always compatible with the provider),
     // then per-app override, then sensible defaults
     const model = apiConfig.parameters?.model || configMap.upsell_model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
-    console.log(`[Upsell] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${model}`);
+    console.log(`[Upsell] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", provider: ${detectedProvider}, model: ${model}`);
 
     // Preparar serviços para o prompt
     const servicesJson = JSON.stringify(
@@ -272,7 +270,7 @@ serve(async (req) => {
 
       const claudeData = await claudeResponse.json();
       const { inputTokens, outputTokens } = extractTokenUsage(claudeData, 'anthropic');
-      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: 'anthropic', model, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
+      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: detectedProvider, model, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
       responseText = claudeData.content?.[0]?.text || JSON.stringify({ match: false });
     } else {
       // OpenAI Chat Completions API
@@ -298,7 +296,7 @@ serve(async (req) => {
 
       const openaiData = await openaiResponse.json();
       const { inputTokens: oaiIn, outputTokens: oaiOut } = extractTokenUsage(openaiData, 'openai');
-      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: 'openai', model, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
+      logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: detectedProvider, model, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: { post_id: postId } });
       responseText = openaiData.choices?.[0]?.message?.content || JSON.stringify({ match: false });
     }
 

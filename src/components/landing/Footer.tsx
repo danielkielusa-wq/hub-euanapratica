@@ -7,7 +7,7 @@ export function Footer() {
     <footer className="border-t border-white/5 bg-landing-navy">
       <div className="container mx-auto px-4">
         {/* Main Footer */}
-        <div className="grid gap-8 py-12 sm:py-16 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 py-12 sm:py-16 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link to="/" className="mb-4 flex items-center">
@@ -57,6 +57,39 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 sm:mb-4">
+              Legal
+            </h4>
+            <ul className="space-y-2 sm:space-y-3">
+              <li>
+                <Link
+                  to="/termos-assinatura"
+                  className="text-xs text-white/50 transition-colors hover:text-white sm:text-sm"
+                >
+                  Termos de Assinatura
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/politica-privacidade"
+                  className="text-xs text-white/50 transition-colors hover:text-white sm:text-sm"
+                >
+                  Política de Privacidade
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/politica-cancelamento"
+                  className="text-xs text-white/50 transition-colors hover:text-white sm:text-sm"
+                >
+                  Política de Cancelamento
+                </Link>
+              </li>
             </ul>
           </div>
 

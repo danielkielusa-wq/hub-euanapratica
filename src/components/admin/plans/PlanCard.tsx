@@ -14,7 +14,8 @@ import {
   FileText,
   List,
   Plus,
-  X
+  X,
+  BarChart2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -33,6 +34,13 @@ const FEATURE_TOGGLES = [
   { key: 'hotseats', label: 'Hotseats Mensais' },
   { key: 'library', label: 'Biblioteca de Materiais' },
   { key: 'masterclass', label: 'Masterclass Mensal' },
+] as const;
+
+const CURRICULO_TOGGLES = [
+  { key: 'show_improvements', label: 'Melhorias de Impacto' },
+  { key: 'show_power_verbs', label: 'Power Verbs' },
+  { key: 'show_cheat_sheet', label: 'Cheat Sheet de Entrevista' },
+  { key: 'allow_pdf', label: 'Exportar PDF' },
 ] as const;
 
 const DISCOUNT_FIELDS = [
@@ -326,6 +334,43 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* 2b. Currículo USA */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <FileText size={14} className="text-emerald-500" /> Currículo USA
+          </h3>
+          <div className="space-y-3">
+            {CURRICULO_TOGGLES.map((feature) => (
+              <div key={feature.key} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-xl transition-colors">
+                <span className="text-sm font-medium text-muted-foreground">{feature.label}</span>
+                <Switch
+                  checked={localPlan.features[feature.key]}
+                  onCheckedChange={(checked) => updateFeature(feature.key, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 2c. Relatório Diagnóstico */}
+        <section>
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+            <BarChart2 size={14} className="text-violet-500" /> Relatório Diagnóstico
+          </h3>
+          <div className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-xl transition-colors">
+            <div>
+              <span className="text-sm font-medium text-muted-foreground">Acesso ao relatório completo</span>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                Permite ver recomendações, plano de ação completo e checkpoints no relatório de diagnóstico.
+              </p>
+            </div>
+            <Switch
+              checked={localPlan.features.full_report_access ?? false}
+              onCheckedChange={(checked) => updateFeature('full_report_access', checked)}
+            />
           </div>
         </section>
 

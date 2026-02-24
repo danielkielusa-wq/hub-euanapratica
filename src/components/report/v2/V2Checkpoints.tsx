@@ -2,12 +2,14 @@ import { useMemo } from 'react';
 import { Settings } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useInView } from '@/hooks/useInView';
+import { ReportSectionLock } from './ReportSectionLock';
 import { format, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { V2TimelineMilestones } from '@/types/leads';
 
 interface V2CheckpointsProps {
   milestones: V2TimelineMilestones;
+  isLimited?: boolean;
 }
 
 interface CheckpointItem {
@@ -35,7 +37,7 @@ function formatCheckpointDate(raw: string): string {
   return raw;
 }
 
-export function V2Checkpoints({ milestones }: V2CheckpointsProps) {
+export function V2Checkpoints({ milestones, isLimited = false }: V2CheckpointsProps) {
   const { ref, isInView } = useInView();
 
   const checkpoints = useMemo<CheckpointItem[]>(() => {
@@ -53,6 +55,23 @@ export function V2Checkpoints({ milestones }: V2CheckpointsProps) {
   }, [milestones]);
 
   if (checkpoints.length === 0) return null;
+
+  if (isLimited) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Settings className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-xl font-bold text-foreground">Próximos checkpoints</h2>
+        </div>
+        <ReportSectionLock
+          variant="full"
+          title={`${checkpoints.length} checkpoints identificados`}
+          description="Suas datas de acompanhamento personalizado estão disponíveis no relatório completo. Assine para ver quando e o que revisar em cada etapa."
+          ctaText="Ver meus checkpoints"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">

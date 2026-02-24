@@ -15,9 +15,11 @@ import type { V2FormattedReportData, CareerEvaluation } from '@/types/leads';
 interface V2ReportContainerProps {
   data: V2FormattedReportData;
   evaluation: CareerEvaluation;
+  accessLevel?: 'full' | 'limited';
 }
 
-export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) {
+export function V2ReportContainer({ data, evaluation, accessLevel = 'limited' }: V2ReportContainerProps) {
+  const isLimited = accessLevel === 'limited';
   // Extract current phase letter from rota_letter (handles cases like "O-T" → "T")
   const extractPhaseLetter = (rotaLetter: string | undefined): string => {
     if (!rotaLetter) return 'R'; // Default to R if not defined
@@ -74,6 +76,7 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
           <ScrollReveal>
             <V2CriticalBlockers
               barriers={data.barriers_analysis}
+              isLimited={isLimited}
             />
           </ScrollReveal>
         )}
@@ -93,6 +96,7 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
             <V2DetailedAnalysis
               analysis={data.detailed_analysis}
               breakdown={data.scoring.score_breakdown}
+              isLimited={isLimited}
             />
           </ScrollReveal>
         )}
@@ -102,6 +106,7 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
           <ScrollReveal>
             <V2ActionPlan
               actionPlan={data.action_plan}
+              isLimited={isLimited}
             />
           </ScrollReveal>
         )}
@@ -111,6 +116,7 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
           <ScrollReveal>
             <V2Checkpoints
               milestones={data.timeline_milestones}
+              isLimited={isLimited}
             />
           </ScrollReveal>
         )}
@@ -125,6 +131,7 @@ export function V2ReportContainer({ data, evaluation }: V2ReportContainerProps) 
               description: evaluation.recommendation_description,
               landingPageUrl: evaluation.recommendation_landing_page_url,
             } : undefined}
+            isLimited={isLimited}
           />
         </ScrollReveal>
 

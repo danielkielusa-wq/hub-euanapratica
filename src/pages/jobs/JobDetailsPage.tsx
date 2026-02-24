@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import {
   ArrowLeft,
   MapPin,
@@ -298,7 +299,7 @@ export default function JobDetailsPage() {
                 <h2 className="text-2xl font-black text-gray-900 mb-6">Sobre a Vaga</h2>
                 <div
                   className="text-gray-600 leading-relaxed whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: job.description }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.description || '') }}
                 />
 
                 {job.requirements && (
@@ -306,7 +307,7 @@ export default function JobDetailsPage() {
                     <h3 className="text-xl font-bold text-gray-900 mt-10 mb-6">Requisitos</h3>
                     <div
                       className="text-gray-600 leading-relaxed whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: job.requirements }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.requirements) }}
                     />
                   </>
                 )}
@@ -316,7 +317,7 @@ export default function JobDetailsPage() {
                     <h3 className="text-xl font-bold text-gray-900 mt-10 mb-6">Benefícios</h3>
                     <div
                       className="text-gray-600 leading-relaxed whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: job.benefits }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(job.benefits) }}
                     />
                   </>
                 )}

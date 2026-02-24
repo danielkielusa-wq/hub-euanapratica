@@ -41,6 +41,7 @@ export function useCreateHubService() {
           is_highlighted: formData.is_highlighted ?? false,
           display_order: formData.display_order ?? 0,
           price: formData.price ?? 0,
+          anchor_price: formData.anchor_price ?? null,
           price_display: formData.price_display || null,
           currency: formData.currency || 'BRL',
           product_type: formData.product_type || 'one_time',
@@ -107,6 +108,7 @@ export function useUpdateHubService() {
           is_highlighted: formData.is_highlighted,
           display_order: formData.display_order,
           price: formData.price,
+          anchor_price: formData.anchor_price ?? null,
           price_display: formData.price_display || null,
           currency: formData.currency,
           product_type: formData.product_type,
@@ -184,6 +186,7 @@ export function useDeleteHubService() {
       toast.success('Produto removido com sucesso!');
     },
     onError: (error) => {
+      console.error('Erro ao remover produto:', error);
       toast.error('Erro ao remover produto');
     },
   });

@@ -30,6 +30,54 @@ const PUBLIC_EVALUATION_COLUMNS = [
 const MAX_VERIFY_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
+/**
+ * Determine if a user has full report access based on:
+ * 1. Admin role → full
+ * 2. Active subscription with plan.features.full_report_access = true → full
+ * 3. Any active hub_services purchase → full
+ * 4. Otherwise → limited
+ */
+async function determineAccessLevel(
+  userId: string,
+  supabase: ReturnType<typeof createClient>
+): Promise<"full" | "limited"> {
+  // Check admin role
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (roleData) return "full";
+
+  // Check active subscription with full_report_access feature
+  const { data: subData } = await supabase
+    .from("user_subscriptions")
+    .select("plan_id, status, plans!inner(features)")
+    .eq("user_id", userId)
+    .in("status", ["active", "trial", "grace_period"])
+    .maybeSingle();
+
+  if (subData?.plans) {
+    const features = (subData.plans as { features: Record<string, unknown> }).features;
+    if (features?.full_report_access === true) return "full";
+  }
+
+  // Check any active hub_services purchase (consulting or other one-time)
+  const { data: hubData } = await supabase
+    .from("user_hub_services")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (hubData) return "full";
+
+  return "limited";
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
@@ -186,6 +234,12 @@ serve(async (req) => {
           }
         });
 
+      // Determine access level based on user's subscription/role
+      let accessLevel: "full" | "limited" = "limited";
+      if (evaluation.user_id) {
+        accessLevel = await determineAccessLevel(evaluation.user_id, supabase);
+      }
+
       // CRIT-5: Return only public columns for the latest evaluation
       const { data: latestEvaluation } = await supabase
         .from("career_evaluations")
@@ -196,7 +250,7 @@ serve(async (req) => {
         .maybeSingle();
 
       return new Response(
-        JSON.stringify({ success: true, evaluation: latestEvaluation }),
+        JSON.stringify({ success: true, evaluation: latestEvaluation, access_level: accessLevel }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

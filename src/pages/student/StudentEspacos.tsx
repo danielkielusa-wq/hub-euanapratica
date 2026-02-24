@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
 import { StudentEspacoCard, ExploreCoursesCard } from '@/components/espacos/StudentEspacoCard';
+import { EspacosEmptyState } from '@/components/espacos/EspacosEmptyState';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +14,9 @@ type FilterType = 'all' | 'in_progress' | 'completed';
 export default function StudentEspacos() {
   const { data: espacos, isLoading } = useStudentEspacosWithStats();
   const [filter, setFilter] = useState<FilterType>('all');
+  const navigate = useNavigate();
+
+  const hasNoEspacosAtAll = !espacos || espacos.length === 0;
 
   // Filter espacos based on status
   const filteredEspacos = espacos?.filter(espaco => {
@@ -84,6 +89,8 @@ export default function StudentEspacos() {
               ))}
               <ExploreCoursesCard />
             </div>
+          ) : hasNoEspacosAtAll && filter === 'all' ? (
+            <EspacosEmptyState onExplore={() => navigate('/dashboard/hub')} />
           ) : (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
@@ -93,10 +100,7 @@ export default function StudentEspacos() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum espaço encontrado</h3>
               <p className="text-muted-foreground text-center max-w-sm">
-                {filter === 'all' 
-                  ? 'Você ainda não está matriculado em nenhum espaço de aprendizado.'
-                  : `Nenhum espaço ${filter === 'completed' ? 'concluído' : 'em andamento'} no momento.`
-                }
+                {`Nenhum espaço ${filter === 'completed' ? 'concluído' : 'em andamento'} no momento.`}
               </p>
             </div>
           )}

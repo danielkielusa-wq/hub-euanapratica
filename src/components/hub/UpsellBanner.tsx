@@ -1,6 +1,7 @@
 import { Sparkles, CheckCircle2, Calendar, ShieldCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HubService } from '@/types/hub';
+import { PriceDisplay } from './PriceDisplay';
 
 interface UpsellBannerProps {
   service: HubService | null;
@@ -25,8 +26,6 @@ export function UpsellBanner({ service, isLoading }: UpsellBannerProps) {
   }
 
   if (!service) return null;
-
-  const price = service.price_display || (service.price ? `R$ ${service.price}` : 'Consultar');
 
   return (
     <div className="mb-16">
@@ -70,8 +69,20 @@ export function UpsellBanner({ service, isLoading }: UpsellBannerProps) {
           <div className="lg:col-span-2">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 text-center hover:bg-white/10 transition-colors">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Investimento Único</p>
-              <div className="flex items-center justify-center gap-1 mb-4">
-                <span className="text-5xl font-black text-white">{price}</span>
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {service.anchor_price && service.anchor_price > service.price && service.price > 0 && (
+                  <span className="text-lg text-gray-500 line-through">
+                    R$ {Math.floor(service.anchor_price)}
+                  </span>
+                )}
+                <span className="text-5xl font-black text-white">
+                  {service.price_display || (service.price ? `R$ ${service.price}` : 'Consultar')}
+                </span>
+                {service.anchor_price && service.anchor_price > service.price && service.price > 0 && (
+                  <span className="bg-green-500/20 text-green-300 border border-green-500/30 text-sm font-bold px-3 py-1 rounded-full">
+                    {Math.round((1 - service.price / service.anchor_price) * 100)}% OFF
+                  </span>
+                )}
               </div>
               
               <button 

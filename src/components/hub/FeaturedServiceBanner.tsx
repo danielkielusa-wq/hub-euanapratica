@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HubService } from '@/types/hub';
 import { useAuth } from '@/contexts/AuthContext';
+import { PriceDisplay } from './PriceDisplay';
 
 interface FeaturedServiceBannerProps {
   service: HubService;
@@ -46,13 +47,6 @@ export function FeaturedServiceBanner({ service, hasAccess }: FeaturedServiceBan
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
-  };
-
   return (
     <div className="relative overflow-hidden rounded-[48px] border bg-gradient-to-r from-slate-50 to-indigo-50 p-8 md:p-10">
       {/* Decorative elements */}
@@ -76,9 +70,13 @@ export function FeaturedServiceBanner({ service, hasAccess }: FeaturedServiceBan
           </p>
 
           {service.price && service.price > 0 && (
-            <p className="mb-4 text-lg font-semibold text-foreground">
-              {service.price_display || formatPrice(service.price)}
-            </p>
+            <PriceDisplay
+              price={service.price}
+              priceDisplay={service.price_display}
+              anchorPrice={service.anchor_price}
+              size="lg"
+              className="mb-4"
+            />
           )}
 
           <div className="flex flex-wrap gap-3">

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
 import { useAuth } from '@/contexts/AuthContext';
+import { PriceDisplay } from './PriceDisplay';
 
 interface ServiceCardProps {
   service: HubService;
@@ -29,13 +30,6 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
   
   const serviceType = (service.service_type as ServiceType) || 'consulting';
   const typeColor = serviceTypeColors[serviceType] || serviceTypeColors.consulting;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
-  };
 
   const getInternalPath = (url: string): string | null => {
     if (url.startsWith('/')) return url;
@@ -126,9 +120,13 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
 
       {/* Price */}
       {service.price && service.price > 0 && (
-        <p className="mb-4 font-semibold text-foreground">
-          {service.price_display || formatPrice(service.price)}
-        </p>
+        <PriceDisplay
+          price={service.price}
+          priceDisplay={service.price_display}
+          anchorPrice={service.anchor_price}
+          size="md"
+          className="mb-4"
+        />
       )}
 
       {/* Action */}

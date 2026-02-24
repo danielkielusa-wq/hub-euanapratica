@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
+import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 // LOW-9: Module-level constant — avoids re-allocating ~430-line schema on every request
@@ -497,12 +497,12 @@ serve(async (req) => {
     }
 
     // Detect API type from base_url only (not from key name)
-    const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
-    const isAnthropic = baseUrlLower.includes("anthropic.com");
+    const detectedProvider = detectProviderFromUrl(apiConfigData.base_url || "");
+    const isAnthropic = detectedProvider === "anthropic";
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[format-lead-report] API: "${selectedApiKey}" (${apiConfigData.name}), base_url: "${apiConfigData.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
+    console.log(`[format-lead-report] API: "${selectedApiKey}" (${apiConfigData.name}), base_url: "${apiConfigData.base_url}", provider: ${detectedProvider}, model: ${selectedModel}`);
 
     // Fetch evaluation first
     const { data: evaluation, error: evalError } = await supabase
@@ -821,7 +821,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       const text = aiData.content?.[0]?.text;
       if (!text) {
         console.error("Unexpected Anthropic response:", aiData);
-        logApiCost({ edgeFunction: 'format-lead-report', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { evaluation_id: evaluationId } });
+        logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { evaluation_id: evaluationId } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
@@ -865,7 +865,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         );
       }
 
-      logApiCost({ edgeFunction: 'format-lead-report', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
+      logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
     } else {
       // ========== OpenAI Responses API ==========
       // CRIT-2: Abort after 50s to prevent Edge Function timeout
@@ -967,7 +967,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         );
       }
 
-      logApiCost({ edgeFunction: 'format-lead-report', provider: 'openai', model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
+      logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
     }
 
     // V2 reports: enrich product recommendations with live hub_services data

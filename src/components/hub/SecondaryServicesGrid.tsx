@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HubService } from '@/types/hub';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { cn } from '@/lib/utils';
+import { PriceDisplay } from './PriceDisplay';
 
 interface SecondaryServicesGridProps {
   services: HubService[];
@@ -108,16 +109,23 @@ export function SecondaryServicesGrid({ services, isLoading }: SecondaryServices
               
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <div className="flex flex-col">
-                  {hasDiscount && (
-                    <span className="text-[10px] text-muted-foreground line-through">
-                      R$ {originalPrice}
-                    </span>
-                  )}
-                  <span className="text-xs font-bold text-foreground">{priceDisplay}</span>
-                  {hasDiscount && (
-                    <span className="text-[9px] font-bold text-green-600 dark:text-green-400">
-                      Seu desconto {planName}: {discount}% off
-                    </span>
+                  {hasDiscount ? (
+                    <>
+                      <span className="text-[10px] text-muted-foreground line-through">
+                        R$ {originalPrice}
+                      </span>
+                      <span className="text-xs font-bold text-foreground">{priceDisplay}</span>
+                      <span className="text-[9px] font-bold text-green-600 dark:text-green-400">
+                        Seu desconto {planName}: {discount}% off
+                      </span>
+                    </>
+                  ) : (
+                    <PriceDisplay
+                      price={service.price || 0}
+                      priceDisplay={service.price_display}
+                      anchorPrice={service.anchor_price}
+                      size="sm"
+                    />
                   )}
                 </div>
                 <span className="text-[10px] font-black text-muted-foreground bg-muted px-3 py-1.5 rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-all">

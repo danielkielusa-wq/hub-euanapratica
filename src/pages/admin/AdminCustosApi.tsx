@@ -52,6 +52,7 @@ const FUNCTION_LABELS: Record<string, string> = {
 const PROVIDER_COLORS: Record<string, string> = {
   openai: '#10b981',
   anthropic: '#8b5cf6',
+  openrouter: '#f97316',
   resend: '#f59e0b',
 };
 
@@ -270,7 +271,7 @@ export default function AdminCustosApi() {
                       Propósito
                     </h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      Monitora gastos com APIs de IA (OpenAI, Anthropic) e email (Resend). Cada chamada de Edge Function registra automaticamente o uso de tokens e calcula o custo com base na tabela de preços configurada.
+                      Monitora gastos com APIs de IA (OpenAI, Anthropic, OpenRouter) e email (Resend). Cada chamada de Edge Function registra automaticamente o uso de tokens e calcula o custo com base na tabela de preços configurada. Provedores são detectados automaticamente pela base_url configurada em /admin/configuracoes-apis.
                     </p>
                   </section>
                   <div className="border-t" />
@@ -283,7 +284,8 @@ export default function AdminCustosApi() {
                       {[
                         { item: "Registro automático", detail: "Cada Edge Function com IA chama logApiCost() após a resposta, registrando input_tokens, output_tokens, modelo e duração." },
                         { item: "Tabela de origem", detail: "api_cost_logs — contém edge_function, provider, model, tokens, cost_usd, status, metadata." },
-                        { item: "Edge Functions monitoradas", detail: "analyze-resume, format-lead-report, translate-title, analyze-post-for-upsell, recommend-product, generate-daily-priorities." },
+                        { item: "Edge Functions monitoradas", detail: "analyze-resume, format-lead-report, translate-title, analyze-post-for-upsell, recommend-product, generate-daily-priorities, suggest-lead-tasks, suggest-whatsapp-messages." },
+                        { item: "Provedores suportados", detail: "OpenAI, Anthropic, OpenRouter (detectado via base_url em api_configs) e Resend. Chamadas OpenRouter aparecem como provedor separado com cor laranja." },
                         { item: "Custo de email", detail: "Registrado por envio (campo per_email na tabela de preços), não por tokens." },
                       ].map((i, idx) => (
                         <li key={idx} className="flex gap-3">
@@ -319,9 +321,10 @@ export default function AdminCustosApi() {
                     </h3>
                     <div className="space-y-3">
                       {[
-                        { p: "Custo zerado para uma função", c: "A Edge Function não chama logApiCost() ou a chamada está falhando silenciosamente.", f: "Verifique os logs da função no Supabase → Edge Functions → Logs." },
-                        { p: "Função não aparece no gráfico", c: "Nenhuma chamada bem-sucedida no período selecionado.", f: "Mude o período ou verifique se a função está sendo chamada com sucesso." },
-                        { p: "Custo calculado incorretamente", c: "Tabela de preços desatualizada ou modelo incorreto no registro.", f: "Atualize os preços na seção abaixo e clique em Salvar." },
+                        { p: "Custo zerado ($0) com tokens registrados", c: "O modelo usado não tem entrada na tabela de preços abaixo.", f: "Adicione o modelo e seus preços na seção 'Tabela de Preços por Modelo' e clique em Salvar. Para OpenRouter, use o nome exato do modelo (ex: google/gemini-2.0-flash)." },
+                        { p: "Função não aparece no gráfico", c: "Nenhuma chamada no período selecionado, ou a função não usa logApiCost().", f: "Mude o período ou verifique os logs da função no Supabase → Edge Functions → Logs." },
+                        { p: "OpenRouter aparecendo como OpenAI", c: "API configurada antes da atualização do sistema de detecção (fev/2026).", f: "Os novos registros já aparecem como 'openrouter'. Os registros antigos ficaram como 'openai' — isso é esperado." },
+                        { p: "Custo calculado incorretamente", c: "Tabela de preços desatualizada.", f: "Atualize os preços na seção abaixo e clique em Salvar. O sistema recalcula nas próximas chamadas (não retroativo)." },
                         { p: "Fallback aparece em Custos", c: "É esperado — quando o sistema usa o fallback, registra dois logs: o do erro primário e o do fallback (metadata: used_fallback: true).", f: "Confira a coluna de metadados na tabela api_cost_logs se precisar distingui-los." },
                       ].map((item, i) => (
                         <div key={i} className="rounded-lg border p-3 space-y-1">

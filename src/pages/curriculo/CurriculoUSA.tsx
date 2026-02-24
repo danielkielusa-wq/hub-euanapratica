@@ -125,7 +125,7 @@ export default function CurriculoUSA() {
           <CurriculoHeader />
 
           {/* Analyzing State */}
-          {isAnalyzing && <AnalyzingLoader />}
+          {isAnalyzing && <AnalyzingLoader status={status as 'uploading' | 'analyzing'} />}
 
           {/* Input State (idle or error) */}
           {(status === 'idle' || status === 'error') && (

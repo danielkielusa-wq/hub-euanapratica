@@ -9,10 +9,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+export type CostProvider = "openai" | "anthropic" | "openrouter" | "resend";
+
 interface LogApiCostOptions {
   userId?: string | null;
   edgeFunction: string;
-  provider: "openai" | "anthropic" | "resend";
+  provider: CostProvider;
   model?: string | null;
   inputTokens?: number | null;
   outputTokens?: number | null;
@@ -37,7 +39,10 @@ function calculateCost(
 ): number | null {
   if (!pricing || !model) return null;
   const modelPricing = pricing[model];
-  if (!modelPricing) return null;
+  if (!modelPricing) {
+    console.warn(`[apiCostService] No pricing found for model "${model}" — cost will be null. Add it to llm_model_pricing in app_configs.`);
+    return null;
+  }
 
   // Email provider (flat cost per email)
   if ("per_email" in modelPricing) {
@@ -84,7 +89,7 @@ async function getPricing(
  */
 export function extractTokenUsage(
   aiData: Record<string, unknown> | null | undefined,
-  provider: "openai" | "anthropic"
+  provider: "openai" | "anthropic" | "openrouter"
 ): { inputTokens: number | null; outputTokens: number | null } {
   const usage = (aiData as Record<string, Record<string, number>>)?.usage;
   if (!usage) {
@@ -98,8 +103,8 @@ export function extractTokenUsage(
     };
   }
 
-  // OpenAI: Chat Completions uses prompt_tokens/completion_tokens
-  //         Responses API uses input_tokens/output_tokens
+  // OpenAI / OpenRouter: Chat Completions uses prompt_tokens/completion_tokens
+  //                      Responses API uses input_tokens/output_tokens
   return {
     inputTokens: usage.input_tokens ?? usage.prompt_tokens ?? null,
     outputTokens: usage.output_tokens ?? usage.completion_tokens ?? null,
@@ -159,4 +164,16 @@ export async function logApiCost(options: LogApiCostOptions): Promise<void> {
   } catch (err) {
     console.warn("[logApiCost] Failed to write api_cost_logs:", err);
   }
+}
+
+/**
+ * Detects provider from base_url. Shared across all Edge Functions.
+ * OpenRouter and other OpenAI-compatible providers use the OpenAI code path,
+ * but are logged as distinct providers for cost tracking.
+ */
+export function detectProviderFromUrl(baseUrl: string): "openai" | "anthropic" | "openrouter" {
+  const url = (baseUrl || "").toLowerCase();
+  if (url.includes("anthropic.com")) return "anthropic";
+  if (url.includes("openrouter.ai")) return "openrouter";
+  return "openai";
 }

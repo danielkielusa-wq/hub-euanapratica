@@ -19,6 +19,7 @@ import {
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useTitleTranslator, type Suggestion, type TranslationResult } from '@/hooks/useTitleTranslator';
+import { TranslationProgress } from './TranslationProgress';
 import {
   Tooltip,
   TooltipContent,
@@ -396,7 +397,9 @@ export default function TitleTranslatorPage() {
             </Tooltip>
           </div>
 
-            {result ? renderResults() : renderForm()}
+            {result ? renderResults() : loading ? (
+              <TranslationProgress titleBr={formData.titleBr} />
+            ) : renderForm()}
           </div>
         </div>
 

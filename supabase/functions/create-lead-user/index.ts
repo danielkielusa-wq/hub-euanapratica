@@ -1,52 +1,39 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+Deno.serve(async (req) => {
+  const headers = getCorsHeaders(req);
 
-serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers });
   }
 
   try {
+    // P0-2: Admin-only — was previously optional auth
+    const authError = await requireAdmin(req);
+    if (authError) return authError;
+
     const { email, full_name, phone } = await req.json();
 
     if (!email || !full_name) {
       return new Response(
         JSON.stringify({ error: "Email e nome são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Formato de email inválido" }),
+        { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Verify caller is admin
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user: caller } } = await supabase.auth.getUser(token);
-      
-      if (caller) {
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", caller.id)
-          .eq("role", "admin")
-          .maybeSingle();
-        
-        if (!roleData) {
-          return new Response(
-            JSON.stringify({ error: "Acesso negado: apenas admins podem criar leads" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
 
     // Check if email already exists
     const { data: existingProfile } = await supabase
@@ -58,14 +45,14 @@ serve(async (req) => {
     if (existingProfile) {
       return new Response(
         JSON.stringify({ user_id: existingProfile.id, existing: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
     // Create auth user with random password (they can reset it later)
     const randomPassword = crypto.randomUUID() + "Aa1!";
-    
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+
+    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
       email: email.toLowerCase(),
       password: randomPassword,
       email_confirm: true,
@@ -74,8 +61,8 @@ serve(async (req) => {
       }
     });
 
-    if (authError) {
-      if (authError.code === "email_exists") {
+    if (createError) {
+      if (createError.code === "email_exists") {
         const { data: existingProfileAfterError } = await supabase
           .from("profiles")
           .select("id")
@@ -85,7 +72,7 @@ serve(async (req) => {
         if (existingProfileAfterError?.id) {
           return new Response(
             JSON.stringify({ user_id: existingProfileAfterError.id, existing: true }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { headers: { ...headers, "Content-Type": "application/json" } }
           );
         }
 
@@ -97,10 +84,10 @@ serve(async (req) => {
           const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ page, perPage });
 
           if (usersError) {
-            console.error("Auth error:", authError, usersError);
+            console.error("[create-lead-user] Auth error:", createError, usersError);
             return new Response(
-              JSON.stringify({ error: usersError.message || authError.message }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Erro ao buscar usuário existente" }),
+              { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
             );
           }
 
@@ -118,10 +105,10 @@ serve(async (req) => {
         }
 
         if (!existingUserId) {
-          console.error("Auth error:", authError);
+          console.error("[create-lead-user] Auth error:", createError);
           return new Response(
-            JSON.stringify({ error: authError.message }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: "Erro ao criar lead" }),
+            { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
           );
         }
 
@@ -139,14 +126,14 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ user_id: existingUserId, existing: true }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...headers, "Content-Type": "application/json" } }
         );
       }
 
-      console.error("Auth error:", authError);
+      console.error("[create-lead-user] Auth error:", createError);
       return new Response(
-        JSON.stringify({ error: authError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Erro ao criar lead" }),
+        { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -160,13 +147,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ user_id: authData.user!.id, existing: false }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...headers, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
+    console.error("[create-lead-user] Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Erro interno do servidor" }),
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

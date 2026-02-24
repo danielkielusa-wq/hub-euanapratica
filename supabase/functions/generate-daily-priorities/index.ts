@@ -14,7 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
+import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { getCorsHeaders, requireAdmin } from "../_shared/authGuard.ts";
 
 // ── Default system prompt ────────────────────────────────────────────────
@@ -302,12 +302,12 @@ Deno.serve(async (req) => {
 
     // Detect API type from base_url only (not from key name)
     // OpenRouter, Together, etc. are OpenAI-compatible — only direct anthropic.com uses Anthropic SDK format
-    const baseUrlLower = (apiConfigData.base_url || "").toLowerCase();
-    const isAnthropic = baseUrlLower.includes("anthropic.com");
+    const detectedProvider = detectProviderFromUrl(apiConfigData.base_url || "");
+    const isAnthropic = detectedProvider === "anthropic";
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[generate-daily-priorities] API key: "${selectedApiKey}", name: "${apiConfigData.name}", base_url: "${apiConfigData.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}, leads: ${leadsContext.length}`);
+    console.log(`[generate-daily-priorities] API key: "${selectedApiKey}", name: "${apiConfigData.name}", base_url: "${apiConfigData.base_url}", provider: ${detectedProvider}, model: ${selectedModel}, leads: ${leadsContext.length}`);
 
     // ── 6. Build prompt ─────────────────────────────────────────────
 
@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
         const stopReason = aiData.stop_reason || "unknown";
         console.log(`[generate-daily-priorities] Anthropic stop_reason: ${stopReason}, tokens: ${inputTokens}/${outputTokens}`);
         if (stopReason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
-        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
+        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.content?.[0]?.text || "";
 
       } else {
@@ -401,7 +401,7 @@ Deno.serve(async (req) => {
         const finishReason = aiData.choices?.[0]?.finish_reason || "unknown";
         console.log(`[generate-daily-priorities] OpenAI finish_reason: ${finishReason}, tokens: ${oaiIn}/${oaiOut}`);
         if (finishReason === "length") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
-        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: 'openai', model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
+        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.choices?.[0]?.message?.content || "";
       }
 

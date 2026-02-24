@@ -80,6 +80,7 @@ export interface HubService {
 
   // Pricing
   price: number;
+  anchor_price: number | null;
   price_display: string | null;
   currency: string;
   product_type: ProductType;
@@ -121,6 +122,7 @@ export interface HubServiceFormData {
   accent_color: string;
   landing_page_url: string;
   price: number;
+  anchor_price: number | null;
   price_display: string;
   currency: string;
   product_type: ProductType;

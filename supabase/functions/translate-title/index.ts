@@ -50,7 +50,8 @@ serve(async (req) => {
     console.log(`[translate-title] User authenticated: ${userId}`);
 
     // ========== SMART GATEKEEPER: Check subscription and quota ==========
-    const { data: subData } = await supabase
+    // Use adminSupabase to bypass RLS for reliable results
+    const { data: subData } = await adminSupabase
       .from("user_subscriptions")
       .select("plan_id, plans(monthly_limit, features)")
       .eq("user_id", userId)
@@ -74,7 +75,7 @@ serve(async (req) => {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const { count: usageCount, error: countError } = await supabase
+    const { count: usageCount, error: countError } = await adminSupabase
       .from("usage_logs")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
@@ -113,8 +114,8 @@ serve(async (req) => {
       );
     }
 
-    // Get AI prompt from app_configs
-    const { data: promptConfig, error: promptError } = await supabase
+    // Get AI prompt from app_configs (admin-only table, use adminSupabase)
+    const { data: promptConfig, error: promptError } = await adminSupabase
       .from("app_configs")
       .select("value")
       .eq("key", "title_translator_prompt")
@@ -128,8 +129,8 @@ serve(async (req) => {
       );
     }
 
-    // Get API config key from app_configs (admin-selectable)
-    const { data: apiConfigKey } = await supabase
+    // Get API config key from app_configs (admin-only table, use adminSupabase)
+    const { data: apiConfigKey } = await adminSupabase
       .from("app_configs")
       .select("value")
       .eq("key", "title_translator_api_config")

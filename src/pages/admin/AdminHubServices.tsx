@@ -579,9 +579,16 @@ export default function AdminHubServices() {
                         <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">
                           Preço
                         </span>
-                        <span className="text-base sm:text-lg font-bold text-foreground font-mono">
-                          {formatPrice(service.price, service.currency)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {service.anchor_price && service.anchor_price > service.price && (
+                            <span className="text-sm text-muted-foreground line-through font-mono">
+                              {formatPrice(service.anchor_price, service.currency)}
+                            </span>
+                          )}
+                          <span className="text-base sm:text-lg font-bold text-foreground font-mono">
+                            {formatPrice(service.price, service.currency)}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="h-8 w-px bg-border hidden sm:block" />

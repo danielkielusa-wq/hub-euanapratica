@@ -77,12 +77,14 @@ import TitleTranslator from "./pages/title-translator/TitleTranslator";
 import LeadFormPage from "./pages/lead-form/LeadFormPage";
 import PricingPage from "./pages/pricing/PricingPage";
 import SubscriptionSuccess from "./pages/pricing/SubscriptionSuccess";
-import SubscriptionTerms from "./pages/pricing/SubscriptionTerms";
 import SubscriptionPage from "./pages/account/SubscriptionPage";
+import LegalPage from "./pages/legal/LegalPage";
+import AdminLegalPages from "./pages/admin/AdminLegalPages";
 import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminLeadsDashboard from "./pages/admin/AdminLeadsDashboard";
 import AdminCustosApi from "./pages/admin/AdminCustosApi";
+import AdminIdeaKanban from "./pages/admin/AdminIdeaKanban";
 import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
 import AdminAtividades from "./pages/admin/AdminAtividades";
 import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
@@ -241,10 +243,15 @@ function AppRoutes() {
           <SubscriptionSuccess />
         </ProtectedRoute>
       } />
+      {/* Legal Pages (public, no auth required) */}
       <Route path="/termos-assinatura" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <SubscriptionTerms />
-        </ProtectedRoute>
+        <LegalPage configKey="legal_termos_assinatura" title="Termos de Assinatura" />
+      } />
+      <Route path="/politica-privacidade" element={
+        <LegalPage configKey="legal_politica_privacidade" title="Política de Privacidade" />
+      } />
+      <Route path="/politica-cancelamento" element={
+        <LegalPage configKey="legal_politica_cancelamento" title="Política de Cancelamento" />
       } />
 
       {/* Profile route - accessible by all authenticated users */}
@@ -463,9 +470,19 @@ function AppRoutes() {
           <AdminCustosApi />
         </ProtectedRoute>
       } />
+      <Route path="/admin/idea-kanban" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminIdeaKanban />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/whatsapp-templates" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminWhatsAppTemplates />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/paginas-legais" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLegalPages />
         </ProtectedRoute>
       } />
 

@@ -40,17 +40,14 @@ export function useAdminApis() {
   const fetchApis = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('api_configs')
-        .select('*')
-        .order('name');
+      // P0-5: Use server-side masking RPC instead of fetching raw credentials
+      const { data, error } = await supabase.rpc('get_masked_api_configs');
 
       if (error) throw error;
 
-      // Mascarar credenciais para exibição
-      const maskedApis = (data || []).map(api => ({
+      const maskedApis = (data || []).map((api: any) => ({
         ...api,
-        credentials: maskCredentials(api.credentials as Record<string, string> | null),
+        credentials: (api.credentials || {}) as Record<string, string>,
         parameters: (api.parameters || {}) as Record<string, any>,
       })) as ApiConfig[];
 

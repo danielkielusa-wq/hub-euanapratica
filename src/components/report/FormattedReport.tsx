@@ -17,9 +17,10 @@ interface FormattedReportProps {
   formattedContent?: string;
   isLoading?: boolean;
   processingStatus?: string | null;
+  accessLevel?: 'full' | 'limited';
 }
 
-export function FormattedReport({ evaluation, formattedContent, isLoading, processingStatus }: FormattedReportProps) {
+export function FormattedReport({ evaluation, formattedContent, isLoading, processingStatus, accessLevel = 'limited' }: FormattedReportProps) {
   // Try to parse formatted content and detect version
   let reportData: FormattedReportData | null = null;
   let v2ReportData: V2FormattedReportData | null = null;
@@ -39,7 +40,7 @@ export function FormattedReport({ evaluation, formattedContent, isLoading, proce
 
   // V2 report: render with V2 components
   if (v2ReportData) {
-    return <V2ReportContainer data={v2ReportData} evaluation={evaluation} />;
+    return <V2ReportContainer data={v2ReportData} evaluation={evaluation} accessLevel={accessLevel} />;
   }
 
   // Processing state: report is being generated in background (with auto-polling)

@@ -9,7 +9,7 @@
  */
 
 import { getApiConfig, type ApiConfig } from "./apiConfigService.ts";
-import { logApiCost, extractTokenUsage } from "./apiCostService.ts";
+import { logApiCost, extractTokenUsage, detectProviderFromUrl, type CostProvider } from "./apiCostService.ts";
 
 // ── Public interfaces ────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export interface CallLLMResult {
   /** Raw text content from the LLM response */
   content: string;
   /** Which provider actually served the response */
-  provider: "openai" | "anthropic";
+  provider: CostProvider;
   /** Which model was used */
   model: string;
   /** Input token count (null if unavailable) */
@@ -71,7 +71,7 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
 
   // 1. Get primary config
   const primaryConfig = await getApiConfig(options.apiKey);
-  const primaryProvider = detectProvider(primaryConfig);
+  const primaryProvider = detectProviderFromUrl(primaryConfig.base_url || "");
   const primaryModel = primaryConfig.parameters?.model ||
     (primaryProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
@@ -130,7 +130,7 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
 
     try {
       const fallbackConfig = await getApiConfig(primaryConfig.fallback_api_key);
-      const fallbackProvider = detectProvider(fallbackConfig);
+      const fallbackProvider = detectProviderFromUrl(fallbackConfig.base_url || "");
       const fallbackModel = fallbackConfig.parameters?.model ||
         (fallbackProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
@@ -170,7 +170,7 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
       logApiCost({
         userId: options.userId,
         edgeFunction: options.edgeFunction,
-        provider: detectProvider(await getApiConfig(primaryConfig.fallback_api_key).catch(() => primaryConfig)),
+        provider: detectProviderFromUrl((await getApiConfig(primaryConfig.fallback_api_key).catch(() => primaryConfig)).base_url || ""),
         status: "error",
         durationMs: Date.now() - fallbackStart,
         errorMessage: fbErrMsg.slice(0, 500),
@@ -196,7 +196,7 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
 
 async function callProvider(
   config: ApiConfig,
-  provider: "openai" | "anthropic",
+  provider: CostProvider,
   model: string,
   options: CallLLMOptions,
   timeoutMs: number,
@@ -208,6 +208,7 @@ async function callProvider(
     if (provider === "anthropic") {
       return await callAnthropic(config, model, options, controller.signal);
     } else {
+      // OpenRouter and other OpenAI-compatible providers use the same API format
       return await callOpenAI(config, model, options, controller.signal);
     }
   } catch (err) {
@@ -328,11 +329,6 @@ async function callOpenAI(
 }
 
 // ── Helpers ──────────────────────────────────────────────────
-
-function detectProvider(config: ApiConfig): "openai" | "anthropic" {
-  const baseUrl = (config.base_url || "").toLowerCase();
-  return baseUrl.includes("anthropic.com") ? "anthropic" : "openai";
-}
 
 function isRetryableStatus(status: number, errorBody: string): boolean {
   if (RETRYABLE_STATUS_CODES.has(status)) return true;

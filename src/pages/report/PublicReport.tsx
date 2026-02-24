@@ -16,6 +16,7 @@ export default function PublicReport() {
   const [formattedContent, setFormattedContent] = useState<string>('');
   const [tokenValid, setTokenValid] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [accessLevel, setAccessLevel] = useState<'full' | 'limited'>('limited');
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -191,6 +192,44 @@ export default function PublicReport() {
       return;
     }
 
+    // Check if current user is admin — admin bypasses email verification
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (roleData) {
+          // Admin: fetch evaluation directly and skip email gate
+          const { data: evalData, error: evalError } = await supabase
+            .from('career_evaluations')
+            .select('id, name, email, area, atuacao, experiencia, english_level, objetivo, visa_status, timeline, family_status, formatted_report, processing_status, recommendation_status, recommended_product_name, recommendation_description, recommendation_landing_page_url, formatted_at, created_at, updated_at')
+            .eq('access_token', token)
+            .maybeSingle();
+
+          if (!evalError && evalData) {
+            setAccessLevel('full');
+            setEvaluation(evalData as CareerEvaluation);
+            if (evalData.formatted_report) {
+              setFormattedContent(evalData.formatted_report as string);
+            } else if (evalData.processing_status === 'processing') {
+              startPolling(evalData.id);
+            } else {
+              triggerOnDemand(evalData.id, false);
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+    } catch {
+      // Non-blocking: continue with normal flow if admin check fails
+    }
+
     try {
       const { data, error: fetchError } = await supabase.functions.invoke('verify-report-access', {
         body: { token, action: 'check' }
@@ -228,6 +267,7 @@ export default function PublicReport() {
         return false;
       }
 
+      setAccessLevel(data.access_level ?? 'limited');
       setEvaluation(data.evaluation);
       setIsVerifying(false);
 
@@ -276,6 +316,7 @@ export default function PublicReport() {
         formattedContent={formattedContent}
         isLoading={isFormatting}
         processingStatus={processingStatus}
+        accessLevel={accessLevel}
       />
     );
   }

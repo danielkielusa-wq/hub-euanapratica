@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   LucideIcon,
 } from 'lucide-react';
+import { PriceDisplay, formatCurrency } from '@/components/hub/PriceDisplay';
 
 export default function StudentHub() {
   const navigate = useNavigate();
@@ -83,9 +84,8 @@ export default function StudentHub() {
     return Icon || icons.FileCheck;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(price);
-  };
+  // formatPrice kept for backwards compatibility with secondary services
+  const formatPrice = (price: number) => formatCurrency(price);
 
   return (
     <DashboardLayout>
@@ -207,11 +207,21 @@ export default function StudentHub() {
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
                       {highlightedService.product_type === 'one_time' ? 'Investimento Único' : 'Investimento'}
                     </p>
-                    <div className="flex items-center justify-center gap-1 mb-4">
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      {highlightedService.anchor_price && highlightedService.anchor_price > highlightedService.price && highlightedService.price > 0 && (
+                        <span className="text-lg text-gray-500 line-through">
+                          R$ {Math.floor(highlightedService.anchor_price)}
+                        </span>
+                      )}
                       <span className="text-sm font-medium text-gray-400 mt-2">R$</span>
                       <span className="text-5xl font-black text-white">
                         {highlightedService.price_display || Math.floor(highlightedService.price)}
                       </span>
+                      {highlightedService.anchor_price && highlightedService.anchor_price > highlightedService.price && highlightedService.price > 0 && (
+                        <span className="bg-green-500/20 text-green-300 border border-green-500/30 text-sm font-bold px-3 py-1 rounded-full">
+                          {Math.round((1 - highlightedService.price / highlightedService.anchor_price) * 100)}% OFF
+                        </span>
+                      )}
                     </div>
 
                     <button
@@ -262,9 +272,16 @@ export default function StudentHub() {
                     <p className="text-xs text-gray-500 leading-relaxed mb-6 flex-1">{service.description}</p>
 
                     <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <span className="text-xs font-bold text-gray-900">
-                        {service.price_display || (service.price > 0 ? formatPrice(service.price) : 'Grátis')}
-                      </span>
+                      {service.price > 0 ? (
+                        <PriceDisplay
+                          price={service.price}
+                          priceDisplay={service.price_display}
+                          anchorPrice={service.anchor_price}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-gray-900">Grátis</span>
+                      )}
                       <button
                         onClick={() => handleServiceAction(service)}
                         className="text-[10px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all"

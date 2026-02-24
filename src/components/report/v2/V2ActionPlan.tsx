@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Circle, CheckCircle2 } from 'lucide-react';
+import { ReportSectionLock } from './ReportSectionLock';
 import type { V2ActionPlan as V2ActionPlanType, V2ActionPlanStep } from '@/types/leads';
 
 interface V2ActionPlanProps {
   actionPlan: V2ActionPlanType;
+  isLimited?: boolean;
 }
 
 const periods = [
@@ -40,7 +42,7 @@ function StepItem({ step }: { step: V2ActionPlanStep }) {
   );
 }
 
-export function V2ActionPlan({ actionPlan }: V2ActionPlanProps) {
+export function V2ActionPlan({ actionPlan, isLimited = false }: V2ActionPlanProps) {
   const [activePeriod, setActivePeriod] = useState<'30d' | '90d' | '6m'>('30d');
 
   const steps = activePeriod === '30d'
@@ -48,6 +50,8 @@ export function V2ActionPlan({ actionPlan }: V2ActionPlanProps) {
     : activePeriod === '90d'
       ? actionPlan.next_90_days
       : actionPlan.next_6_months;
+
+  const isLockedTab = isLimited && activePeriod !== '30d';
 
   return (
     <div className="space-y-3">
@@ -81,7 +85,28 @@ export function V2ActionPlan({ actionPlan }: V2ActionPlanProps) {
         key={activePeriod}
         className="animate-in fade-in slide-in-from-bottom-2 duration-300"
       >
-        {steps.length > 0 ? (
+        {isLockedTab ? (
+          <ReportSectionLock
+            variant="full"
+            title={`Plano de ${activePeriod === '90d' ? '90 dias' : '6 meses'} bloqueado`}
+            description={`${steps.length > 0 ? `${steps.length} ações identificadas` : 'Ações'} para este período disponíveis no relatório completo.`}
+          />
+        ) : isLimited && activePeriod === '30d' ? (
+          <div className="divide-y divide-border/30">
+            {steps.slice(0, 1).map((step) => (
+              <StepItem key={`30d-${step.step_number}`} step={step} />
+            ))}
+            {steps.length > 1 && (
+              <div className="pt-2">
+                <ReportSectionLock
+                  variant="inline"
+                  title={`+${steps.length - 1} ações identificadas`}
+                  description="Desbloqueie o relatório completo para ver todas as ações do plano de 30 dias."
+                />
+              </div>
+            )}
+          </div>
+        ) : steps.length > 0 ? (
           <div className="divide-y divide-border/30">
             {steps.map((step) => (
               <StepItem key={`${activePeriod}-${step.step_number}`} step={step} />

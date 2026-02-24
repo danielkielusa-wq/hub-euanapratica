@@ -2,14 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.7.52/index.js";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { logApiCost, extractTokenUsage } from "../_shared/apiCostService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
+import { getCorsHeaders } from "../_shared/authGuard.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -51,54 +49,35 @@ serve(async (req) => {
     const userId = claims.user.id;
     console.log(`[analyze-resume] Step 1 OK: Auth passed, userId=${userId}`);
 
-    // ========== SMART GATEKEEPER: Check subscription and quota ==========
-    
-    // 1. Get user's subscription and plan details
-    const { data: subData } = await supabase
-      .from("user_subscriptions")
-      .select("plan_id, plans(monthly_limit, features)")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
+    // ========== SMART GATEKEEPER: Check subscription and quota via RPC ==========
+    // Uses get_user_quota RPC (SECURITY DEFINER) for reliable results regardless of RLS
 
-    // Default to basic plan if no subscription
-    const planId = subData?.plan_id || "basic";
-    // Handle the nested plans object which could be an array or single object
-    const plansData = subData?.plans;
-    const planObj = Array.isArray(plansData) ? plansData[0] : plansData;
-    const plan = planObj as { monthly_limit: number; features: Record<string, boolean> } | null || { 
-      monthly_limit: 1, 
-      features: {} 
-    };
-    const features = plan.features || {};
+    const { data: quotaRows, error: quotaError } = await adminSupabase
+      .rpc('get_user_quota', { p_user_id: userId });
 
-    // 2. Count usage this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { count: usageCount, error: countError } = await supabase
-      .from("usage_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("app_id", "curriculo_usa")
-      .gte("created_at", startOfMonth.toISOString());
-
-    if (countError) {
-      console.error("Error counting usage:", countError);
+    if (quotaError) {
+      console.error("[analyze-resume] Step 2 FAIL: get_user_quota error:", quotaError.code, quotaError.message);
+      return new Response(
+        JSON.stringify({ error: "Falha ao verificar cota do usuário." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const currentUsage = usageCount || 0;
+    const quotaRow = Array.isArray(quotaRows) ? quotaRows[0] : quotaRows;
+    const planId = quotaRow?.plan_id || "basic";
+    const monthlyLimit = quotaRow?.monthly_limit ?? 1;
+    const currentUsage = quotaRow?.used_this_month ?? 0;
+    const features = (quotaRow?.features as Record<string, boolean>) || {};
 
-    // 3. Check if quota exceeded
-    if (currentUsage >= plan.monthly_limit) {
+    // Check if quota exceeded
+    if (currentUsage >= monthlyLimit) {
       return new Response(
         JSON.stringify({
           error_code: "LIMIT_REACHED",
           error: "Limite mensal atingido",
-          error_message: `Você atingiu o limite de ${plan.monthly_limit} análise(s) do seu plano este mês.`,
+          error_message: `Você atingiu o limite de ${monthlyLimit} análise(s) do seu plano este mês.`,
           plan_id: planId,
-          monthly_limit: plan.monthly_limit,
+          monthly_limit: monthlyLimit,
           used: currentUsage,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -106,7 +85,7 @@ serve(async (req) => {
     }
 
     // ========== END GATEKEEPER ==========
-    console.log(`[analyze-resume] Step 2 OK: Quota check passed (used=${currentUsage}/${plan.monthly_limit})`);
+    console.log(`[analyze-resume] Step 2 OK: Quota check passed (used=${currentUsage}/${monthlyLimit})`);
 
     const { filePath, jobDescription } = await req.json();
     console.log(`[analyze-resume] Step 3 OK: Body parsed, filePath=${filePath}, jobDescLen=${jobDescription?.length || 0}`);
@@ -134,9 +113,9 @@ serve(async (req) => {
       );
     }
 
-    // Get AI prompt from app_configs
+    // Get AI prompt from app_configs (admin-only table, use adminSupabase)
     console.log("[analyze-resume] Step 4: Fetching AI prompt from app_configs...");
-    const { data: configData, error: configError } = await supabase
+    const { data: configData, error: configError } = await adminSupabase
       .from("app_configs")
       .select("value")
       .eq("key", "resume_analyzer_prompt")
@@ -278,9 +257,9 @@ Responda em português brasileiro de forma clara e direta.`;
       );
     }
 
-    // Get API config key from app_configs (admin-selectable)
+    // Get API config key from app_configs (admin-only table, use adminSupabase)
     console.log("[analyze-resume] Step 7: Fetching API config key from app_configs...");
-    const { data: apiConfigKey, error: apiConfigError } = await supabase
+    const { data: apiConfigKey, error: apiConfigError } = await adminSupabase
       .from("app_configs")
       .select("value")
       .eq("key", "resume_analyzer_api_config")
@@ -323,12 +302,12 @@ Responda em português brasileiro de forma clara e direta.`;
     }
 
     // Detect API type from base_url only (not from key name)
-    const baseUrlLower = (apiConfig.base_url || "").toLowerCase();
-    const isAnthropic = baseUrlLower.includes("anthropic.com");
+    const detectedProvider = detectProviderFromUrl(apiConfig.base_url || "");
+    const isAnthropic = detectedProvider === "anthropic";
     const selectedModel = apiConfig.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[analyze-resume] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", isAnthropic: ${isAnthropic}, model: ${selectedModel}`);
+    console.log(`[analyze-resume] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", provider: ${detectedProvider}, model: ${selectedModel}`);
 
     const responseSchema = {
       name: "resume_analysis",
@@ -557,7 +536,7 @@ Responda em português brasileiro de forma clara e direta.`;
       const text = aiData.content?.[0]?.text;
       if (!text) {
         console.error("Unexpected Anthropic response:", aiData);
-        logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { app_id: 'curriculo_usa' } });
+        logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { app_id: 'curriculo_usa' } });
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -590,7 +569,7 @@ Responda em português brasileiro de forma clara e direta.`;
       }
 
       // Fire-and-forget cost logging
-      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'anthropic', model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
+      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
     } else {
       // ========== OpenAI Responses API ==========
       const userContent = isPdf
@@ -697,7 +676,7 @@ Responda em português brasileiro de forma clara e direta.`;
       }
 
       // Fire-and-forget cost logging
-      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: 'openai', model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
+      logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
     }
 
     console.log(`[analyze-resume] Step 9 OK: AI analysis complete, score=${result?.header?.score || 'unknown'}`);
@@ -790,7 +769,7 @@ Responda em português brasileiro de forma clara e direta.`;
     console.error("[analyze-resume] UNHANDLED ERROR:", errMsg);
     if (errStack) console.error("[analyze-resume] Stack:", errStack);
     return new Response(
-      JSON.stringify({ error: errMsg || "Unknown error" }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

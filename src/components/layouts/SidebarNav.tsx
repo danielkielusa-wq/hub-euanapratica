@@ -31,7 +31,8 @@ import {
   Activity,
   Mail,
   DollarSign,
-  ListTodo
+  ListTodo,
+  Lightbulb
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -152,6 +153,12 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'GESTÃO DO NEGÓCIO',
+    items: [
+      { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
+    ],
+  },
+  {
     label: 'GESTÃO DE CONTEÚDO',
     items: [
       { label: 'Espaços', href: '/admin/espacos', icon: LayoutGrid },
@@ -184,6 +191,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
+      { label: 'Páginas Legais', href: '/admin/paginas-legais', icon: FileText },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
       { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },

@@ -73,6 +73,7 @@ const formSchema = z.object({
   is_highlighted: z.boolean().default(false),
   display_order: z.number().default(0),
   price: z.number().min(0).default(0),
+  anchor_price: z.coerce.number().nullable().optional(),
   price_display: z.string().optional(),
   currency: z.string().default('BRL'),
   product_type: z.enum(['one_time', 'lifetime', 'subscription_monthly', 'subscription_annual']),
@@ -150,6 +151,7 @@ export interface HubServiceFormSubmitData {
   is_highlighted: boolean;
   display_order: number;
   price: number;
+  anchor_price: number | null;
   price_display?: string;
   currency: string;
   product_type: string;
@@ -305,6 +307,7 @@ export function HubServiceForm({
       is_highlighted: false,
       display_order: 0,
       price: 0,
+      anchor_price: null,
       price_display: '',
       currency: 'BRL',
       product_type: 'one_time',
@@ -400,6 +403,7 @@ export function HubServiceForm({
         is_highlighted: service?.is_highlighted ?? false,
         display_order: service?.display_order || 0,
         price: service?.price || 0,
+        anchor_price: service?.anchor_price ?? null,
         price_display: service?.price_display || '',
         currency: service?.currency || 'BRL',
         product_type: (service?.product_type as ProductType) || 'one_time',
@@ -448,6 +452,15 @@ export function HubServiceForm({
   }, [service, open, form]);
 
   const handleSubmit = (data: FormData) => {
+    // Cross-field validation: anchor_price must be greater than price
+    const anchorVal = data.anchor_price;
+    if (anchorVal && anchorVal > 0 && anchorVal <= data.price) {
+      form.setError('anchor_price', {
+        message: 'O preço isca deve ser maior que o preço promocional',
+      });
+      return;
+    }
+
     const landingPageData = buildLandingPageData(data);
     const thankYouPageData = buildThankYouPageData(data);
 
@@ -472,6 +485,7 @@ export function HubServiceForm({
       is_highlighted: data.is_highlighted,
       display_order: data.display_order,
       price: data.price,
+      anchor_price: (data.anchor_price && data.anchor_price > 0) ? data.anchor_price : null,
       price_display: data.price_display,
       currency: data.currency,
       product_type: data.product_type,
@@ -722,13 +736,13 @@ export function HubServiceForm({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço (R$)</FormLabel>
+                      <FormLabel>Preço Real (R$)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -737,6 +751,32 @@ export function HubServiceForm({
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="anchor_price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preço Isca (R$)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Ex: 497"
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? null : parseFloat(val) || null);
+                          }}
+                        />
+                      </FormControl>
+                      <p className="text-[11px] text-muted-foreground">
+                        Exibido riscado. Vazio = não mostrar.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

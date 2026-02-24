@@ -92,6 +92,7 @@ export default function AdminPlans() {
                               ["Nome / Descrição", "Exibidos ao usuário na página de assinatura e no Hub."],
                               ["Preço", "Valor cobrado no ciclo. Alterações não afetam assinaturas ativas existentes."],
                               ["Limites", "Ex: sessões/mês, consultas de IA, etc. Validados nas Edge Functions."],
+                              ["Relatório Diagnóstico", "Controla se assinantes deste plano veem o relatório completo (recomendações, plano de ação, checkpoints). Leads sem plano ou com plano sem esse toggle ativo veem versão limitada."],
                               ["Ticto Product ID", "ID do plano no gateway Ticto — usado pelo webhook de pagamento."],
                               ["is_active", "Controla se o plano aparece como opção na página de assinatura."],
                             ].map(([f, d], i) => (
@@ -112,6 +113,8 @@ export default function AdminPlans() {
                           { p: "Alteração não persiste após Salvar", c: "Erro de RLS, validação ou falha de rede.", f: "Observe o toast de erro. Verifique os logs em Supabase → Database → Logs." },
                           { p: "Plano não aparece na página de assinatura", c: "is_active desativado ou plano não retornado pela query.", f: "Ative o campo is_active no card do plano e clique em Salvar." },
                           { p: "Preço alterado mas assinatura ativa ainda cobra o valor antigo", c: "Comportamento esperado — assinaturas ativas usam o preço do momento da contratação.", f: "Para alterar cobranças recorrentes, é necessário atualizar via gateway (Ticto)." },
+                          { p: "Lead vê relatório completo mesmo sem assinatura", c: "O user_id na career_evaluations pode estar vinculado a uma conta com plano ativo ou compra de consultoria.", f: "Verifique user_subscriptions e user_hub_services do usuário no Supabase. Desative o toggle 'Relatório Diagnóstico' no plano se necessário." },
+                          { p: "Admin não consegue ver relatório completo", c: "Falha no check de auth ou RLS bloqueando acesso admin.", f: "Verifique que o admin está logado na plataforma antes de acessar o link público do relatório. O sistema detecta admin automaticamente." },
                         ].map((item, i) => (
                           <div key={i} className="rounded-lg border p-3 space-y-1">
                             <p className="font-medium text-destructive text-xs">{item.p}</p>
