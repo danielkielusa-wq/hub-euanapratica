@@ -27,7 +27,21 @@ export const useServiceLandingPage = ({ serviceId, slug }: UseServiceLandingPage
         return data as HubService;
       }
 
-      // Primary lookup: match by route slug (most reliable)
+      // Try matching slug as UUID (service ID) first
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug!);
+      if (isUUID) {
+        const { data, error } = await supabase
+          .from('hub_services')
+          .select('*')
+          .eq('id', slug!)
+          .single();
+
+        if (error) throw error;
+        if (!data) throw new Error('Service not found');
+        return data as HubService;
+      }
+
+      // Match by route slug
       const { data: byRoute, error: routeError } = await supabase
         .from('hub_services')
         .select('*')

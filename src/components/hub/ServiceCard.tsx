@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Lock, LucideIcon } from 'lucide-react';
 import * as icons from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
   // Get icon component safely
   const iconName = service.icon_name as keyof typeof icons;
   const Icon = (icons[iconName] as LucideIcon) || icons.FileCheck;
-  
+
   const serviceType = (service.service_type as ServiceType) || 'consulting';
   const typeColor = serviceTypeColors[serviceType] || serviceTypeColors.consulting;
 
@@ -38,6 +38,26 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
       if (parsed.origin === window.location.origin) return parsed.pathname;
     } catch {}
     return null;
+  };
+
+  // Resolve the best navigation target dynamically from hub_services fields
+  const resolveAccessUrl = (): string => {
+    // 1. Course with espaco_id → course player
+    if (service.espaco_id) return `/curso/${service.espaco_id}`;
+    // 2. Internal route (only valid absolute paths like /curriculo, /title-translator)
+    if (service.route?.startsWith('/')) return service.route;
+    // 3. Landing page URL (internal path)
+    if (service.landing_page_url) {
+      const internal = getInternalPath(service.landing_page_url);
+      if (internal) return internal;
+    }
+    // 4. Fallback: dynamic service detail page (always exists)
+    return `/servicos/${service.id}`;
+  };
+
+  const handleNavigate = () => {
+    const url = resolveAccessUrl();
+    if (url) navigate(url);
   };
 
   const handleUnlock = () => {
@@ -61,6 +81,10 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
       } catch {
         window.open(service.ticto_checkout_url, '_blank');
       }
+    }
+    // Priority 3: Fallback to service detail page
+    else {
+      navigate(`/servicos/${service.id}`);
     }
   };
 
@@ -143,14 +167,15 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
             {service.cta_text || 'Agendar Sessão'}
             <ArrowRight className="h-4 w-4" />
           </Button>
-        ) : canAccess && service.route ? (
-          <Link to={service.route}>
-            <Button className="w-full gap-2 rounded-xl">
-              {service.cta_text || 'Acessar'}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        ) : (service.landing_page_url || service.ticto_checkout_url) ? (
+        ) : canAccess ? (
+          <Button
+            className="w-full gap-2 rounded-xl"
+            onClick={handleNavigate}
+          >
+            {service.cta_text || 'Acessar'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        ) : (
           <Button
             variant="outline"
             className="w-full gap-2 rounded-xl border-primary text-primary hover:bg-primary/5"
@@ -158,10 +183,6 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
           >
             <Lock className="h-4 w-4" />
             Desbloquear
-          </Button>
-        ) : (
-          <Button variant="outline" className="w-full rounded-xl">
-            Saiba mais
           </Button>
         )}
       </div>
