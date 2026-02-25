@@ -22,20 +22,19 @@ Quando um novo usuario termina o cadastro e cai no Hub pela primeira vez, ele ve
 
 Apos o tour, um **card "Primeiros Passos"** aparece no topo do Hub com 4 tarefas:
 
-| Tarefa | Como completa | Aonde leva |
-|--------|--------------|------------|
-| Complete seu perfil | Adicionar LinkedIn OU curriculo na pagina de Perfil | /perfil |
-| Faca seu primeiro post | Publicar qualquer post na Comunidade | /comunidade |
-| Analise seu curriculo com IA | Rodar uma analise no ResumePass | /curriculo |
-| Explore o catalogo | Visitar a pagina do catalogo | /catalogo |
+| Tarefa | O que acontece ao clicar | Aonde leva |
+|--------|--------------------------|------------|
+| Complete seu perfil | Marca como concluido e abre a pagina de Perfil | /perfil |
+| Faca seu primeiro post | Marca como concluido e abre a Comunidade | /comunidade |
+| Analise seu curriculo com IA | Marca como concluido e abre o ResumePass | /curriculo |
+| Explore o catalogo | Marca como concluido e abre o Catalogo | /catalogo |
 
 **Comportamento:**
-- Cada tarefa e clicavel — leva direto para a pagina da acao
-- O check aparece **automaticamente** quando o usuario completa a acao (nao precisa marcar nada)
+- Cada tarefa e clicavel — **marca como concluido imediatamente** e navega para a pagina
+- Ao voltar ao Hub, o item aparece com check verde
 - Barra de progresso mostra X/4
-- Ao completar 4/4: **animacao de confetti** celebrando
+- Ao completar 4/4: **animacao de confetti** celebrando + card desaparece automaticamente apos 3 segundos
 - O usuario pode fechar o card com X a qualquer momento (nao volta mais)
-- Se voltar ao Hub depois de fazer algo (ex: postou na Comunidade), o item atualiza automaticamente
 
 ## Perguntas frequentes (FAQ)
 
@@ -44,10 +43,10 @@ Apos o tour, um **card "Primeiros Passos"** aparece no topo do Hub com 4 tarefas
 
 **Acao**: Orientar o usuario sobre os menus manualmente. O checklist ainda deve estar visivel no Hub (a menos que tenha sido fechado).
 
-### "O usuario completou uma tarefa mas o checklist nao atualizou"
-**Possivel causa**: O checklist atualiza quando o usuario volta para o Hub (ou troca de aba e volta). Nao e tempo-real.
+### "O usuario clicou em um item mas nao aparece como concluido"
+**Possivel causa**: Problema de conexao momentaneo impediu salvar o estado. Raro.
 
-**Acao**: Pedir para o usuario voltar ao Hub (clicar em "Meu Hub" no menu) — o item deve atualizar.
+**Acao**: Pedir para o usuario clicar no item novamente. Ao clicar, o item e marcado como concluido e a pagina e aberta.
 
 ### "O usuario antigo viu o tour/checklist"
 **Nao deveria acontecer**. A migracao marcou todos os usuarios existentes como "tour concluido". Se aconteceu:
@@ -60,7 +59,7 @@ Atualmente nao ha opcao de re-assistir.
 **Acao**: Orientar manualmente ou sugerir ao produto como melhoria (botao "Rever tour" no menu de ajuda).
 
 ### "O checklist sumiu mas o usuario nao completou tudo"
-**Possivel causa**: O usuario clicou no X para fechar. Uma vez fechado, nao volta.
+**Possivel causa**: O usuario clicou no X para fechar, ou completou os 4 itens (o card desaparece automaticamente apos confetti). Uma vez fechado, nao volta.
 
 **Acao**: Orientar o usuario diretamente sobre as acoes pendentes.
 

@@ -88,8 +88,12 @@ import AdminIdeaKanban from "./pages/admin/AdminIdeaKanban";
 import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
 import AdminAtividades from "./pages/admin/AdminAtividades";
 import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
+import AdminAutomations from "./pages/admin/AdminAutomations";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminCourseBuilder from "./pages/admin/AdminCourseBuilder";
+import AdminAgendamentos from "./pages/admin/AdminAgendamentos";
+import MentorDisponibilidade from "./pages/mentor/MentorDisponibilidade";
+import MentorAgendamentos from "./pages/mentor/MentorAgendamentos";
 import StudentCourses from "./pages/student/StudentCourses";
 import CoursePlayer from "./pages/student/CoursePlayer";
 
@@ -322,6 +326,16 @@ function AppRoutes() {
           <MentorEspacoDetail />
         </ProtectedRoute>
       } />
+      <Route path="/mentor/agendamentos" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorAgendamentos />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/disponibilidade" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorDisponibilidade />
+        </ProtectedRoute>
+      } />
       <Route path="/mentor/agenda" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorAgenda />
@@ -367,6 +381,11 @@ function AppRoutes() {
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/agendamentos" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAgendamentos />
         </ProtectedRoute>
       } />
       <Route path="/admin/espacos" element={
@@ -497,6 +516,11 @@ function AppRoutes() {
       <Route path="/admin/whatsapp-templates" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminWhatsAppTemplates />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/automacoes" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAutomations />
         </ProtectedRoute>
       } />
       <Route path="/admin/paginas-legais" element={

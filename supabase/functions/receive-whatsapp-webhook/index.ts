@@ -5,6 +5,7 @@ import {
   findLeadByPhone,
   logWhatsAppMessage,
 } from "../_shared/whatsappService.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 // CORS: open for external webhooks (same pattern as ticto-webhook)
 const corsHeaders = {
@@ -119,6 +120,18 @@ serve(async (req) => {
           status: "received",
           metadata: { raw_event: "messages.upsert" },
         });
+
+        // Dispatch N8N webhook for inbound WhatsApp (fire-and-forget)
+        dispatchN8NWebhook("whatsapp.inbound", {
+          lead_id: lead.id,
+          lead_name: lead.name,
+          lead_email: lead.email,
+          lead_phone: senderPhone,
+          message_text: messageText,
+          message_id: messageId,
+          interaction_id: interaction?.id ?? null,
+          timestamp: messageTimestamp,
+        }, supabase);
       } else {
         // Unknown number — log only to whatsapp_logs
         console.warn(

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/authGuard.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 interface CancelRequest {
   reason: string;
@@ -191,6 +192,18 @@ serve(async (req) => {
       },
       body: JSON.stringify({ type: "cancellation", user_id: user.id }),
     }).catch(err => console.error("Cancellation email trigger error:", err));
+
+    // Dispatch N8N webhook for subscription cancellation (fire-and-forget)
+    dispatchN8NWebhook("subscription.cancelled", {
+      user_id: user.id,
+      email: user.email,
+      subscription_id: subscription.id,
+      plan_id: subscription.plan_id,
+      reason,
+      feedback: feedback || null,
+      was_active: isActiveSub,
+      expires_at: isActiveSub ? subscription.expires_at : null,
+    }, supabase);
 
     return new Response(
       JSON.stringify({

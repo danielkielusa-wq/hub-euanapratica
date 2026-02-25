@@ -1,7 +1,12 @@
 export interface GuidedTourState {
   tour_completed?: boolean;
   checklist_dismissed?: boolean;
+  confetti_shown?: boolean;
   catalog_visited?: boolean;
+  step_complete_profile?: boolean;
+  step_first_community_post?: boolean;
+  step_analyze_resume?: boolean;
+  step_explore_catalog?: boolean;
 }
 
 export type ChecklistItemKey =

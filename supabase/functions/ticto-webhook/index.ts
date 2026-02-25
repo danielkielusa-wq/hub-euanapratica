@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { handleSubscriptionEvent } from "../_shared/subscriptionHandlers.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 import type { TictoSubscriptionPayload, MatchedPlan } from "../_shared/subscriptionHandlers.ts";
 
 const corsHeaders = {
@@ -131,6 +132,20 @@ serve(async (req) => {
             }).catch(err => console.error("Subscription email trigger error:", err));
           }
         }
+
+        // Dispatch N8N webhook for subscription lifecycle (fire-and-forget)
+        dispatchN8NWebhook(`subscription.${result.action}`, {
+          action: result.action,
+          customer_email: payload.customer?.email ?? null,
+          customer_name: payload.customer?.name ?? null,
+          user_id: emailUserId ?? null,
+          plan_id: matchedPlan?.id ?? null,
+          plan_name: matchedPlan?.name ?? null,
+          offer_id: offerId || productId,
+          ticto_status: payload.status,
+          product_name: payload.item?.product_name ?? null,
+          paid_amount: payload.order?.paid_amount ?? null,
+        }, supabase);
       }
 
       // Return 500 on failure so Ticto retries the event

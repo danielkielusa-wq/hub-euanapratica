@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
 import { CheckCircle2, Circle, ArrowRight, X, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
@@ -11,6 +10,7 @@ import {
   useUpdateGuidedTourState,
   useChecklistStatus,
 } from '@/hooks/useGuidedTour';
+import type { GuidedTourState, ChecklistItemStatus } from '@/types/guidedTour';
 
 export function GettingStartedChecklist() {
   const navigate = useNavigate();
@@ -24,10 +24,19 @@ export function GettingStartedChecklist() {
   const allCompleted = completedCount === totalCount && totalCount > 0;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
-  // Fire confetti when all items completed
+  // Fire confetti only once ever (persisted via confetti_shown flag), then auto-dismiss
   useEffect(() => {
-    if (allCompleted && !confettiFiredRef.current && items && items.length > 0) {
+    if (
+      allCompleted &&
+      !confettiFiredRef.current &&
+      !tourState?.confetti_shown &&
+      items &&
+      items.length > 0
+    ) {
       confettiFiredRef.current = true;
+      // Persist immediately so confetti never fires again, even if component unmounts
+      updateTourState.mutate({ confetti_shown: true });
+
       const end = Date.now() + 2000;
       const frame = () => {
         confetti({
@@ -47,8 +56,14 @@ export function GettingStartedChecklist() {
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
+
+      // Auto-dismiss checklist after confetti finishes
+      const timer = setTimeout(() => {
+        updateTourState.mutate({ checklist_dismissed: true });
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [allCompleted, items]);
+  }, [allCompleted, items, tourState?.confetti_shown]);
 
   if (tourLoading || itemsLoading) return null;
   if (tourState?.checklist_dismissed) return null;
@@ -56,6 +71,14 @@ export function GettingStartedChecklist() {
 
   const handleDismiss = () => {
     updateTourState.mutate({ checklist_dismissed: true });
+  };
+
+  const handleItemClick = (item: ChecklistItemStatus) => {
+    if (item.completed) return;
+    // Mark step as completed immediately, then navigate
+    const stepKey = `step_${item.key}` as keyof GuidedTourState;
+    updateTourState.mutate({ [stepKey]: true } as Partial<GuidedTourState>);
+    navigate(item.href);
   };
 
   return (
@@ -88,7 +111,7 @@ export function GettingStartedChecklist() {
         {items.map((item) => (
           <button
             key={item.key}
-            onClick={() => !item.completed && navigate(item.href)}
+            onClick={() => handleItemClick(item)}
             disabled={item.completed}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all group',
@@ -118,19 +141,6 @@ export function GettingStartedChecklist() {
             )}
           </button>
         ))}
-
-        {allCompleted && (
-          <div className="pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDismiss}
-              className="w-full text-gray-500 rounded-xl"
-            >
-              Fechar
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

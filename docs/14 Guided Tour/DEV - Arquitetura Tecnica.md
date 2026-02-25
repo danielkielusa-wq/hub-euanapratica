@@ -2,7 +2,7 @@
 
 ## Visao geral
 
-Duas features: (1) tour interativo com driver.js e (2) checklist de primeiros passos. Ambas usam uma unica coluna JSONB em `profiles` e derivam estado de conclusao de tabelas existentes.
+Duas features: (1) tour interativo com driver.js e (2) checklist de primeiros passos. Ambas usam uma unica coluna JSONB em `profiles`. O checklist usa flags no JSONB — clicar em um item marca como concluido imediatamente.
 
 ## Stack
 
@@ -18,24 +18,28 @@ Duas features: (1) tour interativo com driver.js e (2) checklist de primeiros pa
 ```sql
 -- profiles.guided_tour_state JSONB DEFAULT '{}'
 {
-  "tour_completed": boolean,      -- true apos completar ou pular o tour
-  "checklist_dismissed": boolean,  -- true apos fechar o checklist com X
-  "catalog_visited": boolean       -- true apos visitar /catalogo (unico item nao derivavel)
+  "tour_completed": boolean,              -- true apos completar ou pular o tour
+  "checklist_dismissed": boolean,          -- true apos fechar com X ou auto-dismiss
+  "catalog_visited": boolean,              -- true apos visitar /catalogo (legado)
+  "step_complete_profile": boolean,        -- true ao clicar "Complete seu perfil"
+  "step_first_community_post": boolean,    -- true ao clicar "Faca seu primeiro post"
+  "step_analyze_resume": boolean,          -- true ao clicar "Analise seu curriculo"
+  "step_explore_catalog": boolean          -- true ao clicar "Explore o catalogo"
 }
 ```
 
-### Derivacao de checklist items
+### Checklist items — flag-based
 
-Os 4 itens do checklist NAO sao armazenados como booleans. Sao derivados de tabelas source-of-truth:
+Os 4 itens do checklist sao armazenados como flags `step_*` no JSONB. Ao clicar em um item, a flag e setada imediatamente (antes de navegar) via `useUpdateGuidedTourState()`.
 
-| Item | Query | Tabela |
-|------|-------|--------|
-| Complete seu perfil | `profiles.linkedin_url OR resume_url IS NOT NULL` | `profiles` |
-| Primeiro post | `community_posts WHERE user_id = X (count > 0)` | `community_posts` |
-| Analise de curriculo | `resumepass_reports WHERE user_id = X (count > 0)` | `resumepass_reports` |
-| Explore catalogo | `profiles.guided_tour_state->catalog_visited` | `profiles` (JSONB) |
+| Item | Flag JSONB | Navega para |
+|------|-----------|-------------|
+| Complete seu perfil | `step_complete_profile` | `/perfil` |
+| Primeiro post | `step_first_community_post` | `/comunidade` |
+| Analise de curriculo | `step_analyze_resume` | `/curriculo` |
+| Explore catalogo | `step_explore_catalog` (ou `catalog_visited` legado) | `/catalogo` |
 
-O item "Explore catalogo" e o unico que usa o JSONB porque nao ha tabela de page visits. Os outros 3 sao sempre precisos mesmo se o usuario completar a acao por outro caminho.
+Esse modelo garante feedback imediato ao usuario (item fica verde instantaneamente ao voltar ao Hub).
 
 ### Migration
 
@@ -76,16 +80,11 @@ StudentHub.tsx
 │
 └── <GettingStartedChecklist />
     ├── useGuidedTourState()  →  checklist_dismissed?
-    ├── useChecklistStatus()  →  Promise.all([
-    │     profiles(linkedin_url, resume_url),
-    │     community_posts(count),
-    │     resumepass_reports(count),
-    │     profiles(guided_tour_state.catalog_visited)
-    │   ])
+    ├── useChecklistStatus()  →  deriva items de tourState.step_* flags
     ├── Render: Card com 4 items + progress bar
-    ├── Click item → navigate(href)
-    ├── Dismiss → useUpdateGuidedTourState({ checklist_dismissed: true })
-    └── All completed → canvas-confetti
+    ├── Click item → updateTourState({ step_<key>: true }) + navigate(href)
+    ├── Dismiss (X) → updateTourState({ checklist_dismissed: true })
+    └── All completed → canvas-confetti → auto-dismiss apos 3s
 ```
 
 ## Hook: useGuidedTour.ts
@@ -101,10 +100,10 @@ StudentHub.tsx
 - Cast `newState as any` para contornar tipagem `Json` do Supabase
 
 ### useChecklistStatus()
-- `useQuery(['checklist-status', userId])`
-- `refetchOnWindowFocus: true` — atualiza quando usuario volta da tab
-- `staleTime: 30s`
-- 4 queries paralelas via `Promise.all` (todas leves: count ou single row)
+- Nao usa `useQuery` proprio — deriva items de `useGuidedTourState()`
+- Retorna `{ data: ChecklistItemStatus[], isLoading }` (mesma interface)
+- Cada item verifica `tourState.step_<key>` para determinar conclusao
+- Zero queries adicionais (lê do mesmo cache que `useGuidedTourState`)
 
 ## DashboardTour.tsx — Detalhes
 
@@ -127,9 +126,9 @@ driver.js overlay usa z-index ~100010. A sidebar tem z-40. Sem conflito.
 ## Como estender
 
 ### Adicionar novo item ao checklist
-1. Adicionar key em `ChecklistItemKey` (`src/types/guidedTour.ts`)
-2. Adicionar query + item em `useChecklistStatus()` (`src/hooks/useGuidedTour.ts`)
-3. Pronto — o componente renderiza automaticamente
+1. Adicionar key em `ChecklistItemKey` e flag `step_<key>` em `GuidedTourState` (`src/types/guidedTour.ts`)
+2. Adicionar item no array de `useChecklistStatus()` (`src/hooks/useGuidedTour.ts`)
+3. Pronto — o componente renderiza automaticamente e marca via click
 
 ### Adicionar novo step ao tour
 1. Adicionar `tourId` no item da sidebar (`SidebarNav.tsx`)
@@ -149,8 +148,8 @@ Remover 2 imports + 2 linhas JSX em `StudentHub.tsx`. O JSONB pode ficar sem imp
 1. **Novo usuario**: Cadastrar → onboarding → Hub → tour aparece apos ~1s
 2. **Pular tour**: Clicar X → reload → tour nao reaparece
 3. **Tour completo**: Passar todos os steps → CTA final → botoes navegam
-4. **Checklist items**: Completar cada um e voltar ao Hub → verifica check
-5. **Confetti**: Completar 4/4 → confetti dispara
+4. **Checklist items**: Clicar em cada item → navega para pagina → voltar ao Hub → item aparece marcado (verde)
+5. **Confetti + auto-dismiss**: Completar 4/4 → confetti dispara → card desaparece automaticamente apos 3s
 6. **Dismiss checklist**: Clicar X → reload → checklist nao aparece
 7. **Usuario existente**: Logar com conta antiga → nada aparece
 8. **Admin/Mentor**: Logar → nada aparece (tour so para student)

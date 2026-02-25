@@ -2423,6 +2423,7 @@ export type Database = {
         Row: {
           buffer_minutes: number | null
           created_at: string | null
+          default_meeting_link: string | null
           id: string
           is_active: boolean | null
           mentor_id: string
@@ -2434,6 +2435,7 @@ export type Database = {
         Insert: {
           buffer_minutes?: number | null
           created_at?: string | null
+          default_meeting_link?: string | null
           id?: string
           is_active?: boolean | null
           mentor_id: string
@@ -2445,6 +2447,7 @@ export type Database = {
         Update: {
           buffer_minutes?: number | null
           created_at?: string | null
+          default_meeting_link?: string | null
           id?: string
           is_active?: boolean | null
           mentor_id?: string
@@ -4229,6 +4232,7 @@ export type Database = {
           body_html: string
           design_json: Json
           display_name: string
+          enabled: boolean
           id: string
           name: string
           subject: string
@@ -4417,6 +4421,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      invoke_edge_function: {
+        Args: { p_body?: Json; p_function_name: string }
+        Returns: number
       }
       is_admin_or_mentor: { Args: { _user_id: string }; Returns: boolean }
       is_enrolled_in_espaco: {

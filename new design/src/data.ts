@@ -1,0 +1,101 @@
+import { Product } from './types';
+
+export const mockProducts: Product[] = [
+  {
+    id: '1',
+    order: -4,
+    name: 'The Board Room',
+    subtitle: 'ENTREVISTA',
+    category: 'Carreira',
+    badges: ['POPULAR'],
+    modality: 'mentorship',
+    price: 10.00,
+    stripeId: 'prod_Ky7...',
+    tictoId: '104456...',
+    status: 'hidden',
+    icon: 'briefcase'
+  },
+  {
+    id: '2',
+    order: 0,
+    name: 'HUB Eua Na Pratica - VIP',
+    subtitle: 'CONSULTORIA',
+    category: 'Consultoria',
+    badges: [],
+    modality: 'consulting',
+    price: 197.00,
+    stripeId: 'prod_HuB...',
+    tictoId: 'PROD_HUB_VIP...',
+    status: 'hidden',
+    icon: 'ribbon'
+  },
+  {
+    id: '3',
+    order: 0,
+    name: 'The Board Room: Simulação de Entrevista',
+    subtitle: 'CARREIRA',
+    category: 'Carreira',
+    badges: ['NOVO'],
+    modality: 'consulting',
+    price: 897.00,
+    stripeId: 'prod_Sim...',
+    tictoId: '104456...',
+    status: 'visible',
+    icon: 'rocket'
+  },
+  {
+    id: '4',
+    order: 0,
+    name: 'HUB EUA na Pratica - Plano',
+    subtitle: 'PLANO',
+    category: 'Consultoria',
+    badges: [],
+    modality: 'consulting',
+    price: 97.00,
+    stripeId: 'prod_Pla...',
+    tictoId: 'PROD_HUB_PRO...',
+    status: 'hidden',
+    icon: 'file-text'
+  },
+  {
+    id: '5',
+    order: 1,
+    name: 'Sessão Estratégica ROTA EUA – 60 min',
+    subtitle: 'Consultoria',
+    category: 'Consultoria',
+    badges: ['POPULAR'],
+    modality: 'consulting',
+    price: 579.00,
+    stripeId: 'prod_Ses...',
+    tictoId: '104670...',
+    status: 'visible',
+    icon: 'globe'
+  },
+  {
+    id: '6',
+    order: 1,
+    name: 'Portal do Aluno',
+    subtitle: 'Educação',
+    category: 'Educação',
+    badges: [],
+    modality: 'ai_tool',
+    price: 0.00,
+    stripeId: 'prod_Por...',
+    status: 'hidden',
+    icon: 'graduation-cap'
+  },
+  {
+    id: '7',
+    order: 5,
+    name: 'Currículo e LinkedIn Internacional',
+    subtitle: 'Consultoria',
+    category: 'Consultoria',
+    badges: [],
+    modality: 'consulting',
+    price: 797.00,
+    stripeId: 'prod_Cur...',
+    tictoId: 'PROD_Curricu...',
+    status: 'visible',
+    icon: 'briefcase'
+  }
+];

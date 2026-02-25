@@ -54,8 +54,8 @@ O tour direciona para features gratuitas (ResumePass, Comunidade) que funcionam 
    - Faca seu primeiro post na Comunidade
    - Analise seu curriculo com IA
    - Explore o catalogo
-3. Cada item e marcado automaticamente quando cumprido (sem ação manual)
-4. Ao completar 4/4: animação de confetti celebrando
+3. Cada item e marcado como concluido ao clicar (feedback imediato)
+4. Ao completar 4/4: animação de confetti celebrando + card desaparece automaticamente
 5. Pode ser dispensado com X a qualquer momento
 
 ### Mobile

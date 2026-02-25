@@ -33,7 +33,8 @@ import {
   DollarSign,
   ListTodo,
   Lightbulb,
-  PlayCircle
+  PlayCircle,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -65,8 +66,7 @@ const studentNavGroups: NavGroup[] = [
     items: [
       { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass, tourId: 'sidebar-meu-hub' },
       { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
-      // { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-      // { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck },
+      { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck },
       { label: 'Explore', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
       { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid },
@@ -126,6 +126,8 @@ const mentorNavGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
       { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid },
+      { label: 'Agendamentos', href: '/mentor/agendamentos', icon: CalendarCheck },
+      { label: 'Disponibilidade', href: '/mentor/disponibilidade', icon: Calendar },
       { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
       { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
     ],
@@ -166,6 +168,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'GESTÃO DE CONTEÚDO',
     items: [
+      { label: 'Agendamentos', href: '/admin/agendamentos', icon: CalendarCheck },
       { label: 'Espaços', href: '/admin/espacos', icon: LayoutGrid },
       { label: 'Cursos', href: '/admin/cursos', icon: PlayCircle, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Produtos', href: '/admin/produtos', icon: Package },
@@ -197,6 +200,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
+      { label: 'Automacoes N8N', href: '/admin/automacoes', icon: Zap },
       { label: 'Páginas Legais', href: '/admin/paginas-legais', icon: FileText },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 // LOW-9: Module-level constant — avoids re-allocating ~430-line schema on every request
 const RESPONSE_SCHEMA = {
@@ -984,6 +985,34 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         processing_started_at: null
       })
       .eq("id", evaluationId);
+
+    // Dispatch N8N webhook: report.generated (fire-and-forget)
+    try {
+      const reportLink = evaluation.access_token
+        ? `https://hub.euanapratica.com/report/${evaluation.access_token}`
+        : null;
+
+      dispatchN8NWebhook("report.generated", {
+        lead_id: evaluationId,
+        lead_name: evaluation.name,
+        lead_email: evaluation.email,
+        lead_phone: evaluation.phone || null,
+        access_token: evaluation.access_token,
+        report_link: reportLink,
+        readiness_score: enrichedReport.scoring?.readiness_score ?? null,
+        lead_temperature: enrichedReport.lead_qualification?.lead_temperature ?? null,
+        lead_priority_score: enrichedReport.lead_qualification?.lead_priority_score ?? null,
+        phase_id: enrichedReport.phase_classification?.phase_id ?? null,
+        phase_name: enrichedReport.phase_classification?.phase_name ?? null,
+        is_tech_professional: enrichedReport.lead_qualification?.is_tech_professional ?? false,
+        is_senior_level: enrichedReport.lead_qualification?.is_senior_level ?? false,
+        is_high_income: enrichedReport.lead_qualification?.is_high_income ?? false,
+        primary_product: enrichedReport.product_recommendation?.primary_offer?.recommended_product_name ?? null,
+        barriers: enrichedReport.barriers_analysis?.critical_blockers || [],
+      }, supabase);
+    } catch (e) {
+      console.warn("[format-lead-report] N8N dispatch failed (non-blocking):", e);
+    }
 
     return new Response(
       JSON.stringify({ content: enrichedReport, cached: false }),

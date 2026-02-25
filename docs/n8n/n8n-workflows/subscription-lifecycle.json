@@ -1,0 +1,330 @@
+{
+  "name": "ENP - Subscription Lifecycle",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "subscription-lifecycle",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "subscription-lifecycle"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "output": 0,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-activated",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "activated",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "activated"
+            },
+            {
+              "output": 1,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-cancelled",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "cancelled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancelled"
+            },
+            {
+              "output": 2,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-dunning",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "dunning_updated",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "dunning_updated"
+            },
+            {
+              "output": 3,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-renewed",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "renewed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "renewed"
+            },
+            {
+              "output": 4,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-refunded",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "refunded",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "refunded"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000002",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\u2705 *ASSINATURA ATIVADA*\n\n*Cliente:* {{ $json.body.customer_name }}\n*Email:* {{ $json.body.customer_email }}\n*Plano:* {{ $json.body.plan_name }}\n*Valor:* R$ {{ $json.body.amount }}\n*Data:* {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000003",
+      "name": "Telegram - Activated",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 80],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\u274c *ASSINATURA CANCELADA*\n\n*Cliente:* {{ $json.body.customer_name }}\n*Email:* {{ $json.body.customer_email }}\n*Plano:* {{ $json.body.plan_name }}\n*Valor:* R$ {{ $json.body.amount }}\n*Data:* {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000004",
+      "name": "Telegram - Cancelled",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 220],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\u26a0\ufe0f *PAGAMENTO EM ATRASO (DUNNING)*\n\n*Cliente:* {{ $json.body.customer_name }}\n*Email:* {{ $json.body.customer_email }}\n*Plano:* {{ $json.body.plan_name }}\n*Valor:* R$ {{ $json.body.amount }}\n*Data:* {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000005",
+      "name": "Telegram - Dunning",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 360],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\ud83d\udd04 *ASSINATURA RENOVADA*\n\n*Cliente:* {{ $json.body.customer_name }}\n*Email:* {{ $json.body.customer_email }}\n*Plano:* {{ $json.body.plan_name }}\n*Valor:* R$ {{ $json.body.amount }}\n*Data:* {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000006",
+      "name": "Telegram - Renewed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\ud83d\udcb8 *REEMBOLSO REALIZADO*\n\n*Cliente:* {{ $json.body.customer_name }}\n*Email:* {{ $json.body.customer_email }}\n*Plano:* {{ $json.body.plan_name }}\n*Valor:* R$ {{ $json.body.amount }}\n*Data:* {{ $now.format('dd/MM/yyyy HH:mm') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000007",
+      "name": "Telegram - Refunded",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [780, 640],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route by Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Activated",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram - Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram - Dunning",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram - Renewed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram - Refunded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ENP",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    },
+    {
+      "name": "Subscription",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-24T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -56,77 +56,43 @@ export function useUpdateGuidedTourState() {
   });
 }
 
-// ─── Derive checklist completion from source-of-truth tables ──────────
+// ─── Derive checklist completion from guided_tour_state flags ─────────
 
 export function useChecklistStatus() {
-  const { user } = useAuth();
+  const { data: tourState, isLoading } = useGuidedTourState();
 
-  return useQuery({
-    queryKey: ['checklist-status', user?.id],
-    queryFn: async (): Promise<ChecklistItemStatus[]> => {
-      const [profileResult, postsResult, reportsResult, tourStateResult] =
-        await Promise.all([
-          supabase
-            .from('profiles')
-            .select('linkedin_url, resume_url')
-            .eq('id', user!.id)
-            .single(),
-
-          supabase
-            .from('community_posts')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user!.id),
-
-          supabase
-            .from('resumepass_reports')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user!.id),
-
-          supabase
-            .from('profiles')
-            .select('guided_tour_state')
-            .eq('id', user!.id)
-            .single(),
-        ]);
-
-      const profile = profileResult.data;
-      const postCount = postsResult.count || 0;
-      const reportCount = reportsResult.count || 0;
-      const tourState = (tourStateResult.data?.guided_tour_state as GuidedTourState) || {};
-
-      return [
+  const items: ChecklistItemStatus[] | undefined = tourState
+    ? [
         {
           key: 'complete_profile',
           label: 'Complete seu perfil',
           description: 'Adicione seu LinkedIn ou currículo',
           href: '/perfil',
-          completed: !!(profile?.linkedin_url || profile?.resume_url),
+          completed: !!tourState.step_complete_profile,
         },
         {
           key: 'first_community_post',
           label: 'Faça seu primeiro post',
           description: 'Compartilhe sua experiência na Comunidade',
           href: '/comunidade',
-          completed: postCount > 0,
+          completed: !!tourState.step_first_community_post,
         },
         {
           key: 'analyze_resume',
           label: 'Analise seu currículo com IA',
           description: 'Descubra se ele passa nos filtros das empresas',
           href: '/curriculo',
-          completed: reportCount > 0,
+          completed: !!tourState.step_analyze_resume,
         },
         {
           key: 'explore_catalog',
           label: 'Explore o catálogo',
           description: 'Descubra serviços para sua carreira',
           href: '/catalogo',
-          completed: !!tourState.catalog_visited,
+          completed: !!tourState.step_explore_catalog || !!tourState.catalog_visited,
         },
-      ];
-    },
-    enabled: !!user?.id,
-    refetchOnWindowFocus: true,
-    staleTime: 30_000,
-  });
+      ]
+    : undefined;
+
+  return { data: items, isLoading };
 }

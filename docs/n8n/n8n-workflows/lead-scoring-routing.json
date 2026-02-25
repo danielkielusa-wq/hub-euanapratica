@@ -1,0 +1,352 @@
+{
+  "name": "ENP - Lead Scoring & Routing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-scoring",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "lead-scoring"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "output": 0,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-muito-quente",
+                    "leftValue": "={{ $json.body.lead_temperature }}",
+                    "rightValue": "muito-quente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "muito-quente"
+            },
+            {
+              "output": 1,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-quente",
+                    "leftValue": "={{ $json.body.lead_temperature }}",
+                    "rightValue": "quente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "quente"
+            },
+            {
+              "output": 2,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-morno",
+                    "leftValue": "={{ $json.body.lead_temperature }}",
+                    "rightValue": "morno",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "morno"
+            },
+            {
+              "output": 3,
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "rule-frio",
+                    "leftValue": "={{ $json.body.lead_temperature }}",
+                    "rightValue": "frio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "frio"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000002",
+      "name": "Route by Temperature",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/rest/v1/lead_tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.supabaseAnonKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.supabaseServiceRoleKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $json.body.lead_id }}\",\n  \"title\": \"[URGENTE] Contato imediato - {{ $json.body.lead_name }} (muito quente, score {{ $json.body.lead_score }})\",\n  \"type\": \"contact\",\n  \"priority\": \"urgent\",\n  \"source\": \"n8n_automation\",\n  \"due_date\": \"{{ $now.plus({hours: 2}).toISO() }}\",\n  \"status\": \"pending\"\n}",
+        "options": {}
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000003",
+      "name": "Task Urgent (+2h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 80]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\ud83d\udea8 *LEAD MUITO QUENTE - ACAO IMEDIATA*\n\n*Nome:* {{ $json.body.lead_name }}\n*Email:* {{ $json.body.lead_email }}\n*Score:* {{ $json.body.lead_score }}/100\n*Temperatura:* muito-quente\n*Fase:* {{ $json.body.lead_phase }}\n\n\u23f0 Tarefa criada: contato em ate 2h",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000004",
+      "name": "Telegram - Muito Quente",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1080, 80],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/rest/v1/lead_tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.supabaseAnonKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.supabaseServiceRoleKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $json.body.lead_id }}\",\n  \"title\": \"Contato prioritario - {{ $json.body.lead_name }} (quente, score {{ $json.body.lead_score }})\",\n  \"type\": \"contact\",\n  \"priority\": \"high\",\n  \"source\": \"n8n_automation\",\n  \"due_date\": \"{{ $now.plus({days: 1}).toISO() }}\",\n  \"status\": \"pending\"\n}",
+        "options": {}
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000005",
+      "name": "Task High (+1d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/rest/v1/lead_tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.supabaseAnonKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.supabaseServiceRoleKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $json.body.lead_id }}\",\n  \"title\": \"Follow-up - {{ $json.body.lead_name }} (morno, score {{ $json.body.lead_score }})\",\n  \"type\": \"contact\",\n  \"priority\": \"medium\",\n  \"source\": \"n8n_automation\",\n  \"due_date\": \"{{ $now.plus({days: 3}).toISO() }}\",\n  \"status\": \"pending\"\n}",
+        "options": {}
+      },
+      "id": "f1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Task Medium (+3d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {},
+      "id": "f1b2c3d4-0006-4000-8000-000000000007",
+      "name": "No Action (Drip Handles)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [800, 560]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route by Temperature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Temperature": {
+      "main": [
+        [
+          {
+            "node": "Task Urgent (+2h)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Task High (+1d)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Task Medium (+3d)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action (Drip Handles)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Urgent (+2h)": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Muito Quente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ENP",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    },
+    {
+      "name": "Lead Scoring",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-24T00:00:00.000Z",
+  "versionId": "1"
+}

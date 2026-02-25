@@ -1,0 +1,188 @@
+{
+  "name": "ENP - High Value Lead Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "high-value-lead",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "d1b2c3d4-0004-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "high-value-lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-hot-lead",
+              "leftValue": "={{ $json.body.lead_temperature }}",
+              "rightValue": "quente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-very-hot-lead",
+              "leftValue": "={{ $json.body.lead_temperature }}",
+              "rightValue": "muito-quente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "d1b2c3d4-0004-4000-8000-000000000002",
+      "name": "Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $credentials.telegramChatId }}",
+        "text": "=\ud83d\udd25 *LEAD QUENTE DETECTADO*\n\n*Nome:* {{ $json.body.lead_name }}\n*Email:* {{ $json.body.lead_email }}\n*Score:* {{ $json.body.lead_score }}/100\n*Temperatura:* {{ $json.body.lead_temperature }}\n*Fase:* {{ $json.body.lead_phase }}\n*Barreiras:* {{ $json.body.lead_barriers }}\n\n\ud83d\udcca *Relatorio:* {{ $json.body.report_url }}\n\n\u23f0 _Tarefa de contato criada com prioridade urgente_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "d1b2c3d4-0004-4000-8000-000000000003",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [760, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/rest/v1/lead_tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.supabaseAnonKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.supabaseServiceRoleKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $json.body.lead_id }}\",\n  \"title\": \"Contato urgente - Lead quente: {{ $json.body.lead_name }}\",\n  \"type\": \"contact\",\n  \"priority\": \"urgent\",\n  \"source\": \"n8n_automation\",\n  \"due_date\": \"{{ $now.plus({hours: 2}).toISO() }}\",\n  \"status\": \"pending\"\n}",
+        "options": {}
+      },
+      "id": "d1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Create Urgent Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 200]
+    },
+    {
+      "parameters": {},
+      "id": "d1b2c3d4-0004-4000-8000-000000000005",
+      "name": "No Action (Cold Lead)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [760, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action (Cold Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Alert": {
+      "main": [
+        [
+          {
+            "node": "Create Urgent Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ENP",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    },
+    {
+      "name": "Lead Management",
+      "createdAt": "2026-02-24T00:00:00.000Z",
+      "updatedAt": "2026-02-24T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-24T00:00:00.000Z",
+  "versionId": "1"
+}
