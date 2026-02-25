@@ -15,7 +15,7 @@
     "health:json": "tsx tests/health-checks/run-health-checks.ts --format=json",
     "health:watch": "watch 'npm run health' tests/",
     "health:setup": "tsx tests/health-checks/test-setup.ts",
-    "test:e2e": "npx playwright test",
+    "test:e2e": "npx playwright test --project=auth-setup --project=public --project=admin --project=student",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:public": "npx playwright test --project=public",
     "test:e2e:admin": "npx playwright test --project=auth-setup --project=admin",
