@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { HubService, SERVICE_TYPE_LABELS, ServiceType } from '@/types/hub';
-import { useAuth } from '@/contexts/AuthContext';
 import { PriceDisplay } from './PriceDisplay';
 
 interface ServiceCardProps {
@@ -21,7 +20,6 @@ const serviceTypeColors: Record<ServiceType, string> = {
 };
 
 export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   // Get icon component safely
@@ -40,52 +38,18 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
     return null;
   };
 
-  // Resolve the best navigation target dynamically from hub_services fields
-  const resolveAccessUrl = (): string => {
-    // 1. Course with espaco_id → course player
-    if (service.espaco_id) return `/curso/${service.espaco_id}`;
-    // 2. Internal route (only valid absolute paths like /curriculo, /title-translator)
-    if (service.route?.startsWith('/')) return service.route;
-    // 3. Landing page URL (internal path)
+  // Catalog = showcase → always navigate to the landing page
+  const getLandingPageUrl = (): string => {
     if (service.landing_page_url) {
       const internal = getInternalPath(service.landing_page_url);
       if (internal) return internal;
     }
-    // 4. Fallback: dynamic service detail page (always exists)
+    // Fallback: dynamic service detail page (always exists)
     return `/servicos/${service.id}`;
   };
 
   const handleNavigate = () => {
-    const url = resolveAccessUrl();
-    if (url) navigate(url);
-  };
-
-  const handleUnlock = () => {
-    // Priority 1: Landing page URL (presentation page)
-    if (service.landing_page_url) {
-      const internalPath = getInternalPath(service.landing_page_url);
-      if (internalPath) {
-        navigate(internalPath);
-      } else {
-        window.open(service.landing_page_url, '_blank');
-      }
-    }
-    // Priority 2: Ticto checkout URL (direct purchase)
-    else if (service.ticto_checkout_url) {
-      try {
-        const checkoutUrl = new URL(service.ticto_checkout_url);
-        if (user?.email) {
-          checkoutUrl.searchParams.set('email', user.email);
-        }
-        window.open(checkoutUrl.toString(), '_blank');
-      } catch {
-        window.open(service.ticto_checkout_url, '_blank');
-      }
-    }
-    // Priority 3: Fallback to service detail page
-    else {
-      navigate(`/servicos/${service.id}`);
-    }
+    navigate(getLandingPageUrl());
   };
 
   const isComingSoon = service.status === 'coming_soon';
@@ -153,36 +117,24 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
         />
       )}
 
-      {/* Action */}
+      {/* Action — catalog is a showcase, always go to landing page */}
       <div className="mt-auto">
         {isComingSoon ? (
           <Button variant="outline" disabled className="w-full rounded-xl">
             Em Breve
           </Button>
-        ) : canAccess && service.service_type === 'live_mentoring' ? (
-          <Button
-            className="w-full gap-2 rounded-xl"
-            onClick={() => navigate(`/dashboard/agendar/${service.id}`)}
-          >
-            {service.cta_text || 'Agendar Sessão'}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        ) : canAccess ? (
-          <Button
-            className="w-full gap-2 rounded-xl"
-            onClick={handleNavigate}
-          >
-            {service.cta_text || 'Acessar'}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
         ) : (
           <Button
-            variant="outline"
-            className="w-full gap-2 rounded-xl border-primary text-primary hover:bg-primary/5"
-            onClick={handleUnlock}
+            variant={canAccess ? 'default' : 'outline'}
+            className={cn(
+              'w-full gap-2 rounded-xl',
+              !canAccess && 'border-primary text-primary hover:bg-primary/5'
+            )}
+            onClick={handleNavigate}
           >
-            <Lock className="h-4 w-4" />
-            Desbloquear
+            {!canAccess && <Lock className="h-4 w-4" />}
+            {service.cta_text || (canAccess ? 'Ver Detalhes' : 'Desbloquear')}
+            {canAccess && <ArrowRight className="h-4 w-4" />}
           </Button>
         )}
       </div>
