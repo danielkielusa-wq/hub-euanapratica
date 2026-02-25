@@ -34,17 +34,20 @@ import {
   ListTodo,
   Lightbulb,
   PlayCircle,
-  Zap
+  Zap,
+  Menu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
+import { useMenuVisibility } from '@/hooks/useMenuVisibility';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  menuKey?: string;
   badge?: {
     text: string;
     variant: 'hot' | 'new' | 'ai';
@@ -64,20 +67,20 @@ const studentNavGroups: NavGroup[] = [
   {
     label: 'DISCOVERY',
     items: [
-      { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass, tourId: 'sidebar-meu-hub' },
-      { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
-      { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck },
-      { label: 'Explore', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
-      { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, badge: { text: 'NOVO', variant: 'new' } },
-      { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid },
+      { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass, menuKey: 'hub', tourId: 'sidebar-meu-hub' },
+      { label: 'Comunidade', href: '/comunidade', icon: Users, menuKey: 'comunidade', badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
+      { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
+      { label: 'Explore', href: '/catalogo', icon: Search, menuKey: 'catalogo', badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
+      { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, menuKey: 'cursos', badge: { text: 'NOVO', variant: 'new' } },
+      { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid, menuKey: 'espacos' },
     ],
   },
   {
     label: 'MENTORIA',
     items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
-      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, menuKey: 'dashboard' },
+      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
+      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
   },
   {
@@ -87,6 +90,7 @@ const studentNavGroups: NavGroup[] = [
         label: 'ResumePass AI',
         href: '/curriculo',
         icon: FileSearch,
+        menuKey: 'curriculo',
         badge: { text: 'IA', variant: 'ai' },
         isSpecial: true,
         tourId: 'sidebar-resumepass'
@@ -95,6 +99,7 @@ const studentNavGroups: NavGroup[] = [
         label: 'Title Translator',
         href: '/title-translator',
         icon: Globe,
+        menuKey: 'title_translator',
         badge: { text: 'IA', variant: 'ai' },
         isSpecial: true,
         tourId: 'sidebar-title-translator'
@@ -103,6 +108,7 @@ const studentNavGroups: NavGroup[] = [
         label: 'Prime Jobs',
         href: '/prime-jobs',
         icon: Briefcase,
+        menuKey: 'prime_jobs',
         badge: { text: 'NOVO', variant: 'new' }
       },
     ],
@@ -110,11 +116,11 @@ const studentNavGroups: NavGroup[] = [
   {
     label: 'MINHA CONTA',
     items: [
-      { label: 'Planos', href: '/pricing', icon: CreditCard },
-      { label: 'Assinatura', href: '/dashboard/assinatura', icon: CreditCard },
-      { label: 'Perfil', href: '/perfil', icon: User },
-      { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag },
-      { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy },
+      { label: 'Planos', href: '/pricing', icon: CreditCard, menuKey: 'pricing' },
+      { label: 'Assinatura', href: '/dashboard/assinatura', icon: CreditCard, menuKey: 'assinatura' },
+      { label: 'Perfil', href: '/perfil', icon: User, menuKey: 'perfil' },
+      { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag, menuKey: 'pedidos' },
+      { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy, menuKey: 'suporte' },
     ],
   },
 ];
@@ -124,26 +130,26 @@ const mentorNavGroups: NavGroup[] = [
   {
     label: 'GESTÃO',
     items: [
-      { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard },
-      { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid },
-      { label: 'Agendamentos', href: '/mentor/agendamentos', icon: CalendarCheck },
-      { label: 'Disponibilidade', href: '/mentor/disponibilidade', icon: Calendar },
-      { label: 'Agenda', href: '/mentor/agenda', icon: Calendar },
-      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList },
+      { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard, menuKey: 'dashboard' },
+      { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid, menuKey: 'espacos' },
+      { label: 'Agendamentos', href: '/mentor/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
+      { label: 'Disponibilidade', href: '/mentor/disponibilidade', icon: Calendar, menuKey: 'disponibilidade' },
+      { label: 'Agenda', href: '/mentor/agenda', icon: Calendar, menuKey: 'agenda' },
+      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
   },
   {
     label: 'CONTEÚDO',
     items: [
-      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
-      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload },
+      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
+      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload, menuKey: 'upload_materiais' },
     ],
   },
   {
     label: 'MINHA CONTA',
     items: [
-      { label: 'Perfil', href: '/perfil', icon: User },
-      { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy },
+      { label: 'Perfil', href: '/perfil', icon: User, menuKey: 'perfil' },
+      { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy, menuKey: 'suporte' },
     ],
   },
 ];
@@ -197,6 +203,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'CONFIGURAÇÕES',
     items: [
       { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
+      { label: 'Menu do App', href: '/admin/menu-config', icon: Menu },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
@@ -231,20 +238,34 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
   const { data: studentEspacos, isLoading: studentEspacosLoading } = useStudentEspacosWithStats();
   const { hasAccess: canAccessCommunity, isLoading: communityAccessLoading } = useServiceAccess('/comunidade');
   const { planId } = usePlanAccess();
+  const { isItemVisible } = useMenuVisibility();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Select navigation based on user role
+  // Select navigation based on user role, filtered by admin-controlled visibility
   const getNavGroups = (): NavGroup[] => {
     switch (user?.role) {
       case 'admin':
         return adminNavGroups;
-      case 'mentor':
-        return mentorNavGroups;
-      default:
+      case 'mentor': {
+        return mentorNavGroups
+          .map(group => ({
+            ...group,
+            items: group.items.filter(item => !item.menuKey || isItemVisible('mentor', item.menuKey)),
+          }))
+          .filter(group => group.items.length > 0);
+      }
+      default: {
+        let groups = studentNavGroups;
         if (!studentEspacosLoading && (studentEspacos?.length || 0) === 0) {
-          return studentNavGroups.filter(group => group.label !== 'MENTORIA');
+          groups = groups.filter(group => group.label !== 'MENTORIA');
         }
-        return studentNavGroups;
+        return groups
+          .map(group => ({
+            ...group,
+            items: group.items.filter(item => !item.menuKey || isItemVisible('student', item.menuKey)),
+          }))
+          .filter(group => group.items.length > 0);
+      }
     }
   };
 

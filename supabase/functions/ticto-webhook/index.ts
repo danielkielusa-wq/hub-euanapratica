@@ -133,8 +133,8 @@ serve(async (req) => {
           }
         }
 
-        // Dispatch N8N webhook for subscription lifecycle (fire-and-forget)
-        dispatchN8NWebhook(`subscription.${result.action}`, {
+        // Dispatch N8N webhook for subscription lifecycle
+        await dispatchN8NWebhook(`subscription.${result.action}`, {
           action: result.action,
           customer_email: payload.customer?.email ?? null,
           customer_name: payload.customer?.name ?? null,
@@ -212,11 +212,11 @@ serve(async (req) => {
       console.log("Profile lookup:", { found: !!profile, email: customerEmail });
 
       // Find service by ticto_product_id
-      let service = null;
+      let service: { id: string; name: string; service_type: string; espaco_id: string | null } | null = null;
       if (productId) {
         const { data: serviceData, error: serviceError } = await supabase
           .from("hub_services")
-          .select("id, name")
+          .select("id, name, service_type, espaco_id")
           .eq("ticto_product_id", productId)
           .maybeSingle();
 
@@ -230,39 +230,74 @@ serve(async (req) => {
 
       // Grant access if user and service found
       if (profile && service) {
-        const { error: accessError } = await supabase
+        // Compute metadata and sessions_total based on service_type
+        const isSessionService = service.service_type === "consulting" || service.service_type === "live_mentoring";
+        const sessionsTotal = isSessionService ? 1 : null;
+        const metadata: Record<string, unknown> =
+          service.service_type === "consulting"
+            ? { booking_id: null }
+            : service.service_type === "live_mentoring"
+            ? { espaco_id: service.espaco_id ?? null }
+            : {};
+
+        // Check if row already exists (same service bought again → increment sessions_total)
+        const { data: existingAccess } = await supabase
           .from("user_hub_services")
-          .upsert(
-            {
+          .select("id, sessions_total")
+          .eq("user_id", profile.id)
+          .eq("service_id", service.id)
+          .maybeSingle();
+
+        if (existingAccess) {
+          const newTotal =
+            sessionsTotal !== null
+              ? (existingAccess.sessions_total ?? 0) + 1
+              : existingAccess.sessions_total;
+
+          const { error: updateError } = await supabase
+            .from("user_hub_services")
+            .update({
+              status: "active",
+              started_at: new Date().toISOString(),
+              ...(newTotal !== null ? { sessions_total: newTotal } : {}),
+            })
+            .eq("id", existingAccess.id);
+
+          if (updateError) {
+            console.error("Error updating existing access:", updateError);
+          } else {
+            console.log("Access updated (re-purchase):", { userId: profile.id, serviceId: service.id, sessions_total: newTotal });
+          }
+        } else {
+          const { error: accessError } = await supabase
+            .from("user_hub_services")
+            .insert({
               user_id: profile.id,
               service_id: service.id,
               status: "active",
+              access_source: "purchase",
+              sessions_total: sessionsTotal,
+              sessions_used: 0,
+              metadata,
               started_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,service_id" }
-          );
+            });
 
-        if (accessError) {
-          console.error("Error granting access:", accessError);
-        } else {
-          console.log("Access granted:", { userId: profile.id, serviceId: service.id });
+          if (accessError) {
+            console.error("Error granting access:", accessError);
+          } else {
+            console.log("Access granted:", { userId: profile.id, serviceId: service.id });
+          }
         }
 
-        // Auto-enroll in linked course espaco (if service has espaco_id)
+        // Auto-enroll in linked espaco (if service has espaco_id)
         try {
-          const { data: serviceWithEspaco } = await supabase
-            .from("hub_services")
-            .select("espaco_id")
-            .eq("id", service.id)
-            .single();
-
-          if (serviceWithEspaco?.espaco_id) {
+          if (service.espaco_id) {
             const { error: enrollError } = await supabase
               .from("user_espacos")
               .upsert(
                 {
                   user_id: profile.id,
-                  espaco_id: serviceWithEspaco.espaco_id,
+                  espaco_id: service.espaco_id,
                   status: "active",
                   enrolled_at: new Date().toISOString(),
                 },
@@ -270,16 +305,16 @@ serve(async (req) => {
               );
 
             if (enrollError) {
-              console.error("Error enrolling in course:", enrollError);
+              console.error("Error enrolling in espaco:", enrollError);
             } else {
-              console.log("Course enrollment created:", {
+              console.log("Espaco enrollment created:", {
                 userId: profile.id,
-                espacoId: serviceWithEspaco.espaco_id,
+                espacoId: service.espaco_id,
               });
             }
           }
         } catch (enrollErr) {
-          console.error("Course enrollment check failed:", enrollErr);
+          console.error("Espaco enrollment check failed:", enrollErr);
         }
 
         // Create order record for user-facing history

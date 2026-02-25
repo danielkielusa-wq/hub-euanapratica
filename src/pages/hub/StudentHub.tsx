@@ -19,6 +19,7 @@ import {
 import { PriceDisplay, formatCurrency } from '@/components/hub/PriceDisplay';
 import { DashboardTour } from '@/components/guided-tour/DashboardTour';
 import { GettingStartedChecklist } from '@/components/guided-tour/GettingStartedChecklist';
+import { MyJourneySection } from '@/components/hub/MyJourneySection';
 
 export default function StudentHub() {
   const navigate = useNavigate();
@@ -106,6 +107,9 @@ export default function StudentHub() {
 
         {/* Guided Tour (headless — triggers driver.js on first visit) */}
         <DashboardTour />
+
+        {/* Minha Jornada — purchased services + plan tools (hidden if user has nothing) */}
+        <MyJourneySection />
 
         {/* Getting Started Checklist */}
         <div className="mb-10">

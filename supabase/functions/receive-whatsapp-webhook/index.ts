@@ -121,8 +121,8 @@ serve(async (req) => {
           metadata: { raw_event: "messages.upsert" },
         });
 
-        // Dispatch N8N webhook for inbound WhatsApp (fire-and-forget)
-        dispatchN8NWebhook("whatsapp.inbound", {
+        // Dispatch N8N webhook for inbound WhatsApp
+        await dispatchN8NWebhook("whatsapp.inbound", {
           lead_id: lead.id,
           lead_name: lead.name,
           lead_email: lead.email,

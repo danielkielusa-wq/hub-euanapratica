@@ -1,5 +1,8 @@
 project_id = "seqgnxynrcylxsdzbloa"
 
+[functions.dispatch-report-webhook]
+verify_jwt = false
+
 [functions.manage-ideas]
 verify_jwt = false
 

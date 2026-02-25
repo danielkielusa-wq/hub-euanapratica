@@ -8,7 +8,7 @@ Quando o relatorio de diagnostico fica pronto, notificar o lead via WhatsApp usa
 
 ## Evento Gatilho
 
-**`report.generated`** — disparado por `format-lead-report` apos salvar o relatorio com status `completed`.
+**`report.generated`** — disparado por trigger PostgreSQL `trg_report_completed` quando `career_evaluations.processing_status` transiciona para `'completed'` (INSERT ou UPDATE). O trigger chama a Edge Function `dispatch-report-webhook` via `pg_net`, que le o relatorio do banco, normaliza a temperatura do lead (ex: `SUPER_QUENTE` → `muito-quente`) e dispara o webhook.
 
 ### Payload completo
 
@@ -41,7 +41,10 @@ Quando o relatorio de diagnostico fica pronto, notificar o lead via WhatsApp usa
 ## Fluxo
 
 ```
-format-lead-report (relatorio pronto)
+career_evaluations INSERT/UPDATE (processing_status = 'completed')
+        │
+        ▼ (trigger PostgreSQL trg_report_completed)
+dispatch-report-webhook Edge Function
         │
         ▼
 dispatchN8NWebhook("report.generated", payload)

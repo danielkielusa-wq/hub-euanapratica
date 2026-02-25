@@ -10,18 +10,61 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu } from 'lucide-react';
 import { WhatsAppConnectionStatus } from '@/components/admin/whatsapp/WhatsAppConnectionStatus';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
 import { useAdminApis } from '@/hooks/useAdminApis';
+import { useMenuVisibility, type MenuRole } from '@/hooks/useMenuVisibility';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const STUDENT_MENU_ITEMS = [
+  { key: 'hub',              label: 'Meu Hub',          group: 'DISCOVERY' },
+  { key: 'comunidade',       label: 'Comunidade',        group: 'DISCOVERY' },
+  { key: 'agendamentos',     label: 'Agendamentos',      group: 'DISCOVERY' },
+  { key: 'catalogo',         label: 'Explore',           group: 'DISCOVERY' },
+  { key: 'cursos',           label: 'Meus Cursos',       group: 'DISCOVERY' },
+  { key: 'espacos',          label: 'Minha Jornada',     group: 'DISCOVERY' },
+  { key: 'dashboard',        label: 'Dashboard',         group: 'MENTORIA' },
+  { key: 'biblioteca',       label: 'Biblioteca',        group: 'MENTORIA' },
+  { key: 'tarefas',          label: 'Tarefas',           group: 'MENTORIA' },
+  { key: 'curriculo',        label: 'ResumePass AI',     group: 'TOOLS & AI' },
+  { key: 'title_translator', label: 'Title Translator',  group: 'TOOLS & AI' },
+  { key: 'prime_jobs',       label: 'Prime Jobs',        group: 'TOOLS & AI' },
+  { key: 'pricing',          label: 'Planos',            group: 'MINHA CONTA' },
+  { key: 'assinatura',       label: 'Assinatura',        group: 'MINHA CONTA' },
+  { key: 'perfil',           label: 'Perfil',            group: 'MINHA CONTA' },
+  { key: 'pedidos',          label: 'Meus Pedidos',      group: 'MINHA CONTA' },
+  { key: 'suporte',          label: 'Suporte',           group: 'MINHA CONTA' },
+];
+
+const MENTOR_MENU_ITEMS = [
+  { key: 'dashboard',        label: 'Dashboard',         group: 'GESTÃO' },
+  { key: 'espacos',          label: 'Meus Espaços',      group: 'GESTÃO' },
+  { key: 'agendamentos',     label: 'Agendamentos',      group: 'GESTÃO' },
+  { key: 'disponibilidade',  label: 'Disponibilidade',   group: 'GESTÃO' },
+  { key: 'agenda',           label: 'Agenda',            group: 'GESTÃO' },
+  { key: 'tarefas',          label: 'Tarefas',           group: 'GESTÃO' },
+  { key: 'biblioteca',       label: 'Biblioteca',        group: 'CONTEÚDO' },
+  { key: 'upload_materiais', label: 'Upload Materiais',  group: 'CONTEÚDO' },
+  { key: 'perfil',           label: 'Perfil',            group: 'MINHA CONTA' },
+  { key: 'suporte',          label: 'Suporte',           group: 'MINHA CONTA' },
+];
+
+function groupMenuItems(items: { key: string; label: string; group: string }[]) {
+  return items.reduce<Record<string, { key: string; label: string }[]>>((acc, item) => {
+    if (!acc[item.group]) acc[item.group] = [];
+    acc[item.group].push({ key: item.key, label: item.label });
+    return acc;
+  }, {});
+}
 
 export default function AdminSettings() {
   const { configs, isLoading, isSaving, updateConfig, getConfigValue } = useAppConfigs();
   const { apis, isLoading: apisLoading } = useAdminApis();
+  const { isLoading: menuLoading, isItemVisible, updateVisibility } = useMenuVisibility();
 
   const [resumePrompt, setResumePrompt] = useState('');
   const [resumeApiConfig, setResumeApiConfig] = useState('openai_api');
@@ -39,6 +82,7 @@ export default function AdminSettings() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookEnabled, setWebhookEnabled] = useState(false);
   const [reportBaseUrl, setReportBaseUrl] = useState('');
+  const [consultoriaBookingUrl, setConsultoriaBookingUrl] = useState('');
   const [hasWebhookChanges, setHasWebhookChanges] = useState(false);
 
   // Title Translator config
@@ -100,6 +144,8 @@ export default function AdminSettings() {
     setWebhookEnabled(webhookEnabledValue === 'true');
     const baseUrlValue = getConfigValue('lead_report_base_url');
     if (baseUrlValue) setReportBaseUrl(baseUrlValue);
+    const consultoriaUrlValue = getConfigValue('report_cta_consultoria_url');
+    if (consultoriaUrlValue) setConsultoriaBookingUrl(consultoriaUrlValue);
 
     // Load title translator configs
     const ttPromptValue = getConfigValue('title_translator_prompt');
@@ -185,12 +231,14 @@ export default function AdminSettings() {
     const originalUrl = getConfigValue('lead_webhook_url');
     const originalEnabled = getConfigValue('lead_webhook_enabled') === 'true';
     const originalBaseUrl = getConfigValue('lead_report_base_url');
+    const originalConsultoriaUrl = getConfigValue('report_cta_consultoria_url');
     const hasChanges =
       webhookUrl !== originalUrl ||
       webhookEnabled !== originalEnabled ||
-      reportBaseUrl !== originalBaseUrl;
+      reportBaseUrl !== originalBaseUrl ||
+      consultoriaBookingUrl !== (originalConsultoriaUrl || '');
     setHasWebhookChanges(hasChanges);
-  }, [webhookUrl, webhookEnabled, reportBaseUrl, configs]);
+  }, [webhookUrl, webhookEnabled, reportBaseUrl, consultoriaBookingUrl, configs]);
 
   useEffect(() => {
     const originalPrompt = getConfigValue('title_translator_prompt');
@@ -300,6 +348,7 @@ export default function AdminSettings() {
       updateConfig('lead_webhook_url', webhookUrl),
       updateConfig('lead_webhook_enabled', webhookEnabled ? 'true' : 'false'),
       updateConfig('lead_report_base_url', reportBaseUrl),
+      updateConfig('report_cta_consultoria_url', consultoriaBookingUrl),
     ]);
     setHasWebhookChanges(false);
   };
@@ -357,6 +406,7 @@ export default function AdminSettings() {
   const webhookUrlConfig = configs.find(c => c.key === 'lead_webhook_url');
   const webhookEnabledConfig = configs.find(c => c.key === 'lead_webhook_enabled');
   const reportBaseUrlConfig = configs.find(c => c.key === 'lead_report_base_url');
+  const consultoriaUrlConfig = configs.find(c => c.key === 'report_cta_consultoria_url');
 
   const { categories, createCategory, updateCategory, deleteCategory, isLoading: categoriesLoading } = useCommunityCategories();
   const { rules, updateRule, isLoading: rulesLoading } = useGamificationRules();
@@ -393,6 +443,7 @@ export default function AdminSettings() {
             <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg"><ListTodo className="h-4 w-4" />Sugestão de Tarefas</TabsTrigger>
             <TabsTrigger value="suggest-whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />Sugestão WhatsApp</TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />WhatsApp</TabsTrigger>
+            <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
           </TabsList>
 
           <TabsContent value="prompts" className="space-y-6">
@@ -614,6 +665,27 @@ export default function AdminSettings() {
                       {reportBaseUrlConfig?.updated_at && (
                         <p className="text-xs text-muted-foreground">
                           Última atualização: {format(new Date(reportBaseUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Link2 className="w-4 h-4" />
+                        URL de Agendamento da Sessão de Diagnóstico
+                      </label>
+                      <Input
+                        value={consultoriaBookingUrl}
+                        onChange={(e) => setConsultoriaBookingUrl(e.target.value)}
+                        placeholder="https://calendly.com/euanapratica/sessao-diagnostico"
+                        className="rounded-xl font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Link exibido no CTA "Agendar sessão" do relatório de lead (modo acesso limitado)
+                      </p>
+                      {consultoriaUrlConfig?.updated_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Última atualização: {format(new Date(consultoriaUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                       )}
                     </div>
@@ -1454,6 +1526,102 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="menu-config" className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Student Menu */}
+              <Card className="rounded-[24px]">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    <CardTitle>Menu dos Alunos</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Itens visíveis no menu lateral para usuários com perfil de aluno. Mudanças aplicadas imediatamente.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {menuLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  ) : (
+                    Object.entries(groupMenuItems(STUDENT_MENU_ITEMS)).map(([groupLabel, items]) => (
+                      <div key={groupLabel} className="space-y-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                          {groupLabel}
+                        </p>
+                        <div className="space-y-1">
+                          {items.map(item => {
+                            const visible = isItemVisible('student' as MenuRole, item.key);
+                            return (
+                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40">
+                                <span className={`text-sm font-medium ${visible ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                                  {item.label}
+                                </span>
+                                <Switch
+                                  checked={visible}
+                                  onCheckedChange={(checked) => updateVisibility('student' as MenuRole, item.key, checked)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Mentor Menu */}
+              <Card className="rounded-[24px]">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    <CardTitle>Menu dos Mentores</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Itens visíveis no menu lateral para usuários com perfil de mentor. Mudanças aplicadas imediatamente.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {menuLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                      ))}
+                    </div>
+                  ) : (
+                    Object.entries(groupMenuItems(MENTOR_MENU_ITEMS)).map(([groupLabel, items]) => (
+                      <div key={groupLabel} className="space-y-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                          {groupLabel}
+                        </p>
+                        <div className="space-y-1">
+                          {items.map(item => {
+                            const visible = isItemVisible('mentor' as MenuRole, item.key);
+                            return (
+                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40">
+                                <span className={`text-sm font-medium ${visible ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                                  {item.label}
+                                </span>
+                                <Switch
+                                  checked={visible}
+                                  onCheckedChange={(checked) => updateVisibility('mentor' as MenuRole, item.key, checked)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

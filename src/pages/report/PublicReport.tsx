@@ -185,6 +185,30 @@ export default function PublicReport() {
     setIsFormatting(false);
   }, [startPolling]);
 
+  // Mark step_view_report in guided_tour_state when an authenticated user views their report
+  useEffect(() => {
+    if (!evaluation) return;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from('profiles')
+        .select('guided_tour_state')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (!data) return;
+          const current = (data.guided_tour_state as Record<string, unknown>) || {};
+          if (!current.step_view_report) {
+            supabase
+              .from('profiles')
+              .update({ guided_tour_state: { ...current, step_view_report: true } })
+              .eq('id', user.id)
+              .then(() => {});
+          }
+        });
+    });
+  }, [evaluation?.id]);
+
   const checkToken = async () => {
     if (!token) {
       setError('Link inválido');

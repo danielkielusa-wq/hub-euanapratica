@@ -36,7 +36,7 @@ export function ReportSectionLock({
           variant="outline"
           size="sm"
           className="shrink-0 text-xs gap-1 h-7 px-2.5"
-          onClick={() => navigate('/assinar')}
+          onClick={() => navigate('/pricing')}
         >
           Ver planos
           <ArrowRight className="w-3 h-3" />
@@ -58,7 +58,7 @@ export function ReportSectionLock({
         variant="default"
         size="sm"
         className="gap-2"
-        onClick={() => navigate('/assinar')}
+        onClick={() => navigate('/pricing')}
       >
         {ctaText}
         <ArrowRight className="w-4 h-4" />

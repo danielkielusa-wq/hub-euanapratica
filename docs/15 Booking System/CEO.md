@@ -2,37 +2,65 @@
 
 ## O que é
 
-O sistema de **Agendamentos** permite que alunos marquem sessões 1:1 com mentores diretamente pela plataforma. Mentores gerenciam sua própria disponibilidade, e administradores têm visão e controle total sobre todas as sessões, mentores e políticas.
+O sistema de **Agendamentos e Agenda** conecta alunos e mentores em dois formatos complementares:
+
+| Formato | Como funciona | Quem inicia |
+|---------|---------------|-------------|
+| **Booking 1:1** | Aluno escolhe mentor, data e horário | Aluno |
+| **Sessão em Grupo** | Mentor cria sessão para todos os inscritos de um Espaço | Mentor |
+| **Evento Aberto** | Mentor cria hotseat, masterclass ou live — gratuito ou pago | Mentor |
 
 ---
 
 ## Como funciona para o aluno
 
-1. O aluno acessa um serviço do tipo "mentoria ao vivo" no Hub
-2. Se ele possui acesso ao serviço (via compra ou assinatura), é direcionado ao fluxo de agendamento
-3. Escolhe o mentor, data e horário disponível
-4. A sessão é confirmada imediatamente e um email de confirmação é enviado
-5. Lembretes automáticos são enviados 24h e 1h antes da sessão
+### Booking 1:1
+
+1. Aluno acessa um serviço do tipo "mentoria ao vivo" no Hub
+2. Se possui acesso (via compra ou assinatura), é direcionado ao fluxo de agendamento
+3. Escolhe mentor, data e horário disponível
+4. A sessão é confirmada imediatamente — email enviado na hora
+5. Lembretes automáticos 24h e 1h antes da sessão
 6. Após a sessão, o mentor marca como concluída
 
-Se o aluno **não** possui acesso ao serviço, ele vê uma mensagem explicativa com links para adquirir.
+Se o aluno **não** possui acesso ao serviço, vê uma mensagem com links para adquirir — funil natural de conversão.
+
+### Agenda unificada (`/dashboard/agenda`)
+
+O aluno tem uma visão de calendário mensal que mostra tudo:
+- Sessões em grupo dos Espaços em que está inscrito
+- Seus bookings 1:1 confirmados
+- Eventos abertos criados pelo mentor (hotseats, masterclasses)
+
+Dois filtros disponíveis: por tipo (grupo / 1:1) e por status.
 
 ---
 
 ## Como funciona para o mentor
 
-O mentor tem duas páginas dedicadas no painel:
+O mentor tem três páginas no painel:
+
+### Agenda unificada (`/mentor/agenda`)
+Calendário mensal com todos os compromissos numa única visão. Sessões em grupo aparecem em indigo/roxo; bookings 1:1 em azul. Filtros por tipo e status. Botão **"Novo Evento"** para criar qualquer tipo.
 
 ### Minha Disponibilidade (`/mentor/disponibilidade`)
-- Configura o **link de reunião** (Google Meet, Zoom, etc.) por serviço
-- Define **horários semanais recorrentes** (ex: segunda e quarta, 9h–17h)
-- Cria **bloqueios de agenda** para períodos específicos (férias, feriados)
+- Configura link de reunião por serviço (Google Meet, Zoom, etc.)
+- Define horários semanais recorrentes (ex: segunda e quarta, 9h–17h)
+- Cria bloqueios de agenda para períodos específicos (férias, feriados)
 
 ### Meus Agendamentos (`/mentor/agendamentos`)
-- Vê sessões próximas com dados do aluno
-- Botão para entrar na reunião diretamente
-- Marca sessões como concluídas (com notas opcionais)
-- Histórico de sessões passadas com contadores de concluídas e no-shows
+- Lista de bookings 1:1 com dados do aluno
+- Botão para entrar na reunião
+- Marcar sessões como concluídas (com notas)
+- Histórico com contadores de concluídas e no-shows
+
+### Criar Eventos Abertos
+O mentor pode criar **Eventos Abertos** — eventos standalone sem precisar de um Espaço vinculado:
+- **Hotseat gratuito**: capacidade limitada, preço = R$0, visível para todos os alunos
+- **Masterclass**: evento de aquisição para público mais amplo
+- **Live especial**: conteúdo extra fora do calendário regular do Espaço
+
+Campos configuráveis: título, descrição, data/hora, duração, capacidade de participantes, preço, visibilidade (público ou restrito ao Espaço).
 
 ---
 
@@ -41,7 +69,7 @@ O mentor tem duas páginas dedicadas no painel:
 O painel admin (`/admin/agendamentos`) tem 3 abas:
 
 ### Aba "Agendamentos"
-- Todas as sessões da plataforma com filtros por status e mentor
+- Todos os bookings 1:1 com filtros por status e mentor
 - Ações: marcar como concluída, cancelar (com motivo), marcar no-show
 - Visão completa: aluno, mentor, serviço, data, duração, status
 
@@ -51,19 +79,17 @@ O painel admin (`/admin/agendamentos`) tem 3 abas:
 - Gerencia horários semanais e bloqueios de qualquer mentor
 
 ### Aba "Políticas"
-- Configurações globais do sistema:
-  - Máximo de agendamentos simultâneos por aluno
-  - Máximo de reagendamentos permitidos
-  - Antecedência mínima para agendar (horas)
-  - Antecedência máxima para agendar (dias)
-  - Janela de cancelamento (horas)
-  - Duração e intervalo padrão dos slots
+- Máximo de agendamentos simultâneos por aluno
+- Máximo de reagendamentos por sessão
+- Antecedência mínima/máxima para agendar
+- Janela de cancelamento
+- Duração e intervalo padrão dos slots
 
 ---
 
 ## Emails automáticos
 
-O sistema envia 6 tipos de email relacionados a agendamentos:
+6 tipos de email relacionados a bookings 1:1 (todos editáveis em Admin → Templates de Email):
 
 | Momento | Email |
 |---------|-------|
@@ -74,21 +100,19 @@ O sistema envia 6 tipos de email relacionados a agendamentos:
 | Cancelamento | Confirmação do cancelamento |
 | Não comparecimento | Aviso ao aluno |
 
-Todos os templates são editáveis em **Admin → Templates de Email**.
+Lembretes são disparados automaticamente por um job (a cada 15 minutos) — zero intervenção manual.
 
 ---
 
-## Controle de acesso (gate de aquisição)
+## Controle de acesso e funil de conversão
 
-O fluxo de agendamento só é acessível para alunos que **possuem o serviço**. Isso é verificado pela tabela `user_hub_services`. Um aluno sem acesso vê uma tela com:
+O fluxo de booking 1:1 só é acessível para alunos que **possuem o serviço** (tabela `user_hub_services`). Aluno sem acesso vê:
 
-- Mensagem "Você precisa adquirir este serviço"
-- Link para o catálogo de serviços
-- Link para o Hub
+> "Você precisa adquirir este serviço" + links para catálogo e planos
 
-Isso cria um funil natural de conversão: aluno descobre o serviço → tenta agendar → precisa comprar.
+Isso cria um funil natural: aluno descobre o serviço → tenta agendar → é incentivado a comprar.
 
-> Administradores sempre têm acesso total, independente de compra.
+Eventos Abertos com `is_public = true` são visíveis para qualquer aluno logado — estratégia de engajamento e aquisição sem barreira de compra.
 
 ---
 
@@ -96,30 +120,45 @@ Isso cria um funil natural de conversão: aluno descobre o serviço → tenta ag
 
 | Papel | Menu | Link |
 |-------|------|------|
-| Aluno | Discovery → Agendamentos | `/dashboard/agendamentos` |
-| Mentor | Gestão → Agendamentos | `/mentor/agendamentos` |
-| Mentor | Gestão → Disponibilidade | `/mentor/disponibilidade` |
+| Aluno | Agenda | `/dashboard/agenda` |
+| Aluno | Agendamentos (lista 1:1) | `/dashboard/agendamentos` |
+| Mentor | Agenda (unificada) | `/mentor/agenda` |
+| Mentor | Meus Agendamentos | `/mentor/agendamentos` |
+| Mentor | Disponibilidade | `/mentor/disponibilidade` |
 | Admin | Gestão de Conteúdo → Agendamentos | `/admin/agendamentos` |
 
 ---
 
 ## Métricas disponíveis
 
-No painel do mentor:
+**No painel do mentor:**
 - Total de sessões próximas
 - Total de sessões concluídas
 - Total de no-shows
 
-No painel admin:
-- Todas as métricas acima, por mentor
+**No painel admin:**
+- Todas as métricas acima por mentor
 - Filtros por status e mentor para análise
+- Histórico completo de bookings
 
 ---
 
 ## Por que isso importa
 
-- **Receita**: agendamentos são vinculados a serviços pagos — mais sessões = mais conversões
-- **Retenção**: alunos que fazem sessões com mentores têm maior engajamento
-- **Operação**: mentores gerenciam sua própria agenda sem depender do admin
-- **Qualidade**: administrador pode acompanhar no-shows e tomar ações
-- **Escalabilidade**: políticas globais e auto-serviço do mentor permitem crescer sem gargalo operacional
+| Dimensão | Impacto |
+|----------|---------|
+| **Receita** | Bookings vinculados a serviços pagos — mais sessões = mais conversões |
+| **Engajamento** | Alunos que fazem sessões têm maior retenção e conclusão de jornada |
+| **Aquisição** | Eventos Abertos gratuitos (hotseats, masterclasses) atraem novos leads |
+| **Operação** | Mentores gerenciam a própria agenda — zero gargalo no admin |
+| **Qualidade** | Admin acompanha no-shows e toma ações corretivas |
+| **Escalabilidade** | Políticas globais + auto-serviço do mentor permitem crescer sem equipe operacional |
+
+---
+
+## Oportunidades futuras
+
+- Inscrição de alunos em Eventos Abertos com controle de vagas
+- Cobrança integrada para Eventos Abertos pagos
+- Notificações push quando um novo evento aberto é publicado
+- Métricas de conversão: eventos abertos → bookings pagos

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { GuidedTourState, ChecklistItemStatus } from '@/types/guidedTour';
+import type { GuidedTourState, ChecklistItemKey, ChecklistItemStatus } from '@/types/guidedTour';
 
 // ─── Read tour state from profiles.guided_tour_state ──────────────────
 
@@ -56,36 +56,67 @@ export function useUpdateGuidedTourState() {
   });
 }
 
+// ─── Fetch user's report token (by email match via SECURITY DEFINER RPC) ──────
+
+function useUserReportToken() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-report-token', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_user_report_token');
+      if (error) return null;
+      return data as string | null;
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ─── Derive checklist completion from guided_tour_state flags ─────────
 
 export function useChecklistStatus() {
-  const { data: tourState, isLoading } = useGuidedTourState();
+  const { data: tourState, isLoading: tourLoading } = useGuidedTourState();
+  const { data: reportToken, isLoading: reportLoading } = useUserReportToken();
+
+  const isLoading = tourLoading || reportLoading;
 
   const items: ChecklistItemStatus[] | undefined = tourState
     ? [
         {
-          key: 'complete_profile',
+          key: 'complete_profile' as ChecklistItemKey,
           label: 'Complete seu perfil',
           description: 'Adicione seu LinkedIn ou currículo',
           href: '/perfil',
           completed: !!tourState.step_complete_profile,
         },
+        ...(reportToken
+          ? [
+              {
+                key: 'view_report' as ChecklistItemKey,
+                label: 'Ver seu diagnóstico de carreira',
+                description: 'Acesse o relatório personalizado da sua carreira internacional',
+                href: `/report/${reportToken}`,
+                completed: !!tourState.step_view_report,
+              },
+            ]
+          : []),
         {
-          key: 'first_community_post',
+          key: 'first_community_post' as ChecklistItemKey,
           label: 'Faça seu primeiro post',
           description: 'Compartilhe sua experiência na Comunidade',
           href: '/comunidade',
           completed: !!tourState.step_first_community_post,
         },
         {
-          key: 'analyze_resume',
+          key: 'analyze_resume' as ChecklistItemKey,
           label: 'Analise seu currículo com IA',
           description: 'Descubra se ele passa nos filtros das empresas',
           href: '/curriculo',
           completed: !!tourState.step_analyze_resume,
         },
         {
-          key: 'explore_catalog',
+          key: 'explore_catalog' as ChecklistItemKey,
           label: 'Explore o catálogo',
           description: 'Descubra serviços para sua carreira',
           href: '/catalogo',

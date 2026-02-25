@@ -143,7 +143,7 @@ export function useTestAutomation() {
     mutationFn: async (automation: N8NAutomation) => {
       if (!automation.webhook_url) throw new Error('Webhook URL nao configurada');
 
-      const testPayload = {
+      const testPayload: Record<string, unknown> = {
         event: automation.trigger_event.replace('.*', '.test'),
         timestamp: new Date().toISOString(),
         source: 'enp_hub_admin_test',
@@ -153,6 +153,41 @@ export function useTestAutomation() {
         lead_email: 'teste@example.com',
         lead_phone: '5511999999999',
       };
+
+      // Add realistic fields based on trigger event type
+      if (automation.trigger_event === 'report.generated') {
+        Object.assign(testPayload, {
+          access_token: 'test-token-000',
+          report_link: 'https://hub.euanapratica.com/report/test-token-000',
+          readiness_score: 78,
+          lead_temperature: 'quente',
+          lead_priority_score: 82,
+          phase_id: 'decolagem',
+          phase_name: 'Decolagem',
+          is_tech_professional: true,
+          is_senior_level: true,
+          is_high_income: false,
+          primary_product: 'Mentoria Individual 1:1',
+          barriers: ['networking', 'portfolio'],
+        });
+      } else if (automation.trigger_event === 'subscription.*') {
+        Object.assign(testPayload, {
+          action: 'activated',
+          customer_email: 'teste@example.com',
+          customer_name: 'Lead Teste',
+          user_id: '00000000-0000-0000-0000-000000000000',
+          plan_id: null,
+          plan_name: 'Pro',
+          product_name: 'ENP Hub Pro',
+          paid_amount: 97.00,
+        });
+      } else if (automation.trigger_event === 'whatsapp.inbound') {
+        Object.assign(testPayload, {
+          message_text: 'SIM',
+          message_id: 'test-msg-000',
+          interaction_id: null,
+        });
+      }
 
       const response = await fetch(automation.webhook_url, {
         method: automation.webhook_method || 'POST',

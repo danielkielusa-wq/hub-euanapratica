@@ -8,7 +8,7 @@ Alertar a equipe imediatamente quando um lead de alto valor eh identificado (tem
 
 ## Evento Gatilho
 
-**`report.generated`** — mesmo evento do fluxo de Report Ready Notification. Um unico dispatch dispara multiplos workflows.
+**`report.generated`** — mesmo evento do fluxo de Report Ready Notification. Disparado por trigger PostgreSQL `trg_report_completed` → Edge Function `dispatch-report-webhook`. Um unico dispatch dispara multiplos workflows.
 
 ### Campos relevantes do payload
 
@@ -36,9 +36,9 @@ Alertar a equipe imediatamente quando um lead de alto valor eh identificado (tem
 ## Fluxo
 
 ```
-format-lead-report (relatorio pronto)
+career_evaluations INSERT/UPDATE (processing_status = 'completed')
         │
-        ▼
+        ▼ (trigger trg_report_completed → dispatch-report-webhook)
 dispatchN8NWebhook("report.generated", payload)
         │
         ▼

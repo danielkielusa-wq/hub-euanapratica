@@ -1833,6 +1833,7 @@ export type Database = {
           landing_page_url: string | null
           meeting_type: string | null
           name: string
+          plan_feature_key: string | null
           price: number | null
           price_display: string | null
           product_type: string | null
@@ -1869,6 +1870,7 @@ export type Database = {
           landing_page_url?: string | null
           meeting_type?: string | null
           name: string
+          plan_feature_key?: string | null
           price?: number | null
           price_display?: string | null
           product_type?: string | null
@@ -1905,6 +1907,7 @@ export type Database = {
           landing_page_url?: string | null
           meeting_type?: string | null
           name?: string
+          plan_feature_key?: string | null
           price?: number | null
           price_display?: string | null
           product_type?: string | null
@@ -2462,6 +2465,128 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      n8n_automations: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_name: string
+          enabled: boolean | null
+          headers: Json | null
+          id: string
+          last_status: string | null
+          last_triggered_at: string | null
+          max_retries: number | null
+          metadata: Json | null
+          name: string
+          timeout_ms: number | null
+          trigger_event: string
+          updated_at: string | null
+          updated_by: string | null
+          webhook_method: string
+          webhook_url: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          enabled?: boolean | null
+          headers?: Json | null
+          id?: string
+          last_status?: string | null
+          last_triggered_at?: string | null
+          max_retries?: number | null
+          metadata?: Json | null
+          name: string
+          timeout_ms?: number | null
+          trigger_event: string
+          updated_at?: string | null
+          updated_by?: string | null
+          webhook_method?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          enabled?: boolean | null
+          headers?: Json | null
+          id?: string
+          last_status?: string | null
+          last_triggered_at?: string | null
+          max_retries?: number | null
+          metadata?: Json | null
+          name?: string
+          timeout_ms?: number | null
+          trigger_event?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          webhook_method?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      n8n_webhook_logs: {
+        Row: {
+          automation_id: string | null
+          automation_name: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          payload: Json
+          response_body: string | null
+          response_status: number | null
+          retry_attempt: number | null
+          status: string
+          trigger_event: string
+        }
+        Insert: {
+          automation_id?: string | null
+          automation_name: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          retry_attempt?: number | null
+          status?: string
+          trigger_event: string
+        }
+        Update: {
+          automation_id?: string | null
+          automation_name?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          retry_attempt?: number | null
+          status?: string
+          trigger_event?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_webhook_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "n8n_automations"
             referencedColumns: ["id"]
           },
         ]
@@ -3066,18 +3191,21 @@ export type Database = {
       }
       sessions: {
         Row: {
+          capacity: number | null
           created_at: string | null
           created_by: string | null
           datetime: string
           description: string | null
           duration_minutes: number | null
-          espaco_id: string
+          espaco_id: string | null
           gradient_end: string | null
           gradient_preset: string | null
           gradient_start: string | null
           id: string
+          is_public: boolean
           is_recurring: boolean | null
           meeting_link: string | null
+          price: number
           recording_url: string | null
           recurrence_pattern: Json | null
           status: Database["public"]["Enums"]["session_status"] | null
@@ -3085,18 +3213,21 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          capacity?: number | null
           created_at?: string | null
           created_by?: string | null
           datetime: string
           description?: string | null
           duration_minutes?: number | null
-          espaco_id: string
+          espaco_id?: string | null
           gradient_end?: string | null
           gradient_preset?: string | null
           gradient_start?: string | null
           id?: string
+          is_public?: boolean
           is_recurring?: boolean | null
           meeting_link?: string | null
+          price?: number
           recording_url?: string | null
           recurrence_pattern?: Json | null
           status?: Database["public"]["Enums"]["session_status"] | null
@@ -3104,18 +3235,21 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          capacity?: number | null
           created_at?: string | null
           created_by?: string | null
           datetime?: string
           description?: string | null
           duration_minutes?: number | null
-          espaco_id?: string
+          espaco_id?: string | null
           gradient_end?: string | null
           gradient_preset?: string | null
           gradient_start?: string | null
           id?: string
+          is_public?: boolean
           is_recurring?: boolean | null
           meeting_link?: string | null
+          price?: number
           recording_url?: string | null
           recurrence_pattern?: Json | null
           status?: Database["public"]["Enums"]["session_status"] | null
@@ -3663,25 +3797,37 @@ export type Database = {
       }
       user_hub_services: {
         Row: {
+          access_source: string
           expires_at: string | null
           id: string
+          metadata: Json
           service_id: string
+          sessions_total: number | null
+          sessions_used: number
           started_at: string | null
           status: string | null
           user_id: string
         }
         Insert: {
+          access_source?: string
           expires_at?: string | null
           id?: string
+          metadata?: Json
           service_id: string
+          sessions_total?: number | null
+          sessions_used?: number
           started_at?: string | null
           status?: string | null
           user_id: string
         }
         Update: {
+          access_source?: string
           expires_at?: string | null
           id?: string
+          metadata?: Json
           service_id?: string
+          sessions_total?: number | null
+          sessions_used?: number
           started_at?: string | null
           status?: string | null
           user_id?: string
@@ -4405,6 +4551,7 @@ export type Database = {
           used_this_month: number
         }[]
       }
+      get_user_report_token: { Args: never; Returns: string }
       get_whatsapp_template_by_name: {
         Args: { p_template_name: string }
         Returns: {

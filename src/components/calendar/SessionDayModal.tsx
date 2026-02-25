@@ -5,26 +5,30 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { SessionDetailCard } from '@/components/sessions/SessionDetailCard';
+import { BookingDayCard } from './BookingDayCard';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Session } from '@/hooks/useSessions';
+import type { CalendarEvent } from '@/types/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SessionDayModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   date: Date | null;
-  sessions: Session[];
-  onJoinMeeting: (session: Session) => void;
-  onViewMaterials: (session: Session) => void;
-  onViewRecording: (session: Session) => void;
+  events: CalendarEvent[];
+  perspective: 'mentor' | 'student';
+  onJoinMeeting: (event: CalendarEvent) => void;
+  onViewMaterials: (event: CalendarEvent) => void;
+  onViewRecording: (event: CalendarEvent) => void;
 }
 
 export function SessionDayModal({
   open,
   onOpenChange,
   date,
-  sessions,
+  events,
+  perspective,
   onJoinMeeting,
   onViewMaterials,
   onViewRecording,
@@ -39,23 +43,35 @@ export function SessionDayModal({
             {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </SheetTitle>
         </SheetHeader>
-        
+
         <ScrollArea className="h-[calc(100vh-120px)] mt-6 pr-4">
-          {sessions.length === 0 ? (
+          {events.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhuma sessão neste dia</p>
+              <p>Nenhum evento neste dia</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {sessions.map((session) => (
-                <SessionDetailCard
-                  key={session.id}
-                  session={session}
-                  onJoinMeeting={() => onJoinMeeting(session)}
-                  onViewMaterials={() => onViewMaterials(session)}
-                  onViewRecording={() => onViewRecording(session)}
-                />
-              ))}
+              {events.map((event) => {
+                if (event.kind === 'session') {
+                  const session = event.data as Session;
+                  return (
+                    <SessionDetailCard
+                      key={`session-${session.id}`}
+                      session={session}
+                      onJoinMeeting={() => onJoinMeeting(event)}
+                      onViewMaterials={() => onViewMaterials(event)}
+                      onViewRecording={() => onViewRecording(event)}
+                    />
+                  );
+                }
+                return (
+                  <BookingDayCard
+                    key={`booking-${event.data.id}`}
+                    booking={event.data}
+                    perspective={perspective}
+                  />
+                );
+              })}
             </div>
           )}
         </ScrollArea>

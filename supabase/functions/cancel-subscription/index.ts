@@ -193,8 +193,8 @@ serve(async (req) => {
       body: JSON.stringify({ type: "cancellation", user_id: user.id }),
     }).catch(err => console.error("Cancellation email trigger error:", err));
 
-    // Dispatch N8N webhook for subscription cancellation (fire-and-forget)
-    dispatchN8NWebhook("subscription.cancelled", {
+    // Dispatch N8N webhook for subscription cancellation
+    await dispatchN8NWebhook("subscription.cancelled", {
       user_id: user.id,
       email: user.email,
       subscription_id: subscription.id,

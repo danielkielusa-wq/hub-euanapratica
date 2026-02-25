@@ -3,83 +3,114 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
-import { SessionFilters } from '@/components/sessions/SessionFilters';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSessions, type Session } from '@/hooks/useSessions';
-import { useEspacos } from '@/hooks/useEspacos';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAllMentorCalendarEvents } from '@/hooks/useSessions';
 import { Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import type { CalendarEvent } from '@/types/calendar';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Todos os status' },
+  { value: 'scheduled', label: 'Agendado' },
+  { value: 'live', label: 'Ao Vivo' },
+  { value: 'confirmed', label: 'Confirmado' },
+  { value: 'completed', label: 'Concluído' },
+  { value: 'cancelled', label: 'Cancelado' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'Todos os tipos' },
+  { value: 'session', label: 'Sessões em Grupo' },
+  { value: 'booking', label: 'Bookings 1:1' },
+];
 
 export default function MentorAgenda() {
   const navigate = useNavigate();
-  const { data: sessions, isLoading: sessionsLoading } = useSessions();
-  const { data: espacos, isLoading: espacosLoading } = useEspacos();
+  const { data: events, isLoading } = useAllMentorCalendarEvents();
 
-  const [selectedEspacoId, setSelectedEspacoId] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
-  const filteredSessions = useMemo(() => {
-    if (!sessions) return [];
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
 
-    return sessions.filter((session) => {
-      if (selectedEspacoId && session.espaco_id !== selectedEspacoId) {
-        return false;
-      }
-      if (selectedStatus && session.status !== selectedStatus) {
-        return false;
+    return events.filter((event) => {
+      if (selectedType !== 'all' && event.kind !== selectedType) return false;
+      if (selectedStatus !== 'all') {
+        const status = event.kind === 'session' ? event.data.status : event.data.status;
+        if (status !== selectedStatus) return false;
       }
       return true;
     });
-  }, [sessions, selectedEspacoId, selectedStatus]);
+  }, [events, selectedType, selectedStatus]);
 
-  const handleJoinMeeting = (session: Session) => {
-    if (session.meeting_link) {
-      window.open(session.meeting_link, '_blank');
+  const handleJoinMeeting = (event: CalendarEvent) => {
+    const link = event.data.meeting_link;
+    if (link) {
+      window.open(link, '_blank');
     } else {
       toast({
         title: 'Link não disponível',
-        description: 'Configure o link da reunião nas configurações da sessão.',
+        description: 'Configure o link da reunião nas configurações.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleViewMaterials = (session: Session) => {
-    navigate(`/mentor/sessao/${session.id}`);
-  };
-
-  const handleViewRecording = (session: Session) => {
-    if (session.recording_url) {
-      window.open(session.recording_url, '_blank');
+  const handleViewMaterials = (event: CalendarEvent) => {
+    if (event.kind === 'session') {
+      navigate(`/mentor/sessao/${event.data.id}`);
     } else {
-      navigate(`/mentor/sessao/${session.id}`);
+      toast({
+        title: 'Materiais',
+        description: 'Materiais não disponíveis para bookings 1:1.',
+      });
     }
   };
 
-  const isLoading = sessionsLoading || espacosLoading;
+  const handleViewRecording = (event: CalendarEvent) => {
+    if (event.kind === 'session' && event.data.recording_url) {
+      window.open(event.data.recording_url, '_blank');
+    } else if (event.kind === 'session') {
+      navigate(`/mentor/sessao/${event.data.id}`);
+    } else {
+      toast({
+        title: 'Gravação não disponível',
+        description: 'Gravações não estão disponíveis para bookings 1:1.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <DashboardLayout>
       <DashboardTopHeader />
-      
+
       <div className="flex-1 p-6 bg-gray-50/50">
         {/* Header Row */}
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div className="flex items-start gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
-              <p className="text-gray-500">Gerencie suas sessões e encontros</p>
+              <p className="text-gray-500">Todas as suas sessões e encontros</p>
             </div>
-            <Button 
-              onClick={() => navigate('/mentor/sessao/nova')} 
+            <Button
+              onClick={() => navigate('/mentor/sessao/nova')}
               className="bg-indigo-600 hover:bg-indigo-700 rounded-full gap-2"
             >
               <Plus className="h-4 w-4" />
-              Nova Sessão
+              Novo Evento
             </Button>
           </div>
-          
+
           {/* Filters */}
           {isLoading ? (
             <div className="flex gap-3">
@@ -87,15 +118,44 @@ export default function MentorAgenda() {
               <Skeleton className="h-10 w-[160px]" />
             </div>
           ) : (
-            <SessionFilters
-              espacos={espacos || []}
-              selectedEspacoId={selectedEspacoId}
-              selectedStatus={selectedStatus}
-              onEspacoChange={setSelectedEspacoId}
-              onStatusChange={setSelectedStatus}
-            />
+            <div className="flex gap-3 flex-wrap">
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPE_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
+
+        {/* Legend */}
+        {!isLoading && (
+          <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 inline-block" />
+              Sessão em Grupo
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-blue-500 to-cyan-500 inline-block" />
+              Booking 1:1
+            </div>
+          </div>
+        )}
 
         {/* Calendar */}
         {isLoading ? (
@@ -112,7 +172,8 @@ export default function MentorAgenda() {
           </div>
         ) : (
           <MonthCalendar
-            sessions={filteredSessions}
+            events={filteredEvents}
+            perspective="mentor"
             onJoinMeeting={handleJoinMeeting}
             onViewMaterials={handleViewMaterials}
             onViewRecording={handleViewRecording}

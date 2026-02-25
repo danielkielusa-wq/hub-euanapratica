@@ -1,4 +1,4 @@
-export type ServiceType = 'ai_tool' | 'live_mentoring' | 'recorded_course' | 'consulting';
+export type ServiceType = 'ai_tool' | 'live_mentoring' | 'recorded_course' | 'consulting' | 'live_event';
 export type ServiceStatus = 'available' | 'premium' | 'coming_soon';
 export type ProductType = 'one_time' | 'lifetime' | 'subscription_monthly' | 'subscription_annual';
 
@@ -104,8 +104,60 @@ export interface HubService {
   // Thank-you page data
   thank_you_page_data: ThankYouPageData | null;
 
+  // Plan feature linking (e.g. 'resume_pass', 'title_translator')
+  plan_feature_key: string | null;
+
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// Meu Hub — unified access center types
+// ============================================
+
+import type { BookingWithDetails } from '@/types/booking';
+
+export type AccessSource = 'purchase' | 'plan' | 'admin_grant' | 'free';
+
+export type ComputedStatus =
+  | 'needs_action'   // consulting: comprado mas não agendado
+  | 'scheduled'      // consulting: sessão confirmada
+  | 'active'         // live_mentoring / ai_tool / recorded_course em andamento
+  | 'upcoming'       // live_event: evento futuro
+  | 'not_started'    // recorded_course: sem progresso
+  | 'completed';     // qualquer tipo: concluído
+
+export interface UserHubService {
+  id: string;
+  user_id: string;
+  service_id: string;
+  status: 'active' | 'expired' | 'cancelled';
+  access_source: AccessSource;
+  sessions_total: number | null;
+  sessions_used: number;
+  metadata: Record<string, unknown>;
+  started_at: string | null;
+  expires_at: string | null;
+}
+
+export interface MyHubItem {
+  user_service_id: string;
+  service: HubService;
+  access_source: AccessSource;
+  sessions_total: number | null;
+  sessions_used: number;
+  computed_status: ComputedStatus;
+  booking?: BookingWithDetails;           // consulting: booking mais recente
+  next_session_datetime?: string;         // live_mentoring: próxima sessão
+  metadata: Record<string, unknown>;
+}
+
+export type HubSectionId = 'needs_action' | 'active' | 'upcoming' | 'history';
+
+export interface HubSection {
+  id: HubSectionId;
+  label: string;
+  items: MyHubItem[];
 }
 
 export interface HubServiceFormData {
@@ -144,6 +196,7 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   live_mentoring: 'Mentoria ao Vivo',
   recorded_course: 'Curso Gravado',
   consulting: 'Consultoria',
+  live_event: 'Evento ao Vivo',
 };
 
 export const RIBBON_OPTIONS = [

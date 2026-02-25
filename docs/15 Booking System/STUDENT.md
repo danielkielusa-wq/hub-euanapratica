@@ -2,94 +2,114 @@
 
 ## O que é
 
-O sistema de agendamentos permite marcar sessões 1:1 com um mentor diretamente pela plataforma. Você escolhe o mentor, a data e o horário. A confirmação é imediata e você recebe tudo por email.
+A plataforma oferece dois tipos de encontros com mentores:
+
+| Tipo | Como funciona |
+|------|---------------|
+| **Sessão em Grupo** | Sessões agendadas pelo mentor para todos os inscritos de um Espaço |
+| **Booking 1:1** | Sessão individual que você agenda diretamente com o mentor |
+
+Ambos aparecem na sua **Agenda** unificada.
 
 ---
 
-## Como Agendar uma Sessão
+## Agenda — Visão de Calendário (`/dashboard/agenda`)
+
+### Acesse: Menu lateral → Agenda
+
+A Agenda mostra um calendário mensal com todos os seus compromissos: sessões em grupo dos Espaços em que você está inscrito + seus bookings 1:1 confirmados.
+
+### Como identificar cada tipo
+
+| Cor do evento | Tipo |
+|---------------|------|
+| **Indigo/Roxo** | Sessão em Grupo |
+| **Azul** | Booking 1:1 |
+
+### Filtros disponíveis
+
+- **Tipo**: Todos / Sessões em Grupo / Bookings 1:1
+- **Status**: Todos / Agendado / Confirmado / Concluído / Cancelado / etc.
+
+### Navegando
+
+- Use as setas `<` `>` para ir ao mês anterior/seguinte
+- Clique em qualquer dia para ver os detalhes de todos os eventos daquele dia, com opção de entrar na reunião, ver materiais ou gravação
+
+---
+
+## Como Fazer um Booking 1:1
 
 ### 1. Acesse o serviço de mentoria
 
 No menu lateral, clique em **Meu Hub** ou acesse o Hub da sua jornada. Localize o serviço de mentoria (ex: "Sessão de Mentoria", "Consultoria") e clique nele.
 
-> **Atenção**: o botão "Agendar Sessão" só aparece se você tem acesso ao serviço. Se você ainda não adquiriu, verá uma mensagem explicando como obter acesso.
+> **Atenção**: o botão "Agendar Sessão" só aparece se você tem acesso ao serviço (via compra ou assinatura). Se não adquiriu, verá uma mensagem explicando como obter acesso.
 
 ### 2. Escolha o mentor
 
-Você verá os mentores disponíveis para aquele serviço. Cada card mostra o nome e perfil do mentor. Clique em **"Escolher"** para prosseguir com o mentor desejado.
+Veja os mentores disponíveis para aquele serviço. Clique em **"Escolher"** para selecionar o mentor desejado.
 
 ### 3. Escolha a data e horário
 
-Um calendário mostrará os dias disponíveis. Clique em uma data para ver os horários disponíveis naquele dia. Clique no horário desejado para selecioná-lo.
-
-> Os horários exibidos são os que o mentor tem disponível e que ainda não foram agendados por outros alunos.
+Um calendário mostrará os dias disponíveis. Clique em uma data para ver os horários e selecione o desejado.
 
 ### 4. Confirme o agendamento
 
-Revise os detalhes:
-- Serviço
-- Mentor
-- Data e horário
-- Duração
-
-Você pode adicionar uma **nota para o mentor** (opcional) — use para compartilhar contexto sobre o que quer discutir na sessão.
+Revise os detalhes (serviço, mentor, data, duração) e adicione uma **nota para o mentor** (opcional — compartilhe contexto sobre o que quer discutir).
 
 Clique em **"Confirmar Agendamento"**.
 
 ### 5. Pronto!
 
-Sua sessão está confirmada. Você receberá:
-- **Email de confirmação** imediatamente com todos os detalhes
-- **Lembrete 24h antes** com o link da reunião
-- **Lembrete 1h antes** com o link da reunião
+Você receberá:
+- **Email de confirmação** imediatamente
+- **Lembrete 24h antes** com link da reunião
+- **Lembrete 1h antes** com link da reunião
 
 ---
 
-## Acompanhando seus Agendamentos
+## Acompanhando seus Agendamentos (`/dashboard/agendamentos`)
 
 ### Acesse: Menu lateral → Agendamentos
-URL: `/dashboard/agendamentos`
 
-Você verá duas abas:
+Lista detalhada de todos os seus bookings 1:1.
 
-### Aba "Próximos"
-Todas as suas sessões confirmadas e futuras. Cada card mostra:
-- Data e horário
-- Serviço e mentor
-- Link para entrar na reunião (quando disponível)
+**Aba "Próximos"** — sessões confirmadas e futuras:
+- Data, horário, serviço, mentor
+- Link para entrar na reunião
 - Botões para reagendar ou cancelar
 
-### Aba "Anteriores"
-Histórico de sessões passadas (concluídas, canceladas, etc.).
+**Aba "Anteriores"** — histórico de sessões passadas.
 
 ---
 
-## Como Reagendar uma Sessão
+## Como Reagendar um Booking 1:1
 
 1. Acesse **Agendamentos** no menu lateral
 2. Na aba "Próximos", encontre a sessão
 3. Clique em **"Reagendar"**
-4. Escolha a nova data e horário disponíveis
-5. Confirme — você receberá um email com a nova data
+4. Escolha nova data e horário disponíveis
+5. Confirme — você receberá email com a nova data
 
 **Restrições:**
-- Existe um número máximo de reagendamentos por sessão (definido pela plataforma)
+- Existe um número máximo de reagendamentos por sessão
 - Não é possível reagendar com muito pouca antecedência (ex: menos de 24h antes)
 - Se o botão "Reagendar" não aparecer, o prazo ou limite foi atingido
 
 ---
 
-## Como Cancelar uma Sessão
+## Como Cancelar um Booking 1:1
 
 1. Acesse **Agendamentos** no menu lateral
 2. Na aba "Próximos", encontre a sessão
 3. Clique em **"Cancelar"**
-4. Confirme o cancelamento (pode adicionar um motivo opcional)
-5. Você receberá um email de confirmação do cancelamento
+4. Confirme (pode adicionar motivo opcional)
+5. Você receberá email de confirmação do cancelamento
 
 **Restrições:**
 - Não é possível cancelar muito próximo do horário da sessão (ex: menos de 12h antes)
-- Se o botão "Cancelar" não aparecer, o prazo de cancelamento passou — contate o suporte
+- Se o botão "Cancelar" não aparecer, o prazo passou — contate o suporte
 
 ---
 
@@ -98,9 +118,8 @@ Histórico de sessões passadas (concluídas, canceladas, etc.).
 O link da reunião aparece:
 - No email de confirmação
 - Nos emails de lembrete (24h e 1h antes)
-- No card da sessão em **Agendamentos** → botão "Entrar na Reunião"
-
-Clique no link para acessar a sala do Google Meet, Zoom ou plataforma configurada pelo mentor.
+- Na Agenda (clique no dia → card do evento → botão "Acessar Reunião")
+- No card em **Agendamentos → Próximos** → botão "Entrar na Reunião"
 
 ---
 
@@ -108,10 +127,11 @@ Clique no link para acessar a sala do Google Meet, Zoom ou plataforma configurad
 
 | Status | O que significa |
 |--------|----------------|
-| **Confirmado** | Sessão agendada e ativa — está na aba "Próximos" |
+| **Agendado** | Sessão em grupo criada pelo mentor |
+| **Confirmado** | Booking 1:1 agendado e ativo |
 | **Concluído** | Sessão realizada com sucesso |
-| **Cancelado** | Sessão cancelada (por você, pelo mentor ou pelo admin) |
-| **No-show** | Você não compareceu à sessão |
+| **Cancelado** | Sessão cancelada |
+| **No-show** | Você não compareceu ao booking |
 | **Reagendado** | Sessão foi movida para outro horário |
 
 ---
@@ -122,42 +142,44 @@ Todos os emails vêm de: **EUA na Prática** `<noreply@euanapratica.com>`
 
 | Momento | Email |
 |---------|-------|
-| Ao confirmar | Confirmação com todos os detalhes da sessão |
+| Ao confirmar booking | Confirmação com todos os detalhes |
 | 24h antes | Lembrete com link da reunião |
 | 1h antes | Lembrete urgente com link da reunião |
 | Ao reagendar | Nova data (e data anterior riscada) |
 | Ao cancelar | Confirmação do cancelamento |
 | Ao não comparecer | Aviso de no-show registrado |
 
-> **Importante**: este endereço não recebe respostas. Se tiver dúvidas, use o canal de suporte da plataforma.
+> Este endereço **não recebe respostas**. Para dúvidas, use o canal de suporte da plataforma.
 
 ---
 
 ## Problemas Comuns
 
-### "Não consigo ver o botão de Agendar Sessão"
+**"Não consigo ver o botão de Agendar Sessão"**
 Você precisa ter o serviço ativo na sua conta. Acesse `/catalogo` para ver as opções de aquisição, ou verifique seu plano de assinatura.
 
-### "Não aparecem horários disponíveis"
-- Tente outro dia ou outra data — o mentor pode não ter disponibilidade para o dia escolhido
-- Se nenhuma data tiver horários, contate o suporte
+**"Não aparecem horários disponíveis"**
+Tente outro dia — o mentor pode não ter disponibilidade para a data escolhida. Se nenhum dia tiver horários, contate o suporte.
 
-### "Não recebi o email de confirmação"
+**"Não recebi o email de confirmação"**
 1. Verifique a pasta de spam/lixo eletrônico
 2. Certifique-se de que o email no seu perfil está correto
-3. Se ainda não chegou após 15 minutos, contate o suporte
+3. Se não chegou após 15 minutos, contate o suporte
 
-### "Não consigo cancelar ou reagendar"
-O prazo para cancelamento/reagendamento pode ter passado. Contate o suporte com antecedência caso precise de ajuda fora do prazo.
+**"Não consigo cancelar ou reagendar"**
+O prazo pode ter passado. Contate o suporte com antecedência.
 
-### "O link da reunião não veio no email"
-O link é configurado pelo mentor. Pode ser que ainda não tenha sido configurado. Contate o suporte para que o mentor seja avisado.
+**"O link da reunião não veio no email"**
+O link é configurado pelo mentor. Pode ser que ainda não tenha sido configurado. Contate o suporte.
+
+**"Vejo eventos que não reconheço na Agenda"**
+Eventos abertos criados pelo mentor (hotseats, masterclasses) podem aparecer na sua Agenda mesmo sem serem exclusivos para você. São oportunidades adicionais de aprendizado.
 
 ---
 
 ## Dicas para Aproveitar Melhor as Sessões
 
 - **Prepare-se antes**: use o campo de notas ao agendar para compartilhar contexto com o mentor
-- **Confirme o link**: teste o link da reunião pelo menos 10 minutos antes para evitar problemas técnicos
-- **Pontualidade**: as sessões têm duração definida — chegue no horário para aproveitar o tempo completo
-- **Agende com antecedência**: os horários populares preenchem rápido — agende com pelo menos alguns dias de antecedência
+- **Confirme o link**: teste o link da reunião pelo menos 10 minutos antes
+- **Pontualidade**: as sessões têm duração definida — chegue no horário
+- **Agende com antecedência**: os horários populares preenchem rápido

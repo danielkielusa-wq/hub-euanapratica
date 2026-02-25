@@ -1,37 +1,57 @@
+import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
-import { SessionFilters } from '@/components/sessions/SessionFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useStudentAgendaSessions, type Session } from '@/hooks/useSessions';
-import { useEspacos } from '@/hooks/useEspacos';
-import { useState, useMemo } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAllStudentCalendarEvents } from '@/hooks/useSessions';
 import { toast } from '@/hooks/use-toast';
+import type { CalendarEvent } from '@/types/calendar';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Todos os status' },
+  { value: 'scheduled', label: 'Agendado' },
+  { value: 'live', label: 'Ao Vivo' },
+  { value: 'confirmed', label: 'Confirmado' },
+  { value: 'completed', label: 'Concluído' },
+  { value: 'cancelled', label: 'Cancelado' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'Todos os tipos' },
+  { value: 'session', label: 'Sessões em Grupo' },
+  { value: 'booking', label: 'Bookings 1:1' },
+];
 
 export default function StudentAgenda() {
-  const { data: sessions, isLoading: sessionsLoading } = useStudentAgendaSessions();
-  const { data: espacos, isLoading: espacosLoading } = useEspacos();
-  
-  const [selectedEspacoId, setSelectedEspacoId] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const { data: events, isLoading } = useAllStudentCalendarEvents();
 
-  const filteredSessions = useMemo(() => {
-    if (!sessions) return [];
-    
-    return sessions.filter((session) => {
-      if (selectedEspacoId && session.espaco_id !== selectedEspacoId) {
-        return false;
-      }
-      if (selectedStatus && session.status !== selectedStatus) {
-        return false;
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+
+    return events.filter((event) => {
+      if (selectedType !== 'all' && event.kind !== selectedType) return false;
+      if (selectedStatus !== 'all') {
+        const status = event.data.status;
+        if (status !== selectedStatus) return false;
       }
       return true;
     });
-  }, [sessions, selectedEspacoId, selectedStatus]);
+  }, [events, selectedType, selectedStatus]);
 
-  const handleJoinMeeting = (session: Session) => {
-    if (session.meeting_link) {
-      window.open(session.meeting_link, '_blank');
+  const handleJoinMeeting = (event: CalendarEvent) => {
+    const link = event.data.meeting_link;
+    if (link) {
+      window.open(link, '_blank');
     } else {
       toast({
         title: 'Link não disponível',
@@ -41,17 +61,19 @@ export default function StudentAgenda() {
     }
   };
 
-  const handleViewMaterials = (session: Session) => {
-    toast({
-      title: 'Materiais',
-      description: `Materiais da sessão "${session.title}" serão exibidos aqui.`,
-    });
+  const handleViewMaterials = (event: CalendarEvent) => {
+    if (event.kind === 'session') {
+      toast({
+        title: 'Materiais',
+        description: `Materiais da sessão "${event.data.title}" serão exibidos aqui.`,
+      });
+    }
   };
 
-  const handleViewRecording = (session: Session) => {
-    if (session.recording_url) {
-      window.open(session.recording_url, '_blank');
-    } else {
+  const handleViewRecording = (event: CalendarEvent) => {
+    if (event.kind === 'session' && event.data.recording_url) {
+      window.open(event.data.recording_url, '_blank');
+    } else if (event.kind === 'session') {
       toast({
         title: 'Gravação não disponível',
         description: 'A gravação desta sessão ainda não foi disponibilizada.',
@@ -60,12 +82,10 @@ export default function StudentAgenda() {
     }
   };
 
-  const isLoading = sessionsLoading || espacosLoading;
-
   return (
     <DashboardLayout>
       <DashboardTopHeader />
-      
+
       <div className="flex-1 p-6 bg-gray-50/50">
         {/* Header Row */}
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
@@ -73,7 +93,7 @@ export default function StudentAgenda() {
             <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
             <p className="text-gray-500">Planejamento mensal</p>
           </div>
-          
+
           {/* Filters */}
           {isLoading ? (
             <div className="flex gap-3">
@@ -81,15 +101,44 @@ export default function StudentAgenda() {
               <Skeleton className="h-10 w-[160px]" />
             </div>
           ) : (
-            <SessionFilters
-              espacos={espacos || []}
-              selectedEspacoId={selectedEspacoId}
-              selectedStatus={selectedStatus}
-              onEspacoChange={setSelectedEspacoId}
-              onStatusChange={setSelectedStatus}
-            />
+            <div className="flex gap-3 flex-wrap">
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPE_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
+
+        {/* Legend */}
+        {!isLoading && (
+          <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-indigo-500 to-purple-500 inline-block" />
+              Sessão em Grupo
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm bg-gradient-to-r from-blue-500 to-cyan-500 inline-block" />
+              Sessão 1:1
+            </div>
+          </div>
+        )}
 
         {/* Calendar */}
         {isLoading ? (
@@ -106,7 +155,8 @@ export default function StudentAgenda() {
           </div>
         ) : (
           <MonthCalendar
-            sessions={filteredSessions}
+            events={filteredEvents}
+            perspective="student"
             onJoinMeeting={handleJoinMeeting}
             onViewMaterials={handleViewMaterials}
             onViewRecording={handleViewRecording}

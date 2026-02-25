@@ -7,7 +7,26 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePaymentHistory } from '@/hooks/usePaymentHistory';
+import { usePaymentHistory, type Order } from '@/hooks/usePaymentHistory';
+
+function getServiceLink(order: Order): string | null {
+  if (order.status !== 'paid') return null;
+  const svc = order.service;
+  if (!svc) return null;
+
+  // Live mentoring: go directly to booking flow
+  if (svc.service_type === 'live_mentoring' && order.service_id) {
+    return `/dashboard/agendar/${order.service_id}`;
+  }
+
+  // Other services: prefer redirect_url (Thank You page), fallback to route
+  const url = svc.redirect_url || svc.route;
+  if (!url) return null;
+
+  // If it's a full URL (external), return as-is; if relative, ensure leading slash
+  if (url.startsWith('http')) return url;
+  return url.startsWith('/') ? url : `/${url}`;
+}
 
 export default function MyOrders() {
   const { user } = useAuth();
@@ -129,14 +148,28 @@ export default function MyOrders() {
                       <Badge variant={getStatusVariant(order.status)}>
                         {getStatusLabel(order.status)}
                       </Badge>
-                      {order.status === 'paid' && order.service?.route && (
-                        <Link to={order.service.route}>
-                          <Button size="sm" className="rounded-xl">
-                            Acessar
-                            <ArrowRight className="ml-1 h-4 w-4" />
-                          </Button>
-                        </Link>
-                      )}
+                      {(() => {
+                        const link = getServiceLink(order);
+                        if (!link) return null;
+                        if (link.startsWith('http')) {
+                          return (
+                            <a href={link} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" className="rounded-xl">
+                                Acessar
+                                <ArrowRight className="ml-1 h-4 w-4" />
+                              </Button>
+                            </a>
+                          );
+                        }
+                        return (
+                          <Link to={link}>
+                            <Button size="sm" className="rounded-xl">
+                              {order.service?.service_type === 'live_mentoring' ? 'Agendar Sessão' : 'Acessar'}
+                              <ArrowRight className="ml-1 h-4 w-4" />
+                            </Button>
+                          </Link>
+                        );
+                      })()}
                     </div>
                   </div>
                 </Card>

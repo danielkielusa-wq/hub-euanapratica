@@ -1,6 +1,6 @@
 # Guia de Setup — N8N para ENP_HUB
 
-> Ultima atualizacao: 2026-02-24
+> Ultima atualizacao: 2026-02-25
 
 ## Indice
 
@@ -484,16 +484,24 @@ docker image prune -f  # Limpar imagens antigas
 ### Arquitetura de Eventos
 
 ```
-Edge Function          Evento                    Workflow N8N
------------------      ------------------------  --------------------------
-ticto-webhook       -> subscription.activated  -> 01-subscription-lifecycle
-ticto-webhook       -> subscription.cancelled  -> 01-subscription-lifecycle
-ticto-webhook       -> subscription.dunning    -> 01-subscription-lifecycle
-cancel-subscription -> subscription.cancelled  -> 01-subscription-lifecycle
-format-lead-report  -> report.generated        -> 02-report-ready-notification
-format-lead-report  -> report.generated        -> 03-high-value-lead-alert
-receive-whatsapp    -> whatsapp.inbound        -> 02b-reply-handler
+Origem                           Evento                    Workflow N8N
+-------------------------------  ------------------------  --------------------------
+ticto-webhook                 -> subscription.activated  -> 01-subscription-lifecycle
+ticto-webhook                 -> subscription.cancelled  -> 01-subscription-lifecycle
+ticto-webhook                 -> subscription.dunning    -> 01-subscription-lifecycle
+cancel-subscription           -> subscription.cancelled  -> 01-subscription-lifecycle
+trg_report_completed (trigger)-> report.generated        -> 02-report-ready-notification
+trg_report_completed (trigger)-> report.generated        -> 03-high-value-lead-alert
+trg_report_completed (trigger)-> report.generated        -> 04-drip-campaign
+trg_report_completed (trigger)-> report.generated        -> 05-lead-scoring-routing
+receive-whatsapp              -> whatsapp.inbound        -> 02b-reply-handler
 ```
+
+**Nota sobre `report.generated`**: O evento eh disparado por um trigger PostgreSQL
+(`trg_report_completed`) que detecta quando `career_evaluations.processing_status`
+muda para `'completed'` (tanto INSERT quanto UPDATE). O trigger chama a Edge Function
+`dispatch-report-webhook` via `pg_net`, que le o relatorio e dispara o webhook.
+Isso garante que o webhook dispara independente de qual processo gerou o relatorio.
 
 ### URLs Importantes
 

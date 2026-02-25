@@ -19,6 +19,8 @@ export interface Order {
   service: {
     name: string;
     route: string | null;
+    redirect_url: string | null;
+    service_type: string | null;
   } | null;
   plan: {
     name: string;
@@ -40,7 +42,7 @@ export function usePaymentHistory(userId?: string) {
         .from('orders')
         .select(`
           *,
-          service:hub_services(name, route),
+          service:hub_services(name, route, redirect_url, service_type),
           plan:plans(name)
         `)
         .eq('user_id', userId!)
@@ -62,7 +64,7 @@ export function useAdminPaymentHistory() {
         .select(`
           *,
           profile:profiles(full_name, email),
-          service:hub_services(name, route),
+          service:hub_services(name, route, redirect_url, service_type),
           plan:plans(name)
         `)
         .order('created_at', { ascending: false });

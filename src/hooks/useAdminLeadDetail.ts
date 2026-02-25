@@ -334,6 +334,35 @@ export function useUpdateLeadPhone() {
   });
 }
 
+// ── Mutation: Delete lead (+ child records) ─────────────────────────
+
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (leadId: string) => {
+      // Delete child records first (no FK constraint, but keep data clean)
+      await supabase.from('lead_interactions' as any).delete().eq('lead_id', leadId);
+      await supabase.from('lead_tasks' as any).delete().eq('lead_id', leadId);
+
+      // Delete the lead itself
+      const { error } = await supabase
+        .from('career_evaluations')
+        .delete()
+        .eq('id', leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-all-pending-tasks'] });
+      toast({ title: 'Lead excluído com sucesso!' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao excluir lead', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 // ── Query: All pending tasks (global) ────────────────────────────────
 
 export interface GlobalTask extends LeadTask {

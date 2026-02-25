@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Form,
   FormControl,
@@ -29,23 +30,33 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, ArrowLeft, Loader2 } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, Loader2, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEspacos } from '@/hooks/useEspacos';
 import { useCreateSession } from '@/hooks/useSessions';
 import { toast } from '@/hooks/use-toast';
 
-const sessionSchema = z.object({
-  title: z.string().min(3, 'Título deve ter pelo menos 3 caracteres').max(100),
-  description: z.string().max(500).optional(),
-  date: z.date({ required_error: 'Selecione uma data' }),
-  time: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
-  duration_minutes: z.number().min(15).max(240),
-  espaco_id: z.string().uuid('Selecione um espaço'),
-  meeting_link: z.string().url('URL inválida').optional().or(z.literal('')),
-  is_recurring: z.boolean().default(false),
-  notify_students: z.boolean().default(true),
-});
+type EventType = 'espaco_session' | 'standalone';
+
+const sessionSchema = z
+  .object({
+    title: z.string().min(3, 'Título deve ter pelo menos 3 caracteres').max(100),
+    description: z.string().max(500).optional(),
+    date: z.date({ required_error: 'Selecione uma data' }),
+    time: z.string().regex(/^\d{2}:\d{2}$/, 'Formato inválido (HH:MM)'),
+    duration_minutes: z.number().min(15).max(240),
+    espaco_id: z.string().optional(),
+    meeting_link: z.string().url('URL inválida').optional().or(z.literal('')),
+    is_recurring: z.boolean().default(false),
+    notify_students: z.boolean().default(true),
+    is_public: z.boolean().default(false),
+    capacity: z.number().int().min(0).default(0),
+    price: z.number().min(0).default(0),
+  })
+  .superRefine((data, ctx) => {
+    // espaco_id is required for espaco_session — enforced in onSubmit via eventType state
+    // schema itself allows optional to avoid type errors; validation handled by eventType check
+  });
 
 type SessionFormData = z.infer<typeof sessionSchema>;
 
@@ -59,6 +70,7 @@ const DURATION_OPTIONS = [
 
 export default function CreateSession() {
   const navigate = useNavigate();
+  const [eventType, setEventType] = useState<EventType>('espaco_session');
   const { data: espacos, isLoading: espacosLoading } = useEspacos();
   const createSession = useCreateSession();
 
@@ -72,10 +84,19 @@ export default function CreateSession() {
       is_recurring: false,
       notify_students: true,
       meeting_link: '',
+      is_public: false,
+      capacity: 0,
+      price: 0,
     },
   });
 
   const onSubmit = async (data: SessionFormData) => {
+    // Validate espaco_id for espaco_session type
+    if (eventType === 'espaco_session' && !data.espaco_id) {
+      form.setError('espaco_id', { message: 'Selecione um espaço' });
+      return;
+    }
+
     try {
       const [hours, minutes] = data.time.split(':').map(Number);
       const datetime = new Date(data.date);
@@ -86,26 +107,37 @@ export default function CreateSession() {
         description: data.description || null,
         datetime: datetime.toISOString(),
         duration_minutes: data.duration_minutes,
-        espaco_id: data.espaco_id,
+        espaco_id:
+          eventType === 'espaco_session' && data.espaco_id && data.espaco_id !== 'none'
+            ? data.espaco_id
+            : null,
         meeting_link: data.meeting_link || null,
         is_recurring: data.is_recurring,
         status: 'scheduled',
+        is_public: eventType === 'standalone' ? data.is_public : false,
+        capacity: eventType === 'standalone' ? data.capacity : null,
+        price: eventType === 'standalone' ? data.price : 0,
       });
 
       toast({
-        title: 'Sessão criada!',
-        description: 'A sessão foi agendada com sucesso.',
+        title: eventType === 'standalone' ? 'Evento criado!' : 'Sessão criada!',
+        description:
+          eventType === 'standalone'
+            ? 'O evento foi criado com sucesso.'
+            : 'A sessão foi agendada com sucesso.',
       });
 
       navigate('/mentor/agenda');
-    } catch (error) {
+    } catch {
       toast({
-        title: 'Erro ao criar sessão',
-        description: 'Não foi possível criar a sessão. Tente novamente.',
+        title: 'Erro ao criar',
+        description: 'Não foi possível criar. Tente novamente.',
         variant: 'destructive',
       });
     }
   };
+
+  const isStandalone = eventType === 'standalone';
 
   return (
     <DashboardLayout>
@@ -116,15 +148,82 @@ export default function CreateSession() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Nova Sessão</h1>
-            <p className="text-muted-foreground">Agende um novo encontro</p>
+            <h1 className="text-2xl font-bold text-foreground">Novo Evento</h1>
+            <p className="text-muted-foreground">Agende um encontro ou evento aberto</p>
           </div>
+        </div>
+
+        {/* Event Type Selector */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setEventType('espaco_session')}
+            className={cn(
+              'flex flex-col items-start gap-1 rounded-xl border-2 p-4 text-left transition-colors',
+              eventType === 'espaco_session'
+                ? 'border-indigo-500 bg-indigo-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Users
+                className={cn(
+                  'h-5 w-5',
+                  eventType === 'espaco_session' ? 'text-indigo-600' : 'text-gray-400'
+                )}
+              />
+              <span
+                className={cn(
+                  'font-semibold text-sm',
+                  eventType === 'espaco_session' ? 'text-indigo-700' : 'text-gray-700'
+                )}
+              >
+                Sessão em Espaço
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Vinculada a um Espaço — visível para os inscritos
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEventType('standalone')}
+            className={cn(
+              'flex flex-col items-start gap-1 rounded-xl border-2 p-4 text-left transition-colors',
+              eventType === 'standalone'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Globe
+                className={cn(
+                  'h-5 w-5',
+                  eventType === 'standalone' ? 'text-blue-600' : 'text-gray-400'
+                )}
+              />
+              <span
+                className={cn(
+                  'font-semibold text-sm',
+                  eventType === 'standalone' ? 'text-blue-700' : 'text-gray-700'
+                )}
+              >
+                Evento Aberto
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Hotseat, masterclass, live — pode ser gratuito ou pago
+            </p>
+          </button>
         </div>
 
         {/* Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Detalhes da Sessão</CardTitle>
+            <CardTitle>
+              {isStandalone ? 'Detalhes do Evento' : 'Detalhes da Sessão'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -137,7 +236,14 @@ export default function CreateSession() {
                     <FormItem>
                       <FormLabel>Título *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Preparação para Entrevistas" {...field} />
+                        <Input
+                          placeholder={
+                            isStandalone
+                              ? 'Ex: Hotseat Gratuito — Revisão de Currículo'
+                              : 'Ex: Preparação para Entrevistas'
+                          }
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -153,7 +259,11 @@ export default function CreateSession() {
                       <FormLabel>Descrição</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Descreva o conteúdo da sessão..."
+                          placeholder={
+                            isStandalone
+                              ? 'O que os participantes vão aprender ou experienciar...'
+                              : 'Descreva o conteúdo da sessão...'
+                          }
                           className="resize-none"
                           {...field}
                         />
@@ -163,20 +273,29 @@ export default function CreateSession() {
                   )}
                 />
 
-                {/* Espaco */}
+                {/* Espaco (always shown, required only for espaco_session) */}
                 <FormField
                   control={form.control}
                   name="espaco_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Espaço *</FormLabel>
+                      <FormLabel>{isStandalone ? 'Espaço (opcional)' : 'Espaço *'}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um espaço" />
+                            <SelectValue
+                              placeholder={
+                                isStandalone
+                                  ? 'Sem espaço vinculado'
+                                  : 'Selecione um espaço'
+                              }
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {isStandalone && (
+                            <SelectItem value="none">Sem espaço vinculado</SelectItem>
+                          )}
                           {espacos?.map((espaco) => (
                             <SelectItem key={espaco.id} value={espaco.id}>
                               {espaco.name}
@@ -184,6 +303,11 @@ export default function CreateSession() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {isStandalone && (
+                        <FormDescription>
+                          Vincule a um Espaço para notificar os inscritos, ou deixe em branco para um evento aberto independente.
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -298,6 +422,81 @@ export default function CreateSession() {
                   )}
                 />
 
+                {/* Standalone-only fields */}
+                {isStandalone && (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-4">
+                    <p className="text-sm font-medium text-blue-800">Configurações do Evento Aberto</p>
+
+                    {/* is_public switch */}
+                    <FormField
+                      control={form.control}
+                      name="is_public"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div>
+                            <FormLabel>Visível para todos os alunos</FormLabel>
+                            <FormDescription>
+                              Aparece na agenda de qualquer aluno da plataforma
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* capacity + price */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="capacity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Capacidade</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                placeholder="0 = ilimitada"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormDescription>0 = sem limite</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preço (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                placeholder="0,00"
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormDescription>0 = gratuito</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Checkboxes */}
                 <div className="space-y-4">
                   <FormField
@@ -314,7 +513,8 @@ export default function CreateSession() {
                         <div className="space-y-1 leading-none">
                           <FormLabel>Notificar alunos</FormLabel>
                           <FormDescription>
-                            Enviar notificação por e-mail sobre a nova sessão
+                            Enviar notificação por e-mail sobre{' '}
+                            {isStandalone ? 'o novo evento' : 'a nova sessão'}
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -335,12 +535,17 @@ export default function CreateSession() {
                   <Button
                     type="submit"
                     disabled={createSession.isPending}
-                    className="flex-1"
+                    className={cn(
+                      'flex-1',
+                      isStandalone
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    )}
                   >
                     {createSession.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Criar Sessão
+                    {isStandalone ? 'Criar Evento' : 'Criar Sessão'}
                   </Button>
                 </div>
               </form>

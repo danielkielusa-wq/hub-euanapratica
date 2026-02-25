@@ -92,6 +92,7 @@ import AdminAutomations from "./pages/admin/AdminAutomations";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminCourseBuilder from "./pages/admin/AdminCourseBuilder";
 import AdminAgendamentos from "./pages/admin/AdminAgendamentos";
+import AdminMenuConfig from "./pages/admin/AdminMenuConfig";
 import MentorDisponibilidade from "./pages/mentor/MentorDisponibilidade";
 import MentorAgendamentos from "./pages/mentor/MentorAgendamentos";
 import StudentCourses from "./pages/student/StudentCourses";
@@ -436,6 +437,11 @@ function AppRoutes() {
       <Route path="/admin/feedback" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminFeedback />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/menu-config" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminMenuConfig />
         </ProtectedRoute>
       } />
       <Route path="/admin/configuracoes" element={

@@ -9,31 +9,29 @@
  *  2. Extracts recommended_product_tier from formatted_report JSON
  *  3. Queries hub_services dynamically
  *  4. Fetches admin-configurable prompt from app_configs
- *  5. Interpolates variables and calls LLM
+ *  5. Interpolates variables and calls LLM (via callLLM with fallback)
  *  6. Saves recommendation to career_evaluations columns
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
+import { callLLM } from "../_shared/llmService.ts";
 import { getCorsHeaders } from "../_shared/authGuard.ts";
 
 // Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
 // and is editable by the admin at /admin/configuracoes → Prompts IA tab.
-const DEFAULT_PROMPT = `Você é um especialista em recomendação de produtos educacionais.
+const DEFAULT_SYSTEM_PROMPT = `Você é um especialista em recomendação de produtos educacionais.
+Retorne APENAS JSON válido, sem texto adicional ou markdown code fences.
+O JSON deve conter:
+- recommended_service_name: nome exato do serviço conforme cadastrado
+- recommendation_description: 1 a 2 parágrafos personalizados
+- justification: motivo técnico da escolha`;
 
-Dados do lead: {{lead_data}}
+const DEFAULT_USER_TEMPLATE = `Dados do lead: {{lead_data}}
 Tier recomendado: {{tier}}
 Serviços disponíveis: {{services}}
 
-Com base no tier e no perfil do lead, recomende o serviço mais adequado da lista acima.
-Retorne um JSON com:
-- recommended_service_name: nome exato do serviço conforme cadastrado
-- recommendation_description: 1 a 2 parágrafos personalizados
-- justification: motivo técnico da escolha
-
-Retorne apenas o JSON, sem texto adicional.`;
+Com base no tier e no perfil do lead, recomende o serviço mais adequado da lista acima.`;
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -208,17 +206,14 @@ serve(async (req) => {
       );
     }
 
-    // 4. Fetch admin-configurable prompt from app_configs
-    const { data: promptConfig } = await supabase
-      .from("app_configs")
-      .select("value")
-      .eq("key", "llm_product_recommendation_prompt")
-      .single();
+    // 4. Fetch admin-configurable prompt + API config from app_configs
+    const [{ data: promptConfig }, { data: providerConfig }] = await Promise.all([
+      supabase.from("app_configs").select("value").eq("key", "llm_product_recommendation_prompt").single(),
+      supabase.from("app_configs").select("value").eq("key", "llm_product_recommendation_api").single(),
+    ]);
 
-    const promptTemplate =
-      promptConfig?.value && promptConfig.value.trim()
-        ? promptConfig.value
-        : DEFAULT_PROMPT;
+    const customPrompt = promptConfig?.value?.trim() || "";
+    const apiKey = providerConfig?.value?.trim() || "anthropic_api";
 
     // 5. Build context and interpolate prompt
     const leadData = JSON.stringify({
@@ -250,116 +245,58 @@ serve(async (req) => {
       }))
     );
 
-    const prompt = promptTemplate
-      .replace(/\{\{lead_data\}\}/g, leadData)
-      .replace(/\{\{tier\}\}/g, tier)
-      .replace(/\{\{services\}\}/g, servicesJson);
+    // If admin provided a full custom prompt, use it as the user message with a generic system prompt.
+    // Otherwise, use the default split (system + user template).
+    let systemPrompt: string;
+    let userMessage: string;
 
-    // 6. Call LLM (configurable provider via app_configs)
-    const { data: providerConfig } = await supabase
-      .from("app_configs")
-      .select("value")
-      .eq("key", "llm_product_recommendation_api")
-      .single();
-
-    const providerKey = providerConfig?.value?.trim() || "anthropic_api";
-    console.log(`[recommend-product] Using LLM provider: ${providerKey}`);
-
-    const apiConfig = await getApiConfig(providerKey);
-
-    // CRIT-2: Abort after 50s to prevent Edge Function timeout
-    const llmController = new AbortController();
-    const llmTimeout = setTimeout(() => llmController.abort(), 50000);
-    const llmStartTime = Date.now();
-
-    let aiResponse: Response;
-    if (providerKey === "anthropic_api") {
-      // Anthropic Messages API
-      aiResponse = await fetch(`${apiConfig.base_url}/messages`, {
-        method: "POST",
-        headers: {
-          "x-api-key": apiConfig.credentials.api_key,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: apiConfig.parameters?.model || "claude-haiku-4-5-20251001",
-          // Recommendation needs at least 1024 tokens (the shared api_config may have a lower value like 150 for upsell)
-          max_tokens: Math.max(1024, parseInt(String(apiConfig.parameters?.max_tokens || 1024), 10)),
-          messages: [{ role: "user", content: prompt }],
-        }),
-        signal: llmController.signal,
-      });
+    if (customPrompt) {
+      // Legacy behavior: admin's full prompt with {{variables}} used as user message
+      systemPrompt = "Você é um especialista em recomendação de produtos educacionais. Retorne APENAS JSON válido.";
+      userMessage = customPrompt
+        .replace(/\{\{lead_data\}\}/g, leadData)
+        .replace(/\{\{tier\}\}/g, tier)
+        .replace(/\{\{services\}\}/g, servicesJson);
     } else {
-      // OpenAI Responses API
-      aiResponse = await fetch(`${apiConfig.base_url}/responses`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiConfig.credentials.api_key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: apiConfig.parameters?.model || "gpt-4.1-mini",
-          input: [
-            {
-              role: "user",
-              content: [{ type: "input_text", text: prompt }],
-            },
-          ],
-          text: { format: { type: "json_object" } },
-        }),
-        signal: llmController.signal,
-      });
+      systemPrompt = DEFAULT_SYSTEM_PROMPT;
+      userMessage = DEFAULT_USER_TEMPLATE
+        .replace(/\{\{lead_data\}\}/g, leadData)
+        .replace(/\{\{tier\}\}/g, tier)
+        .replace(/\{\{services\}\}/g, servicesJson);
     }
-    clearTimeout(llmTimeout);
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error(
-        "[recommend-product] LLM error:",
-        aiResponse.status,
-        errorText.slice(0, 500)
-      );
+    console.log(`[recommend-product] Using API: ${apiKey}, context: ${(userMessage.length / 1024).toFixed(1)}KB`);
+
+    // 6. Call LLM (with automatic fallback and cost logging)
+    const result = await callLLM({
+      apiKey,
+      systemPrompt,
+      userMessage,
+      maxTokens: 1024,
+      edgeFunction: "recommend-product",
+      userId: null,
+      metadata: { evaluation_id: evaluationId },
+      timeoutMs: 50_000,
+    });
+
+    console.log(`[recommend-product] LLM response (${result.provider}/${result.model}): ${result.content.length} chars, fallback: ${result.usedFallback}`);
+
+    // 7. Parse JSON from LLM response
+    let jsonText = result.content.trim();
+
+    // Strip markdown code fences if present (```json ... ```)
+    const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) jsonText = fenceMatch[1].trim();
+
+    // Extract outermost JSON object
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("[recommend-product] No JSON found in LLM response:", result.content.slice(0, 500));
       await supabase
         .from("career_evaluations")
         .update({
           recommendation_status: "error",
-          raw_llm_response: {
-            error: `LLM error (${providerKey}): ${aiResponse.status}`,
-            detail: errorText.slice(0, 500),
-          },
-        })
-        .eq("id", evaluationId);
-      return new Response(
-        JSON.stringify({ error: "Erro na chamada ao LLM" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const aiData = await aiResponse.json();
-    const rpProvider = detectProviderFromUrl(apiConfig.base_url || "");
-    const rpModel = apiConfig.parameters?.model || (rpProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
-    const { inputTokens: rpIn, outputTokens: rpOut } = extractTokenUsage(aiData, rpProvider === "openrouter" ? "openai" : rpProvider);
-    logApiCost({ edgeFunction: 'recommend-product', provider: rpProvider, model: rpModel, inputTokens: rpIn, outputTokens: rpOut, durationMs: Date.now() - llmStartTime, metadata: { evaluation_id: evaluationId } });
-
-    // Extract output text from LLM response (supports both providers)
-    const outputText = providerKey === "anthropic_api"
-      ? extractAnthropicText(aiData)
-      : extractOutputText(aiData);
-
-    if (!outputText) {
-      console.error(
-        "[recommend-product] Unexpected LLM response format:",
-        JSON.stringify(aiData).slice(0, 500)
-      );
-      await supabase
-        .from("career_evaluations")
-        .update({
-          recommendation_status: "error",
-          raw_llm_response: aiData,
+          raw_llm_response: { raw_text: result.content.slice(0, 2000) },
         })
         .eq("id", evaluationId);
       return new Response(
@@ -371,25 +308,19 @@ serve(async (req) => {
       );
     }
 
-    // Strip markdown code fences if present (```json ... ```)
-    const cleanedText = outputText
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/, "")
-      .trim();
-
     let recommendation: Record<string, any>;
     try {
-      recommendation = JSON.parse(cleanedText);
+      recommendation = JSON.parse(jsonMatch[0]);
     } catch {
       console.error(
         "[recommend-product] Failed to parse LLM output:",
-        outputText.slice(0, 500)
+        jsonMatch[0].slice(0, 500)
       );
       await supabase
         .from("career_evaluations")
         .update({
           recommendation_status: "error",
-          raw_llm_response: { raw_text: outputText },
+          raw_llm_response: { raw_text: result.content.slice(0, 2000) },
         })
         .eq("id", evaluationId);
       return new Response(
@@ -401,7 +332,7 @@ serve(async (req) => {
       );
     }
 
-    // 7. Match recommended service to get landing_page_url from hub_services
+    // 8. Match recommended service to get landing_page_url from hub_services
     const recommendedName = recommendation.recommended_service_name || "";
     const matchedService = services.find(
       (s) =>
@@ -486,40 +417,3 @@ serve(async (req) => {
     );
   }
 });
-
-/**
- * Extracts the output text from OpenAI Responses API format.
- * Handles both output_text shorthand and nested output array.
- */
-function extractOutputText(data: any): string | null {
-  // Check top-level output_text (must be non-empty)
-  if (typeof data?.output_text === "string" && data.output_text.length > 0) {
-    return data.output_text;
-  }
-  // Fallback: dig into output[].content[].text
-  const items = Array.isArray(data?.output) ? data.output : [];
-  for (const item of items) {
-    if (item?.type === "message" && Array.isArray(item.content)) {
-      for (const part of item.content) {
-        if (part?.type === "output_text" && typeof part.text === "string" && part.text.length > 0) {
-          return part.text;
-        }
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Extracts the output text from Anthropic Messages API format.
- * Anthropic returns: { content: [{ type: "text", text: "..." }] }
- */
-function extractAnthropicText(data: any): string | null {
-  if (!Array.isArray(data?.content)) return null;
-  for (const block of data.content) {
-    if (block?.type === "text" && typeof block.text === "string") {
-      return block.text;
-    }
-  }
-  return null;
-}

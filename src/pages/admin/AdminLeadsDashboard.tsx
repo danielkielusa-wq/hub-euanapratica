@@ -6,10 +6,15 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Users, CheckCircle2, AlertCircle, Eye, RefreshCw, Search,
   ChevronLeft, ChevronRight, DollarSign, ShieldAlert, Package, ExternalLink, Info, Brain,
-  HelpCircle, BookOpen, Wrench
+  HelpCircle, BookOpen, Wrench, Trash2
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useDeleteLead } from '@/hooks/useAdminLeadDetail';
 import { AIDailyPrioritiesPanel } from '@/components/admin/ai-priorities/AIDailyPrioritiesPanel';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -121,6 +126,8 @@ export default function AdminLeadsDashboard() {
   const [phaseFilter, setPhaseFilter] = useState('');
   const [page, setPage] = useState(1);
   const [prioritiesOpen, setPrioritiesOpen] = useState(false);
+  const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const deleteLead = useDeleteLead();
 
   const fetchData = useCallback(async () => {
     try {
@@ -610,12 +617,21 @@ export default function AdminLeadsDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {d.access_token ? (
-                        <button onClick={(e) => { e.stopPropagation(); openReport(d.access_token!, d.email); }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:bg-gray-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm">
-                          Ver Relatório <ExternalLink className="w-3 h-3" />
+                      <div className="flex items-center justify-end gap-2">
+                        {d.access_token ? (
+                          <button onClick={(e) => { e.stopPropagation(); openReport(d.access_token!, d.email); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:bg-gray-50 hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm">
+                            Ver Relatório <ExternalLink className="w-3 h-3" />
+                          </button>
+                        ) : <span className="text-xs text-gray-300">—</span>}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteLeadId(d.id); }}
+                          className="p-1.5 rounded-xl border border-gray-100 text-gray-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all"
+                          title="Excluir lead"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      ) : <span className="text-xs text-gray-300">—</span>}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -644,6 +660,31 @@ export default function AdminLeadsDashboard() {
         </div>
       </div>
       <AIDailyPrioritiesPanel open={prioritiesOpen} onOpenChange={setPrioritiesOpen} />
+
+      <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => { if (!open) setDeleteLeadId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é permanente e irá remover o lead junto com todas as suas interações e tarefas. Não é possível desfazer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={async () => {
+                if (!deleteLeadId) return;
+                await deleteLead.mutateAsync(deleteLeadId);
+                setDeleteLeadId(null);
+                await fetchData();
+              }}
+            >
+              {deleteLead.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
     </TooltipProvider>
   );

@@ -986,13 +986,24 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       })
       .eq("id", evaluationId);
 
-    // Dispatch N8N webhook: report.generated (fire-and-forget)
+    // Dispatch N8N webhook: report.generated
     try {
       const reportLink = evaluation.access_token
         ? `https://hub.euanapratica.com/report/${evaluation.access_token}`
         : null;
 
-      dispatchN8NWebhook("report.generated", {
+      // Normalize LLM temperature to valid enum (LLM sometimes returns non-standard values)
+      const rawTemp = (enrichedReport.lead_qualification?.lead_temperature ?? "").toString().toLowerCase().replace(/_/g, "-");
+      const TEMP_MAP: Record<string, string> = {
+        "frio": "frio", "cold": "frio",
+        "morno": "morno", "warm": "morno",
+        "quente": "quente", "hot": "quente",
+        "muito-quente": "muito-quente", "very-hot": "muito-quente",
+        "super-quente": "muito-quente", "super-hot": "muito-quente",
+      };
+      const normalizedTemp = TEMP_MAP[rawTemp] ?? (rawTemp.includes("super") || rawTemp.includes("muito") ? "muito-quente" : rawTemp.includes("quente") || rawTemp.includes("hot") ? "quente" : rawTemp || null);
+
+      await dispatchN8NWebhook("report.generated", {
         lead_id: evaluationId,
         lead_name: evaluation.name,
         lead_email: evaluation.email,
@@ -1000,7 +1011,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         access_token: evaluation.access_token,
         report_link: reportLink,
         readiness_score: enrichedReport.scoring?.readiness_score ?? null,
-        lead_temperature: enrichedReport.lead_qualification?.lead_temperature ?? null,
+        lead_temperature: normalizedTemp,
         lead_priority_score: enrichedReport.lead_qualification?.lead_priority_score ?? null,
         phase_id: enrichedReport.phase_classification?.phase_id ?? null,
         phase_name: enrichedReport.phase_classification?.phase_name ?? null,

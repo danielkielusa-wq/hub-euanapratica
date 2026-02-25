@@ -12,19 +12,21 @@ import {
 import { CalendarHeader } from './CalendarHeader';
 import { DayCell } from './DayCell';
 import { SessionDayModal } from './SessionDayModal';
-import type { Session } from '@/hooks/useSessions';
+import type { CalendarEvent } from '@/types/calendar';
 
 interface MonthCalendarProps {
-  sessions: Session[];
-  onJoinMeeting: (session: Session) => void;
-  onViewMaterials: (session: Session) => void;
-  onViewRecording: (session: Session) => void;
+  events: CalendarEvent[];
+  perspective: 'mentor' | 'student';
+  onJoinMeeting: (event: CalendarEvent) => void;
+  onViewMaterials: (event: CalendarEvent) => void;
+  onViewRecording: (event: CalendarEvent) => void;
 }
 
 const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 export function MonthCalendar({
-  sessions,
+  events,
+  perspective,
   onJoinMeeting,
   onViewMaterials,
   onViewRecording,
@@ -42,19 +44,19 @@ export function MonthCalendar({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
-  const sessionsByDay = useMemo(() => {
-    const map = new Map<string, Session[]>();
-    
-    sessions.forEach((session) => {
-      const dateKey = new Date(session.datetime).toDateString();
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+
+    events.forEach((event) => {
+      const dateKey = new Date(event.datetime).toDateString();
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
-      map.get(dateKey)!.push(session);
+      map.get(dateKey)!.push(event);
     });
 
     return map;
-  }, [sessions]);
+  }, [events]);
 
   const handlePreviousMonth = () => {
     setCurrentMonth((prev) => subMonths(prev, 1));
@@ -73,10 +75,10 @@ export function MonthCalendar({
     setModalOpen(true);
   };
 
-  const selectedDateSessions = useMemo(() => {
+  const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
-    return sessionsByDay.get(selectedDate.toDateString()) || [];
-  }, [selectedDate, sessionsByDay]);
+    return eventsByDay.get(selectedDate.toDateString()) || [];
+  }, [selectedDate, eventsByDay]);
 
   return (
     <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6">
@@ -102,17 +104,18 @@ export function MonthCalendar({
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((date) => {
-          const daySessions = sessionsByDay.get(date.toDateString()) || [];
+          const dayEvents = eventsByDay.get(date.toDateString()) || [];
           return (
             <DayCell
               key={date.toISOString()}
               date={date}
               currentMonth={currentMonth}
-              sessions={daySessions.map((s) => ({ 
-                id: s.id, 
-                title: s.title,
-                datetime: s.datetime,
-                status: s.status 
+              sessions={dayEvents.map((e) => ({
+                id: e.data.id,
+                title: e.kind === 'session' ? e.data.title : (e.data.service?.name ?? 'Sessão 1:1'),
+                datetime: e.datetime,
+                status: e.kind === 'session' ? e.data.status : e.data.status,
+                kind: e.kind,
               }))}
               isSelected={selectedDate ? isSameDay(date, selectedDate) : false}
               onClick={() => handleDayClick(date)}
@@ -125,7 +128,8 @@ export function MonthCalendar({
         open={modalOpen}
         onOpenChange={setModalOpen}
         date={selectedDate}
-        sessions={selectedDateSessions}
+        events={selectedDateEvents}
+        perspective={perspective}
         onJoinMeeting={onJoinMeeting}
         onViewMaterials={onViewMaterials}
         onViewRecording={onViewRecording}

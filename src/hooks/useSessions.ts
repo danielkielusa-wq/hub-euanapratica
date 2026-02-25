@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Json } from '@/integrations/supabase/types';
+import type { CalendarEvent } from '@/types/calendar';
 
 export interface Session {
   id: string;
@@ -9,7 +10,10 @@ export interface Session {
   description: string | null;
   datetime: string;
   duration_minutes: number | null;
-  espaco_id: string;
+  espaco_id: string | null;
+  capacity: number | null;
+  is_public: boolean;
+  price: number;
   meeting_link: string | null;
   status: 'scheduled' | 'live' | 'completed' | 'cancelled' | null;
   recording_url: string | null;
@@ -180,11 +184,14 @@ interface CreateSessionInput {
   description?: string | null;
   datetime: string;
   duration_minutes?: number;
-  espaco_id: string;
+  espaco_id?: string | null;
   meeting_link?: string | null;
   status?: 'scheduled' | 'live' | 'completed' | 'cancelled';
   is_recurring?: boolean;
   recurrence_pattern?: Json | null;
+  capacity?: number | null;
+  is_public?: boolean;
+  price?: number;
 }
 
 export function useCreateSession() {
@@ -200,12 +207,15 @@ export function useCreateSession() {
           description: sessionData.description ?? null,
           datetime: sessionData.datetime,
           duration_minutes: sessionData.duration_minutes ?? 60,
-          espaco_id: sessionData.espaco_id,
+          espaco_id: sessionData.espaco_id ?? null,
           meeting_link: sessionData.meeting_link ?? null,
           status: sessionData.status ?? 'scheduled',
           is_recurring: sessionData.is_recurring ?? false,
           recurrence_pattern: sessionData.recurrence_pattern ?? null,
           created_by: user?.id ?? null,
+          capacity: sessionData.capacity ?? null,
+          is_public: sessionData.is_public ?? false,
+          price: sessionData.price ?? 0,
         })
         .select()
         .single();
@@ -215,6 +225,7 @@ export function useCreateSession() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-calendar-events'] });
     },
   });
 }
@@ -225,12 +236,15 @@ interface UpdateSessionInput {
   description?: string | null;
   datetime?: string;
   duration_minutes?: number;
-  espaco_id?: string;
+  espaco_id?: string | null;
   meeting_link?: string | null;
   status?: 'scheduled' | 'live' | 'completed' | 'cancelled';
   is_recurring?: boolean;
   recurrence_pattern?: Json | null;
   recording_url?: string | null;
+  capacity?: number | null;
+  is_public?: boolean;
+  price?: number;
 }
 
 export function useUpdateSession() {
@@ -239,7 +253,7 @@ export function useUpdateSession() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: UpdateSessionInput) => {
       const updateData: Record<string, unknown> = {};
-      
+
       if (updates.title !== undefined) updateData.title = updates.title;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.datetime !== undefined) updateData.datetime = updates.datetime;
@@ -250,6 +264,9 @@ export function useUpdateSession() {
       if (updates.is_recurring !== undefined) updateData.is_recurring = updates.is_recurring;
       if (updates.recurrence_pattern !== undefined) updateData.recurrence_pattern = updates.recurrence_pattern;
       if (updates.recording_url !== undefined) updateData.recording_url = updates.recording_url;
+      if (updates.capacity !== undefined) updateData.capacity = updates.capacity;
+      if (updates.is_public !== undefined) updateData.is_public = updates.is_public;
+      if (updates.price !== undefined) updateData.price = updates.price;
 
       const { data, error } = await supabase
         .from('sessions')
@@ -264,6 +281,7 @@ export function useUpdateSession() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       queryClient.invalidateQueries({ queryKey: ['session', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-calendar-events'] });
     },
   });
 }
@@ -282,6 +300,167 @@ export function useDeleteSession() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-calendar-events'] });
     },
+  });
+}
+
+// ============================================
+// UNIFIED CALENDAR HOOKS
+// ============================================
+
+export function useAllMentorCalendarEvents() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['mentor-calendar-events', user?.id],
+    queryFn: async (): Promise<CalendarEvent[]> => {
+      // Fetch sessions created by this mentor (includes Espaço sessions + standalone events)
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select(`*, espacos (id, name)`)
+        .eq('created_by', user!.id)
+        .order('datetime', { ascending: true });
+
+      if (sessionsError) throw sessionsError;
+
+      // Fetch confirmed bookings for this mentor
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('mentor_id', user!.id)
+        .eq('status', 'confirmed')
+        .order('scheduled_start', { ascending: true });
+
+      if (bookingsError) throw bookingsError;
+
+      const sessionEvents: CalendarEvent[] = (sessions ?? []).map(s => ({
+        kind: 'session' as const,
+        data: s as Session,
+        datetime: s.datetime,
+      }));
+
+      // Enrich bookings with student profiles and service names
+      const studentIds = [...new Set((bookings ?? []).map(b => b.student_id).filter(Boolean))];
+      const serviceIds = [...new Set((bookings ?? []).map(b => b.service_id).filter(Boolean))];
+
+      let profileMap: Record<string, { id: string; full_name: string; email: string; profile_photo_url: string | null }> = {};
+      let serviceMap: Record<string, { id: string; name: string; description: string | null; icon_name: string | null }> = {};
+
+      if (studentIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, profile_photo_url')
+          .in('id', studentIds);
+        if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+      }
+
+      if (serviceIds.length > 0) {
+        const { data: services } = await supabase
+          .from('hub_services')
+          .select('id, name, description, icon_name')
+          .in('id', serviceIds);
+        if (services) serviceMap = Object.fromEntries(services.map(s => [s.id, s]));
+      }
+
+      const bookingEvents: CalendarEvent[] = (bookings ?? []).map(b => ({
+        kind: 'booking' as const,
+        data: {
+          ...b,
+          student: profileMap[b.student_id],
+          service: serviceMap[b.service_id],
+        },
+        datetime: b.scheduled_start,
+      }));
+
+      const combined = [...sessionEvents, ...bookingEvents];
+      combined.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+      return combined;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useAllStudentCalendarEvents() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['student-calendar-events', user?.id],
+    queryFn: async (): Promise<CalendarEvent[]> => {
+      // Fetch enrolled Espaços
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('user_espacos')
+        .select('espaco_id')
+        .eq('user_id', user!.id)
+        .eq('status', 'active');
+
+      if (enrollError) throw enrollError;
+
+      let sessionEvents: CalendarEvent[] = [];
+
+      if (enrollments && enrollments.length > 0) {
+        const espacoIds = enrollments.map(e => e.espaco_id);
+        const { data: sessions, error: sessionsError } = await supabase
+          .from('sessions')
+          .select(`*, espacos (id, name)`)
+          .in('espaco_id', espacoIds)
+          .order('datetime', { ascending: true });
+
+        if (sessionsError) throw sessionsError;
+
+        sessionEvents = (sessions ?? []).map(s => ({
+          kind: 'session' as const,
+          data: s as Session,
+          datetime: s.datetime,
+        }));
+      }
+
+      // Fetch student's confirmed 1:1 bookings
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('student_id', user!.id)
+        .eq('status', 'confirmed')
+        .order('scheduled_start', { ascending: true });
+
+      if (bookingsError) throw bookingsError;
+
+      const mentorIds = [...new Set((bookings ?? []).map(b => b.mentor_id).filter(Boolean))];
+      const serviceIds = [...new Set((bookings ?? []).map(b => b.service_id).filter(Boolean))];
+
+      let profileMap: Record<string, { id: string; full_name: string; email: string; profile_photo_url: string | null }> = {};
+      let serviceMap: Record<string, { id: string; name: string; description: string | null; icon_name: string | null }> = {};
+
+      if (mentorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, profile_photo_url')
+          .in('id', mentorIds);
+        if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+      }
+
+      if (serviceIds.length > 0) {
+        const { data: services } = await supabase
+          .from('hub_services')
+          .select('id, name, description, icon_name')
+          .in('id', serviceIds);
+        if (services) serviceMap = Object.fromEntries(services.map(s => [s.id, s]));
+      }
+
+      const bookingEvents: CalendarEvent[] = (bookings ?? []).map(b => ({
+        kind: 'booking' as const,
+        data: {
+          ...b,
+          mentor: profileMap[b.mentor_id],
+          service: serviceMap[b.service_id],
+        },
+        datetime: b.scheduled_start,
+      }));
+
+      const combined = [...sessionEvents, ...bookingEvents];
+      combined.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+      return combined;
+    },
+    enabled: !!user,
   });
 }

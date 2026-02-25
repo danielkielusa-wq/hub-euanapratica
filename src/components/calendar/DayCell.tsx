@@ -7,6 +7,7 @@ interface SessionData {
   title: string;
   datetime: string;
   status: 'scheduled' | 'live' | 'completed' | 'cancelled' | null;
+  kind?: 'session' | 'booking';
 }
 
 interface DayCellProps {
@@ -64,7 +65,9 @@ export function DayCell({
                 key={session.id}
                 className={cn(
                   'w-full px-2 py-1 rounded-md text-xs font-medium truncate',
-                  'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
+                  session.kind === 'booking'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
                 )}
                 title={`${time} • ${session.title}`}
               >

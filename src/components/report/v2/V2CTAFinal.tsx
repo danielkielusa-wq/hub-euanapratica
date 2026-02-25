@@ -1,6 +1,8 @@
 import { ArrowRight, Sparkles, Clock, Lock, CalendarCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { supabase } from '@/integrations/supabase/client';
 import type { V2ProductRecommendation } from '@/types/leads';
 
 interface LlmRecommendation {
@@ -20,6 +22,19 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimi
   const { logEvent } = useAnalytics();
   const navigate = useNavigate();
   const firstName = userName.split(' ')[0];
+  const [consultoriaUrl, setConsultoriaUrl] = useState('');
+
+  useEffect(() => {
+    if (!isLimited) return;
+    supabase
+      .from('app_configs')
+      .select('value')
+      .eq('key', 'report_cta_consultoria_url')
+      .single()
+      .then(({ data }) => {
+        if (data?.value) setConsultoriaUrl(data.value);
+      });
+  }, [isLimited]);
   const primary = recommendation?.primary_offer;
 
   // LLM recommendation takes priority when available
@@ -82,7 +97,7 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimi
                       entity_type: 'consulting',
                       metadata: { placement: 'report_v2_limited_dual_cta', cta: 'consultoria' },
                     });
-                    window.open('https://hub.euanapratica.com/consultoria', '_blank');
+                    window.open(consultoriaUrl || 'https://hub.euanapratica.com', '_blank');
                   }}
                 >
                   Agendar sessão
@@ -113,7 +128,7 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimi
                       entity_type: 'subscription',
                       metadata: { placement: 'report_v2_limited_dual_cta', cta: 'assinatura' },
                     });
-                    navigate('/assinar');
+                    navigate('/pricing');
                   }}
                 >
                   Ver planos

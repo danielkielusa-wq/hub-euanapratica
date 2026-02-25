@@ -93,6 +93,7 @@ export function extractTokenUsage(
 ): { inputTokens: number | null; outputTokens: number | null } {
   const usage = (aiData as Record<string, Record<string, number>>)?.usage;
   if (!usage) {
+    console.warn(`[apiCostService] No 'usage' field in ${provider} response — tokens will be null. Response keys: ${aiData ? Object.keys(aiData).join(", ") : "null"}`);
     return { inputTokens: null, outputTokens: null };
   }
 
@@ -148,7 +149,21 @@ export async function logApiCost(options: LogApiCostOptions): Promise<void> {
       options.outputTokens
     );
 
-    await supabase.from("api_cost_logs").insert({
+    // Enrich metadata with cost diagnostic when cost is null (helps debugging in dashboard)
+    const metadata: Record<string, unknown> = { ...(options.metadata || {}) };
+    if (costUsd === null && options.status !== "error") {
+      if (!pricing) {
+        metadata.cost_warning = "pricing_config_unavailable";
+      } else if (!options.model) {
+        metadata.cost_warning = "model_name_missing";
+      } else if (!pricing[options.model]) {
+        metadata.cost_warning = `model_not_in_pricing:${options.model}`;
+      } else if (options.inputTokens == null && options.outputTokens == null) {
+        metadata.cost_warning = "tokens_null";
+      }
+    }
+
+    const { error: insertError } = await supabase.from("api_cost_logs").insert({
       user_id: options.userId || null,
       edge_function: options.edgeFunction,
       provider: options.provider,
@@ -159,8 +174,12 @@ export async function logApiCost(options: LogApiCostOptions): Promise<void> {
       status: options.status || "success",
       duration_ms: options.durationMs ?? null,
       error_message: options.errorMessage || null,
-      metadata: options.metadata || {},
+      metadata,
     });
+
+    if (insertError) {
+      console.warn(`[logApiCost] INSERT failed for ${options.edgeFunction} (provider: ${options.provider}, model: ${options.model}):`, insertError.message);
+    }
   } catch (err) {
     console.warn("[logApiCost] Failed to write api_cost_logs:", err);
   }

@@ -7,13 +7,15 @@ export interface GuidedTourState {
   step_first_community_post?: boolean;
   step_analyze_resume?: boolean;
   step_explore_catalog?: boolean;
+  step_view_report?: boolean;
 }
 
 export type ChecklistItemKey =
   | 'complete_profile'
   | 'first_community_post'
   | 'analyze_resume'
-  | 'explore_catalog';
+  | 'explore_catalog'
+  | 'view_report';
 
 export interface ChecklistItemStatus {
   key: ChecklistItemKey;
