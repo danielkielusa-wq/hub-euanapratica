@@ -17,6 +17,8 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { PriceDisplay, formatCurrency } from '@/components/hub/PriceDisplay';
+import { DashboardTour } from '@/components/guided-tour/DashboardTour';
+import { GettingStartedChecklist } from '@/components/guided-tour/GettingStartedChecklist';
 
 export default function StudentHub() {
   const navigate = useNavigate();
@@ -100,6 +102,14 @@ export default function StudentHub() {
             </span>
           </div>
           <p className="text-gray-500">Olá {userName}! Comece sua jornada com suas ferramentas gratuitas.</p>
+        </div>
+
+        {/* Guided Tour (headless — triggers driver.js on first visit) */}
+        <DashboardTour />
+
+        {/* Getting Started Checklist */}
+        <div className="mb-10">
+          <GettingStartedChecklist />
         </div>
 
         {/* 2. Free Tier Value (The "Hook") */}

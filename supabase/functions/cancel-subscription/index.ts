@@ -180,6 +180,18 @@ serve(async (req) => {
       expiresAt: subscription.expires_at,
     });
 
+    // Send cancellation email (fire-and-forget)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": internalSecret,
+      },
+      body: JSON.stringify({ type: "cancellation", user_id: user.id }),
+    }).catch(err => console.error("Cancellation email trigger error:", err));
+
     return new Response(
       JSON.stringify({
         success: true,

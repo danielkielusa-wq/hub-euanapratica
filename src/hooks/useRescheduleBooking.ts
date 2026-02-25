@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,9 +13,18 @@ export function useRescheduleBooking() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const oldDatetimeRef = useRef<string | null>(null);
 
   return useMutation({
     mutationFn: async (input: RescheduleBookingInput) => {
+      // Capture old datetime before rescheduling (needed for email)
+      const { data: currentBooking } = await supabase
+        .from('bookings')
+        .select('scheduled_start')
+        .eq('id', input.booking_id)
+        .single();
+      oldDatetimeRef.current = currentBooking?.scheduled_start || null;
+
       const { data, error } = await supabase.rpc('reschedule_booking', {
         p_booking_id: input.booking_id,
         p_new_start: input.new_start,
@@ -51,6 +61,17 @@ export function useRescheduleBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking', variables.booking_id] });
       queryClient.invalidateQueries({ queryKey: ['booking-history', variables.booking_id] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+
+      // Send reschedule email with old datetime (fire-and-forget)
+      supabase.functions.invoke('send-booking-rescheduled', {
+        body: {
+          booking_id: variables.booking_id,
+          old_datetime: oldDatetimeRef.current,
+        },
+      }).then(({ error }) => {
+        if (error) console.error('Booking reschedule email error:', error);
+      });
+      oldDatetimeRef.current = null;
 
       toast({
         title: 'Agendamento reagendado!',

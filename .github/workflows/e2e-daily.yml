@@ -1,0 +1,81 @@
+name: E2E Tests (Daily)
+
+on:
+  # Roda todo dia às 10:00 UTC (7:00 BRT)
+  schedule:
+    - cron: '0 10 * * *'
+  # Permite rodar manualmente pelo GitHub
+  workflow_dispatch:
+
+env:
+  N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Create .env for Vite
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          echo "VITE_SUPABASE_PROJECT_ID=$SUPABASE_PROJECT_ID" > .env
+          echo "VITE_SUPABASE_PUBLISHABLE_KEY=$SUPABASE_ANON_KEY" >> .env
+          echo "VITE_SUPABASE_URL=$SUPABASE_URL" >> .env
+
+      - name: Create E2E credentials
+        env:
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_STUDENT_EMAIL: ${{ secrets.E2E_STUDENT_EMAIL }}
+          E2E_STUDENT_PASSWORD: ${{ secrets.E2E_STUDENT_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "E2E_ADMIN_EMAIL=$E2E_ADMIN_EMAIL" > e2e/.env.e2e
+          echo "E2E_ADMIN_PASSWORD=$E2E_ADMIN_PASSWORD" >> e2e/.env.e2e
+          echo "E2E_STUDENT_EMAIL=$E2E_STUDENT_EMAIL" >> e2e/.env.e2e
+          echo "E2E_STUDENT_PASSWORD=$E2E_STUDENT_PASSWORD" >> e2e/.env.e2e
+          echo "SUPABASE_URL=$SUPABASE_URL" >> e2e/.env.e2e
+          echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> e2e/.env.e2e
+
+      - name: Run E2E tests
+        run: npx playwright test --project=public --project=auth-setup --project=admin --project=student || true
+
+      - name: Send results to N8N
+        if: always()
+        run: node e2e/notify-webhook.mjs
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { HubService } from '@/types/hub';
 import { PriceDisplay } from '@/components/hub/PriceDisplay';
+import { CourseCurriculumPreview } from '@/components/course/CourseCurriculumPreview';
 import { useNavigate } from 'react-router-dom';
 
 interface ServiceLandingPageProps {
@@ -180,6 +181,11 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
                   })}
                </div>
            </div>
+         )}
+
+         {/* Course Curriculum (for recorded courses) */}
+         {service.service_type === 'recorded_course' && service.espaco_id && (
+           <CourseCurriculumPreview espacoId={service.espaco_id} />
          )}
 
          {/* Target Audience Section */}

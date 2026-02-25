@@ -784,14 +784,14 @@ WHERE cancel_at_period_end = true
 const { data } = await supabase.functions.invoke('reconcile-subscriptions');
 ```
 
-**Scheduled via pg_net** (not currently enabled, requires `pg_cron` extension):
+**Scheduled via pg_cron** (pg_cron is now enabled — see migration `20260224500000_schedule_email_cron_jobs.sql`):
+
+Reconciliation is currently manual (triggered from admin UI). To automate it, add a cron job using the `invoke_edge_function()` helper:
 ```sql
--- Example: Run daily at 3 AM
-SELECT cron.schedule('reconcile-subscriptions', '0 3 * * *',
-  $$ SELECT net.http_post(
-    'https://project.supabase.co/functions/v1/reconcile-subscriptions',
-    headers := '{"Authorization": "Bearer ' || current_setting('app.service_role_key') || '"}'::jsonb
-  ) $$
+SELECT cron.schedule(
+  'reconcile-subscriptions-daily',
+  '0 6 * * *',  -- daily at 6:00 UTC (3:00 BRT)
+  $$SELECT invoke_edge_function('reconcile-subscriptions');$$
 );
 ```
 
@@ -803,51 +803,78 @@ SELECT cron.schedule('reconcile-subscriptions', '0 3 * * *',
 
 **Edge Function**: [`send-subscription-email/index.ts`](../supabase/functions/send-subscription-email/index.ts)
 
+All subscription emails use the centralized **Email Template System** (`email_templates` table + `sendTemplatedEmail()` shared service). Templates are editable via `/admin/email-templates`.
+
 #### 1. Confirmation (`confirmation`)
-**Trigger**: Subscription activated (first payment or renewal)
-```typescript
-await supabase.functions.invoke('send-subscription-email', {
-  body: { type: 'confirmation', user_id: userId }
-});
-```
-**Subject**: "Assinatura ativada com sucesso!"
+**Trigger**: Automatically sent by `ticto-webhook` when a subscription is activated (sale events: `paid`, `approved`, etc.)
+**Template**: `subscription_confirmation`
 **CTA**: "Acessar Meu Hub"
 
 #### 2. Renewal Reminder (`renewal_reminder`)
-**Trigger**: 3 days before `next_billing_date` (manual trigger or scheduled)
-**Subject**: "Sua assinatura será renovada em breve"
+**Trigger**: Not yet automated — requires manual trigger or future cron job
+**Template**: `subscription_renewal_reminder`
 **CTA**: "Gerenciar Assinatura"
 
 #### 3. Payment Failure (`payment_failure`)
-**Trigger**: `subscription_delayed` webhook event
-**Subject**: "Problema com seu pagamento"
+**Trigger**: Automatically sent by `ticto-webhook` on `subscription_delayed` / dunning events
+**Template**: `subscription_payment_failure`
 **CTA**: "Atualizar Cartão" (links to `ticto_change_card_url`)
 
 #### 4. Cancellation (`cancellation`)
-**Trigger**: User cancels or admin cancels subscription
-**Subject**: "Cancelamento confirmado"
+**Trigger**: Automatically sent by both:
+- `ticto-webhook` on Ticto cancellation events (`subscription_canceled`)
+- `cancel-subscription` Edge Function on user-initiated cancellation
+**Template**: `subscription_cancellation`
 **Shows**: Access end date (`expires_at`)
 **CTA**: "Reativar Assinatura"
+
+### How Emails Are Triggered
+
+Subscription emails are triggered **server-to-server** (Edge Function → Edge Function) using `fetch` with the `x-internal-secret` header, NOT from the frontend:
+
+```typescript
+// In ticto-webhook/index.ts (after handleSubscriptionEvent succeeds)
+const emailTypeMap = {
+  activated: "confirmation",
+  dunning_updated: "payment_failure",
+  cancelled: "cancellation",
+};
+const emailType = emailTypeMap[result.action];
+if (emailType && emailUserId) {
+  fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-secret": internalSecret,
+    },
+    body: JSON.stringify({ type: emailType, user_id: emailUserId }),
+  }).catch(err => console.error("Subscription email trigger error:", err));
+}
+```
+
+```typescript
+// In cancel-subscription/index.ts (after subscription updated)
+fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-internal-secret": internalSecret,
+  },
+  body: JSON.stringify({ type: "cancellation", user_id: user.id }),
+}).catch(err => console.error("Cancellation email trigger error:", err));
+```
 
 ### Email Service: Resend
 
 **Configuration**: API key stored in `api_configs` table, key name: `resend_email`
 
-**Template Format**: HTML emails with inline styles, responsive design
+**Template System**: Database-driven templates in `email_templates` table, editable via admin UI (`/admin/email-templates`)
 
 **From Address**: `EUA na Prática <noreply@euanapratica.com>`
 
-### Integration Example
+### Email Logging
 
-```typescript
-// In webhook handler (activateSubscription)
-await supabase.functions.invoke('send-subscription-email', {
-  body: {
-    type: 'confirmation',
-    user_id: profile.id
-  }
-});
-```
+All email send attempts are logged in the `email_logs` table with status `sent`, `failed`, or `skipped`. Viewable in `/admin/saude-sistema`.
 
 ---
 
@@ -1119,7 +1146,7 @@ curl -X POST http://localhost:54321/functions/v1/ticto-webhook \
 4. **Annual → Monthly Conversion**: Allow billing cycle change
 5. **Usage-Based Pricing**: Overage charges for resume analyses
 6. **Referral Discounts**: Discount codes for referrals
-7. **Scheduled Reconciliation**: Automated via `pg_cron` or external cron service
+7. **Scheduled Reconciliation**: `pg_cron` is now available — add a cron schedule for `reconcile-subscriptions` (see Reconciliation section)
 8. **Churn Prediction**: ML model to identify at-risk subscribers
 9. **Retention Offers**: Automatic discount offers on cancellation intent
 10. **Multi-Currency Support**: USD pricing for international users
@@ -1206,6 +1233,6 @@ After the audit, the automated health check system was updated to validate all n
 
 ---
 
-**Last Updated**: 2026-02-21
-**Version**: 1.2
-**Status**: Production Ready (Post-Audit + Health Check Update)
+**Last Updated**: 2026-02-24
+**Version**: 1.3
+**Status**: Production Ready (Post-Audit + Email Triggers Wired + pg_cron Enabled)

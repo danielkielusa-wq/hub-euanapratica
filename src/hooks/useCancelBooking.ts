@@ -41,6 +41,13 @@ export function useCancelBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking-counts'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
 
+      // Send cancellation email (fire-and-forget)
+      supabase.functions.invoke('send-booking-cancelled', {
+        body: { booking_id: variables.booking_id },
+      }).then(({ error }) => {
+        if (error) console.error('Booking cancellation email error:', error);
+      });
+
       toast({
         title: 'Agendamento cancelado',
         description: 'Seu agendamento foi cancelado com sucesso.',

@@ -135,6 +135,14 @@ export function ServiceCard({ service, hasAccess }: ServiceCardProps) {
           <Button variant="outline" disabled className="w-full rounded-xl">
             Em Breve
           </Button>
+        ) : canAccess && service.service_type === 'live_mentoring' ? (
+          <Button
+            className="w-full gap-2 rounded-xl"
+            onClick={() => navigate(`/dashboard/agendar/${service.id}`)}
+          >
+            {service.cta_text || 'Agendar Sessão'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         ) : canAccess && service.route ? (
           <Link to={service.route}>
             <Button className="w-full gap-2 rounded-xl">

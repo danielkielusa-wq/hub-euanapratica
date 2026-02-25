@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { requireAdmin, corsHeaders } from '../_shared/authGuard.ts';
+import { requireAdmin, getCorsHeaders } from '../_shared/authGuard.ts';
 
 // SECURITY: This function is DISABLED in production.
 // Test users should NEVER be created in production environments.
@@ -21,8 +21,10 @@ function generateSecurePassword(): string {
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   try {
@@ -31,7 +33,7 @@ Deno.serve(async (req) => {
     if (!isEnabled) {
       return new Response(
         JSON.stringify({ error: 'This function is disabled in production. Set ENABLE_TEST_USERS=true to enable.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -110,14 +112,14 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, results }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...cors, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error creating test users:', errorMessage);
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } }
     );
   }
 });

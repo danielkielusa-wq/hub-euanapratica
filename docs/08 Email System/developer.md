@@ -109,18 +109,20 @@ if (booking.meeting_link) {
 
 | Edge Function | Trigger | Template Name(s) |
 |---------------|---------|-----------------|
-| `send-welcome-email` | Onboarding completed (frontend) | `onboarding_welcome` |
-| `send-subscription-email` | Webhook / admin | `subscription_confirmation` |
-| | | `subscription_renewal_reminder` |
-| | | `subscription_payment_failure` |
+| `send-welcome-email` | `useCompleteOnboarding` `onSuccess` (frontend) | `onboarding_welcome` |
+| `send-subscription-email` | `ticto-webhook` (server-side, on activation/dunning/cancellation) | `subscription_confirmation` |
+| | `cancel-subscription` (server-side, on user-initiated cancel) | `subscription_payment_failure` |
 | | | `subscription_cancellation` |
-| `send-booking-confirmation` | Booking created | `booking_confirmation` |
-| `send-booking-reminder` | Cron (24h before) | `booking_reminder` |
-| `send-booking-reminder` | Cron (1h before) | `booking_reminder_1h` |
-| `send-booking-rescheduled` | Booking rescheduled | `booking_rescheduled` |
-| `send-booking-cancelled` | Booking cancelled | `booking_cancelled` |
-| `send-booking-cancelled` | No-show | `booking_no_show` |
-| `send-espaco-invitation` | Mentor invites student | `espaco_invitation` |
+| | (manual/cron — not yet automated) | `subscription_renewal_reminder` |
+| `send-booking-confirmation` | `useCreateBooking` `onSuccess` (frontend) | `booking_confirmation` |
+| `send-booking-reminder` | pg_cron every 15 min (24h before) | `booking_reminder` |
+| `send-booking-reminder` | pg_cron every 15 min (1h before) | `booking_reminder_1h` |
+| `send-booking-rescheduled` | `useRescheduleBooking` `onSuccess` (frontend) | `booking_rescheduled` |
+| `send-booking-cancelled` | `useCancelBooking` `onSuccess` (frontend) | `booking_cancelled` |
+| `send-booking-cancelled` | No-show (manual/admin) | `booking_no_show` |
+| `send-espaco-invitation` | Mentor invites student (frontend) | `espaco_invitation` |
+| `send-session-reminder` | pg_cron every 15-30 min (creates notifications, not emails) | N/A |
+| `send-prime-jobs-digest` | pg_cron weekly Monday 9:00 BRT (uses Resend directly) | N/A |
 | `send-test-email` | Admin-initiated (UI) | any template |
 
 ### Admin Test Email: `send-test-email`
@@ -134,23 +136,78 @@ Admin-only function callable from the `/admin/email-templates` UI via the "Envia
 
 **Dialog defaults:** Smart placeholder values are pre-filled for all known variables (`{{firstName}}` → "Maria", etc.) including pre-rendered HTML snippets for conditional blocks (`{{meetingLinkSection}}`, etc.).
 
-**Trigger pattern — `send-welcome-email`:**
-Called fire-and-forget from `src/pages/Onboarding.tsx` → `handleComplete()` immediately after `completeOnboarding.mutateAsync()` resolves. Uses `preferred_name` if set, otherwise the first token of `full_name`.
+**Trigger patterns:**
 
+**Welcome email** — `useCompleteOnboarding` hook `onSuccess`, awaited with error check:
 ```typescript
-// Onboarding.tsx (fire-and-forget, does not block navigation)
-supabase.functions.invoke('send-welcome-email', {
-  body: { user_id: user.id },
-}).catch((err) => console.error('Welcome email error:', err));
+// src/hooks/useOnboarding.ts (onSuccess callback)
+if (user?.id) {
+  const { error: fnError } = await supabase.functions.invoke('send-welcome-email', {
+    body: { user_id: user.id },
+  });
+  if (fnError) console.error('Welcome email function error:', fnError);
+}
 ```
 
-### Calling a Function Internally
-
+**Booking emails** — fire-and-forget from booking hooks with `.then()` error check:
 ```typescript
-// From another Edge Function or server-side code:
-const response = await supabase.functions.invoke("send-booking-confirmation", {
-  body: { booking_id: "uuid-here" },
+// src/hooks/useCreateBooking.ts (onSuccess callback)
+supabase.functions.invoke('send-booking-confirmation', {
+  body: { booking_id: bookingId },
+}).then(({ error }) => {
+  if (error) console.error('Booking confirmation email error:', error);
 });
+```
+
+**Subscription emails** — server-to-server via `fetch` with `x-internal-secret`:
+```typescript
+// supabase/functions/ticto-webhook/index.ts (after handleSubscriptionEvent)
+fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-internal-secret": internalSecret,
+  },
+  body: JSON.stringify({ type: "confirmation", user_id: emailUserId }),
+}).catch(err => console.error("Subscription email trigger error:", err));
+```
+
+### Calling a Function from Another Edge Function
+
+Use `fetch` with the `x-internal-secret` header (not `supabase.functions.invoke`):
+```typescript
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+fetch(`${supabaseUrl}/functions/v1/send-booking-confirmation`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-internal-secret": internalSecret,
+  },
+  body: JSON.stringify({ booking_id: "uuid-here" }),
+}).catch(err => console.error("Error:", err));
+```
+
+### Cron Jobs (pg_cron + pg_net)
+
+Three functions are triggered on schedule via `pg_cron` → `invoke_edge_function()` helper:
+
+| Job Name | Schedule | Function | Payload |
+|----------|----------|----------|---------|
+| `send-booking-reminder-24h` | Every 15 min | `send-booking-reminder` | `{"hours_before": 24}` |
+| `send-booking-reminder-1h` | Every 15 min | `send-booking-reminder` | `{"hours_before": 1}` |
+| `send-session-reminder-24h` | Every 30 min | `send-session-reminder` | `{"type": "reminder_24h"}` |
+| `send-session-reminder-1h` | Every 15 min | `send-session-reminder` | `{"type": "reminder_1h"}` |
+| `send-prime-jobs-digest-weekly` | Mon 12:00 UTC (9:00 BRT) | `send-prime-jobs-digest` | `{}` |
+
+**Auth**: The `invoke_edge_function()` SQL helper reads the `internal_function_secret` from `app_configs` and passes it as the `x-internal-secret` header. Edge Functions validate via `requireAuthOrInternal()` → `validateInternalCall()`.
+
+**Migration**: `20260224500000_schedule_email_cron_jobs.sql`
+
+**Env var**: `INTERNAL_FUNCTION_SECRET` must be set on Edge Functions to match the value in `app_configs`:
+```bash
+npx supabase secrets set INTERNAL_FUNCTION_SECRET=<value-from-app_configs>
 ```
 
 ---
@@ -256,12 +313,50 @@ return new Response(null, { headers: cors });
 
 `GRANT ALL ON public.<table> TO authenticated` must exist for PostgREST to even evaluate RLS policies. Without the grant, users get `"permission denied for table"` before RLS is ever checked.
 
+### 5. `supabase.functions.invoke()` never rejects — check `{ error }` field
+
+`supabase.functions.invoke()` always resolves its promise. Errors (CORS, auth, network) are returned in the resolved `{ error }` object. Using `.catch()` alone is a **silent no-op** that swallows all failures.
+
+```typescript
+// ❌ WRONG — .catch() never fires, errors are silently lost
+supabase.functions.invoke('send-welcome-email', { body: { user_id } })
+  .catch((err) => console.error('Error:', err));
+
+// ✅ CORRECT — check the resolved { error } field
+supabase.functions.invoke('send-welcome-email', { body: { user_id } })
+  .then(({ error }) => {
+    if (error) console.error('Error:', error);
+  });
+
+// ✅ ALSO CORRECT — await with destructuring
+const { error } = await supabase.functions.invoke('send-welcome-email', {
+  body: { user_id },
+});
+if (error) console.error('Error:', error);
+```
+
+### 6. `Access-Control-Allow-Methods` header required for CORS
+
+`getCorsHeaders(req)` must include `Access-Control-Allow-Methods: POST, OPTIONS`. Without it, browsers reject preflighted requests (any request with `Authorization` header) silently.
+
+### 7. `INTERNAL_FUNCTION_SECRET` env var for server-to-server calls
+
+Edge Functions validate internal calls via `validateInternalCall()` which checks the `x-internal-secret` header against:
+1. `INTERNAL_FUNCTION_SECRET` env var (preferred)
+2. `SUPABASE_SERVICE_ROLE_KEY` env var (fallback — logs a warning)
+
+Set the secret:
+```bash
+npx supabase secrets set INTERNAL_FUNCTION_SECRET=<your-secret>
+```
+The same value must exist in `app_configs` table (key: `internal_function_secret`) for pg_cron jobs to read it.
+
 ---
 
 ## Deployment Checklist
 
 ```bash
-# 1. Push schema changes
+# 1. Push schema changes (includes cron job schedules)
 npx supabase db push --include-all
 
 # 2. Regenerate TypeScript types
@@ -270,8 +365,20 @@ npx supabase gen types typescript --project-id seqgnxynrcylxsdzbloa > src/integr
 # 3. Verify build
 npm run build
 
-# 4. Deploy Edge Functions
-npx supabase functions deploy send-welcome-email send-subscription-email send-booking-confirmation \
-  send-booking-reminder send-booking-rescheduled send-booking-cancelled send-espaco-invitation \
-  send-test-email
+# 4. Deploy all email Edge Functions
+npx supabase functions deploy send-welcome-email send-subscription-email \
+  send-booking-confirmation send-booking-reminder send-booking-rescheduled \
+  send-booking-cancelled send-espaco-invitation send-test-email \
+  send-session-reminder send-prime-jobs-digest
+
+# 5. Deploy Edge Functions that trigger emails
+npx supabase functions deploy ticto-webhook cancel-subscription
+
+# 6. Ensure INTERNAL_FUNCTION_SECRET is set (for cron + server-to-server calls)
+npx supabase secrets set INTERNAL_FUNCTION_SECRET=<value-from-app_configs>
 ```
+
+---
+
+**Last Updated**: 2026-02-24
+**Version**: 1.1

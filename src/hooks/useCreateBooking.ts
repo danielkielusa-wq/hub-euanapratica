@@ -51,6 +51,13 @@ export function useCreateBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking-counts'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
 
+      // Send confirmation email (fire-and-forget, don't block UX)
+      supabase.functions.invoke('send-booking-confirmation', {
+        body: { booking_id: bookingId },
+      }).then(({ error }) => {
+        if (error) console.error('Booking confirmation email error:', error);
+      });
+
       toast({
         title: 'Agendamento confirmado!',
         description: 'Você receberá um email de confirmação em breve.',

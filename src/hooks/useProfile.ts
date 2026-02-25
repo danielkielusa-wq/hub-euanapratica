@@ -74,27 +74,29 @@ export function useAvatarUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const uploadAvatar = async (file: File): Promise<string | null> => {
+  const uploadAvatar = async (fileOrBlob: File | Blob): Promise<string | null> => {
     if (!user) return null;
 
-    // Validate file
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    // Validate file (only for raw File inputs, Blobs from crop are already validated)
+    if (fileOrBlob instanceof File) {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('Tipo de arquivo não suportado. Use JPEG, PNG, WebP ou GIF.');
-    }
+      if (!allowedTypes.includes(fileOrBlob.type)) {
+        throw new Error('Tipo de arquivo não suportado. Use JPEG, PNG, WebP ou GIF.');
+      }
 
-    if (file.size > maxSize) {
-      throw new Error('Arquivo muito grande. Máximo de 5MB.');
+      if (fileOrBlob.size > maxSize) {
+        throw new Error('Arquivo muito grande. Máximo de 5MB.');
+      }
     }
 
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop();
+      // Generate unique filename — cropped blobs are always JPEG
+      const fileExt = fileOrBlob instanceof File ? fileOrBlob.name.split('.').pop() : 'jpg';
       const fileName = `${user.id}/${Date.now()}_avatar.${fileExt}`;
 
       // Simulate progress
@@ -105,7 +107,7 @@ export function useAvatarUpload() {
       // Upload to storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, {
+        .upload(fileName, fileOrBlob, {
           cacheControl: '3600',
           upsert: true,
         });

@@ -88,6 +88,10 @@ import AdminIdeaKanban from "./pages/admin/AdminIdeaKanban";
 import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
 import AdminAtividades from "./pages/admin/AdminAtividades";
 import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminCourseBuilder from "./pages/admin/AdminCourseBuilder";
+import StudentCourses from "./pages/student/StudentCourses";
+import CoursePlayer from "./pages/student/CoursePlayer";
 
 
 const queryClient = new QueryClient();
@@ -214,6 +218,21 @@ function AppRoutes() {
       <Route path="/dashboard/suporte" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentSuporte />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/cursos" element={
+        <ProtectedRoute allowedRoles={['student', 'admin']}>
+          <StudentCourses />
+        </ProtectedRoute>
+      } />
+      <Route path="/curso/:espacoId" element={
+        <ProtectedRoute allowedRoles={['student', 'admin']}>
+          <CoursePlayer />
+        </ProtectedRoute>
+      } />
+      <Route path="/curso/:espacoId/:lessonId" element={
+        <ProtectedRoute allowedRoles={['student', 'admin']}>
+          <CoursePlayer />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/agendamentos" element={
@@ -483,6 +502,16 @@ function AppRoutes() {
       <Route path="/admin/paginas-legais" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminLegalPages />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cursos" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminCourses />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cursos/:id" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminCourseBuilder />
         </ProtectedRoute>
       } />
 

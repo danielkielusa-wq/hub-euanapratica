@@ -60,6 +60,8 @@ export function useCreateHubService() {
           keywords: formData.keywords || [],
           target_tier: formData.target_tier || 'all',
           is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
+          // Course link
+          espaco_id: formData.espaco_id || null,
         })
         .select()
         .single();
@@ -127,6 +129,8 @@ export function useUpdateHubService() {
           keywords: formData.keywords || [],
           target_tier: formData.target_tier || 'all',
           is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
+          // Course link
+          espaco_id: formData.espaco_id || null,
         })
         .eq('id', id)
         .select()

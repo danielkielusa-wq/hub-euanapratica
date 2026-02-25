@@ -56,8 +56,23 @@ Every automated email the platform sends is now managed through this system:
 ## What It Does Not Change
 
 - Email delivery still uses **Resend** (our existing provider)
-- Sending rules and triggers remain the same — emails fire at the same events they always did
 - Deliverability, sender reputation, and domain settings are unchanged
+
+---
+
+## Automated Triggers (Updated Feb 2026)
+
+All email triggers are now fully wired up. Previously, some email functions existed but were never called — this was fixed in the Feb 24 2026 update.
+
+| Trigger Type | How It Works |
+|-------------|-------------|
+| **Welcome** | Sent automatically when a new user completes onboarding |
+| **Booking emails** | Triggered from the Hub frontend when users create, cancel, or reschedule bookings |
+| **Booking reminders** | Sent automatically by a scheduled job every 15 minutes (24h and 1h before sessions) |
+| **Subscription emails** | Triggered automatically when Ticto processes a payment event (activation, failure, cancellation) |
+| **Cancellation email** | Triggered when a user cancels their subscription from the account page |
+| **Espaço invitation** | Triggered when a mentor invites a student |
+| **Prime Jobs digest** | Sent automatically every Monday morning to active subscribers |
 
 ---
 

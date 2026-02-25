@@ -80,6 +80,8 @@ const formSchema = z.object({
   stripe_price_id: z.string().optional(),
   accent_color: z.string().optional(),
   landing_page_url: z.string().optional(),
+  // Course link
+  espaco_id: z.string().optional(),
   // Ticto fields
   ticto_product_id: z.string().optional(),
   ticto_checkout_url: z.string().url().optional().or(z.literal('')),
@@ -167,6 +169,7 @@ export interface HubServiceFormSubmitData {
   keywords?: string[];
   target_tier?: string;
   is_visible_for_upsell?: boolean;
+  espaco_id?: string;
 }
 
 interface HubServiceFormProps {
@@ -280,6 +283,38 @@ function buildThankYouPageData(data: FormData): ThankYouPageData | null {
   return result;
 }
 
+function CourseEspacoSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase
+        .from('espacos')
+        .select('id, name')
+        .eq('category', 'course')
+        .order('name')
+        .then(({ data }) => {
+          if (data) setOptions(data);
+        });
+    });
+  }, []);
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue placeholder="Selecione um curso..." />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="">Nenhum</SelectItem>
+        {options.map((opt) => (
+          <SelectItem key={opt.id} value={opt.id}>
+            {opt.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function HubServiceForm({
   open,
   onOpenChange,
@@ -314,6 +349,7 @@ export function HubServiceForm({
       stripe_price_id: '',
       accent_color: '',
       landing_page_url: '',
+      espaco_id: '',
       ticto_product_id: '',
       ticto_checkout_url: '',
       duration: '',
@@ -410,6 +446,7 @@ export function HubServiceForm({
         stripe_price_id: service?.stripe_price_id || '',
         accent_color: service?.accent_color || '',
         landing_page_url: service?.landing_page_url || '',
+        espaco_id: service?.espaco_id || '',
         ticto_product_id: service?.ticto_product_id || '',
         ticto_checkout_url: service?.ticto_checkout_url || '',
         duration: service?.duration || '',
@@ -501,6 +538,7 @@ export function HubServiceForm({
       keywords: data.keywords,
       target_tier: data.target_tier,
       is_visible_for_upsell: data.is_visible_for_upsell,
+      espaco_id: data.espaco_id || undefined,
     });
   };
 
@@ -836,6 +874,25 @@ export function HubServiceForm({
                   </FormItem>
                 )}
               />
+
+              {form.watch('service_type') === 'recorded_course' && (
+                <FormField
+                  control={form.control}
+                  name="espaco_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Curso Vinculado</FormLabel>
+                      <FormControl>
+                        <CourseEspacoSelect value={field.value || ''} onChange={field.onChange} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Vincule a um curso para matrícula automática na compra
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

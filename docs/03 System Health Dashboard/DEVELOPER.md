@@ -256,7 +256,10 @@ npx supabase functions deploy send-welcome-email send-booking-confirmation send-
 → Erro de render capturado pelo ErrorBoundary (ou não capturado se o boundary não estiver lá). Abra DevTools → Console para ver o stack. Verifique que `apiTests[api.api_key] ?? null` está sendo usado (não `apiTests[api.api_key]` sem fallback).
 
 ### Métricas de email todas zeradas
-→ A tabela `email_logs` provavelmente está vazia. As Edge Functions de email precisam estar deployadas **com a versão atual** do `emailTemplateService.ts` (que inclui `logEmail()`). Redeploy das funções de email resolve.
+→ A tabela `email_logs` provavelmente está vazia. Possíveis causas:
+1. Edge Functions de email não estão deployadas **com a versão atual** do `emailTemplateService.ts` (que inclui `logEmail()`). Redeploy das funções resolve.
+2. Os triggers de email não estão conectados. Desde Feb 2026, booking emails são disparados pelos hooks `useCreateBooking`, `useCancelBooking`, `useRescheduleBooking`. Subscription emails são disparados pelo `ticto-webhook` e `cancel-subscription`. Welcome email é disparado pelo `useCompleteOnboarding`. Se algum desses não estiver chamando a Edge Function, nenhum log será gerado.
+3. Cron jobs para reminders (`send-booking-reminder`, `send-session-reminder`) requerem `pg_cron` habilitado e `INTERNAL_FUNCTION_SECRET` configurado.
 
 ### "permission denied" na tabela email_logs
 → Falta o `GRANT ALL ON public.email_logs TO authenticated`. O RLS bloqueia antes mesmo de avaliar as policies sem o grant. Execute:
@@ -280,5 +283,5 @@ GRANT ALL ON public.email_logs TO service_role;
 
 ---
 
-**Versão**: 1.0
-**Data**: 2026-02-21
+**Versão**: 1.1
+**Data**: 2026-02-24

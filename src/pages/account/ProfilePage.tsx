@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Save, User, Mail, Phone, Globe, Shield, Calendar, Camera, Trash2 } from 'lucide-react';
+import { ImageCropDialog } from '@/components/profile/ImageCropDialog';
+import { ChangePasswordDialog } from '@/components/profile/ChangePasswordDialog';
+import { Loader2, Save, User, Mail, Phone, Globe, Shield, Calendar, Camera, Trash2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +38,10 @@ export default function ProfilePage() {
   const updateProfile = useUpdateProfile();
   const { uploadAvatar, deleteAvatar, isUploading, uploadProgress } = useAvatarUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -86,22 +92,53 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate before opening crop dialog
+    const maxSize = 5 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipo de arquivo não suportado. Use JPEG, PNG, WebP ou GIF.');
+      return;
+    }
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo de 5MB.');
+      return;
+    }
+
+    // Read file and open crop dialog
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setShowCropDialog(true);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so re-selecting the same file triggers onChange
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropConfirm = async (croppedBlob: Blob) => {
+    setShowCropDialog(false);
+    setCropImageSrc(null);
+
     try {
-      await uploadAvatar(file);
+      await uploadAvatar(croppedBlob);
       toast.success('Foto atualizada com sucesso!');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao enviar foto';
       toast.error(message);
     }
+  };
 
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleCropCancel = () => {
+    setShowCropDialog(false);
+    setCropImageSrc(null);
   };
 
   const handleDeleteAvatar = async () => {
@@ -363,17 +400,27 @@ export default function ProfilePage() {
               </div>
 
               <div className="pt-4">
-                <Button variant="outline" disabled className="w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setShowPasswordDialog(true)} className="w-full sm:w-auto">
+                  <KeyRound className="h-4 w-4 mr-2" />
                   Alterar Senha
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Em breve você poderá alterar sua senha por aqui
-                </p>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <ImageCropDialog
+        open={showCropDialog}
+        imageSrc={cropImageSrc}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
+
+      <ChangePasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+      />
     </DashboardLayout>
   );
 }

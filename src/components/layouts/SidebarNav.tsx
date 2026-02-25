@@ -32,7 +32,8 @@ import {
   Mail,
   DollarSign,
   ListTodo,
-  Lightbulb
+  Lightbulb,
+  PlayCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -49,6 +50,7 @@ interface NavItem {
   };
   isSpecial?: boolean;
   isExternal?: boolean;
+  tourId?: string;
 }
 
 interface NavGroup {
@@ -61,11 +63,12 @@ const studentNavGroups: NavGroup[] = [
   {
     label: 'DISCOVERY',
     items: [
-      { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass },
-      { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' } },
+      { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass, tourId: 'sidebar-meu-hub' },
+      { label: 'Comunidade', href: '/comunidade', icon: Users, badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
       // { label: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
       // { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck },
-      { label: 'Explore', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' } },
+      { label: 'Explore', href: '/catalogo', icon: Search, badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
+      { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid },
     ],
   },
@@ -85,14 +88,16 @@ const studentNavGroups: NavGroup[] = [
         href: '/curriculo',
         icon: FileSearch,
         badge: { text: 'IA', variant: 'ai' },
-        isSpecial: true
+        isSpecial: true,
+        tourId: 'sidebar-resumepass'
       },
       {
         label: 'Title Translator',
         href: '/title-translator',
         icon: Globe,
         badge: { text: 'IA', variant: 'ai' },
-        isSpecial: true
+        isSpecial: true,
+        tourId: 'sidebar-title-translator'
       },
       {
         label: 'Prime Jobs',
@@ -162,6 +167,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'GESTÃO DE CONTEÚDO',
     items: [
       { label: 'Espaços', href: '/admin/espacos', icon: LayoutGrid },
+      { label: 'Cursos', href: '/admin/cursos', icon: PlayCircle, badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Produtos', href: '/admin/produtos', icon: Package },
       { label: 'Planos', href: '/admin/planos', icon: CreditCard },
       { label: 'Pedidos', href: '/admin/pedidos', icon: ShoppingBag },
@@ -323,6 +329,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                       to={item.href}
                       onClick={handleClick}
                       className={linkClass}
+                      data-tour={item.tourId || undefined}
                     >
                       {linkContent}
                     </Link>

@@ -41,15 +41,42 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Pre-deletion cleanup: nullify FK references that might still block cascade
+    // These are tables with user_id or similar columns referencing auth.users/profiles
+    // that may not have ON DELETE SET NULL/CASCADE
+    const cleanupTables = [
+      { table: 'audit_events', column: 'user_id' },
+      { table: 'audit_events', column: 'actor_id' },
+      { table: 'api_cost_logs', column: 'user_id' },
+      { table: 'payment_logs', column: 'user_id' },
+      { table: 'subscription_events', column: 'user_id' },
+    ];
+
+    for (const { table, column } of cleanupTables) {
+      const { error: cleanupErr } = await supabaseAdmin
+        .from(table)
+        .update({ [column]: null })
+        .eq(column, userId);
+      if (cleanupErr) {
+        console.warn(`Cleanup warning for ${table}.${column}:`, cleanupErr.message);
+      }
+    }
+
     // Delete user from auth.users (this will cascade to other tables via foreign keys)
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      console.error('Error deleting user from auth:', deleteError);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao deletar usuário' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // If user already gone from auth (orphaned profile), clean up the profile directly
+      if (deleteError.message?.includes('User not found')) {
+        console.warn('User not found in auth, cleaning up orphaned profile...');
+        await supabaseAdmin.from('profiles').delete().eq('id', userId);
+      } else {
+        console.error('Error deleting user from auth:', deleteError);
+        return new Response(
+          JSON.stringify({ error: `Erro ao deletar usuário: ${deleteError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     return new Response(
@@ -59,7 +86,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('Error in delete-user function:', err);
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
+      JSON.stringify({ error: `Erro interno do servidor: ${err.message}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

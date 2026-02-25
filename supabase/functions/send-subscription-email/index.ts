@@ -13,7 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 type EmailType = "confirmation" | "renewal_reminder" | "payment_failure" | "cancellation";
 
@@ -30,8 +30,10 @@ const TEMPLATE_MAP: Record<EmailType, string> = {
 };
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   const authError = await requireAuthOrInternal(req);
@@ -43,7 +45,7 @@ Deno.serve(async (req) => {
     if (!type || !user_id || !TEMPLATE_MAP[type]) {
       return new Response(
         JSON.stringify({ error: "Invalid request. Required: type, user_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
     if (!profile?.email) {
       return new Response(
         JSON.stringify({ error: "User not found or no email" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -105,13 +107,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: result.success, emailSent: result.emailSent, message: result.message }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Email error:", error);
     return new Response(
       JSON.stringify({ error: "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });

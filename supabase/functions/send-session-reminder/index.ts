@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface NotificationPayload {
   type: "reminder_24h" | "reminder_1h" | "recording_available" | "session_cancelled" | "new_session";
@@ -8,9 +8,11 @@ interface NotificationPayload {
 }
 
 serve(async (req: Request) => {
+  const cors = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   // SECURITY FIX (VULN-02): Require auth or internal call (cron)
@@ -177,7 +179,7 @@ serve(async (req: Request) => {
         sessions_1h_checked: sessions1h?.length || 0,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       }
     );
@@ -187,7 +189,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 500,
       }
     );

@@ -12,7 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface ReminderRequest {
   booking_id?: string;  // Optional: send for specific booking
@@ -20,8 +20,10 @@ interface ReminderRequest {
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   // SECURITY FIX (VULN-02): Require auth or internal call
@@ -75,14 +77,14 @@ Deno.serve(async (req) => {
       console.error("Error fetching bookings:", bookingsError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch bookings" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
     if (!bookings || bookings.length === 0) {
       return new Response(
         JSON.stringify({ success: true, emailsSent: 0, message: "No bookings to remind" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -156,13 +158,13 @@ Deno.serve(async (req) => {
         totalBookings: bookings.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });

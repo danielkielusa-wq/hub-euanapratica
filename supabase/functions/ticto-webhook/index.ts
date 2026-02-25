@@ -99,6 +99,40 @@ serve(async (req) => {
 
       const result = await handleSubscriptionEvent(payload, matchedPlan, supabase);
 
+      // Fire subscription email based on the action taken (fire-and-forget)
+      if (result.success) {
+        const emailUserId = payload.customer?.email
+          ? await (async () => {
+              const { data: p } = await supabase
+                .from("profiles").select("id")
+                .eq("email", payload.customer!.email!.toLowerCase())
+                .maybeSingle();
+              return p?.id;
+            })()
+          : null;
+
+        if (emailUserId) {
+          const emailTypeMap: Record<string, string> = {
+            activated: "confirmation",
+            dunning_updated: "payment_failure",
+            cancelled: "cancellation",
+          };
+          const emailType = emailTypeMap[result.action];
+          if (emailType) {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-internal-secret": internalSecret,
+              },
+              body: JSON.stringify({ type: emailType, user_id: emailUserId }),
+            }).catch(err => console.error("Subscription email trigger error:", err));
+          }
+        }
+      }
+
       // Return 500 on failure so Ticto retries the event
       const httpStatus = result.success ? 200 : 500;
 
@@ -197,6 +231,40 @@ serve(async (req) => {
           console.error("Error granting access:", accessError);
         } else {
           console.log("Access granted:", { userId: profile.id, serviceId: service.id });
+        }
+
+        // Auto-enroll in linked course espaco (if service has espaco_id)
+        try {
+          const { data: serviceWithEspaco } = await supabase
+            .from("hub_services")
+            .select("espaco_id")
+            .eq("id", service.id)
+            .single();
+
+          if (serviceWithEspaco?.espaco_id) {
+            const { error: enrollError } = await supabase
+              .from("user_espacos")
+              .upsert(
+                {
+                  user_id: profile.id,
+                  espaco_id: serviceWithEspaco.espaco_id,
+                  status: "active",
+                  enrolled_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id,espaco_id" }
+              );
+
+            if (enrollError) {
+              console.error("Error enrolling in course:", enrollError);
+            } else {
+              console.log("Course enrollment created:", {
+                userId: profile.id,
+                espacoId: serviceWithEspaco.espaco_id,
+              });
+            }
+          }
+        } catch (enrollErr) {
+          console.error("Course enrollment check failed:", enrollErr);
         }
 
         // Create order record for user-facing history

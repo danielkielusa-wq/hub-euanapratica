@@ -230,7 +230,7 @@ export default function AdminLeadsDashboard() {
   // Table filtering + pagination
   const tableData = useMemo(() => {
     return periodData.filter(d => {
-      if (search && !(d.name || '').toLowerCase().includes(search.toLowerCase()) && !(d.email || '').toLowerCase().includes(search.toLowerCase())) return false;
+      if (search && !(d.name || '').toLowerCase().includes(search.toLowerCase()) && !(d.email || '').toLowerCase().includes(search.toLowerCase()) && !(d.phone || '').toLowerCase().includes(search.toLowerCase())) return false;
       if (statusFilter && d.processing_status !== statusFilter) return false;
       if (tempFilter && (d.lead_temperature || '').toUpperCase() !== tempFilter) return false;
       if (phaseFilter && d.phase_name !== phaseFilter) return false;

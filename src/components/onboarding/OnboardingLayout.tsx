@@ -72,8 +72,8 @@ export function OnboardingLayout({
               ) : null}
             </div>
 
-            {/* Next Button - Hide on step 1 since WelcomeStep has its own CTA */}
-            {currentStep !== 1 && (
+            {/* Next Button - Hide on step 1 (WelcomeStep has its own CTA) and step 6 (ConfirmationStep has its own) */}
+            {currentStep !== 1 && !isLastStep && (
               <button
                 onClick={onNext}
                 disabled={!canGoNext}

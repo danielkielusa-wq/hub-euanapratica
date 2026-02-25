@@ -55,19 +55,29 @@ Verify that the email address on their account matches what they expect. Custome
 ### 3. Check if the template is enabled
 Go to **Admin → Templates de Email**. Look up the relevant template and confirm the toggle is **enabled** (green). If it's disabled, the email was intentionally or accidentally turned off.
 
-### 4. Check if the trigger fired
+### 4. Check the email log
+Go to **Admin → Saúde do Sistema** and check the email section. Every email attempt (sent, failed, or skipped) is logged in the `email_logs` table. If the email doesn't appear in the logs at all, the trigger never fired. If it shows as `failed` or `skipped`, there's a technical issue.
+
+You can also query the database directly:
+```
+Admin → Saúde do Sistema → Emails section
+```
+
+### 5. Check if the trigger fired
 - **Welcome email**: Confirm the user's `has_completed_onboarding` flag is `true` in the `profiles` table — if false, they may have abandoned the onboarding before finishing
 - **Subscription emails**: Confirm the subscription event actually occurred (activation, cancellation, etc.) in the subscriptions table
 - **Booking emails**: Confirm the booking exists and has the correct status (`confirmed` for reminders, `cancelled` for cancellations, etc.)
+- **Booking reminders**: These run on a 15-minute automated schedule. If a booking reminder was missed, it may be because the booking was created less than 24h/1h before the session, or the scheduled job encountered an issue
 - **Invitation emails**: Confirm an invitation record exists for the customer's email address in `espaco_invitations`
 
-### 5. Escalate to the dev team
+### 6. Escalate to the dev team
 If all the above checks out and the email still wasn't received, escalate with:
 - Customer's user ID
 - The email address on their account
 - The template name (e.g., `booking_confirmation`)
 - The approximate date/time when it should have sent
 - Any relevant booking or subscription ID
+- Whether the email appears in `email_logs` (and what status it shows)
 
 ---
 

@@ -18,7 +18,7 @@ type FormData = Partial<OnboardingProfile>;
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { data: profile, isLoading } = useOnboardingProfile();
   const updateOnboarding = useUpdateOnboarding();
   const completeOnboarding = useCompleteOnboarding();
@@ -191,24 +191,14 @@ export default function Onboarding() {
   const handleComplete = useCallback(async () => {
     try {
       await saveProgress();
+      // mutateAsync triggers onSuccess which sends welcome email + refreshUser
       await completeOnboarding.mutateAsync();
-      if (refreshUser) {
-        await refreshUser();
-      }
       toast.success('Perfil configurado com sucesso!');
-
-      // Fire-and-forget: send welcome email (don't block navigation)
-      if (user?.id) {
-        supabase.functions.invoke('send-welcome-email', {
-          body: { user_id: user.id },
-        }).catch((err) => console.error('Welcome email error:', err));
-      }
-
       navigate(getDashboardPath(), { replace: true });
     } catch (error) {
       toast.error('Erro ao finalizar. Tente novamente.');
     }
-  }, [saveProgress, completeOnboarding, navigate, getDashboardPath, user?.id]);
+  }, [saveProgress, completeOnboarding, navigate, getDashboardPath]);
 
   if (isLoading) {
     return (

@@ -178,9 +178,19 @@ export function useDeleteUser() {
         body: { userId }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extract actual error message from edge function response body
+        let detail = error.message;
+        try {
+          if (error.context instanceof Response) {
+            const body = await error.context.json();
+            if (body?.error) detail = body.error;
+          }
+        } catch { /* ignore parse errors */ }
+        throw new Error(detail);
+      }
       if (data?.error) throw new Error(data.error);
-      
+
       return data;
     },
     onSuccess: () => {

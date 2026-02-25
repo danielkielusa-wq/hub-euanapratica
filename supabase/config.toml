@@ -105,3 +105,12 @@ verify_jwt = false
 
 [functions.suggest-whatsapp-messages]
 verify_jwt = false
+
+[functions.create-video-upload]
+verify_jwt = false
+
+[functions.get-video-token]
+verify_jwt = false
+
+[functions.bunny-webhook]
+verify_jwt = false

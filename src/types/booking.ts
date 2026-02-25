@@ -19,6 +19,7 @@ export interface MentorService {
   slot_duration_minutes: number;
   buffer_minutes: number;
   price_override: number | null;
+  default_meeting_link: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -7,15 +7,17 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface BookingConfirmationRequest {
   booking_id: string;
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   // SECURITY FIX (VULN-02): Require auth or internal call
@@ -33,7 +35,7 @@ Deno.serve(async (req) => {
     if (!booking_id) {
       return new Response(
         JSON.stringify({ error: "booking_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -53,7 +55,7 @@ Deno.serve(async (req) => {
       console.error("Booking not found:", booking_id);
       return new Response(
         JSON.stringify({ error: "Booking not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -100,13 +102,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: result.success, message: result.message, emailSent: result.emailSent }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in send-booking-confirmation:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });

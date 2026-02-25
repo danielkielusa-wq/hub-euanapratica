@@ -99,7 +99,26 @@ export function useCompleteOnboarding() {
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['onboarding-profile'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      // Refresh user to update has_completed_onboarding in context
+
+      // Send welcome email BEFORE refreshUser to avoid race condition:
+      // refreshUser sets has_completed_onboarding=true in context, which
+      // triggers a useEffect that navigates away from the onboarding page.
+      // NOTE: supabase.functions.invoke never rejects — errors are in the
+      // resolved { error } field, so .catch() would be a no-op.
+      if (user?.id) {
+        try {
+          const { error: fnError } = await supabase.functions.invoke('send-welcome-email', {
+            body: { user_id: user.id },
+          });
+          if (fnError) {
+            console.error('Welcome email function error:', fnError);
+          }
+        } catch (err) {
+          // Network-level error (should not happen per Supabase SDK, but defensive)
+          console.error('Welcome email network error:', err);
+        }
+      }
+
       if (refreshUser) {
         await refreshUser();
       }

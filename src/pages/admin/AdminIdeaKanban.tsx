@@ -526,7 +526,6 @@ export default function AdminIdeaKanban() {
                       attachments={(editIdea.attachments || []) as IdeaAttachment[]}
                       onAttachmentsChange={(updated) => {
                         setEditIdea(prev => prev ? { ...prev, attachments: updated } : prev);
-                        refetch();
                       }}
                     />
 

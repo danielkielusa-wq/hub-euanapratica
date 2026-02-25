@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Search, LayoutGrid, MessageCircle } from 'lucide-react';
+import { useUpdateGuidedTourState } from '@/hooks/useGuidedTour';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,16 @@ export default function ServiceCatalog() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   const { data: services, isLoading } = useHubServices();
+
+  // Mark catalog as visited for the getting-started checklist
+  const updateTourState = useUpdateGuidedTourState();
+  const hasMarkedRef = useRef(false);
+  useEffect(() => {
+    if (!hasMarkedRef.current) {
+      hasMarkedRef.current = true;
+      updateTourState.mutate({ catalog_visited: true });
+    }
+  }, []);
   const { data: userAccess = [] } = useUserHubAccess();
 
   // Filter services

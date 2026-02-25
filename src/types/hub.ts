@@ -93,6 +93,9 @@ export interface HubService {
   ticto_product_id: string | null;
   ticto_checkout_url: string | null;
 
+  // Course link
+  espaco_id: string | null;
+
   // Landing page data
   duration: string | null;
   meeting_type: string | null;

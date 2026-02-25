@@ -1,0 +1,75 @@
+{
+  "header": {
+    "score": 78,
+    "status_tag": "COMPATIBILIDADE DE MERCADO: ALTA",
+    "main_message": "Seu currículo está bem posicionado para o mercado americano.",
+    "sub_message": "Com alguns ajustes estratégicos, você pode aumentar ainda mais suas chances."
+  },
+  "metrics": {
+    "ats_format": {
+      "score": 85,
+      "label": "Bom",
+      "details_pt": "Formato compatível com a maioria dos sistemas ATS."
+    },
+    "keywords": {
+      "score": 72,
+      "label": "Médio",
+      "details_pt": "Boa correspondência com palavras-chave da vaga.",
+      "matched_count": 8,
+      "total_required": 11
+    },
+    "action_verbs": {
+      "score": 65,
+      "label": "Médio",
+      "details_pt": "Alguns verbos de ação podem ser fortalecidos.",
+      "count": 6
+    },
+    "brevity": {
+      "score": 90,
+      "label": "Excelente",
+      "details_pt": "Tamanho ideal para o nível de experiência.",
+      "page_count": 1,
+      "ideal_page_count": 1
+    }
+  },
+  "cultural_bridge": {
+    "brazil_title": "Engenheiro de Software",
+    "us_equivalent": "Software Engineer",
+    "explanation": "O título é diretamente equivalente no mercado americano."
+  },
+  "market_value": {
+    "range": "$95k - $130k/yr",
+    "context": "Baseado em experiência de 5 anos com React e TypeScript no mercado dos EUA."
+  },
+  "power_verbs_suggestions": ["Spearheaded", "Orchestrated", "Streamlined", "Architected", "Optimized"],
+  "improvements": [
+    {
+      "tags": ["Impact", "Metrics"],
+      "original": "Worked on React projects",
+      "improved": "Spearheaded 3 React applications serving 50K+ users, reducing load time by 40%",
+      "impact_label": "Alto Impacto"
+    },
+    {
+      "tags": ["Keywords"],
+      "original": "Used AWS services",
+      "improved": "Architected cloud infrastructure on AWS (EC2, Lambda, S3), reducing hosting costs by 25%",
+      "impact_label": "Médio Impacto"
+    }
+  ],
+  "linkedin_fix": {
+    "headline": "Software Engineer | React & TypeScript | Building scalable web applications",
+    "reasoning_pt": "Headline otimizado para aparecer em buscas de recrutadores nos EUA."
+  },
+  "interview_cheat_sheet": [
+    {
+      "question": "Tell me about a time you improved application performance.",
+      "context_pt": "Prepare exemplos concretos com métricas de performance."
+    },
+    {
+      "question": "How do you approach system design for scalable applications?",
+      "context_pt": "Demonstre conhecimento de arquitetura distribuída e trade-offs."
+    }
+  ],
+  "parsing_error": false,
+  "parsing_error_message": ""
+}

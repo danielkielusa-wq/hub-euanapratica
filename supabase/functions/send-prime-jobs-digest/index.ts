@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { requireAuthOrInternal, corsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface DigestRequest {
   test_email?: string; // Optional: send to specific email for testing
@@ -44,8 +44,10 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 }
 
 Deno.serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: cors });
   }
 
   // SECURITY FIX (VULN-02): Require auth or internal call (cron)
@@ -75,7 +77,7 @@ Deno.serve(async (req) => {
       console.warn("RESEND_API_KEY not configured - emails will not be sent");
       return new Response(
         JSON.stringify({ success: false, message: "Email not configured", emailsSent: 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -96,7 +98,7 @@ Deno.serve(async (req) => {
       console.error("Error fetching jobs:", jobsError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch jobs" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
       console.log("No new jobs this week, skipping digest");
       return new Response(
         JSON.stringify({ success: true, message: "No new jobs this week", emailsSent: 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -140,7 +142,7 @@ Deno.serve(async (req) => {
       console.error("Error fetching users:", usersError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch users" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -161,7 +163,7 @@ Deno.serve(async (req) => {
       console.log("No eligible recipients found");
       return new Response(
         JSON.stringify({ success: true, message: "No eligible recipients", emailsSent: 0 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -355,13 +357,13 @@ Deno.serve(async (req) => {
         emailsFailed,
         totalJobs: newJobs.length,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in send-prime-jobs-digest:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });

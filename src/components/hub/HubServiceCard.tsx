@@ -204,6 +204,20 @@ export function HubServiceCard({ service, hasAccess, userEmail }: HubServiceCard
           <Button variant="outline" disabled className="w-full rounded-xl">
             Em Breve
           </Button>
+        ) : canAccess && service.service_type === 'live_mentoring' ? (
+          // Live mentoring - navigate to booking flow
+          <Button
+            className={cn(
+              'w-full rounded-xl',
+              service.is_highlighted
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-foreground text-background hover:bg-foreground/90'
+            )}
+            onClick={() => navigate(`/dashboard/agendar/${service.id}`)}
+          >
+            {service.cta_text || 'Agendar Sessão'}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         ) : canAccess && service.route ? (
           // User HAS access - navigate to internal route
           <Link to={service.route}>

@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { useMentorForService, useWeeklySlots } from '@/hooks/useAvailableSlots';
 import { useBookingPolicy, useCanCreateBooking } from '@/hooks/useBookingPolicies';
 import { useCreateBooking } from '@/hooks/useCreateBooking';
-import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useUserHubAccess } from '@/hooks/useHubServices';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import type { TimeSlot, BookingFlowState } from '@/types/booking';
 
 type FlowStep = 'select-time' | 'confirm' | 'success';
@@ -32,6 +34,12 @@ export default function BookingFlow() {
     useWeeklySlots(serviceId, weekOffset);
   const { data: policy } = useBookingPolicy(serviceId);
   const { canBook, remainingSlots, message: limitMessage } = useCanCreateBooking();
+
+  // Access check
+  const { data: userAccess, isLoading: accessLoading } = useUserHubAccess();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const hasServiceAccess = isAdmin || (userAccess ?? []).includes(serviceId ?? '');
 
   // Mutations
   const createBooking = useCreateBooking();
@@ -59,6 +67,36 @@ export default function BookingFlow() {
       // Error is handled by the hook
     }
   };
+
+  // Render access gate
+  if (!accessLoading && !hasServiceAccess) {
+    return (
+      <DashboardLayout>
+        <DashboardTopHeader />
+        <div className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-amber-50 rounded-2xl p-8 border border-amber-100 text-center">
+              <Lock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                Acesso não autorizado
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Você precisa adquirir este serviço para agendar uma sessão.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => navigate('/catalogo')}>
+                  Ver Serviços
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/dashboard/hub')}>
+                  Voltar ao Hub
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   // Render booking limit warning
   if (!canBook) {

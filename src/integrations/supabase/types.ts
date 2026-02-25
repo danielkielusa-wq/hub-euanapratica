@@ -1145,6 +1145,191 @@ export type Database = {
           },
         ]
       }
+      course_lesson_attachments: {
+        Row: {
+          created_at: string | null
+          display_order: number | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          lesson_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          lesson_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          lesson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lesson_attachments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_lessons: {
+        Row: {
+          bunny_video_id: string | null
+          content_html: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number
+          id: string
+          is_free_preview: boolean | null
+          is_published: boolean | null
+          module_id: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          video_duration_seconds: number | null
+          video_status: string | null
+          video_url: string | null
+        }
+        Insert: {
+          bunny_video_id?: string | null
+          content_html?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_free_preview?: boolean | null
+          is_published?: boolean | null
+          module_id: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          video_duration_seconds?: number | null
+          video_status?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          bunny_video_id?: string | null
+          content_html?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_free_preview?: boolean | null
+          is_published?: boolean | null
+          module_id?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          video_duration_seconds?: number | null
+          video_status?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_modules: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_order: number
+          espaco_id: string
+          id: string
+          is_published: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          espaco_id: string
+          id?: string
+          is_published?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          espaco_id?: string
+          id?: string
+          is_published?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_progress: {
+        Row: {
+          completed_at: string | null
+          id: string
+          last_position_seconds: number | null
+          lesson_id: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          watch_percentage: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          last_position_seconds?: number | null
+          lesson_id: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          watch_percentage?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          last_position_seconds?: number | null
+          lesson_id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          watch_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       e2e_test_results: {
         Row: {
           created_at: string | null
@@ -1629,6 +1814,7 @@ export type Database = {
       hub_services: {
         Row: {
           accent_color: string | null
+          anchor_price: number | null
           category: string | null
           created_at: string | null
           cta_text: string | null
@@ -1636,6 +1822,7 @@ export type Database = {
           description: string | null
           display_order: number | null
           duration: string | null
+          espaco_id: string | null
           icon_name: string
           id: string
           is_highlighted: boolean | null
@@ -1663,6 +1850,7 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          anchor_price?: number | null
           category?: string | null
           created_at?: string | null
           cta_text?: string | null
@@ -1670,6 +1858,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           duration?: string | null
+          espaco_id?: string | null
           icon_name: string
           id?: string
           is_highlighted?: boolean | null
@@ -1697,6 +1886,7 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          anchor_price?: number | null
           category?: string | null
           created_at?: string | null
           cta_text?: string | null
@@ -1704,6 +1894,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           duration?: string | null
+          espaco_id?: string | null
           icon_name?: string
           id?: string
           is_highlighted?: boolean | null
@@ -1729,7 +1920,15 @@ export type Database = {
           ticto_product_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "hub_services_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_applications: {
         Row: {
@@ -2622,6 +2821,7 @@ export type Database = {
           current_state: string | null
           email: string
           full_name: string
+          guided_tour_state: Json | null
           has_completed_onboarding: boolean | null
           id: string
           is_whatsapp: boolean | null
@@ -2646,6 +2846,7 @@ export type Database = {
           current_state?: string | null
           email: string
           full_name: string
+          guided_tour_state?: Json | null
           has_completed_onboarding?: boolean | null
           id: string
           is_whatsapp?: boolean | null
@@ -2670,6 +2871,7 @@ export type Database = {
           current_state?: string | null
           email?: string
           full_name?: string
+          guided_tour_state?: Json | null
           has_completed_onboarding?: boolean | null
           id?: string
           is_whatsapp?: boolean | null
