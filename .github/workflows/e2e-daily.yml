@@ -7,12 +7,10 @@ on:
   # Permite rodar manualmente pelo GitHub
   workflow_dispatch:
 
-env:
-  N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
-
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    environment: Production
     timeout-minutes: 15
 
     steps:
@@ -58,10 +56,14 @@ jobs:
           echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> e2e/.env.e2e
 
       - name: Run E2E tests
-        run: npx playwright test --project=public --project=auth-setup --project=admin --project=student || true
+        id: e2e
+        continue-on-error: true
+        run: npx playwright test --project=public --project=auth-setup --project=admin --project=student
 
       - name: Send results to N8N
         if: always()
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
         run: node e2e/notify-webhook.mjs
 
       - name: Upload Playwright report

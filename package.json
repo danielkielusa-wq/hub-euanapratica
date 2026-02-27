@@ -21,7 +21,9 @@
     "test:e2e:admin": "npx playwright test --project=auth-setup --project=admin",
     "test:e2e:student": "npx playwright test --project=auth-setup --project=student",
     "test:e2e:report": "npx playwright show-report",
-    "test:e2e:real": "npx playwright test --project=auth-setup --project=admin-real"
+    "test:e2e:real": "npx playwright test --project=auth-setup --project=admin-real",
+    "test:e2e:booking": "npx playwright test --project=auth-setup --project=student student.booking-flow student.bookings",
+    "test:e2e:admin-booking": "npx playwright test --project=auth-setup --project=admin admin.agendamentos"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -85,6 +87,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tus-js-client": "^4.3.1",
     "vaul": "^0.9.9",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {

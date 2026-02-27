@@ -110,6 +110,8 @@ export const ADMIN_ROUTES = [
   { path: '/admin/feedback', name: 'Feedback' },
   { path: '/admin/testes-e2e', name: 'Testes E2E' },
   { path: '/admin/auditoria', name: 'Auditoria' },
+  { path: '/admin/agendamentos', name: 'Agendamentos' },
+  { path: '/admin/automacoes', name: 'Automações' },
 ];
 
 /** Public routes that don't require authentication */
@@ -137,3 +139,53 @@ export const STUDENT_ROUTES = [
   { path: '/meus-pedidos', name: 'Meus Pedidos' },
   { path: '/dashboard/suporte', name: 'Suporte' },
 ];
+
+/** Mentor routes — tested via admin auth (admin has allowedRoles=['mentor', 'admin']) */
+export const MENTOR_ROUTES_VIA_ADMIN = [
+  { path: '/mentor/agendamentos', name: 'Mentor Agendamentos' },
+  { path: '/mentor/disponibilidade', name: 'Mentor Disponibilidade' },
+  { path: '/mentor/agenda', name: 'Mentor Agenda' },
+];
+
+// ============================================
+// BOOKING TEST HELPERS
+// ============================================
+
+/**
+ * Generates available slots for tomorrow at 14:00 and 16:00 UTC.
+ * Always in the future so they pass min_notice_hours validation.
+ */
+export function generateMockSlots(mentorId: string) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 3); // +3 days to safely pass 48h notice
+
+  const slot1Start = new Date(tomorrow);
+  slot1Start.setUTCHours(14, 0, 0, 0);
+  const slot1End = new Date(slot1Start);
+  slot1End.setUTCHours(15, 0, 0, 0);
+
+  const slot2Start = new Date(tomorrow);
+  slot2Start.setUTCHours(16, 0, 0, 0);
+  const slot2End = new Date(slot2Start);
+  slot2End.setUTCHours(17, 0, 0, 0);
+
+  return [
+    { slot_start: slot1Start.toISOString(), slot_end: slot1End.toISOString(), mentor_id: mentorId, duration_minutes: 60 },
+    { slot_start: slot2Start.toISOString(), slot_end: slot2End.toISOString(), mentor_id: mentorId, duration_minutes: 60 },
+  ];
+}
+
+/**
+ * Builds a booking object with dynamic scheduled_start/scheduled_end.
+ * @param template - Booking template (without dates)
+ * @param hoursFromNow - How many hours in the future (default: 72)
+ */
+export function buildFutureBooking(template: Record<string, unknown>, hoursFromNow = 72) {
+  const start = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour
+  return {
+    ...template,
+    scheduled_start: start.toISOString(),
+    scheduled_end: end.toISOString(),
+  };
+}

@@ -1,8 +1,8 @@
 # Testes E2E — Documentação Técnica
 
-**Última atualização:** 2026-02-25
+**Última atualização:** 2026-02-26
 **Stack:** Playwright 1.50 + Chromium
-**Total de testes:** 54 (padrão) + 1 opt-in com IA real
+**Total de testes:** 76 (padrão) + 1 opt-in com IA real
 
 ---
 
@@ -14,9 +14,9 @@ Os testes E2E automatizam a navegação real no browser para detectar regressõe
 GitHub Actions (daily 7h BRT)
   └─ npx playwright test
        ├─ auth-setup   → salva sessões admin + student
-       ├─ public       → 9 páginas públicas
-       ├─ admin        → 31 testes (24 smoke + 3 login + 4 ResumePass mock)
-       └─ student      → 12 páginas autenticadas
+       ├─ public       → 9 testes: páginas públicas
+       ├─ admin        → 39 testes (26 smoke + 3 login + 4 ResumePass mock + 6 Agendamentos)
+       └─ student      → 26 testes (12 smoke + 7 BookingFlow + 7 StudentBookings)
             └─ notify-webhook.mjs → N8N → Telegram / Email
 ```
 
@@ -26,26 +26,30 @@ GitHub Actions (daily 7h BRT)
 
 ```
 e2e/
-├── .env.e2e                    # Credenciais locais (não commitado)
-├── .auth/                      # Sessões salvas (não commitado)
+├── .env.e2e                      # Credenciais locais (não commitado)
+├── .auth/                        # Sessões salvas (não commitado)
 │   ├── admin.json
 │   └── student.json
 ├── fixtures/
-│   ├── test-resume.pdf         # PDF de teste para ResumePass
-│   └── mock-resume-result.json # Resposta mock da IA (score 78)
-├── helpers.ts                  # Auth helpers + listas de rotas
-├── auth.setup.ts               # Autentica admin e student via Supabase
-├── public.smoke.spec.ts        # 9 testes: páginas sem auth
-├── admin.smoke.spec.ts         # 24 testes: todas as páginas admin
-├── admin.login-flow.spec.ts    # 3 testes: login UI, erro, bloqueio
-├── admin.resumepass.spec.ts    # 4 testes: ResumePass com IA mockada
+│   ├── test-resume.pdf           # PDF de teste para ResumePass
+│   ├── mock-resume-result.json   # Resposta mock da IA (score 78)
+│   └── mock-booking-data.ts      # Fixtures de mock para testes de booking
+├── helpers.ts                    # Auth helpers + listas de rotas + booking helpers
+├── auth.setup.ts                 # Autentica admin e student via Supabase
+├── public.smoke.spec.ts          # 9 testes: páginas sem auth
+├── admin.smoke.spec.ts           # 26 testes: todas as páginas admin
+├── admin.login-flow.spec.ts      # 3 testes: login UI, erro, bloqueio
+├── admin.resumepass.spec.ts      # 4 testes: ResumePass com IA mockada
 ├── admin.resumepass-real.spec.ts # 1 teste: ResumePass com IA real (opt-in)
-├── student.smoke.spec.ts       # 12 testes: páginas do aluno
-├── notify-webhook.mjs          # Envia resultado para N8N
-└── n8n-workflow-e2e.json       # Workflow N8N (importar no N8N)
+├── admin.agendamentos.spec.ts    # 6 testes: AdminAgendamentos + mentor smoke
+├── student.smoke.spec.ts         # 12 testes: páginas do aluno
+├── student.booking-flow.spec.ts  # 7 testes: fluxo de agendamento (BookingFlow)
+├── student.bookings.spec.ts      # 7 testes: página de agendamentos do aluno
+├── notify-webhook.mjs            # Envia resultado para N8N
+└── n8n-workflow-e2e.json         # Workflow N8N (importar no N8N)
 
-playwright.config.ts            # Configuração principal
-.github/workflows/e2e-daily.yml # CI/CD GitHub Actions
+playwright.config.ts              # Configuração principal
+.github/workflows/e2e-daily.yml  # CI/CD GitHub Actions
 ```
 
 ---
@@ -94,10 +98,12 @@ npm run dev  # porta 8080
 
 | Comando | O que faz |
 |---------|-----------|
-| `npm run test:e2e` | Roda todos os 54 testes padrão |
+| `npm run test:e2e` | Roda todos os 76 testes padrão |
 | `npm run test:e2e:public` | Só páginas públicas (9 testes, ~30s) |
-| `npm run test:e2e:admin` | Só testes admin (31 testes) |
-| `npm run test:e2e:student` | Só testes student (12 testes) |
+| `npm run test:e2e:admin` | Só testes admin (39 testes) |
+| `npm run test:e2e:student` | Só testes student (26 testes) |
+| `npm run test:e2e:booking` | Só BookingFlow + StudentBookings (14 testes) |
+| `npm run test:e2e:admin-booking` | Só AdminAgendamentos + mentor smoke (6 testes) |
 | `npm run test:e2e:real` | ResumePass com IA real — **consome créditos** |
 | `npm run test:e2e:report` | Abre HTML report no browser |
 | `npm run test:e2e:ui` | Abre Playwright UI (modo visual/debug) |
@@ -248,7 +254,7 @@ GitHub Actions
   └─ node e2e/notify-webhook.mjs
        └─ POST https://n8n.sapunplugged.com/webhook/e2e-results
             └─ N8N Workflow
-                 ├─ (sucesso) → Telegram "✅ 54/54 passed"
+                 ├─ (sucesso) → Telegram "✅ N/N passed"
                  ├─ (falha)   → Telegram "❌ 3 falharam: ..."
                  └─ (ambos)   → Email com detalhes (se configurado)
 ```
@@ -259,8 +265,8 @@ GitHub Actions
 {
   "status": "passed",
   "summary": {
-    "total": 54,
-    "passed": 54,
+    "total": 76,
+    "passed": 76,
     "failed": 0,
     "skipped": 0,
     "duration_seconds": 144
@@ -286,6 +292,74 @@ No N8N:
 4. Ativar o workflow
 
 > **Importante:** Todas as expressões do N8N usam `$json.body.*` (não `$json.*`) porque o N8N envolve o body do POST em `$json.body`.
+
+---
+
+## Testes de Booking (Mocked)
+
+Os 20 testes de booking usam `page.route()` para interceptar todas as chamadas ao Supabase, sem dependência de dados reais. Isso é necessário porque os agendamentos têm datas dinâmicas que quebrariam testes hard-coded.
+
+### Cobertura (20 testes)
+
+| Spec File | Test Cases | Descrição |
+|-----------|-----------|-----------|
+| `student.booking-flow.spec.ts` | TC-1.1, TC-1.3, TC-1.4, TC-1.4b, TC-1.5, TC-1.6, TC-1.8 | Fluxo completo: acesso → slot → confirmação → sucesso |
+| `student.bookings.spec.ts` | TC-2.1-2.4, TC-3.1, TC-4.1-4.2 | Página de agendamentos: estrutura, modais cancel/reschedule |
+| `admin.agendamentos.spec.ts` | TC-8.1, TC-8.3, TC-8.5 + 3 mentor smoke | AdminAgendamentos: tabela, dropdown de ações, aba Políticas |
+
+### Fixtures e helpers
+
+```
+e2e/fixtures/mock-booking-data.ts   # Dados estáticos de mock
+e2e/helpers.ts                      # generateMockSlots() + buildFutureBooking()
+```
+
+**Dados exportados de `mock-booking-data.ts`:**
+
+| Export | Tipo | Uso |
+|--------|------|-----|
+| `MOCK_SERVICE_ID` | UUID | ID fixo do serviço "Sessão de Mentoria" |
+| `MOCK_MENTOR_ID` | UUID | ID fixo da mentora "Ana Mentora" |
+| `MOCK_STUDENT_ID` | UUID | ID fixo do aluno "Carlos Aluno" |
+| `mockMentorService` | Object | Resposta de `mentor_services` com joins embutidos (`service`, `mentor`) |
+| `mockBookingPolicy` | Object | Política global (min_notice=48h, cancellation_window=24h) |
+| `mockBookingStats` | Object | Stats do aluno: `remaining_slots=2`, `upcoming=1` |
+| `mockBookingStatsLimitReached` | Object | Stats com `remaining_slots=0` para testar gate de limite |
+| `mockUpcomingBookingTemplate` | Object | Template de booking sem datas (preencher com `buildFutureBooking`) |
+| `mockPastBooking` | Object | Booking `status=completed` com data no passado |
+
+### Datas dinâmicas
+
+Os slots e bookings usam datas relativas a `Date.now()` para nunca ficarem desatualizados:
+
+```typescript
+// e2e/helpers.ts
+
+// Gera 2 slots 3 dias no futuro (14:00 e 16:00 UTC) — passa validação de 48h
+generateMockSlots(mentorId: string)
+
+// Cria booking N horas no futuro (default 72h)
+// hoursFromNow=12 → dentro da janela de 24h → dispara aviso de cancelamento tardio
+buildFutureBooking(template, hoursFromNow = 72)
+```
+
+### Padrão de mock para PostgREST
+
+Algumas queries usam `.single()` e esperam um **objeto** (não array):
+
+```typescript
+// useMentorForService usa .single() → retornar objeto, não array
+await page.route('**/rest/v1/mentor_services*', async (route) => {
+  await route.fulfill({
+    body: JSON.stringify(mockMentorService),  // ← objeto, não [mockMentorService]
+  });
+});
+
+// useAdminBookings faz 3 fetches sequenciais — todos devem ser mockados
+await page.route('**/rest/v1/bookings*', ...);    // → [adminBooking]
+await page.route('**/rest/v1/profiles*', ...);    // → [studentProfile, mentorProfile]
+await page.route('**/rest/v1/hub_services*', ...); // → [hubService]
+```
 
 ---
 
@@ -329,6 +403,46 @@ test.describe('Minha Feature', () => {
 ```
 
 O arquivo será automaticamente incluído no projeto `admin` (padrão `admin.*.ts`).
+
+### Criar testes com mocks (para features com Supabase)
+
+Para páginas que fazem queries ao Supabase, use `page.route()`:
+
+```typescript
+// e2e/student.minha-feature.spec.ts
+import { test, expect } from '@playwright/test';
+
+async function setupMocks(page) {
+  await page.route('**/rest/v1/minha_tabela*', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ id: '...', name: 'Test' }]),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
+  // Edge Functions — sempre 200
+  await page.route('**/functions/v1/minha-funcao*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+}
+
+test.describe('Minha Feature', () => {
+  test.setTimeout(45_000);
+
+  test('fluxo principal funciona', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/dashboard/minha-feature', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
+  });
+});
+```
+
+> **Datas:** Se a feature usa datas dinâmicas, importe e use `buildFutureBooking()` de `helpers.ts` para não quebrar com o tempo.
 
 ---
 
