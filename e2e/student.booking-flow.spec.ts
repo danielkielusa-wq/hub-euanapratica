@@ -347,7 +347,7 @@ test.describe('BookingFlow — Confirmation & Success', () => {
 
     // Should show success screen
     await expect(
-      page.locator('text=Agendamento confirmado!')
+      page.locator('h2:has-text("Agendamento confirmado!")').first()
     ).toBeVisible({ timeout: 15000 });
 
     // Success buttons
