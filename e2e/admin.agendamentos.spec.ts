@@ -87,8 +87,10 @@ async function setupAdminMocks(page: Page) {
   });
 
   // profiles table (admin fetches student + mentor profiles via .in('id', [...]))
+  // Only intercept bulk profile fetches (contain 'id=in.'), let individual profile requests pass through
   await page.route('**/rest/v1/profiles*', async (route) => {
-    if (route.request().method() === 'GET') {
+    const url = route.request().url();
+    if (route.request().method() === 'GET' && url.includes('id=in.')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -112,9 +114,11 @@ async function setupAdminMocks(page: Page) {
     }
   });
 
-  // user_roles table (useMentors fetches mentor/admin roles)
+  // user_roles table (useMentors fetches mentor/admin roles with role=in.)
+  // Only intercept bulk role queries, let individual auth role checks pass through
   await page.route('**/rest/v1/user_roles*', async (route) => {
-    if (route.request().method() === 'GET') {
+    const url = route.request().url();
+    if (route.request().method() === 'GET' && url.includes('role=')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

@@ -262,7 +262,7 @@ test.describe('BookingFlow — Slot Selection', () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Click the first time slot button (formatted as HH:mm)
-    await page.locator('button:has-text(/^\\d{2}:\\d{2}$/)').first().click();
+    await page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first().click();
 
     // "Continuar" button should now be visible
     await expect(
@@ -293,7 +293,7 @@ test.describe('BookingFlow — Confirmation & Success', () => {
     // Select day and time
     await page.locator('button:has-text("horário")').first().click();
     await expect(page.locator('text=/Horários disponíveis para/')).toBeVisible({ timeout: 10000 });
-    await page.locator('button:has-text(/^\\d{2}:\\d{2}$/)').first().click();
+    await page.locator('button').filter({ hasText: /^\d{2}:\d{2}$/ }).first().click();
 
     // Click Continuar
     await page.locator('button:has-text("Continuar")').click();
