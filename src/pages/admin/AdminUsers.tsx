@@ -40,6 +40,7 @@ import { useAdminUsers, useUpdateUserRole, useUpdateUserStatus, useDeleteUser } 
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserFilters } from '@/types/admin';
 import { Search, MoreVertical, UserCog, Loader2, Plus, History, UserX, UserCheck, Trash2, AlertTriangle, Eye } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -151,18 +152,12 @@ export default function AdminUsers() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h1>
-            <p className="text-muted-foreground">
-              Visualize e gerencie todos os usuários da plataforma
-            </p>
-          </div>
+        <PageHeader title="Gestão de Usuários" subtitle="Visualize e gerencie todos os usuários da plataforma">
           <Button onClick={() => setCreateUserOpen(true)} variant="gradient">
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
-        </div>
+        </PageHeader>
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
@@ -221,10 +216,10 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Papel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Último Login</TableHead>
-                  <TableHead>Espaços</TableHead>
-                  <TableHead>Cadastro</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Último Login</TableHead>
+                  <TableHead className="hidden lg:table-cell">Espaços</TableHead>
+                  <TableHead className="hidden xl:table-cell">Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -250,12 +245,12 @@ export default function AdminUsers() {
                         {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
                         {STATUS_LABELS[user.status as keyof typeof STATUS_LABELS] || user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {user.last_login_at ? (
                         <span className="text-sm" title={format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm")}>
                           {formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true, locale: ptBR })}
@@ -264,8 +259,8 @@ export default function AdminUsers() {
                         <span className="text-sm text-muted-foreground">Nunca</span>
                       )}
                     </TableCell>
-                    <TableCell>{user.enrollments_count || 0}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">{user.enrollments_count || 0}</TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       {user.created_at
                         ? format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })
                         : '--'}
