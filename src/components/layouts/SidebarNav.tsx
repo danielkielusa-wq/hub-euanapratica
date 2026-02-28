@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
 import {
@@ -42,6 +42,7 @@ import {
   Workflow,
   Library,
   Layers,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -277,8 +278,15 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
   const { isItemVisible } = useMenuVisibility();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  const isActive = useCallback((href: string) => {
+    if (href === '/dashboard' || href === '/mentor/dashboard' || href === '/admin/dashboard') {
+      return location.pathname === href;
+    }
+    return location.pathname === href || location.pathname.startsWith(href + '/');
+  }, [location.pathname]);
+
   // Select navigation based on user role, filtered by admin-controlled visibility
-  const getNavGroups = (): NavGroup[] => {
+  const navGroups = useMemo((): NavGroup[] => {
     switch (user?.role) {
       case 'admin':
         return adminNavGroups;
@@ -305,104 +313,149 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
           .filter(group => group.items.length > 0);
       }
     }
-  };
+  }, [user?.role, studentEspacosLoading, studentEspacos, isItemVisible]);
 
-  const navGroups = getNavGroups();
-
-  const isActive = (href: string) => {
-    // Exact match for dashboard routes
-    if (href === '/dashboard' || href === '/mentor/dashboard' || href === '/admin/dashboard') {
-      return location.pathname === href;
+  // Determine which group contains the active link
+  const activeGroupLabel = useMemo(() => {
+    for (const group of navGroups) {
+      if (group.items.some(item => isActive(item.href))) {
+        return group.label;
+      }
     }
-    // For other routes, check if current path starts with href
-    return location.pathname === href || location.pathname.startsWith(href + '/');
+    return navGroups[0]?.label ?? '';
+  }, [navGroups, isActive]);
+
+  // Track expanded groups — active group starts expanded
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set([activeGroupLabel]));
+
+  // When active group changes (navigation), ensure it's expanded
+  useMemo(() => {
+    if (activeGroupLabel && !expandedGroups.has(activeGroupLabel)) {
+      setExpandedGroups(prev => new Set([...prev, activeGroupLabel]));
+    }
+  }, [activeGroupLabel]);
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
   };
 
   return (
     <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-hide">
-      {navGroups.map((group, groupIdx) => (
-        <div key={group.label} className={cn(groupIdx > 0 && "mt-6")}>
-          {/* Group Label */}
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            {group.label}
-          </p>
+      {navGroups.map((group, groupIdx) => {
+        const isExpanded = expandedGroups.has(group.label);
+        const hasActiveItem = group.items.some(item => isActive(item.href));
 
-          {/* Group Items */}
-          <ul className="space-y-0.5">
-            {group.items.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
+        return (
+          <div key={group.label} className={cn(groupIdx > 0 && "mt-2")}>
+            {/* Collapsible Group Header */}
+            <button
+              onClick={() => toggleGroup(group.label)}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150",
+                hasActiveItem
+                  ? "text-blue-600"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+              )}
+            >
+              <span>{group.label}</span>
+              <ChevronRight className={cn(
+                "w-3.5 h-3.5 transition-transform duration-200",
+                isExpanded && "rotate-90"
+              )} />
+            </button>
 
-              const isCommunityRoute = item.href === '/comunidade';
-              const blockCommunityAccess = isCommunityRoute && !communityAccessLoading && !canAccessCommunity;
+            {/* Animated Group Items */}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-200 ease-in-out",
+                isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+              )}
+            >
+              <ul className="space-y-0.5 pb-1">
+                {group.items.map((item) => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
 
-              const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-                if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {
-                  event.preventDefault();
-                  if (!communityAccessLoading) {
-                    setShowUpgradeModal(true);
-                  }
-                  return;
-                }
-                onNavigate?.();
-              };
+                  const isCommunityRoute = item.href === '/comunidade';
+                  const blockCommunityAccess = isCommunityRoute && !communityAccessLoading && !canAccessCommunity;
 
-              const linkClass = cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
-                item.isSpecial
-                  ? active
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-indigo-600 hover:bg-indigo-50/50"
-                  : active
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-              );
+                  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+                    if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {
+                      event.preventDefault();
+                      if (!communityAccessLoading) {
+                        setShowUpgradeModal(true);
+                      }
+                      return;
+                    }
+                    onNavigate?.();
+                  };
 
-              const linkContent = (
-                <>
-                  <Icon className={cn(
-                    "w-5 h-5 flex-shrink-0",
-                    item.isSpecial && !active && "text-indigo-500"
-                  )} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span className={cn(
-                      "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
-                      badgeClasses[item.badge.variant]
-                    )}>
-                      {item.badge.text}
-                    </span>
-                  )}
-                </>
-              );
+                  const linkClass = cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150",
+                    item.isSpecial
+                      ? active
+                        ? "bg-indigo-50 text-indigo-600"
+                        : "text-indigo-600 hover:bg-indigo-50/50"
+                      : active
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-50"
+                  );
 
-              return (
-                <li key={item.href + item.label}>
-                  {item.isExternal ? (
-                    <a
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={linkClass}
-                    >
-                      {linkContent}
-                    </a>
-                  ) : (
-                    <Link
-                      to={item.href}
-                      onClick={handleClick}
-                      className={linkClass}
-                      data-tour={item.tourId || undefined}
-                    >
-                      {linkContent}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                  const linkContent = (
+                    <>
+                      <Icon className={cn(
+                        "w-[18px] h-[18px] flex-shrink-0",
+                        item.isSpecial && !active && "text-indigo-500"
+                      )} />
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge && (
+                        <span className={cn(
+                          "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
+                          badgeClasses[item.badge.variant]
+                        )}>
+                          {item.badge.text}
+                        </span>
+                      )}
+                    </>
+                  );
+
+                  return (
+                    <li key={item.href + item.label}>
+                      {item.isExternal ? (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={linkClass}
+                        >
+                          {linkContent}
+                        </a>
+                      ) : (
+                        <Link
+                          to={item.href}
+                          onClick={handleClick}
+                          className={linkClass}
+                          data-tour={item.tourId || undefined}
+                        >
+                          {linkContent}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        );
+      })}
 
       <UpgradeModal
         open={showUpgradeModal}
