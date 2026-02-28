@@ -27,7 +27,7 @@ const typeConfig: Record<ActivityType, { icon: React.ElementType; bgColor: strin
 const statusConfig: Record<ActivityStatus, { label: string; className: string }> = {
   pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/10' },
   in_progress: { label: 'Em andamento', className: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/10' },
-  completed: { label: 'Concluido', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10' },
+  completed: { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10' },
 };
 
 function ActivityCard({ activity }: { activity: Activity }) {

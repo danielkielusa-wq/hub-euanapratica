@@ -44,8 +44,7 @@ export function MetricsRow() {
     a.status === 'published' && !a.my_submission
   ).length || 0;
 
-  // Placeholder for study time (would need tracking feature)
-  const studyTimeHours = Math.round(completedSessions * 1.5); // Estimate 1.5h per session
+  const studyTimeHours = Math.round(completedSessions * 1.5);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -66,8 +65,8 @@ export function MetricsRow() {
       <MetricCard
         icon={<Clock className="h-5 w-5 text-emerald-500" />}
         iconBg="bg-emerald-500/10"
-        label="Tempo Total"
-        value={`${studyTimeHours}h Estudadas`}
+        label="Tempo Estimado"
+        value={`~${studyTimeHours}h Estudadas`}
         isLoading={progressLoading}
       />
     </div>

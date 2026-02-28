@@ -70,7 +70,7 @@ export function SessionsSidebar() {
   return (
     <Card className="p-4 rounded-[24px] border border-border bg-card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-foreground">Proximas Sessoes</h2>
+        <h2 className="font-semibold text-foreground">Próximas Sessões</h2>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
           <MoreVertical className="h-4 w-4" />
         </Button>
@@ -105,7 +105,7 @@ export function SessionsSidebar() {
         className="w-full mt-4 rounded-xl"
         onClick={() => navigate('/dashboard/agenda')}
       >
-        Ver Calendario Completo
+        Ver Calendário Completo
       </Button>
     </Card>
   );
