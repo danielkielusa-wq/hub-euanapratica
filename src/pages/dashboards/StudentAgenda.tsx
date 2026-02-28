@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -84,7 +84,6 @@ export default function StudentAgenda() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
 
       <div className="flex-1 p-6 bg-gray-50/50">
         {/* Header Row */}

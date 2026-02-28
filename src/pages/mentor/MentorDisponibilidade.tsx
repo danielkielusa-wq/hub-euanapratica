@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatDateTimeBr, localInputToUTC, getTimezoneLabel, getTimezoneAbbr } from '@/lib/timezone';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,7 +83,7 @@ export default function MentorDisponibilidade() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <DashboardTopHeader />
+
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -93,8 +93,7 @@ export default function MentorDisponibilidade() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
-      <div className="flex-1 p-6 bg-gray-50/50 space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Clock className="h-7 w-7 text-primary" />
           <div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
 import { StudentEspacoCard, ExploreCoursesCard } from '@/components/espacos/StudentEspacoCard';
 import { EspacosEmptyState } from '@/components/espacos/EspacosEmptyState';
@@ -30,7 +30,6 @@ export default function StudentEspacos() {
     return (
       <DashboardLayout>
         <div className="flex flex-col h-full">
-          <DashboardTopHeader />
           <div className="flex items-center justify-center flex-1 py-16">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -42,9 +41,7 @@ export default function StudentEspacos() {
   return (
     <DashboardLayout>
       <div className="flex flex-col h-full">
-        <DashboardTopHeader />
-        
-        <div className="flex-1 p-6 lg:p-8 bg-muted/30">
+        <div className="space-y-6">
           {/* Page Header with Filters */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div>

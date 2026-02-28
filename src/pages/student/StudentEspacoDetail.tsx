@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEspaco } from '@/hooks/useEspacos';
@@ -60,7 +60,6 @@ export default function StudentEspacoDetail() {
     return (
       <DashboardLayout>
         <div className="flex flex-col h-full">
-          <DashboardTopHeader />
           <div className="space-y-4 p-6">
             <Skeleton className="h-48" />
             <Skeleton className="h-12" />
@@ -75,7 +74,6 @@ export default function StudentEspacoDetail() {
     return (
       <DashboardLayout>
         <div className="flex flex-col h-full">
-          <DashboardTopHeader />
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center py-12 px-6 max-w-sm mx-auto rounded-[24px] bg-card border border-border/50">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
@@ -101,9 +99,6 @@ export default function StudentEspacoDetail() {
   return (
     <DashboardLayout>
       <div className="flex flex-col h-full bg-muted/30">
-        {/* Top Header */}
-        <DashboardTopHeader />
-
         {/* Hero Header */}
         <EspacoHeroHeader 
           espaco={espaco}

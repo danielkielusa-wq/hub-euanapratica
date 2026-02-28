@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { MonthCalendar } from '@/components/calendar/MonthCalendar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -92,9 +92,7 @@ export default function MentorAgenda() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
-
-      <div className="flex-1 p-6 bg-gray-50/50">
+      <div>
         {/* Header Row */}
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div className="flex items-start gap-4">

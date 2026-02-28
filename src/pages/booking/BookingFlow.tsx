@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { ServiceHeader } from '@/components/booking/ServiceHeader';
 import { WeekCalendar } from '@/components/booking/WeekCalendar';
 import { BookingConfirmation } from '@/components/booking/BookingConfirmation';
@@ -73,7 +73,7 @@ export default function BookingFlow() {
   if (!accessLoading && !hasServiceAccess) {
     return (
       <DashboardLayout>
-        <DashboardTopHeader />
+
         <div className="flex-1 p-6">
           <div className="max-w-2xl mx-auto">
             <div className="bg-amber-50 rounded-2xl p-8 border border-amber-100 text-center">
@@ -104,7 +104,7 @@ export default function BookingFlow() {
   if (step === 'success') {
     return (
       <DashboardLayout>
-        <DashboardTopHeader />
+
         <div className="flex-1 p-6">
           <div className="max-w-2xl mx-auto">
             <div className="bg-green-50 rounded-2xl p-8 border border-green-100 text-center">
@@ -140,7 +140,7 @@ export default function BookingFlow() {
   if (!loadingBookability && !canBook) {
     return (
       <DashboardLayout>
-        <DashboardTopHeader />
+
         <div className="flex-1 p-6">
           <div className="max-w-2xl mx-auto">
             <div className="bg-red-50 rounded-2xl p-8 border border-red-100 text-center">
@@ -161,9 +161,7 @@ export default function BookingFlow() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
-
-      <div className="flex-1 p-6 bg-gray-50/50">
+      <div className="space-y-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Back button */}
           <Button

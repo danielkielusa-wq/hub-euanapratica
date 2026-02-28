@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { Button } from '@/components/ui/button';
 import { 
   MessageCircle, 
@@ -55,7 +55,6 @@ const supportOptions = [
 export default function StudentSuporte() {
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
       
       <div className="flex-1 p-6 bg-gray-50/50">
         <div className="max-w-4xl mx-auto space-y-6">

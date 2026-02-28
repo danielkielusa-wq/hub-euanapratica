@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { BookingCard } from '@/components/booking/BookingCard';
 import { EmptyBookings } from '@/components/booking/EmptyBookings';
 import { RescheduleModal } from '@/components/booking/RescheduleModal';
@@ -68,7 +68,6 @@ export default function StudentBookings() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
 
       <div className="flex-1 p-6 bg-gray-50/50">
         <div className="max-w-5xl mx-auto space-y-8">

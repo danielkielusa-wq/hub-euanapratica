@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,8 +50,7 @@ export default function MentorAgendamentos() {
 
   return (
     <DashboardLayout>
-      <DashboardTopHeader />
-      <div className="flex-1 p-6 bg-gray-50/50 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <CalendarCheck className="h-7 w-7 text-primary" />
