@@ -18,15 +18,18 @@ import {
   Clock,
   Settings,
   Save,
+  BarChart3,
 } from 'lucide-react';
 import { useAdminCourse, useUpdateCourse } from '@/hooks/useAdminCourses';
 import { ModuleList } from '@/components/admin/courses/ModuleList';
+import { CourseAnalytics } from '@/components/admin/courses/CourseAnalytics';
+import { CurriculumImportDialog } from '@/components/admin/courses/CurriculumImportDialog';
 import { formatDuration } from '@/types/course';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-type Tab = 'curriculum' | 'settings' | 'students';
+type Tab = 'curriculum' | 'settings' | 'students' | 'analytics';
 
 export default function AdminCourseBuilder() {
   const { id } = useParams<{ id: string }>();
@@ -73,8 +76,9 @@ export default function AdminCourseBuilder() {
 
   const tabs: { key: Tab; label: string; icon: React.ElementType; count?: number }[] = [
     { key: 'curriculum', label: 'Conteúdo', icon: BookOpen },
-    { key: 'settings', label: 'Configurações', icon: Settings },
+    { key: 'analytics', label: 'Analytics', icon: BarChart3 },
     { key: 'students', label: 'Alunos', icon: Users, count: course.enrolled_count },
+    { key: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   const handleSaveSettings = () => {
@@ -116,6 +120,7 @@ export default function AdminCourseBuilder() {
               </span>
             </div>
           </div>
+          <CurriculumImportDialog espacoId={course.id} existingModuleCount={course.modules.length} />
         </div>
 
         {/* Tabs */}
@@ -148,6 +153,10 @@ export default function AdminCourseBuilder() {
         {/* Tab Content */}
         {activeTab === 'curriculum' && (
           <ModuleList espacoId={course.id} modules={course.modules} />
+        )}
+
+        {activeTab === 'analytics' && (
+          <CourseAnalytics espacoId={course.id} />
         )}
 
         {activeTab === 'settings' && (

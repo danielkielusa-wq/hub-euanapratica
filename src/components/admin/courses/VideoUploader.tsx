@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, Loader2, CheckCircle, AlertCircle, Film } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, AlertCircle, Film, Play, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ interface VideoUploaderProps {
   videoStatus: VideoStatus;
   thumbnailUrl: string | null;
   onUploadComplete?: () => void;
+  libraryId?: string | null;
 }
 
 export function VideoUploader({
@@ -21,10 +22,13 @@ export function VideoUploader({
   videoStatus,
   thumbnailUrl,
   onUploadComplete,
+  libraryId,
 }: VideoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [thumbError, setThumbError] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
@@ -37,8 +41,24 @@ export function VideoUploader({
         body: { lessonId, title: file.name },
       });
 
-      if (fnError) throw new Error(fnError.message || 'Failed to create upload');
-      if (!data?.videoId) throw new Error('No videoId returned');
+      if (fnError) {
+        // Extract error from FunctionsHttpError
+        let serverMsg = fnError.message || 'Failed to create upload';
+        try {
+          const ctx = fnError.context;
+          if (ctx && typeof ctx.json === 'function') {
+            // context is a Response object (newer supabase-js)
+            const body = await ctx.json();
+            serverMsg = body?.error || body?.message || serverMsg;
+          } else if (ctx?.error) {
+            serverMsg = ctx.error;
+          } else if (typeof ctx === 'string') {
+            serverMsg = ctx;
+          }
+        } catch { /* keep default message */ }
+        throw new Error(serverMsg);
+      }
+      if (!data?.videoId) throw new Error(data?.error || 'No videoId returned');
 
       const { videoId, libraryId, expirationTime, signature, tusEndpoint } = data;
 
@@ -68,11 +88,30 @@ export function VideoUploader({
         upload.start();
       });
 
+      // TUS upload done — file is on Bunny, now Bunny will transcode
       setProgress(100);
+
+      // Transition status: uploading → processing
+      await supabase
+        .from('course_lessons')
+        .update({ video_status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', lessonId);
+
       onUploadComplete?.();
     } catch (err: any) {
       console.error('Video upload error:', err);
-      setError(err.message || 'Upload failed');
+      if (err?.context) console.error('Error context:', err.context);
+      const msg = err?.message || 'Upload failed';
+      setError(msg);
+      const { toast } = await import('sonner');
+      toast.error('Erro no upload: ' + msg);
+
+      // Revert status on failure so admin can retry
+      await supabase
+        .from('course_lessons')
+        .update({ video_status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', lessonId)
+        .then(() => onUploadComplete?.());
     } finally {
       setUploading(false);
     }
@@ -95,20 +134,52 @@ export function VideoUploader({
   if (currentVideoId && !uploading) {
     return (
       <div className="space-y-3">
-        {/* Thumbnail preview */}
-        {thumbnailUrl && videoStatus === 'ready' ? (
+        {/* Video preview / thumbnail */}
+        {videoStatus === 'ready' && showPreview ? (
           <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
-            <img src={thumbnailUrl} alt="Video thumbnail" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-              <Film className="h-10 w-10 text-white/80" />
+            <iframe
+              src={`https://iframe.mediadelivery.net/embed/${libraryId || ''}/${currentVideoId}?autoplay=false&preload=true`}
+              className="w-full h-full"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              title="Video preview"
+              style={{ border: 0 }}
+              onError={() => setShowPreview(false)}
+            />
+          </div>
+        ) : thumbnailUrl && videoStatus === 'ready' && !thumbError ? (
+          <div
+            className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 cursor-pointer group"
+            onClick={() => setShowPreview(true)}
+          >
+            <img
+              src={thumbnailUrl}
+              alt="Video thumbnail"
+              className="w-full h-full object-cover"
+              onError={() => setThumbError(true)}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+              <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Play className="h-6 w-6 text-gray-900 ml-1" />
+              </div>
+            </div>
+          </div>
+        ) : videoStatus === 'ready' ? (
+          <div
+            className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 cursor-pointer group flex items-center justify-center"
+            onClick={() => setShowPreview(true)}
+          >
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto group-hover:bg-white/20 transition-colors">
+                <Play className="h-6 w-6 text-white ml-1" />
+              </div>
+              <p className="text-xs text-white/60">Clique para visualizar</p>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-            {videoStatus === 'processing' ? (
+            {(videoStatus === 'processing' || videoStatus === 'uploading') ? (
               <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
-            ) : videoStatus === 'ready' ? (
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
             ) : (
               <AlertCircle className="h-5 w-5 text-red-500" />
             )}
@@ -128,10 +199,17 @@ export function VideoUploader({
           size="sm"
           className="w-full"
           onClick={handleFileSelect}
+          disabled={videoStatus === 'uploading'}
         >
           <Upload className="h-4 w-4 mr-2" />
-          Substituir vídeo
+          {videoStatus === 'uploading' ? 'Upload em andamento...' : 'Substituir vídeo'}
         </Button>
+
+        {error && (
+          <p className="text-xs text-red-600 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3 flex-shrink-0" /> {error}
+          </p>
+        )}
       </div>
     );
   }

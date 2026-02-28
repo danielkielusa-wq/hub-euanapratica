@@ -24,13 +24,7 @@ const roleLabels: Record<string, string> = {
   admin: 'Administrador',
 };
 
-const timezones = [
-  { value: 'America/Sao_Paulo', label: 'São Paulo (GMT-3)' },
-  { value: 'America/New_York', label: 'Nova York (GMT-5)' },
-  { value: 'America/Los_Angeles', label: 'Los Angeles (GMT-8)' },
-  { value: 'Europe/London', label: 'Londres (GMT+0)' },
-  { value: 'Europe/Paris', label: 'Paris (GMT+1)' },
-];
+import { TIMEZONE_OPTIONS } from '@/lib/timezone';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -334,7 +328,7 @@ export default function ProfilePage() {
                         <SelectValue placeholder="Selecione o fuso horário" />
                       </SelectTrigger>
                       <SelectContent>
-                        {timezones.map((tz) => (
+                        {TIMEZONE_OPTIONS.map((tz) => (
                           <SelectItem key={tz.value} value={tz.value}>
                             {tz.label}
                           </SelectItem>

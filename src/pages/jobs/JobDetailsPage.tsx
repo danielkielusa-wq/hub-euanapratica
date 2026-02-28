@@ -31,6 +31,11 @@ import {
   JOB_TYPE_LABELS,
   EXPERIENCE_LABELS
 } from '@/types/jobs';
+import JobAIInsights from '@/components/jobSearch/JobAIInsights';
+import JobUpsellBlock from '@/components/jobSearch/JobUpsellBlock';
+import JobSidebarUpsell from '@/components/jobSearch/JobSidebarUpsell';
+import JobPostApplyModal from '@/components/jobSearch/JobPostApplyModal';
+import { useJobUpsellConfig } from '@/hooks/useJobUpsell';
 
 export default function JobDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,16 +43,16 @@ export default function JobDetailsPage() {
   const { logEvent } = useAnalytics();
   const { planId, isPremiumPlan, isVipPlan } = usePlanAccess();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  // Determine user plan
-  const userPlan = isVipPlan ? 'vip' : isPremiumPlan ? 'pro' : 'free';
-  const canApply = userPlan !== 'free';
+  const [showPostApplyModal, setShowPostApplyModal] = useState(false);
+  const upsellConfig = useJobUpsellConfig();
 
   // Fetch job details
   const { data: job, isLoading, error } = useJob(id);
 
-  // Quota
+  // Quota (unified credit system — single source of truth for apply access)
   const { data: quota } = usePrimeJobsQuota();
+  const hasPlan = quota ? quota.monthlyLimit > 0 : false;
+  const canApply = quota?.canApply ?? false;
 
   // Mutations
   const toggleBookmark = useToggleBookmark();
@@ -91,27 +96,34 @@ export default function JobDetailsPage() {
       entity_type: 'prime_job',
       entity_id: job.id,
       metadata: {
+        has_plan: hasPlan,
         can_apply: canApply,
-        quota_available: quota?.canApply ?? null
+        remaining: quota?.remaining ?? null
       }
     });
 
-    if (!canApply) {
+    if (!hasPlan) {
       setShowUpgradeModal(true);
       return;
     }
 
-    if (quota && !quota.canApply) {
-      toast.error('Limite mensal atingido', {
-        description: `Você já usou suas ${quota.monthlyLimit} aplicações este mês.`,
+    if (!canApply) {
+      toast.error('Limite de acessos atingido', {
+        description: `Você já acessou suas ${quota?.monthlyLimit || 0} oportunidades este mês. Faça upgrade para continuar.`,
       });
       return;
     }
 
-    applyToJob.mutate({
-      jobId: job.id,
-      applyUrl: job.apply_url,
-    });
+    applyToJob.mutate(
+      { jobId: job.id },
+      {
+        onSuccess: () => {
+          if (upsellConfig.enabled && upsellConfig.post_apply_service_id) {
+            setShowPostApplyModal(true);
+          }
+        },
+      }
+    );
   };
 
   const handleShare = async () => {
@@ -190,8 +202,8 @@ export default function JobDetailsPage() {
                 <Lock size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-amber-900">Esta é uma vaga exclusiva Prime Jobs</h3>
-                <p className="text-sm text-amber-700">Faça upgrade para VIP e candidate-se a esta e centenas de outras vagas!</p>
+                <h3 className="font-bold text-amber-900">Oportunidade exclusiva Prime Jobs</h3>
+                <p className="text-sm text-amber-700">Algumas dessas vagas não existem em nenhum outro lugar — faça upgrade para ter acesso direto ao recrutador.</p>
               </div>
             </div>
             <Button
@@ -239,23 +251,23 @@ export default function JobDetailsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={handleBookmark}
                     disabled={toggleBookmark.isPending}
-                    className={`p-4 rounded-2xl transition-all shadow-sm ${
+                    className={`p-2.5 rounded-xl transition-all ${
                       job.is_bookmarked
                         ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                        : 'bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50'
+                        : 'bg-gray-100 text-gray-400 hover:text-red-500 hover:bg-red-50'
                     }`}
                   >
-                    <Heart size={20} fill={job.is_bookmarked ? 'currentColor' : 'none'} />
+                    <Heart size={18} fill={job.is_bookmarked ? 'currentColor' : 'none'} />
                   </button>
                   <button
                     onClick={handleShare}
-                    className="p-4 bg-gray-50 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all shadow-sm"
+                    className="p-2.5 bg-gray-100 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
                   >
-                    <Share2 size={20} />
+                    <Share2 size={18} />
                   </button>
                 </div>
               </div>
@@ -276,7 +288,19 @@ export default function JobDetailsPage() {
                     {salaryDisplay}
                   </span>
                 )}
+                {job.industry && (
+                  <span className="px-4 py-2 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl border border-gray-100">
+                    {job.industry}
+                  </span>
+                )}
               </div>
+
+              {/* Salary Notes */}
+              {job.salary_notes && (
+                <p className="text-sm text-gray-500 font-medium mt-4">
+                  {job.salary_notes}
+                </p>
+              )}
 
               {/* Tech Stack */}
               {job.tech_stack && job.tech_stack.length > 0 && (
@@ -323,19 +347,34 @@ export default function JobDetailsPage() {
                 )}
               </div>
             </div>
+
+            {/* AI Insights for Brazilian Professionals */}
+            {job.ai_enrichment && (
+              <JobAIInsights enrichment={job.ai_enrichment} />
+            )}
+
+            {/* Upsell block — contextual services based on job gaps */}
+            <JobUpsellBlock job={job} />
           </div>
 
           {/* Sidebar */}
           <aside className="col-span-12 lg:col-span-4 space-y-8">
-            {/* Apply CTA Box */}
-            <div className="bg-gray-900 rounded-[40px] p-8 text-white shadow-2xl sticky top-28">
-              <h3 className="text-xl font-black mb-4">Pronto para aplicar?</h3>
+            {/* Access CTA Box */}
+            <div className="bg-gray-900 rounded-[40px] p-8 text-white shadow-2xl">
+              <p className="text-[10px] font-black text-brand-400 uppercase tracking-widest mb-3">Acesso Prime</p>
+              <h3 className="text-xl font-black mb-3 leading-snug">
+                {job.is_applied
+                  ? 'A porta está aberta — o próximo passo é seu.'
+                  : 'Vaga garimpada. Acesso direto.'}
+              </h3>
               <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-                Clique abaixo para ser redirecionado para a página de aplicação da empresa.
+                {job.is_applied
+                  ? 'Você já acessou o caminho para esta vaga. Agora é hora de agir — envie sua mensagem, candidate-se e se destaque.'
+                  : 'Esta vaga pode não estar publicada em nenhum outro lugar. Você recebe o link direto — seja para a página da empresa ou para o perfil do recrutador responsável.'}
               </p>
 
               <div className="space-y-4">
-                {!canApply ? (
+                {!hasPlan ? (
                   <button
                     onClick={() => {
                       logEvent({
@@ -344,23 +383,23 @@ export default function JobDetailsPage() {
                       });
                       setShowUpgradeModal(true);
                     }}
-                    className="w-full py-5 bg-gray-700 text-gray-400 font-black rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed"
+                    className="w-full py-5 bg-brand-600 hover:bg-brand-700 text-white font-black rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-xl"
                   >
-                    <Lock size={18} /> Assine para Aplicar
+                    <Lock size={18} /> Desbloquear Acesso
                   </button>
                 ) : job.is_applied ? (
                   <button
                     disabled
-                    className="w-full py-5 bg-green-600 text-white font-black rounded-2xl flex items-center justify-center gap-2"
+                    className="w-full py-5 bg-green-600/20 border border-green-500/30 text-green-400 font-black rounded-2xl flex items-center justify-center gap-2"
                   >
-                    <CheckCircle2 size={18} /> Candidatura Registrada
+                    <CheckCircle2 size={18} /> Acesso Liberado
                   </button>
-                ) : quota && !quota.canApply ? (
+                ) : !canApply ? (
                   <button
-                    disabled
-                    className="w-full py-5 bg-gray-700 text-gray-400 font-black rounded-2xl flex items-center justify-center gap-2"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="w-full py-5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl flex items-center justify-center gap-2 transition-all"
                   >
-                    Limite Mensal Atingido
+                    Limite do Mês Atingido — Upgrade
                   </button>
                 ) : (
                   <button
@@ -372,7 +411,7 @@ export default function JobDetailsPage() {
                       <Loader2 className="animate-spin" size={18} />
                     ) : (
                       <>
-                        Aplicar Agora <ExternalLink size={18} />
+                        Acessar Oportunidade <ExternalLink size={18} />
                       </>
                     )}
                   </button>
@@ -380,27 +419,37 @@ export default function JobDetailsPage() {
 
                 <p className="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                   {job.is_applied
-                    ? `Aplicado ${getTimeAgo(job.created_at)}`
-                    : 'Você será redirecionado para o site da empresa'}
+                    ? 'Você acessou — agora é com você'
+                    : 'Link exclusivo · nunca exposto publicamente'}
                 </p>
               </div>
 
               {/* Quota Display */}
-              {canApply && quota && (
+              {hasPlan && quota && (
                 <div className="mt-10 pt-8 border-t border-white/10 space-y-4">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-gray-400 uppercase tracking-widest">Aplicações do Mês</span>
+                    <span className="font-bold text-gray-400 uppercase tracking-widest">Acessos este mês</span>
                     <span className="font-black">{quota.usedThisMonth}/{quota.monthlyLimit}</span>
                   </div>
                   <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-brand-500 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, (quota.usedThisMonth / quota.monthlyLimit) * 100)}%` }}
+                      className={`h-full rounded-full transition-all ${
+                        quota.remaining <= 0 ? 'bg-amber-500' : quota.remaining <= 3 ? 'bg-amber-400' : 'bg-brand-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (quota.usedThisMonth / Math.max(1, quota.monthlyLimit)) * 100)}%` }}
                     />
                   </div>
+                  {quota.remaining <= 3 && quota.remaining > 0 && (
+                    <p className="text-xs text-amber-400 font-bold">
+                      Restam apenas {quota.remaining} acesso(s) este mês
+                    </p>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Sidebar upsell — fixed service configured by admin */}
+            <JobSidebarUpsell />
 
             {/* Company Info */}
             <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm">
@@ -412,6 +461,12 @@ export default function JobDetailsPage() {
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Categoria</span>
                   <span className="text-xs font-black text-gray-900">{job.category}</span>
                 </div>
+                {job.industry && (
+                  <div className="flex justify-between py-2 border-b border-gray-50">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Indústria</span>
+                    <span className="text-xs font-black text-gray-900">{job.industry}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-2 border-b border-gray-50">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Localização</span>
                   <span className="text-xs font-black text-gray-900">{job.location}</span>
@@ -431,6 +486,13 @@ export default function JobDetailsPage() {
           onOpenChange={setShowUpgradeModal}
           currentPlanId={planId}
           reason="upgrade"
+        />
+
+        {/* Post-apply upsell modal */}
+        <JobPostApplyModal
+          open={showPostApplyModal}
+          onClose={() => setShowPostApplyModal(false)}
+          jobTitle={job.title}
         />
       </div>
     </DashboardLayout>

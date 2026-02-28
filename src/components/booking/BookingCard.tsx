@@ -1,6 +1,6 @@
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, Video, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ export function BookingCard({
   onCancel,
   onJoinMeeting,
 }: BookingCardProps) {
+  const tz = useUserTimezone();
   const startDate = new Date(booking.scheduled_start);
   const isUpcoming = booking.status === 'confirmed' && startDate >= new Date();
   const canJoin = isUpcoming && booking.meeting_link;
@@ -37,13 +38,13 @@ export function BookingCard({
         {/* Date Box */}
         <div className="flex-shrink-0 flex md:flex-col items-center gap-2 md:gap-0 bg-gray-50 rounded-2xl p-4 min-w-[100px] justify-center border border-gray-100">
           <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            {format(startDate, 'MMM', { locale: ptBR })}
+            {formatInTz(startDate, tz, 'MMM')}
           </span>
           <span className="text-2xl font-black text-gray-900">
-            {format(startDate, 'd')}
+            {formatInTz(startDate, tz, 'd')}
           </span>
           <span className="text-xs font-medium text-gray-500 bg-white px-2 py-0.5 rounded-md mt-1">
-            {format(startDate, 'HH:mm', { locale: ptBR })}
+            {formatInTz(startDate, tz, 'HH:mm')}
           </span>
         </div>
 
@@ -140,9 +141,7 @@ export function BookingCard({
           {!isUpcoming && booking.status === 'completed' && (
             <p className="text-sm text-gray-500">
               Sessão concluída em{' '}
-              {format(new Date(booking.completed_at!), "d 'de' MMMM", {
-                locale: ptBR,
-              })}
+              {formatInTz(booking.completed_at!, tz, "d 'de' MMMM")}
             </p>
           )}
 
@@ -150,9 +149,7 @@ export function BookingCard({
             <p className="text-sm text-gray-500">
               Cancelado{' '}
               {booking.cancelled_at &&
-                `em ${format(new Date(booking.cancelled_at), "d 'de' MMMM", {
-                  locale: ptBR,
-                })}`}
+                `em ${formatInTz(booking.cancelled_at, tz, "d 'de' MMMM")}`}
               {booking.cancellation_reason && ` - ${booking.cancellation_reason}`}
             </p>
           )}

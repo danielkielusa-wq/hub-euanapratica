@@ -1,13 +1,14 @@
 /**
  * Send Booking Confirmation Email
  *
- * Sends a confirmation email to the student when a booking is created.
+ * Sends a confirmation email to BOTH the student and the mentor when a booking is created.
  * Uses centralized email template service for database-driven templates.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { buildBookingCalendarData } from "../_shared/calendarService.ts";
 
 interface BookingConfirmationRequest {
   booking_id: string;
@@ -44,8 +45,8 @@ Deno.serve(async (req) => {
       .from("bookings")
       .select(`
         *,
-        student:profiles!bookings_student_id_fkey(id, full_name, email, timezone),
-        mentor:profiles!bookings_mentor_id_fkey(id, full_name, email),
+        student:profiles!bookings_student_profile_fkey(id, full_name, email, timezone),
+        mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email),
         service:hub_services(id, name, description)
       `)
       .eq("id", booking_id)
@@ -80,8 +81,17 @@ Deno.serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://hub-euanapratica.vercel.app";
 
-    // Send templated email
-    const result = await sendTemplatedEmail({
+    // Build calendar attachment and Google Calendar link
+    const calendarData = buildBookingCalendarData({
+      scheduled_start: booking.scheduled_start,
+      scheduled_end: booking.scheduled_end,
+      service_name: booking.service?.name || "Sessão",
+      mentor_name: booking.mentor?.full_name || "Mentor",
+      meeting_link: booking.meeting_link,
+    });
+
+    // Send email to student
+    const studentResult = await sendTemplatedEmail({
       templateName: "booking_confirmation",
       to: booking.student?.email,
       variables: {
@@ -95,13 +105,42 @@ Deno.serve(async (req) => {
         "{{manageBookingLink}}": `${origin}/dashboard/agendamentos`,
         "{{studentNotes}}": booking.student_notes || "",
         "{{meetingLink}}": booking.meeting_link || "",
+        "{{calendarSection}}": calendarData.calendarSectionHtml,
       },
     });
 
-    console.log("Booking confirmation email result:", { bookingId: booking_id, to: booking.student?.email, ...result });
+    console.log("Student confirmation email:", { bookingId: booking_id, to: booking.student?.email, sent: studentResult.emailSent });
+
+    // Send email to mentor
+    let mentorEmailSent = false;
+    if (booking.mentor?.email) {
+      const mentorResult = await sendTemplatedEmail({
+        templateName: "booking_confirmation_mentor",
+        to: booking.mentor.email,
+        variables: {
+          "{{mentorName}}": booking.mentor.full_name || "Mentor",
+          "{{studentName}}": booking.student?.full_name || "Aluno(a)",
+          "{{serviceName}}": booking.service?.name || "Sessão",
+          "{{formattedDate}}": dateFormatter.format(startDate),
+          "{{formattedStartTime}}": timeFormatter.format(startDate),
+          "{{formattedEndTime}}": timeFormatter.format(endDate),
+          "{{durationMinutes}}": String(booking.duration_minutes),
+          "{{manageBookingLink}}": `${origin}/dashboard/agendamentos`,
+          "{{studentNotes}}": booking.student_notes || "",
+          "{{meetingLink}}": booking.meeting_link || "",
+          "{{calendarSection}}": calendarData.calendarSectionHtml,
+        },
+      });
+      mentorEmailSent = !!mentorResult.emailSent;
+      console.log("Mentor confirmation email:", { bookingId: booking_id, to: booking.mentor.email, sent: mentorEmailSent });
+    }
 
     return new Response(
-      JSON.stringify({ success: result.success, message: result.message, emailSent: result.emailSent }),
+      JSON.stringify({
+        success: studentResult.success,
+        emailSent: studentResult.emailSent,
+        mentorEmailSent,
+      }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {

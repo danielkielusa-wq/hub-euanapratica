@@ -17,17 +17,18 @@ Automação de nutrição multi-etapa que é acionada após a geração do relat
 | Campo           | Valor                                                    |
 |-----------------|----------------------------------------------------------|
 | **Evento**      | `report.generated`                                       |
-| **Origem**      | Edge Function `format-lead-report`                       |
+| **Origem**      | Trigger PostgreSQL `trg_report_completed` na tabela `career_evaluations` |
+| **Edge Function** | `dispatch-report-webhook` (chamada via `pg_net` + `invoke_edge_function`) |
 | **Dispatcher**  | `dispatchN8NWebhook()` em `_shared/n8nService.ts`        |
 | **Tabela N8N**  | `n8n_automations` (trigger_event = `report.generated`)   |
 
-O evento é disparado ao final do processamento do relatório V2, após o enriquecimento de recomendações de produtos e a atualização do `career_evaluations.processing_status` para `completed`.
+O evento é disparado por trigger PostgreSQL `trg_report_completed` quando `career_evaluations.processing_status` transiciona para `'completed'` (INSERT ou UPDATE). O trigger chama a Edge Function `dispatch-report-webhook` via `pg_net`, que lê o relatório do banco, normaliza a temperatura do lead e dispara o webhook. Este mecanismo garante que o webhook é disparado independentemente de qual processo gerou o relatório (LLM ou cache).
 
 ---
 
 ## Payload do Webhook
 
-O payload enviado pelo `format-lead-report` contém todos os dados necessários para a campanha drip:
+O payload enviado pelo `dispatch-report-webhook` contém todos os dados necessários para a campanha drip:
 
 ```json
 {
@@ -67,9 +68,12 @@ O payload enviado pelo `format-lead-report` contém todos os dados necessários 
 ## Fluxo da Sequência
 
 ```
-                         report.generated
-                              |
-                              v
+career_evaluations INSERT/UPDATE (processing_status = 'completed')
+        │
+        ▼ (trigger trg_report_completed → dispatch-report-webhook)
+dispatchN8NWebhook("report.generated", payload)
+        │
+        ▼
                    +---------------------+
                    |   Webhook (N8N)     |
                    |   Recebe payload    |
@@ -505,8 +509,8 @@ A verificação consulta `subscriptions.status = 'active'` e opcionalmente `user
 
 ### Lead recebendo campanha duplicada
 
-1. Verificar se o `format-lead-report` está disparando múltiplos webhooks (cache vs refresh)
-2. O `dispatchN8NWebhook` é chamado tanto no fluxo normal quanto no `forceRefresh` — se o admin forçar refresh, pode gerar duplicata
+1. O trigger PostgreSQL `trg_report_completed` dispara tanto em INSERT quanto em UPDATE para `processing_status = 'completed'`. Se o status for atualizado múltiplas vezes para `completed`, pode gerar duplicatas.
+2. O trigger só dispara quando o status **transiciona** para `completed` (usa `IS DISTINCT FROM`), mas re-inserts diretos podem causar duplicatas.
 3. **Solução**: No Node 2 (verificação inicial), além de checar assinatura, verificar se já existe `lead_interactions` com `metadata->template_name = 'drip_d0_welcome'` para esse lead
 
 ---

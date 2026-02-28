@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import {
   ArrowLeft,
@@ -21,7 +21,10 @@ import {
 import { HubService } from '@/types/hub';
 import { PriceDisplay } from '@/components/hub/PriceDisplay';
 import { CourseCurriculumPreview } from '@/components/course/CourseCurriculumPreview';
+import { OrderBumpCard } from './OrderBumpCard';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface ServiceLandingPageProps {
   service: HubService;
@@ -43,6 +46,8 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 
 const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
   const navigate = useNavigate();
+  const [bumpChecked, setBumpChecked] = useState(false);
+  const pageViewIdRef = useRef<string | null>(null);
 
   // Extract landing page data with defaults
   const landingData = service.landing_page_data || {};
@@ -56,13 +61,77 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
   // Get checkout URL (priority: ticto_checkout_url > redirect_url > landing_page_url)
   const checkoutUrl = service.ticto_checkout_url || service.redirect_url || service.landing_page_url;
 
+  // Fetch order bump service (F11)
+  const { data: bumpService } = useQuery({
+    queryKey: ['order-bump', service.order_bump_service_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('hub_services')
+        .select('*')
+        .eq('id', service.order_bump_service_id!)
+        .single();
+      return data as HubService | null;
+    },
+    enabled: !!service.order_bump_service_id,
+  });
+
+  // Track page view for abandoned cart (F13)
+  useEffect(() => {
+    const trackView = async () => {
+      try {
+        // Generate or retrieve session ID
+        let sessionId = sessionStorage.getItem('lp_session_id');
+        if (!sessionId) {
+          sessionId = crypto.randomUUID();
+          sessionStorage.setItem('lp_session_id', sessionId);
+        }
+
+        const { data: user } = await supabase.auth.getUser();
+        const params = new URLSearchParams(window.location.search);
+
+        const { data } = await supabase
+          .from('landing_page_views')
+          .insert({
+            service_id: service.id,
+            user_id: user?.user?.id || null,
+            session_id: sessionId,
+            utm_source: params.get('utm_source') || null,
+            utm_medium: params.get('utm_medium') || null,
+            utm_campaign: params.get('utm_campaign') || null,
+          })
+          .select('id')
+          .single();
+
+        if (data) pageViewIdRef.current = data.id;
+      } catch {
+        // Non-critical — don't block page
+      }
+    };
+    trackView();
+  }, [service.id]);
+
   const handleBack = () => {
     navigate('/dashboard/hub');
   };
 
   const handleBook = () => {
+    // Mark conversion (F13)
+    if (pageViewIdRef.current) {
+      supabase
+        .from('landing_page_views')
+        .update({ converted: true })
+        .eq('id', pageViewIdRef.current)
+        .then(() => {});
+    }
+
     if (checkoutUrl) {
-      window.open(checkoutUrl, '_blank');
+      // Append order bump to checkout URL if checked
+      let url = checkoutUrl;
+      if (bumpChecked && bumpService?.ticto_checkout_url) {
+        const sep = url.includes('?') ? '&' : '?';
+        url = `${url}${sep}bump=${bumpService.id}`;
+      }
+      window.open(url, '_blank');
     }
   };
 
@@ -203,6 +272,17 @@ const ServiceLandingPage: React.FC<ServiceLandingPageProps> = ({ service }) => {
                    </div>
                  ))}
               </div>
+           </div>
+         )}
+
+         {/* Order Bump (F11) */}
+         {bumpService && (
+           <div className="mb-16">
+             <OrderBumpCard
+               bumpService={bumpService}
+               checked={bumpChecked}
+               onToggle={setBumpChecked}
+             />
            </div>
          )}
 

@@ -5,6 +5,26 @@ export type JobType = 'full_time' | 'part_time' | 'contract' | 'freelance';
 export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'lead' | 'executive';
 export type ApplicationStatus = 'applied' | 'interviewing' | 'offered' | 'rejected' | 'withdrawn';
 
+export interface JobAIEnrichment {
+  timezone_analysis: {
+    overlap_with_brazil: string;
+    preferred_hours: string;
+    compatibility_score: number;
+  };
+  english_level_required: string;
+  english_level_notes: string;
+  salary_brl_context: {
+    monthly_brl: number;
+    comparison: string;
+  };
+  key_skills: string[];
+  missing_skills_hint: string;
+  application_tips: string[];
+  resume_pass_keywords: string[];
+  career_path_insight: string;
+  enriched_at: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -22,13 +42,31 @@ export interface Job {
   salary_min: number | null;
   salary_max: number | null;
   salary_currency: string;
-  apply_url: string;
+  salary_notes: string | null;
+  industry: string | null;
   is_featured: boolean;
   created_at: string;
+  ai_enrichment: JobAIEnrichment | null;
   // User context (populated by RPC)
   is_bookmarked?: boolean;
   is_applied?: boolean;
   total_count?: number;
+}
+
+export interface JobPublicPreview {
+  id: string;
+  title: string;
+  company_name: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  remote_type: string;
+  experience_level: string;
+  job_type: string;
+  category: string;
+  industry: string | null;
+  is_featured: boolean;
+  created_at: string;
 }
 
 export interface JobBookmark {
@@ -138,8 +176,10 @@ export const JOB_CATEGORIES = [
   'Design',
   'Marketing',
   'Sales',
+  'Sales Operations',
   'Operations',
   'Finance',
+  'Administrative',
   'HR',
   'Legal',
   'Support',

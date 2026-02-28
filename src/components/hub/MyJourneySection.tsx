@@ -1,7 +1,10 @@
-import { AlertCircle, PlayCircle, Calendar, History, Zap } from 'lucide-react';
+import { AlertCircle, PlayCircle, Calendar, History, Zap, Radio } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { JourneyCard, PlanToolCard } from './JourneyCard';
+import { LiveHubCard } from './LiveHubCard';
 import { useMyHub, usePlanTools } from '@/hooks/useMyHub';
+import { useMyLives } from '@/hooks/useMyLives';
 import type { HubSectionId } from '@/types/hub';
 
 const SECTION_ICONS: Record<HubSectionId, React.ElementType> = {
@@ -28,14 +31,19 @@ function SectionSkeleton() {
   );
 }
 
-export function MyJourneySection() {
+interface MyJourneySectionProps {
+  excludeHistory?: boolean;
+}
+
+export function MyJourneySection({ excludeHistory = false }: MyJourneySectionProps) {
   const { data: sections, isLoading: hubLoading } = useMyHub();
   const { data: planTools, isLoading: toolsLoading } = usePlanTools();
+  const { data: myLives, isLoading: livesLoading } = useMyLives();
 
-  const isLoading = hubLoading || toolsLoading;
+  const isLoading = hubLoading || toolsLoading || livesLoading;
 
   const hasAnything =
-    (sections && sections.length > 0) || (planTools && planTools.length > 0);
+    (sections && sections.length > 0) || (planTools && planTools.length > 0) || (myLives && myLives.length > 0);
 
   if (isLoading) {
     return (
@@ -61,7 +69,7 @@ export function MyJourneySection() {
       </div>
 
       {/* Purchased / active services grouped by section */}
-      {sections?.map((section) => {
+      {sections?.filter((s) => !(excludeHistory && s.id === 'history')).map((section) => {
         const Icon = SECTION_ICONS[section.id];
         const iconColor = SECTION_ICON_COLORS[section.id];
 
@@ -99,6 +107,46 @@ export function MyJourneySection() {
           </div>
         </div>
       )}
+
+      {/* Registered lives — show max 2, prioritize live > scheduled > completed */}
+      {myLives && myLives.length > 0 && (() => {
+        const STATUS_PRIORITY: Record<string, number> = { live: 0, scheduled: 1, completed: 2 };
+        const sorted = [...myLives].sort((a, b) => {
+          const pa = STATUS_PRIORITY[a.live.status] ?? 3;
+          const pb = STATUS_PRIORITY[b.live.status] ?? 3;
+          if (pa !== pb) return pa - pb;
+          return new Date(a.live.scheduled_at).getTime() - new Date(b.live.scheduled_at).getTime();
+        });
+        const display = sorted.slice(0, 2);
+        const total = myLives.length;
+
+        return (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Radio className="h-4 w-4 text-red-500" />
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                Minhas Lives
+              </h3>
+              <span className="text-xs text-gray-400 ml-1">({total})</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {display.map((item) => (
+                <LiveHubCard key={item.registration_id} item={item} />
+              ))}
+            </div>
+            {total > 2 && (
+              <div className="mt-3 text-center">
+                <Link
+                  to="/lives"
+                  className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
+                  Ver todas ({total})
+                </Link>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

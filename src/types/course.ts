@@ -5,9 +5,13 @@ export interface CourseModule {
   description: string | null;
   display_order: number;
   is_published: boolean;
+  unlock_days_after_enrollment: number | null;
   created_at: string;
   updated_at: string;
   lessons?: CourseLesson[];
+  // Computed by useCourseData for student view
+  isLocked?: boolean;
+  unlockDate?: Date | null;
 }
 
 export interface CourseLesson {
@@ -24,9 +28,13 @@ export interface CourseLesson {
   is_free_preview: boolean;
   display_order: number;
   is_published: boolean;
+  captions_generated: boolean;
   created_at: string;
   updated_at: string;
   attachments?: CourseLessonAttachment[];
+  // Computed in admin queries
+  has_quiz?: boolean;
+  quiz_question_count?: number;
 }
 
 export interface CourseLessonAttachment {
@@ -51,10 +59,11 @@ export interface CourseProgress {
   updated_at: string;
 }
 
-export type VideoStatus = 'pending' | 'processing' | 'ready' | 'failed';
+export type VideoStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'failed';
 
 export const VIDEO_STATUS_CONFIG: Record<VideoStatus, { label: string; color: string; bgColor: string }> = {
   pending: { label: 'Aguardando Upload', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+  uploading: { label: 'Enviando...', color: 'text-blue-600', bgColor: 'bg-blue-100' },
   processing: { label: 'Processando', color: 'text-amber-600', bgColor: 'bg-amber-100' },
   ready: { label: 'Pronto', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
   failed: { label: 'Erro', color: 'text-red-600', bgColor: 'bg-red-100' },

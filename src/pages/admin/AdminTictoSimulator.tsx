@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Copy, Check, AlertCircle, CheckCircle2, Clock, Loader2, HelpCircle, BookOpen, ChevronRight, Wrench } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Play, Copy, Check, AlertCircle, CheckCircle2, Clock, Loader2, HelpCircle, BookOpen, ChevronRight, Wrench, ShoppingBag, Video } from "lucide-react";
 import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { useSearchUsers } from "@/hooks/useAdminUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Live } from "@/types/live";
 
 // Payment status options with their behaviors
 const PAYMENT_STATUSES = [
@@ -38,11 +40,15 @@ interface SimulationResult {
   webhookResponse: Record<string, unknown>;
 }
 
+type ProductType = "service" | "live";
+
 export default function AdminTictoSimulator() {
   const navigate = useNavigate();
   const { data: services, isLoading: servicesLoading } = useAdminHubServices();
-  
+
+  const [productType, setProductType] = useState<ProductType>("service");
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
+  const [selectedLiveId, setSelectedLiveId] = useState<string>("");
   const [email, setEmail] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("paid");
@@ -50,26 +56,63 @@ export default function AdminTictoSimulator() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Fetch paid lives for the live selector
+  const { data: lives, isLoading: livesLoading } = useQuery({
+    queryKey: ['admin-paid-lives'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lives')
+        .select('id, title, slug, price, ticto_product_id, access_type, status, scheduled_at')
+        .eq('access_type', 'paid')
+        .order('scheduled_at', { ascending: false });
+      if (error) throw error;
+      return data as Pick<Live, 'id'|'title'|'slug'|'price'|'ticto_product_id'|'access_type'|'status'|'scheduled_at'>[];
+    },
+  });
+
   // Search users for autocomplete
   const { data: searchResults } = useSearchUsers(emailSearch);
 
-  const selectedService = useMemo(() => 
+  const selectedService = useMemo(() =>
     services?.find(s => s.id === selectedServiceId),
     [services, selectedServiceId]
   );
+
+  const selectedLive = useMemo(() =>
+    lives?.find(l => l.id === selectedLiveId),
+    [lives, selectedLiveId]
+  );
+
+  // Unified product for payload/simulation
+  const selectedProduct = useMemo(() => {
+    if (productType === 'service' && selectedService) {
+      return { name: selectedService.name, ticto_product_id: selectedService.ticto_product_id, price: selectedService.price };
+    }
+    if (productType === 'live' && selectedLive) {
+      return { name: selectedLive.title, ticto_product_id: selectedLive.ticto_product_id, price: selectedLive.price };
+    }
+    return null;
+  }, [productType, selectedService, selectedLive]);
 
   const selectedStatusInfo = useMemo(() =>
     PAYMENT_STATUSES.find(s => s.value === selectedStatus),
     [selectedStatus]
   );
 
+  const handleProductTypeChange = (type: ProductType) => {
+    setProductType(type);
+    setSelectedServiceId("");
+    setSelectedLiveId("");
+    setResult(null);
+  };
+
   // Generate preview payload
   const previewPayload = useMemo(() => ({
     status: selectedStatus,
     token: "[TICTO_SECRET_KEY]",
     item: {
-      product_id: selectedService?.ticto_product_id || "SIMULATED_ID",
-      product_name: selectedService?.name || "Produto não selecionado",
+      product_id: selectedProduct?.ticto_product_id || "SIMULATED_ID",
+      product_name: selectedProduct?.name || "Produto não selecionado",
     },
     customer: {
       name: "Simulação Admin",
@@ -77,9 +120,9 @@ export default function AdminTictoSimulator() {
     },
     order: {
       hash: `SIM_${Date.now()}`,
-      paid_amount: Math.round((selectedService?.price || 0) * 100),
+      paid_amount: Math.round((selectedProduct?.price || 0) * 100),
     },
-  }), [selectedService, email, selectedStatus]);
+  }), [selectedProduct, email, selectedStatus]);
 
   const handleCopyPayload = () => {
     navigator.clipboard.writeText(JSON.stringify(previewPayload, null, 2));
@@ -101,10 +144,10 @@ export default function AdminTictoSimulator() {
       const { data, error } = await supabase.functions.invoke("simulate-ticto-callback", {
         body: {
           email,
-          product_id: selectedService?.ticto_product_id || "SIMULATED_ID",
-          product_name: selectedService?.name || "Simulated Product",
+          product_id: selectedProduct?.ticto_product_id || "SIMULATED_ID",
+          product_name: selectedProduct?.name || "Simulated Product",
           status: selectedStatus,
-          amount: Math.round((selectedService?.price || 0) * 100),
+          amount: Math.round((selectedProduct?.price || 0) * 100),
         },
       });
 
@@ -194,11 +237,12 @@ export default function AdminTictoSimulator() {
                     </h3>
                     <ol className="space-y-2 text-muted-foreground">
                       {[
-                        { step: "Selecione o produto", detail: "Escolha o serviço que deseja testar. O Ticto Product ID será usado no payload." },
+                        { step: "Escolha o tipo", detail: "Selecione Serviço (produtos do Hub) ou Live (lives pagas)." },
+                        { step: "Selecione o produto", detail: "Escolha o serviço ou live a testar. O Ticto Product ID será usado no payload." },
                         { step: "Informe o e-mail", detail: "Digite ou busque o e-mail do usuário que receberá (ou perderá) o acesso." },
                         { step: "Escolha o status", detail: "Selecione o evento de pagamento a simular (veja tabela abaixo)." },
                         { step: "Clique em Simular", detail: "O sistema chamará a Edge Function e exibirá a resposta do webhook." },
-                        { step: "Valide o resultado", detail: "Acesse o Hub do usuário ou a tabela user_hub_services para confirmar a mudança de acesso." },
+                        { step: "Valide o resultado", detail: "Para serviços, verifique user_hub_services. Para lives, verifique live_registrations ou a tela do mentor." },
                       ].map((item, i) => (
                         <li key={i} className="flex gap-3">
                           <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
@@ -236,7 +280,10 @@ export default function AdminTictoSimulator() {
                                 ))}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-muted-foreground">Libera acesso ao produto</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              Serviço: libera <code className="bg-muted/70 px-1 rounded text-[10px]">user_hub_services</code><br />
+                              Live: upsert <code className="bg-muted/70 px-1 rounded text-[10px]">live_registrations</code> (paid)
+                            </td>
                           </tr>
                           <tr>
                             <td className="px-3 py-2">
@@ -252,7 +299,10 @@ export default function AdminTictoSimulator() {
                                 ))}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-muted-foreground">Revoga acesso ao produto</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              Serviço: revoga <code className="bg-muted/70 px-1 rounded text-[10px]">user_hub_services</code><br />
+                              Live: marca <code className="bg-muted/70 px-1 rounded text-[10px]">live_registrations</code> (refunded)
+                            </td>
                           </tr>
                         </tbody>
                       </table>
@@ -302,7 +352,7 @@ export default function AdminTictoSimulator() {
                   <Separator />
 
                   <p className="text-xs text-muted-foreground pb-4">
-                    Esta simulação <strong>não gera cobranças reais</strong> e <strong>não notifica o usuário por e-mail</strong>. Apenas os registros internos de acesso (tabela <code className="bg-muted px-1 rounded">user_hub_services</code>) são afetados.
+                    Esta simulação <strong>não gera cobranças reais</strong> e <strong>não notifica o usuário por e-mail</strong>. Para serviços, a tabela <code className="bg-muted px-1 rounded">user_hub_services</code> é afetada. Para lives pagas, a tabela <code className="bg-muted px-1 rounded">live_registrations</code> é afetada.
                   </p>
                 </div>
               </SheetContent>
@@ -318,44 +368,137 @@ export default function AdminTictoSimulator() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Product Selector */}
+              {/* Product Type Toggle */}
+              <div className="space-y-3">
+                <Label>Tipo de Produto</Label>
+                <div className="flex gap-1 bg-muted/50 p-1 rounded-full w-fit">
+                  <button
+                    onClick={() => handleProductTypeChange("service")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                      productType === "service"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    Serviço
+                  </button>
+                  <button
+                    onClick={() => handleProductTypeChange("live")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                      productType === "live"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Video className="h-4 w-4" />
+                    Live
+                  </button>
+                </div>
+              </div>
+
+              {/* Product Selector — conditional on type */}
               <div className="space-y-2">
                 <Label>Produto</Label>
-                <Select
-                  value={selectedServiceId}
-                  onValueChange={setSelectedServiceId}
-                  disabled={servicesLoading}
-                >
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Selecione um produto..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services?.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{service.name}</span>
-                          {service.ticto_product_id && (
-                            <Badge variant="secondary" className="text-xs">
-                              ID: {service.ticto_product_id}
-                            </Badge>
-                          )}
-                          {service.price > 0 && (
-                            <Badge variant="outline" className="text-xs">
-                              R$ {service.price.toFixed(2)}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedService && (
-                  <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
-                    <p><strong>Descrição:</strong> {selectedService.description || "Sem descrição"}</p>
-                    <p><strong>Tipo:</strong> {selectedService.service_type}</p>
-                    <p><strong>Rota:</strong> {selectedService.route || "Não definida"}</p>
-                    <p><strong>URL Redirecionamento:</strong> {selectedService.redirect_url || "Não definida"}</p>
-                  </div>
+                {productType === "service" ? (
+                  <>
+                    <Select
+                      value={selectedServiceId}
+                      onValueChange={setSelectedServiceId}
+                      disabled={servicesLoading}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Selecione um serviço..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {services?.map((service) => (
+                          <SelectItem key={service.id} value={service.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{service.name}</span>
+                              {service.ticto_product_id && (
+                                <Badge variant="secondary" className="text-xs">
+                                  ID: {service.ticto_product_id}
+                                </Badge>
+                              )}
+                              {service.price > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  R$ {service.price.toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedService && (
+                      <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                        <p><strong>Descrição:</strong> {selectedService.description || "Sem descrição"}</p>
+                        <p><strong>Tipo:</strong> {selectedService.service_type}</p>
+                        <p><strong>Rota:</strong> {selectedService.route || "Não definida"}</p>
+                        <p><strong>URL Redirecionamento:</strong> {selectedService.redirect_url || "Não definida"}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Select
+                      value={selectedLiveId}
+                      onValueChange={setSelectedLiveId}
+                      disabled={livesLoading}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Selecione uma live paga..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {lives?.map((live) => (
+                          <SelectItem key={live.id} value={live.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{live.title}</span>
+                              {live.ticto_product_id && (
+                                <Badge variant="secondary" className="text-xs">
+                                  ID: {live.ticto_product_id}
+                                </Badge>
+                              )}
+                              {live.price > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  R$ {Number(live.price).toFixed(2)}
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className={cn("text-xs", {
+                                "border-green-500 text-green-600": live.status === "scheduled",
+                                "border-amber-500 text-amber-600": live.status === "live",
+                                "border-muted-foreground": live.status === "completed" || live.status === "draft",
+                              })}>
+                                {live.status}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {lives?.length === 0 && (
+                          <div className="px-4 py-3 text-sm text-muted-foreground">
+                            Nenhuma live paga encontrada
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {selectedLive && (
+                      <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+                        <p><strong>Slug:</strong> /live/{selectedLive.slug}</p>
+                        <p><strong>Data:</strong> {new Date(selectedLive.scheduled_at).toLocaleString("pt-BR")}</p>
+                        <p><strong>Status:</strong> {selectedLive.status}</p>
+                        <p><strong>Preço:</strong> R$ {Number(selectedLive.price).toFixed(2)}</p>
+                        <p><strong>Ticto Product ID:</strong> {selectedLive.ticto_product_id || "Não configurado"}</p>
+                      </div>
+                    )}
+                    {selectedLive && !selectedLive.ticto_product_id && (
+                      <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                        Esta live não tem Ticto Product ID configurado. O webhook não conseguirá identificá-la.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -467,7 +610,7 @@ export default function AdminTictoSimulator() {
           {/* Simulate Button */}
           <Button
             onClick={handleSimulate}
-            disabled={isSimulating || !email}
+            disabled={isSimulating || !email || (productType === "live" && selectedLive && !selectedLive.ticto_product_id)}
             className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
           >
             {isSimulating ? (
@@ -518,10 +661,36 @@ export default function AdminTictoSimulator() {
                   </pre>
                 </div>
 
-                {result.success && (
+                {result.success && productType === "live" && (result.webhookResponse as Record<string, unknown>)?.type !== "live_purchase" && (
+                  <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg space-y-2">
+                    <p className="text-sm font-medium text-amber-800">
+                      ⚠ O webhook retornou sucesso mas NÃO processou como compra de live.
+                    </p>
+                    <p className="text-xs text-amber-700">Possíveis causas:</p>
+                    <ul className="text-xs text-amber-700 list-disc pl-4 space-y-1">
+                      <li>A Edge Function <code className="bg-amber-100 px-1 rounded">ticto-webhook</code> precisa ser re-deployed com o código de lives</li>
+                      <li>O e-mail <strong>{email}</strong> não foi encontrado na tabela <code className="bg-amber-100 px-1 rounded">profiles</code></li>
+                      <li>O Ticto Product ID <strong>{selectedProduct?.ticto_product_id || "N/A"}</strong> não corresponde a nenhuma live na tabela</li>
+                      <li>Existe um <code className="bg-amber-100 px-1 rounded">hub_service</code> com o mesmo product_id (tem prioridade sobre lives)</li>
+                    </ul>
+                    <p className="text-xs text-amber-700 mt-2">
+                      Verifique os logs da Edge Function no Supabase Dashboard para mais detalhes.
+                    </p>
+                  </div>
+                )}
+
+                {result.success && productType === "live" && (result.webhookResponse as Record<string, unknown>)?.type === "live_purchase" && (
                   <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
                     <p className="text-sm text-primary">
-                      ✓ A simulação foi executada com sucesso. Verifique o Hub do usuário para confirmar se o acesso foi liberado/revogado conforme esperado.
+                      ✓ Compra de live processada com sucesso! Verifique <code className="bg-primary/20 px-1 rounded">live_registrations</code> ou a tela do mentor.
+                    </p>
+                  </div>
+                )}
+
+                {result.success && productType === "service" && (
+                  <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
+                    <p className="text-sm text-primary">
+                      ✓ Simulação executada. Verifique o Hub do usuário ou user_hub_services para confirmar se o acesso foi liberado/revogado.
                     </p>
                   </div>
                 )}

@@ -120,3 +120,45 @@ verify_jwt = false
 
 [functions.bunny-webhook]
 verify_jwt = false
+
+[functions.send-course-milestone]
+verify_jwt = false
+
+[functions.check-abandoned-carts]
+verify_jwt = false
+
+[functions.generate-content-insights]
+verify_jwt = false
+
+[functions.generate-content-ideas]
+verify_jwt = false
+
+[functions.generate-content-script]
+verify_jwt = false
+
+[functions.run-content-pipeline]
+verify_jwt = false
+
+[functions.send-live-notification]
+verify_jwt = false
+
+[functions.check-unfinished-lives]
+verify_jwt = false
+
+[functions.generate-weekly-report]
+verify_jwt = false
+
+[functions.execute-whatsapp-flow]
+verify_jwt = false
+
+[functions.process-whatsapp-batch]
+verify_jwt = false
+
+[functions.generate-content-social-posts]
+verify_jwt = false
+
+[functions.job-link-proxy]
+verify_jwt = false
+
+[functions.enrich-jobs]
+verify_jwt = false

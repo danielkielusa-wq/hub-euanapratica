@@ -1,4 +1,4 @@
-import { Clock, User } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -6,23 +6,26 @@ interface ServiceHeaderProps {
   service?: {
     name: string;
     description: string | null;
-    icon_name: string | null;
-  };
+    icon_name?: string | null;
+  } | null;
   mentor?: {
     full_name: string;
     profile_photo_url: string | null;
-  };
+  } | null;
   duration?: number;
-  isLoading?: boolean;
+  isLoadingService?: boolean;
+  isLoadingMentor?: boolean;
 }
 
 export function ServiceHeader({
   service,
   mentor,
   duration = 60,
-  isLoading,
+  isLoadingService,
+  isLoadingMentor,
 }: ServiceHeaderProps) {
-  if (isLoading) {
+  // Full skeleton only while service data is loading
+  if (isLoadingService) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <Skeleton className="h-6 w-48 mb-2" />
@@ -43,8 +46,16 @@ export function ServiceHeader({
       )}
 
       <div className="flex items-center gap-6 mt-4">
-        {/* Mentor info */}
-        {mentor && (
+        {/* Mentor info — inline skeleton while mentor loads */}
+        {isLoadingMentor ? (
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div>
+              <Skeleton className="h-4 w-24 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+        ) : mentor ? (
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={mentor.profile_photo_url || undefined} />
@@ -63,7 +74,7 @@ export function ServiceHeader({
               <p className="text-xs text-gray-500">Mentor</p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Duration */}
         <div className="flex items-center gap-2 text-gray-500">

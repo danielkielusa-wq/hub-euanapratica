@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { UserRole, AuthState, UserWithRole } from '@/types/auth';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -19,28 +19,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRole | null> {
   try {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', supabaseUser.id)
-      .single();
+    console.time('[PERF] fetchUserWithRole');
+    // Run profile and role queries in parallel (saves ~300-500ms)
+    const [profileResult, roleResult] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', supabaseUser.id).single(),
+      supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).single(),
+    ]);
+    console.timeEnd('[PERF] fetchUserWithRole');
 
-    if (profileError || !profile) {
-      return null;
-    }
+    if (profileResult.error || !profileResult.data) return null;
+    if (roleResult.error || !roleResult.data) return null;
+
+    const profile = profileResult.data;
+    const roleData = roleResult.data;
 
     if (profile.status === 'inactive') {
       await supabase.auth.signOut();
-      return null;
-    }
-
-    const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', supabaseUser.id)
-      .single();
-
-    if (roleError || !roleData) {
       return null;
     }
 
@@ -65,22 +59,18 @@ async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRo
   }
 }
 
-async function updateLastLogin(userId: string): Promise<void> {
-  try {
-    await supabase
-      .from('profiles')
-      .update({ last_login_at: new Date().toISOString() })
-      .eq('id', userId);
-    
-    await supabase.from('audit_events').insert({
+function updateLastLogin(userId: string): void {
+  // Fire-and-forget — don't block auth flow
+  Promise.all([
+    supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', userId),
+    supabase.from('audit_events').insert({
       user_id: userId,
       actor_id: userId,
       action: 'login',
       source: 'auth',
-      new_values: { timestamp: new Date().toISOString() }
-    });
-  } catch (error) {
-  }
+      new_values: { timestamp: new Date().toISOString() },
+    }),
+  ]).catch(() => {});
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -93,44 +83,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Impersonation state
   const [impersonatedUser, setImpersonatedUser] = useState<UserWithRole | null>(null);
 
+  // Prevent double-fetch: both getSession() and onAuthStateChange fire on mount
+  const resolvedRef = useRef(false);
+
   useEffect(() => {
+    console.time('[PERF] Auth total (mount → user ready)');
+
+    const resolveAuth = async (user: SupabaseUser) => {
+      // Skip if already resolved by the other path
+      if (resolvedRef.current) return;
+      resolvedRef.current = true;
+
+      const userWithRole = await fetchUserWithRole(user);
+      console.timeEnd('[PERF] Auth total (mount → user ready)');
+      setAuthState({
+        user: userWithRole,
+        isAuthenticated: !!userWithRole,
+        isLoading: false,
+      });
+    };
+
+    const clearAuth = () => {
+      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+      setImpersonatedUser(null);
+    };
+
+    console.time('[PERF] getSession()');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        console.log('[PERF] onAuthStateChange fired:', event);
         if (session?.user) {
-          setTimeout(async () => {
-            const userWithRole = await fetchUserWithRole(session.user);
-            setAuthState({
-              user: userWithRole,
-              isAuthenticated: !!userWithRole,
-              isLoading: false,
-            });
-          }, 0);
+          // setTimeout(0) avoids Supabase deadlock with async state changes
+          setTimeout(() => resolveAuth(session.user), 0);
         } else {
-          setAuthState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-          // Clear impersonation on logout
-          setImpersonatedUser(null);
+          resolvedRef.current = true;
+          clearAuth();
         }
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.timeEnd('[PERF] getSession()');
       if (session?.user) {
-        const userWithRole = await fetchUserWithRole(session.user);
-        setAuthState({
-          user: userWithRole,
-          isAuthenticated: !!userWithRole,
-          isLoading: false,
-        });
-      } else {
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
+        resolveAuth(session.user);
+      } else if (!resolvedRef.current) {
+        resolvedRef.current = true;
+        clearAuth();
       }
     });
 
@@ -141,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
+    resolvedRef.current = false; // Allow onAuthStateChange to resolve the new session
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -153,13 +152,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.user) {
-      await updateLastLogin(data.user.id);
+      updateLastLogin(data.user.id);
     }
   }, []);
 
   const logout = useCallback(async () => {
     setImpersonatedUser(null); // Clear impersonation on logout
     setAuthState(prev => ({ ...prev, isLoading: true }));
+    resolvedRef.current = false; // Allow onAuthStateChange to handle next login
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -177,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (data: { full_name: string; email: string; password: string }) => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
+    resolvedRef.current = false; // Allow onAuthStateChange to resolve the new session
 
     const { error } = await supabase.auth.signUp({
       email: data.email,

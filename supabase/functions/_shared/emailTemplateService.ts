@@ -19,11 +19,18 @@ interface EmailTemplate {
   enabled: boolean;
 }
 
+interface EmailAttachment {
+  filename: string;
+  content: string; // Base64-encoded content
+  content_type?: string;
+}
+
 interface SendTemplatedEmailOptions {
   templateName: string;
   to: string | string[];
   variables: Record<string, string>;
   from?: string; // Optional override
+  attachments?: EmailAttachment[]; // Optional file attachments (e.g. .ics calendar invites)
 }
 
 interface EmailResult {
@@ -143,18 +150,25 @@ export async function sendTemplatedEmail(
 
     // Send email via Resend
     console.log(`[sendTemplatedEmail] Sending to: ${recipient}`);
+    const emailPayload: Record<string, unknown> = {
+      from: fromAddress,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html: body,
+    };
+
+    if (options.attachments?.length) {
+      emailPayload.attachments = options.attachments;
+      console.log(`[sendTemplatedEmail] Including ${options.attachments.length} attachment(s)`);
+    }
+
     const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        html: body,
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     if (!emailResponse.ok) {

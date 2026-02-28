@@ -15,6 +15,10 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  CalendarClock,
+  FileText,
+  HelpCircle,
+  AlignLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -155,16 +159,21 @@ export function SortableModule({
                 className="h-7 text-sm"
               />
             ) : (
-              <button
-                onClick={() => setEditingTitle(true)}
-                className="flex items-center gap-2 text-sm font-semibold hover:underline text-left"
-              >
-                <span className="text-muted-foreground/60 text-xs">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                {module.title}
-                <Pencil className="h-3 w-3 text-muted-foreground/40" />
-              </button>
+              <div>
+                <button
+                  onClick={() => setEditingTitle(true)}
+                  className="flex items-center gap-2 text-sm font-semibold hover:underline text-left"
+                >
+                  <span className="text-muted-foreground/60 text-xs">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  {module.title}
+                  <Pencil className="h-3 w-3 text-muted-foreground/40" />
+                </button>
+                {module.description && (
+                  <p className="text-xs text-muted-foreground ml-7 mt-0.5 line-clamp-1">{module.description}</p>
+                )}
+              </div>
             )}
           </div>
 
@@ -176,6 +185,12 @@ export function SortableModule({
               <Badge variant="outline" className="text-xs font-normal gap-1">
                 <Clock className="h-3 w-3" />
                 {formatDuration(totalDuration)}
+              </Badge>
+            )}
+            {module.unlock_days_after_enrollment != null && module.unlock_days_after_enrollment > 0 && (
+              <Badge variant="outline" className="text-xs font-normal gap-1 text-amber-600 border-amber-300 bg-amber-50">
+                <CalendarClock className="h-3 w-3" />
+                {module.unlock_days_after_enrollment}d
               </Badge>
             )}
             <Switch
@@ -197,6 +212,28 @@ export function SortableModule({
         {/* Lessons */}
         <CollapsibleContent>
           <div className="px-3 pb-3 space-y-1">
+            {/* Drip content setting */}
+            <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
+              <CalendarClock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Liberar após</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={module.unlock_days_after_enrollment ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                  updateModule.mutate({
+                    id: module.id,
+                    espacoId,
+                    unlock_days_after_enrollment: val && val > 0 ? val : null,
+                  });
+                }}
+                className="h-7 w-16 text-xs text-center"
+              />
+              <span className="text-xs text-muted-foreground whitespace-nowrap">dias da matrícula</span>
+            </div>
+
             {lessons.map((lesson, lessonIndex) => (
               <button
                 key={lesson.id}
@@ -220,6 +257,18 @@ export function SortableModule({
                     <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
                       Grátis
                     </Badge>
+                  )}
+                  {lesson.description && (
+                    <AlignLeft className="h-3 w-3 text-muted-foreground/50" title="Com descrição" />
+                  )}
+                  {lesson.content_html && (
+                    <FileText className="h-3 w-3 text-orange-500/70" title="Com conteúdo complementar" />
+                  )}
+                  {lesson.has_quiz && (
+                    <span className="flex items-center gap-0.5 text-purple-500/70" title={`Quiz: ${lesson.quiz_question_count || 0} perguntas`}>
+                      <HelpCircle className="h-3 w-3" />
+                      <span className="text-[10px]">{lesson.quiz_question_count || 0}</span>
+                    </span>
                   )}
                   {lesson.video_duration_seconds && lesson.video_duration_seconds > 0 && (
                     <span className="text-xs text-muted-foreground">

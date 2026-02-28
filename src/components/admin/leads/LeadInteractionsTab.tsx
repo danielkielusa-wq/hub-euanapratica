@@ -12,6 +12,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { LeadInteraction } from '@/types/leads';
 
 interface LeadInteractionsTabProps {
@@ -33,7 +35,7 @@ const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bgC
   ai_suggestion_completed: { label: 'IA Concluída', icon: Sparkles, color: 'text-violet-600', bgColor: 'bg-violet-100' },
 };
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, tz: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'agora';
@@ -42,17 +44,15 @@ function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `há ${hours}h`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `há ${days}d`;
-  return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return formatInTz(dateStr, tz, 'dd/MM/yy');
 }
 
-function formatFullDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+function formatFullDate(dateStr: string, tz: string): string {
+  return formatInTz(dateStr, tz, 'dd/MM/yyyy HH:mm');
 }
 
 export function LeadInteractionsTab({ interactions, leadId, onAddNote, onEdit, onDelete }: LeadInteractionsTabProps) {
+  const tz = useUserTimezone();
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [deleteTarget, setDeleteTarget] = useState<LeadInteraction | null>(null);
 
@@ -140,11 +140,11 @@ export function LeadInteractionsTab({ interactions, leadId, onAddNote, onEdit, o
                           <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
                             <span>{interaction.creator_name}</span>
                             <span>·</span>
-                            <span title={formatFullDate(interaction.created_at)}>
-                              {formatRelativeTime(interaction.created_at)}
+                            <span title={formatFullDate(interaction.created_at, tz)}>
+                              {formatRelativeTime(interaction.created_at, tz)}
                             </span>
                             <span>·</span>
-                            <span className="text-gray-300">{formatFullDate(interaction.created_at)}</span>
+                            <span className="text-gray-300">{formatFullDate(interaction.created_at, tz)}</span>
                           </div>
                         </div>
 

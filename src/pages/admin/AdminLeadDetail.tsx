@@ -25,6 +25,8 @@ import {
   useEditInteraction, useDeleteInteraction, useEditTask, useDeleteTask,
 } from '@/hooks/useAdminLeadDetail';
 import type { LeadInteraction, LeadTask } from '@/types/leads';
+import { PageHelpButton } from '@/components/assistant/PageHelpButton';
+import { LEAD_DETAIL_HELP } from '@/lib/assistantHelpContent';
 
 function daysSince(dateStr?: string): number {
   if (!dateStr) return 0;
@@ -44,7 +46,10 @@ function countBarriers(lead: any): number {
   return count;
 }
 
-export default function AdminLeadDetail() {
+export type LeadDetailViewMode = 'admin' | 'assistant';
+
+export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: LeadDetailViewMode }) {
+  const isAssistant = viewMode === 'assistant';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -83,7 +88,7 @@ export default function AdminLeadDetail() {
       <DashboardLayout>
         <div className="text-center py-20 space-y-4">
           <p className="text-sm text-gray-500">Lead não encontrado.</p>
-          <Button variant="outline" onClick={() => navigate('/admin/leads-dashboard')}>
+          <Button variant="outline" onClick={() => navigate(isAssistant ? '/assistant/leads' : '/admin/leads-dashboard')}>
             Voltar ao Dashboard
           </Button>
         </div>
@@ -96,18 +101,28 @@ export default function AdminLeadDetail() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <LeadDetailHeader
-          lead={lead}
-          onAddNote={() => setAddNoteOpen(true)}
-          onAddTask={() => setAddTaskOpen(true)}
-          onSendWhatsApp={() => setSendWhatsAppOpen(true)}
-        />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <LeadDetailHeader
+              lead={lead}
+              onAddNote={() => setAddNoteOpen(true)}
+              onAddTask={() => setAddTaskOpen(true)}
+              onSendWhatsApp={() => setSendWhatsAppOpen(true)}
+              viewMode={viewMode}
+            />
+          </div>
+          {isAssistant && (
+            <PageHelpButton pageTitle={LEAD_DETAIL_HELP.pageTitle} description={LEAD_DETAIL_HELP.description} sections={LEAD_DETAIL_HELP.sections} />
+          )}
+        </div>
 
         {/* Stats row */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className={`grid gap-4 grid-cols-2 md:grid-cols-3 ${isAssistant ? 'lg:grid-cols-5' : 'lg:grid-cols-6'}`}>
           <StatCard title="Prontidão" value={lead.readiness_score ?? '—'} icon={TrendingUp} description={lead.readiness_percentual ? `${lead.readiness_percentual}%` : undefined} />
           <StatCard title="Prioridade" value={lead.lead_priority_score ?? '—'} icon={Flame} description={lead.lead_temperature || undefined} />
-          <StatCard title="LTV Estimado" value={lead.estimated_ltv ? `R$ ${lead.estimated_ltv.toLocaleString('pt-BR')}` : '—'} icon={DollarSign} description={lead.has_budget ? 'Com orçamento' : undefined} />
+          {!isAssistant && (
+            <StatCard title="LTV Estimado" value={lead.estimated_ltv ? `R$ ${lead.estimated_ltv.toLocaleString('pt-BR')}` : '—'} icon={DollarSign} description={lead.has_budget ? 'Com orçamento' : undefined} />
+          )}
           <StatCard title="Barreiras" value={`${barriers}/7`} icon={ShieldAlert} variant={barriers >= 4 ? 'warning' : 'default'} />
           <StatCard title="Dias" value={daysSince(lead.created_at)} icon={CalendarDays} description="desde cadastro" />
           <StatCard title="Interações" value={interactions.length} icon={MessageSquare} description="registradas" />
@@ -137,7 +152,7 @@ export default function AdminLeadDetail() {
           </TabsList>
 
           <TabsContent value="overview">
-            <LeadOverviewTab lead={lead} />
+            <LeadOverviewTab lead={lead} viewMode={viewMode} />
           </TabsContent>
           <TabsContent value="scores">
             <LeadScoresTab lead={lead} />
@@ -214,6 +229,7 @@ export default function AdminLeadDetail() {
           leadId={id!}
           leadName={lead.name}
           leadPhone={lead.phone}
+          accessToken={lead.access_token}
         />
         <SuggestTasksDialog
           open={suggestTasksOpen}

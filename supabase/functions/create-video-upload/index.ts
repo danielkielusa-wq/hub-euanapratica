@@ -84,11 +84,22 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Fetch existing video ID so we can delete it from Bunny after replacement
+    const { data: existingLesson } = await supabase
+      .from("course_lessons")
+      .select("bunny_video_id")
+      .eq("id", lessonId)
+      .single();
+
+    const oldVideoId = existingLesson?.bunny_video_id;
+
     const { error: updateError } = await supabase
       .from("course_lessons")
       .update({
         bunny_video_id: videoId,
-        video_status: "processing",
+        video_status: "uploading",
+        thumbnail_url: null,
+        video_duration_seconds: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", lessonId);
@@ -97,7 +108,19 @@ Deno.serve(async (req: Request) => {
       console.error("[create-video-upload] Failed to update lesson:", updateError);
     }
 
-    console.log("[create-video-upload] Video created:", { videoId, lessonId });
+    // Delete old video from Bunny (fire-and-forget, don't block response)
+    if (oldVideoId && oldVideoId !== videoId) {
+      fetch(
+        `https://video.bunnycdn.com/library/${libraryId}/videos/${oldVideoId}`,
+        { method: "DELETE", headers: { "AccessKey": apiKey } }
+      ).then((res) => {
+        console.log("[create-video-upload] Deleted old video:", oldVideoId, "status:", res.status);
+      }).catch((err) => {
+        console.warn("[create-video-upload] Failed to delete old video:", oldVideoId, err);
+      });
+    }
+
+    console.log("[create-video-upload] Video created:", { videoId, lessonId, replacedOld: !!oldVideoId });
 
     return new Response(
       JSON.stringify({

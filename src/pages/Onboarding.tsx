@@ -5,16 +5,24 @@ import { useOnboardingProfile, useUpdateOnboarding, useCompleteOnboarding } from
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
 import { WelcomeStep } from '@/components/onboarding/steps/WelcomeStep';
 import { PersonalInfoStep } from '@/components/onboarding/steps/PersonalInfoStep';
-import { ContactStep } from '@/components/onboarding/steps/ContactStep';
-import { LinkedInResumeStep } from '@/components/onboarding/steps/LinkedInResumeStep';
 import { LocationStep } from '@/components/onboarding/steps/LocationStep';
+import { CareerAssessmentStep } from '@/components/onboarding/steps/CareerAssessmentStep';
 import { ConfirmationStep } from '@/components/onboarding/steps/ConfirmationStep';
-import { OnboardingStep, OnboardingProfile } from '@/types/onboarding';
+import { OnboardingStep, OnboardingProfile, CAREER_AREAS, ENGLISH_LEVELS, CAREER_OBJECTIVES, CAREER_TIMELINES } from '@/types/onboarding';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 type FormData = Partial<OnboardingProfile>;
+
+function normalizeCareerValue(rawValue: string | null, canonicalOptions: string[]): string {
+  if (!rawValue) return '';
+  const exact = canonicalOptions.find(opt => opt === rawValue);
+  if (exact) return exact;
+  const strip = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const normalizedRaw = strip(rawValue);
+  return canonicalOptions.find(opt => strip(opt) === normalizedRaw) || rawValue;
+}
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -28,6 +36,7 @@ export default function Onboarding() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasExistingCareerData, setHasExistingCareerData] = useState(false);
 
   // Initialize form data from profile
   useEffect(() => {
@@ -48,7 +57,37 @@ export default function Onboarding() {
         current_city: profile.current_city,
         target_country: profile.target_country || 'US',
         timezone: profile.timezone,
+        area_profissional: profile.area_profissional || '',
+        nivel_ingles: profile.nivel_ingles || '',
+        objetivo: profile.objetivo || '',
+        prazo_movimento: profile.prazo_movimento || '',
       });
+
+      // Lead bridge: check if career data already exists
+      const hasCareerInProfile = !!(
+        profile.area_profissional || profile.nivel_ingles ||
+        profile.objetivo || profile.prazo_movimento
+      );
+
+      if (hasCareerInProfile) {
+        setHasExistingCareerData(true);
+      } else if (profile.email) {
+        // Check career_evaluations for existing lead data
+        supabase.rpc('get_career_data_by_email', { p_email: profile.email })
+          .then(({ data: careerData }) => {
+            if (careerData && careerData.length > 0) {
+              const cd = careerData[0];
+              const normalized = {
+                area_profissional: normalizeCareerValue(cd.area, CAREER_AREAS),
+                nivel_ingles: normalizeCareerValue(cd.english_level, ENGLISH_LEVELS),
+                objetivo: normalizeCareerValue(cd.objetivo, CAREER_OBJECTIVES),
+                prazo_movimento: normalizeCareerValue(cd.timeline, CAREER_TIMELINES),
+              };
+              setFormData(prev => ({ ...prev, ...normalized }));
+              setHasExistingCareerData(true);
+            }
+          });
+      }
     }
   }, [profile]);
 
@@ -59,7 +98,7 @@ export default function Onboarding() {
       localStorage.removeItem('pending_espaco_id');
       return `/dashboard/espacos/${pendingEspacoId}`;
     }
-    
+
     switch (user?.role) {
       case 'admin':
         return '/admin/dashboard';
@@ -99,9 +138,6 @@ export default function Onboarding() {
       if (!formData.birth_date) {
         newErrors.birth_date = 'Data de nascimento é obrigatória';
       }
-    }
-
-    if (step === 3) {
       if (!formData.phone?.trim() || formData.phone.trim().length < 8) {
         newErrors.phone = 'Telefone é obrigatório (mínimo 8 dígitos)';
       } else {
@@ -111,24 +147,15 @@ export default function Onboarding() {
           p_phone: formData.phone,
           p_user_id: user?.id
         });
-        
+
         if (error) {
         } else if (!isAvailable) {
           newErrors.phone = 'Este número de telefone já está cadastrado no sistema.';
         }
       }
-      if (formData.alternative_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.alternative_email)) {
-        newErrors.alternative_email = 'Email inválido';
-      }
     }
 
-    if (step === 4) {
-      if (formData.linkedin_url && !formData.linkedin_url.includes('linkedin.com')) {
-        newErrors.linkedin_url = 'URL do LinkedIn inválida';
-      }
-    }
-
-    if (step === 5) {
+    if (step === 3) {
       if (!formData.current_country) {
         newErrors.current_country = 'Selecione o país atual';
       }
@@ -137,12 +164,27 @@ export default function Onboarding() {
       }
     }
 
+    if (step === 4) {
+      if (!formData.area_profissional) {
+        newErrors.area_profissional = 'Selecione sua área de atuação';
+      }
+      if (!formData.nivel_ingles) {
+        newErrors.nivel_ingles = 'Selecione seu nível de inglês';
+      }
+      if (!formData.objetivo) {
+        newErrors.objetivo = 'Selecione seu objetivo';
+      }
+      if (!formData.prazo_movimento) {
+        newErrors.prazo_movimento = 'Selecione seu prazo';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, user?.id]);
 
   const saveProgress = useCallback(async () => {
-    if (currentStep === 1 || currentStep === 6) return;
+    if (currentStep === 1 || currentStep === 5) return;
 
     setIsSaving(true);
     try {
@@ -177,16 +219,26 @@ export default function Onboarding() {
     await saveProgress();
 
     // Move to next step or complete
-    if (currentStep < 6) {
-      setCurrentStep((currentStep + 1) as OnboardingStep);
+    if (currentStep < 5) {
+      let nextStep = (currentStep + 1) as OnboardingStep;
+      // Skip career step if data already exists from lead form
+      if (nextStep === 4 && hasExistingCareerData) {
+        nextStep = 5 as OnboardingStep;
+      }
+      setCurrentStep(nextStep);
     }
-  }, [currentStep, validateStep, saveProgress]);
+  }, [currentStep, validateStep, saveProgress, hasExistingCareerData]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 1) {
-      setCurrentStep((currentStep - 1) as OnboardingStep);
+      let prevStep = (currentStep - 1) as OnboardingStep;
+      // Skip back over career step if data was pre-filled from lead form
+      if (prevStep === 4 && hasExistingCareerData) {
+        prevStep = 3 as OnboardingStep;
+      }
+      setCurrentStep(prevStep);
     }
-  }, [currentStep]);
+  }, [currentStep, hasExistingCareerData]);
 
   const handleComplete = useCallback(async () => {
     try {
@@ -222,7 +274,7 @@ export default function Onboarding() {
         );
       case 3:
         return (
-          <ContactStep
+          <LocationStep
             data={formData}
             onChange={handleChange}
             errors={errors}
@@ -230,21 +282,13 @@ export default function Onboarding() {
         );
       case 4:
         return (
-          <LinkedInResumeStep
+          <CareerAssessmentStep
             data={formData}
             onChange={handleChange}
             errors={errors}
           />
         );
       case 5:
-        return (
-          <LocationStep
-            data={formData}
-            onChange={handleChange}
-            errors={errors}
-          />
-        );
-      case 6:
         return (
           <ConfirmationStep
             onComplete={handleComplete}
@@ -256,15 +300,15 @@ export default function Onboarding() {
     }
   };
 
-  // For step 1 and 6, we use custom layouts
-  if (currentStep === 1 || currentStep === 6) {
+  // For step 1 and 5, we use custom layouts
+  if (currentStep === 1 || currentStep === 5) {
     return (
       <OnboardingLayout
         currentStep={currentStep}
         onNext={handleNext}
         canGoBack={false}
         canGoNext={true}
-        isLastStep={currentStep === 6}
+        isLastStep={currentStep === 5}
         isSaving={isSaving}
         lastSaved={lastSaved}
         nextLabel={currentStep === 1 ? 'Começar' : undefined}

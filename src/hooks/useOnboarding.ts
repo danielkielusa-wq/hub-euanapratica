@@ -29,7 +29,11 @@ export function useOnboardingProfile() {
           current_state,
           current_city,
           target_country,
-          timezone
+          timezone,
+          area_profissional,
+          nivel_ingles,
+          objetivo,
+          prazo_movimento
         `)
         .eq('id', user!.id)
         .single();
@@ -56,6 +60,10 @@ interface UpdateOnboardingData {
   current_city?: string | null;
   target_country?: string;
   timezone?: string;
+  area_profissional?: string | null;
+  nivel_ingles?: string | null;
+  objetivo?: string | null;
+  prazo_movimento?: string | null;
 }
 
 export function useUpdateOnboarding() {

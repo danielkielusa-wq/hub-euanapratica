@@ -8,7 +8,7 @@ Rotear leads automaticamente por temperatura (muito-quente, quente, morno, frio)
 
 ## Evento Gatilho
 
-**`report.generated`** — usa os dados de lead_qualification do relatorio.
+**`report.generated`** — disparado por trigger PostgreSQL `trg_report_completed` quando `career_evaluations.processing_status` transiciona para `'completed'` (INSERT ou UPDATE). O trigger chama a Edge Function `dispatch-report-webhook` via `pg_net`, que le o relatorio do banco, normaliza a temperatura do lead (ex: `SUPER_QUENTE` → `muito-quente`) e dispara o webhook. Usa os dados de lead_qualification do relatorio.
 
 ### Campos relevantes do payload
 
@@ -41,9 +41,9 @@ Rotear leads automaticamente por temperatura (muito-quente, quente, morno, frio)
 ## Fluxo
 
 ```
-format-lead-report (relatorio pronto)
+career_evaluations INSERT/UPDATE (processing_status = 'completed')
         │
-        ▼
+        ▼ (trigger trg_report_completed → dispatch-report-webhook)
 dispatchN8NWebhook("report.generated", payload)
         │
         ▼
@@ -156,6 +156,6 @@ Nao ha conflito: cada workflow tem responsabilidade diferente. Lead Scoring cria
 | Problema | Verificacao |
 |---|---|
 | Task nao criada | Verifique credenciais REST no N8N e permissoes da tabela `lead_tasks` |
-| Temperatura nao preenchida | Verifique se `format-lead-report` esta gerando `lead_qualification` no relatorio |
+| Temperatura nao preenchida | Verifique se o relatorio contem `lead_qualification` e se `dispatch-report-webhook` esta normalizando corretamente |
 | Duplicata de task | O workflow nao verifica duplicatas — considere adicionar check antes do INSERT |
 | Lead frio sem acao | Correto — leads frios sao tratados pela drip campaign |

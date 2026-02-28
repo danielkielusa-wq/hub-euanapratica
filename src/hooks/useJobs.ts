@@ -70,8 +70,8 @@ export function usePrimeJobsStats() {
       return {
         totalActiveJobs: row?.total_active_jobs || 0,
         newThisWeek: row?.new_this_week || 0,
-        avgSalaryMin: row?.avg_salary_min || 0,
-        topCategory: row?.top_category || 'Engineering',
+        avgSalaryMin: row?.avg_salary_min || null,
+        topCategory: row?.top_category || null,
       } as PrimeJobsStats;
     },
     staleTime: 1000 * 60 * 10, // 10 minutes

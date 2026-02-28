@@ -6,7 +6,10 @@ import type { BookingWithDetails, BookingStatus, BookingStats } from '@/types/bo
 /**
  * Fetch student's bookings with optional filters
  */
-export function useBookings(filter: 'upcoming' | 'past' | 'all' = 'all') {
+export function useBookings(
+  filter: 'upcoming' | 'past' | 'all' = 'all',
+  options?: { enabled?: boolean }
+) {
   const { user } = useAuth();
 
   return useQuery({
@@ -17,7 +20,7 @@ export function useBookings(filter: 'upcoming' | 'past' | 'all' = 'all') {
         .select(`
           *,
           service:hub_services(id, name, description, icon_name),
-          mentor:profiles!bookings_mentor_id_fkey(id, full_name, email, profile_photo_url)
+          mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email, profile_photo_url)
         `)
         .eq('student_id', user!.id)
         .order('scheduled_start', { ascending: filter === 'upcoming' });
@@ -38,7 +41,8 @@ export function useBookings(filter: 'upcoming' | 'past' | 'all' = 'all') {
       if (error) throw error;
       return data as BookingWithDetails[];
     },
-    enabled: !!user,
+    enabled: !!user && (options?.enabled !== false),
+    staleTime: 30_000, // 30s — booking data can change but not every second
   });
 }
 
@@ -70,7 +74,7 @@ export function useBooking(bookingId: string | undefined) {
         .select(`
           *,
           service:hub_services(id, name, description, icon_name),
-          mentor:profiles!bookings_mentor_id_fkey(id, full_name, email, profile_photo_url)
+          mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email, profile_photo_url)
         `)
         .eq('id', bookingId!)
         .single();

@@ -2,10 +2,13 @@ import { User, MapPin, Clock, Phone, Mail, Globe, Smartphone, Tag, Calendar, Pac
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { CareerEvaluation } from '@/types/leads';
 
 interface LeadOverviewTabProps {
   lead: CareerEvaluation;
+  viewMode?: 'admin' | 'assistant';
 }
 
 const ROTA_STEPS = [
@@ -28,19 +31,21 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value?: string |
   );
 }
 
-function formatFollowUpDate(dateStr?: string): { text: string; className: string } | null {
+function formatFollowUpDate(dateStr: string | undefined, tz: string): { text: string; className: string } | null {
   if (!dateStr) return null;
   const date = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.round((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  const formatted = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const formatted = formatInTz(dateStr, tz, 'dd/MM/yyyy');
 
   if (diffDays < 0) return { text: `${formatted} (${Math.abs(diffDays)}d atrás)`, className: 'text-red-600' };
   if (diffDays === 0) return { text: `${formatted} (hoje)`, className: 'text-amber-600 font-medium' };
   return { text: `${formatted} (em ${diffDays}d)`, className: 'text-green-600' };
 }
 
-export function LeadOverviewTab({ lead }: LeadOverviewTabProps) {
+export function LeadOverviewTab({ lead, viewMode = 'admin' }: LeadOverviewTabProps) {
+  const isAssistant = viewMode === 'assistant';
+  const tz = useUserTimezone();
   // rota_letter can be compound like "O-T" — extract the target phase (last letter)
   const rotaLetter = lead.rota_letter?.split('-').pop()?.trim() ?? '';
   const currentRotaIdx = ROTA_STEPS.findIndex(s => s.letter === rotaLetter);
@@ -64,15 +69,15 @@ export function LeadOverviewTab({ lead }: LeadOverviewTabProps) {
             <InfoRow label="Atuação" value={lead.atuacao} icon={MapPin} />
             <InfoRow label="Canal preferido" value={lead.preferred_communication} icon={Smartphone} />
             <InfoRow label="Melhor horário" value={lead.best_contact_time} icon={Clock} />
-            <InfoRow label="Faixa de renda" value={lead.income_range} icon={DollarSign} />
-            <InfoRow label="Faixa de investimento" value={lead.investment_range} icon={DollarSign} />
+            {!isAssistant && <InfoRow label="Faixa de renda" value={lead.income_range} icon={DollarSign} />}
+            {!isAssistant && <InfoRow label="Faixa de investimento" value={lead.investment_range} icon={DollarSign} />}
             <InfoRow label="Situação familiar" value={lead.family_status} />
             <InfoRow label="Inglês" value={lead.english_level} icon={Globe} />
           </CardContent>
         </Card>
 
-        {/* UTM Attribution */}
-        {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.gclid || lead.fbclid) && (
+        {/* UTM Attribution — admin only */}
+        {!isAssistant && (lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.gclid || lead.fbclid) && (
           <Card variant="glass">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -165,13 +170,13 @@ export function LeadOverviewTab({ lead }: LeadOverviewTabProps) {
                   {lead.recommended_product_tier && (
                     <Badge variant="outline" className="text-[10px] mt-1 bg-white/60 border-indigo-200 text-indigo-600">{lead.recommended_product_tier}</Badge>
                   )}
-                  {lead.recommended_product_price && (
+                  {!isAssistant && lead.recommended_product_price && (
                     <p className="text-xs text-indigo-600 mt-1">{lead.recommended_product_price}</p>
                   )}
                   {lead.recommendation_description && (
                     <p className="text-xs text-indigo-700/70 mt-2">{lead.recommendation_description}</p>
                   )}
-                  {lead.recommended_product_url && (
+                  {!isAssistant && lead.recommended_product_url && (
                     <a href={lead.recommended_product_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline mt-2">
                       <ExternalLink className="w-3 h-3" /> Ver página
                     </a>
@@ -213,7 +218,7 @@ export function LeadOverviewTab({ lead }: LeadOverviewTabProps) {
               { label: 'Follow-up 3', date: lead.scheduled_follow_up_3 },
               { label: 'Recheck', date: lead.recheck_recommended_at },
             ].map(({ label, date }) => {
-              const fup = formatFollowUpDate(date);
+              const fup = formatFollowUpDate(date, tz);
               if (!fup) return null;
               return (
                 <div key={label} className="flex items-center justify-between text-xs">
@@ -228,7 +233,7 @@ export function LeadOverviewTab({ lead }: LeadOverviewTabProps) {
                 <p className="text-sm text-gray-700 mt-1">{lead.next_milestone_action}</p>
                 {lead.next_milestone_deadline && (
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Deadline: {new Date(lead.next_milestone_deadline).toLocaleDateString('pt-BR')}
+                    Deadline: {formatInTz(lead.next_milestone_deadline, tz, 'dd/MM/yyyy')}
                   </p>
                 )}
               </div>

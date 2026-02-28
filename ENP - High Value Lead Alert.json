@@ -1,0 +1,335 @@
+{
+  "name": "ENP - High Value Lead Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "high-value-lead",
+        "options": {}
+      },
+      "id": "323e11b0-236b-4f27-bcf7-a915228372d9",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        -320
+      ],
+      "webhookId": "high-value-lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-hot-lead",
+              "leftValue": "={{ $json.body.lead_temperature }}",
+              "rightValue": "quente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-very-hot-lead",
+              "leftValue": "={{ $json.body.lead_temperature }}",
+              "rightValue": "muito-quente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "6db8eca4-8b33-40f2-98d3-e7c1a5330efb",
+      "name": "Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "=8274240050",
+        "text": "=🔥 *LEAD QUENTE DETECTADO*\n\n*Nome:* {{ $json.body.lead_name }}\n*Email:* {{ $json.body.lead_email }}\n*Score:* {{ $json.body.lead_score }}/100\n*Temperatura:* {{ $json.body.lead_temperature }}\n*Fase:* {{ $json.body.lead_phase }}\n*Barreiras:* {{ $json.body.lead_barriers }}\n\n📊 *Relatorio:* {{ $json.body.report_url }}\n\n⏰ _Tarefa de contato criada com prioridade urgente_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "c289cf29-8d05-4aba-9774-d32945598a63",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        -416
+      ],
+      "webhookId": "28997c8f-0288-493f-8bfd-92112b65168d",
+      "credentials": {
+        "telegramApi": {
+          "id": "PpEEh3rTULwlgcwK",
+          "name": "ENP Alerts"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/rest/v1/lead_tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $credentials.supabaseAnonKey }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $credentials.supabaseServiceRoleKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $json.body.lead_id }}\",\n  \"title\": \"Contato urgente - Lead quente: {{ $json.body.lead_name }}\",\n  \"type\": \"contact\",\n  \"priority\": \"urgent\",\n  \"source\": \"n8n_automation\",\n  \"due_date\": \"{{ $now.plus({hours: 2}).toISO() }}\",\n  \"status\": \"pending\"\n}",
+        "options": {}
+      },
+      "id": "88d28cdb-9536-4332-bffc-faa4562306b1",
+      "name": "Create Urgent Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -176,
+        -272
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MkWlf4374PcPLKqf",
+          "name": "Supabase"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "id": "b7ea9965-0425-45d9-a24e-502168d2aabd",
+      "name": "No Action (Cold Lead)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "lead_tasks",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "lead_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.lead_id }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "=Contato urgente - Lead quente: {{ $('Webhook').item.json.body.lead_name }}"
+            },
+            {
+              "fieldId": "type",
+              "fieldValue": "contact"
+            },
+            {
+              "fieldId": "priority",
+              "fieldValue": "urgent"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "n8n_automation"
+            },
+            {
+              "fieldId": "due_date",
+              "fieldValue": "={{ $now.plus({hours: 2}).toISO() }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "\"pending\""
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -416
+      ],
+      "id": "412d67ae-c273-48c8-b88d-1eb7819dabb2",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "x-forwarded-host": "n8n.sapunplugged.com",
+            "x-forwarded-server": "n8n.sapunplugged.com",
+            "x-real-ip": "165.1.200.180",
+            "x-forwarded-for": "165.1.200.180",
+            "x-forwarded-proto": "https",
+            "host": "n8n.sapunplugged.com",
+            "connection": "Upgrade",
+            "content-length": "622",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+            "sec-ch-ua": "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"",
+            "content-type": "application/json",
+            "sec-ch-ua-mobile": "?0",
+            "accept": "*/*",
+            "origin": "http://localhost:8080",
+            "sec-fetch-site": "cross-site",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+            "referer": "http://localhost:8080/",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "priority": "u=1, i"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "report.generated",
+            "timestamp": "2026-02-25T20:59:15.661Z",
+            "source": "enp_hub_admin_test",
+            "test": true,
+            "lead_id": "00000000-0000-0000-0000-000000000000",
+            "lead_name": "Lead Teste",
+            "lead_email": "teste@example.com",
+            "lead_phone": "5511999999999",
+            "access_token": "test-token-000",
+            "report_link": "https://hub.euanapratica.com/report/test-token-000",
+            "readiness_score": 78,
+            "lead_temperature": "quente",
+            "lead_priority_score": 82,
+            "phase_id": "decolagem",
+            "phase_name": "Decolagem",
+            "is_tech_professional": true,
+            "is_senior_level": true,
+            "is_high_income": false,
+            "primary_product": "Mentoria Individual 1:1",
+            "barriers": [
+              "networking",
+              "portfolio"
+            ]
+          },
+          "webhookUrl": "https://n8n.sapunplugged.com/webhook/high-value-lead",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action (Cold Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Alert": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "dc96ae3a-dc4b-430b-a94f-a43f337b092e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ec2347a1f7929ec3b1d85d738bbb3e5362aa0f47a9ff10796dbc3a92b3b6c33"
+  },
+  "id": "nbLCMoqD_nNr8lmPlxYHJ",
+  "tags": [
+    {
+      "updatedAt": "2026-02-25T20:46:17.815Z",
+      "createdAt": "2026-02-25T20:46:17.815Z",
+      "id": "WKY3Di2OMh2XkOsa",
+      "name": "Lead Management"
+    },
+    {
+      "updatedAt": "2026-02-25T20:46:17.804Z",
+      "createdAt": "2026-02-25T20:46:17.804Z",
+      "id": "e3gd8F560YP94uIt",
+      "name": "ENP"
+    },
+    {
+      "updatedAt": "2026-02-25T20:45:10.627Z",
+      "createdAt": "2026-02-25T20:45:10.627Z",
+      "id": "yTJoEXVTds0YZe2X",
+      "name": "[ENP] Alerta de Hot Lead"
+    }
+  ]
+}

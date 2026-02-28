@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { parseISO } from 'date-fns';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import {
   Calendar,
+  CalendarPlus,
   ArrowRight,
   CheckCircle2,
   AlertCircle,
   PlayCircle,
-  Video,
   BookOpen,
   Zap,
   Clock,
@@ -70,7 +71,7 @@ const BORDER_BY_STATUS: Record<MyHubItem['computed_status'], string> = {
 // ============================================
 // Sub-info line by service_type + status
 // ============================================
-function SubInfo({ item }: { item: MyHubItem }) {
+function SubInfo({ item, tz }: { item: MyHubItem; tz: string }) {
   const { service, computed_status, booking, next_session_datetime } = item;
 
   if (service.service_type === 'consulting') {
@@ -81,7 +82,7 @@ function SubInfo({ item }: { item: MyHubItem }) {
       const dt = parseISO(booking.scheduled_start);
       return (
         <p className="text-sm text-indigo-600 font-medium">
-          Sessão: {format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
+          Sessão: {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
         </p>
       );
     }
@@ -95,7 +96,7 @@ function SubInfo({ item }: { item: MyHubItem }) {
       const dt = parseISO(next_session_datetime);
       return (
         <p className="text-sm text-emerald-600 font-medium">
-          Próxima sessão: {format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
+          Próxima sessão: {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
         </p>
       );
     }
@@ -108,7 +109,7 @@ function SubInfo({ item }: { item: MyHubItem }) {
       const dt = parseISO(sessionDatetime);
       return (
         <p className="text-sm text-blue-600 font-medium">
-          {format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
+          {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
         </p>
       );
     }
@@ -150,6 +151,41 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
     );
   }
 
+  // Dual CTA: consulting with a scheduled session AND remaining sessions to book
+  if (
+    service.service_type === 'consulting' &&
+    computed_status === 'scheduled' &&
+    item.remaining_bookable > 0
+  ) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate(`/dashboard/agendar/${service.id}`)}
+          className="gap-1.5 text-xs font-bold h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+        >
+          <CalendarPlus className="h-3 w-3" />
+          Agendar Sessão
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            if (booking?.meeting_link) {
+              window.open(booking.meeting_link, '_blank');
+            } else {
+              navigate('/dashboard/agendamentos');
+            }
+          }}
+          className="gap-1.5 text-xs font-bold h-8 bg-indigo-600 hover:bg-indigo-700 text-white"
+        >
+          Entrar na Reunião
+          <ArrowRight className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
   const handleClick = () => {
     switch (service.service_type) {
       case 'consulting':
@@ -163,20 +199,19 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
         break;
       case 'live_mentoring':
         if (service.espaco_id) {
-          navigate(`/espaco/${service.espaco_id}`);
+          navigate(`/dashboard/espacos/${service.espaco_id}`);
         } else if (service.route) {
           navigate(service.route);
         }
         break;
       case 'live_event':
-        // open meeting link if available
         if (item.metadata?.meeting_link) {
           window.open(item.metadata.meeting_link as string, '_blank');
         }
         break;
       case 'recorded_course':
         if (service.espaco_id) {
-          navigate(`/espaco/${service.espaco_id}`);
+          navigate(`/dashboard/espacos/${service.espaco_id}`);
         } else if (service.route) {
           navigate(service.route);
         }
@@ -231,6 +266,7 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
 // JourneyCard — main export
 // ============================================
 export function JourneyCard({ item }: { item: MyHubItem }) {
+  const tz = useUserTimezone();
   const { service, computed_status, access_source } = item;
 
   const isCompleted = computed_status === 'completed';
@@ -257,15 +293,23 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
       </div>
 
       {/* Sub-info */}
-      <SubInfo item={item} />
+      <SubInfo item={item} tz={tz} />
 
       {/* Sessions counter (consulting with multiple sessions) */}
-      {service.service_type === 'consulting' && (item.sessions_total ?? 0) > 1 && (
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-          <Zap className="h-3 w-3 text-amber-400" />
-          {item.sessions_used}/{item.sessions_total} sessões utilizadas
-        </div>
-      )}
+      {service.service_type === 'consulting' && (item.sessions_total ?? 0) > 1 && (() => {
+        const scheduled = (item.sessions_total ?? 0) - item.sessions_used - item.remaining_bookable;
+        const parts: string[] = [];
+        if (scheduled > 0) parts.push(`${scheduled} agendada${scheduled > 1 ? 's' : ''}`);
+        if (item.remaining_bookable > 0) parts.push(`${item.remaining_bookable} disponível${item.remaining_bookable > 1 ? 'eis' : ''}`);
+        if (!parts.length) return null;
+        return (
+          <div className="flex items-center gap-1.5 text-xs">
+            <Zap className="h-3 w-3 text-amber-400" />
+            <span className="text-gray-500">{parts[0]}</span>
+            {parts[1] && <span className="text-amber-600 font-medium">&middot; {parts[1]}</span>}
+          </div>
+        );
+      })()}
 
       {/* CTA */}
       <div className="flex justify-end">

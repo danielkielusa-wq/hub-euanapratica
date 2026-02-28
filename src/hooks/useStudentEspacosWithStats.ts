@@ -24,6 +24,7 @@ export function useStudentEspacosWithStats() {
   return useQuery({
     queryKey: ['student-espacos-stats', user?.id],
     queryFn: async (): Promise<EspacoWithStats[]> => {
+      console.time('[PERF] useStudentEspacosWithStats');
       if (!user?.id) return [];
 
       // Get enrolled espacos - exclude archived ones
@@ -52,29 +53,31 @@ export function useStudentEspacosWithStats() {
 
       if (!enrollments || enrollments.length === 0) return [];
 
-      // Get stats for each espaco
+      // Get stats for each espaco — run all 3 queries in parallel (saves ~1s)
       const espacoIds = enrollments.map(e => e.espaco_id);
 
-      // Get upcoming sessions
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('espaco_id')
-        .in('espaco_id', espacoIds)
-        .gte('datetime', new Date().toISOString())
-        .in('status', ['scheduled', 'live']);
+      const [sessionsResult, assignmentsResult, submissionsResult] = await Promise.all([
+        supabase
+          .from('sessions')
+          .select('espaco_id')
+          .in('espaco_id', espacoIds)
+          .gte('datetime', new Date().toISOString())
+          .in('status', ['scheduled', 'live']),
+        supabase
+          .from('assignments')
+          .select('id, espaco_id')
+          .in('espaco_id', espacoIds)
+          .eq('status', 'published'),
+        supabase
+          .from('submissions')
+          .select('assignment_id, status')
+          .eq('user_id', user.id),
+      ]);
 
-      // Get all assignments for these espacos
-      const { data: assignments } = await supabase
-        .from('assignments')
-        .select('id, espaco_id')
-        .in('espaco_id', espacoIds)
-        .eq('status', 'published');
-
-      // Get user submissions
-      const { data: submissions } = await supabase
-        .from('submissions')
-        .select('assignment_id, status')
-        .eq('user_id', user.id);
+      const sessions = sessionsResult.data;
+      const assignments = assignmentsResult.data;
+      const submissions = submissionsResult.data;
+      console.timeEnd('[PERF] useStudentEspacosWithStats');
 
       // Calculate stats per espaco
       return enrollments.map(enrollment => {
@@ -127,6 +130,7 @@ export function useStudentEspacosWithStats() {
         };
       });
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    staleTime: 5 * 60_000, // 5 min — sidebar data rarely changes
   });
 }

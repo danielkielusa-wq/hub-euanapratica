@@ -531,6 +531,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_mentor_profile_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_mentor_service_id_fkey"
             columns: ["mentor_service_id"]
             isOneToOne: false
@@ -542,6 +549,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_student_profile_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1145,6 +1159,293 @@ export type Database = {
           },
         ]
       }
+      content_generation_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          generation_type: string
+          id: string
+          input_summary: string | null
+          metadata: Json | null
+          model_used: string | null
+          output_summary: string | null
+          status: string
+          tokens_used: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_type: string
+          id?: string
+          input_summary?: string | null
+          metadata?: Json | null
+          model_used?: string | null
+          output_summary?: string | null
+          status?: string
+          tokens_used?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_type?: string
+          id?: string
+          input_summary?: string | null
+          metadata?: Json | null
+          model_used?: string | null
+          output_summary?: string | null
+          status?: string
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
+      content_ideas: {
+        Row: {
+          category: string
+          content_type: string
+          created_at: string
+          data_points_used: Json | null
+          description: string | null
+          estimated_virality_score: number | null
+          hooks: Json
+          id: string
+          insight_id: string | null
+          metadata: Json | null
+          notes: string | null
+          priority: string
+          scheduled_date: string | null
+          status: string
+          target_audience: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          content_type: string
+          created_at?: string
+          data_points_used?: Json | null
+          description?: string | null
+          estimated_virality_score?: number | null
+          hooks?: Json
+          id?: string
+          insight_id?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          priority?: string
+          scheduled_date?: string | null
+          status?: string
+          target_audience?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content_type?: string
+          created_at?: string
+          data_points_used?: Json | null
+          description?: string | null
+          estimated_virality_score?: number | null
+          hooks?: Json
+          id?: string
+          insight_id?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          priority?: string
+          scheduled_date?: string | null
+          status?: string
+          target_audience?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_ideas_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "content_insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_insights: {
+        Row: {
+          controversy_score: number | null
+          created_at: string
+          data_points: Json
+          id: string
+          insight_type: string
+          period_end: string
+          period_start: string
+          relevance_score: number
+          source_tables: string[]
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+          used_in_idea_id: string | null
+        }
+        Insert: {
+          controversy_score?: number | null
+          created_at?: string
+          data_points?: Json
+          id?: string
+          insight_type: string
+          period_end: string
+          period_start: string
+          relevance_score?: number
+          source_tables?: string[]
+          status?: string
+          summary: string
+          title: string
+          updated_at?: string
+          used_in_idea_id?: string | null
+        }
+        Update: {
+          controversy_score?: number | null
+          created_at?: string
+          data_points?: Json
+          id?: string
+          insight_type?: string
+          period_end?: string
+          period_start?: string
+          relevance_score?: number
+          source_tables?: string[]
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+          used_in_idea_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_content_insights_used_in_idea"
+            columns: ["used_in_idea_id"]
+            isOneToOne: false
+            referencedRelation: "content_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_scripts: {
+        Row: {
+          body_sections: Json
+          created_at: string
+          cta: string | null
+          data_sources_summary: string | null
+          duration_estimate_seconds: number | null
+          hook: string
+          id: string
+          idea_id: string
+          metadata: Json | null
+          platform: string
+          scheduled_for: string | null
+          status: string
+          title: string
+          tone: string
+          updated_at: string
+          virality_score: number | null
+        }
+        Insert: {
+          body_sections?: Json
+          created_at?: string
+          cta?: string | null
+          data_sources_summary?: string | null
+          duration_estimate_seconds?: number | null
+          hook: string
+          id?: string
+          idea_id: string
+          metadata?: Json | null
+          platform: string
+          scheduled_for?: string | null
+          status?: string
+          title: string
+          tone?: string
+          updated_at?: string
+          virality_score?: number | null
+        }
+        Update: {
+          body_sections?: Json
+          created_at?: string
+          cta?: string | null
+          data_sources_summary?: string | null
+          duration_estimate_seconds?: number | null
+          hook?: string
+          id?: string
+          idea_id?: string
+          metadata?: Json | null
+          platform?: string
+          scheduled_for?: string | null
+          status?: string
+          title?: string
+          tone?: string
+          updated_at?: string
+          virality_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_scripts_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "content_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_social_posts: {
+        Row: {
+          content: string
+          created_at: string
+          cta: string | null
+          hashtags: string[] | null
+          id: string
+          metadata: Json | null
+          platform: string
+          scheduled_for: string | null
+          script_id: string
+          status: string
+          tone: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          cta?: string | null
+          hashtags?: string[] | null
+          id?: string
+          metadata?: Json | null
+          platform: string
+          scheduled_for?: string | null
+          script_id: string
+          status?: string
+          tone?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          cta?: string | null
+          hashtags?: string[] | null
+          id?: string
+          metadata?: Json | null
+          platform?: string
+          scheduled_for?: string | null
+          script_id?: string
+          status?: string
+          tone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_social_posts_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "content_scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_lesson_attachments: {
         Row: {
           created_at: string | null
@@ -1189,6 +1490,7 @@ export type Database = {
       course_lessons: {
         Row: {
           bunny_video_id: string | null
+          captions_generated: boolean | null
           content_html: string | null
           created_at: string | null
           description: string | null
@@ -1206,6 +1508,7 @@ export type Database = {
         }
         Insert: {
           bunny_video_id?: string | null
+          captions_generated?: boolean | null
           content_html?: string | null
           created_at?: string | null
           description?: string | null
@@ -1223,6 +1526,7 @@ export type Database = {
         }
         Update: {
           bunny_video_id?: string | null
+          captions_generated?: boolean | null
           content_html?: string | null
           created_at?: string | null
           description?: string | null
@@ -1248,6 +1552,41 @@ export type Database = {
           },
         ]
       }
+      course_milestones: {
+        Row: {
+          email_sent: boolean | null
+          espaco_id: string
+          id: string
+          milestone: number
+          reached_at: string | null
+          user_id: string
+        }
+        Insert: {
+          email_sent?: boolean | null
+          espaco_id: string
+          id?: string
+          milestone: number
+          reached_at?: string | null
+          user_id: string
+        }
+        Update: {
+          email_sent?: boolean | null
+          espaco_id?: string
+          id?: string
+          milestone?: number
+          reached_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_milestones_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           created_at: string | null
@@ -1257,6 +1596,7 @@ export type Database = {
           id: string
           is_published: boolean | null
           title: string
+          unlock_days_after_enrollment: number | null
           updated_at: string | null
         }
         Insert: {
@@ -1267,6 +1607,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           title: string
+          unlock_days_after_enrollment?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -1277,6 +1618,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           title?: string
+          unlock_days_after_enrollment?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1329,6 +1671,159 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      course_quiz_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          id: string
+          passed: boolean
+          quiz_id: string
+          score: number
+          started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          id?: string
+          passed?: boolean
+          quiz_id: string
+          score?: number
+          started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          id?: string
+          passed?: boolean
+          quiz_id?: string
+          score?: number
+          started_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "course_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_quiz_questions: {
+        Row: {
+          correct_answer: string
+          created_at: string | null
+          display_order: number
+          explanation: string | null
+          id: string
+          options: Json
+          question_text: string
+          question_type: string
+          quiz_id: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string | null
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question_text: string
+          question_type?: string
+          quiz_id: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string | null
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question_text?: string
+          question_type?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "course_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_quizzes: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_required: boolean | null
+          lesson_id: string
+          max_attempts: number | null
+          passing_grade: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_required?: boolean | null
+          lesson_id: string
+          max_attempts?: number | null
+          passing_grade?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_required?: boolean | null
+          lesson_id?: string
+          max_attempts?: number | null
+          passing_grade?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_quizzes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_streaks: {
+        Row: {
+          current_streak: number | null
+          id: string
+          last_activity_date: string | null
+          longest_streak: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          current_streak?: number | null
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       e2e_test_results: {
         Row: {
@@ -1833,11 +2328,13 @@ export type Database = {
           landing_page_url: string | null
           meeting_type: string | null
           name: string
+          order_bump_service_id: string | null
           plan_feature_key: string | null
           price: number | null
           price_display: string | null
           product_type: string | null
           redirect_url: string | null
+          report_dimension: string | null
           ribbon: string | null
           route: string | null
           service_type: string | null
@@ -1870,11 +2367,13 @@ export type Database = {
           landing_page_url?: string | null
           meeting_type?: string | null
           name: string
+          order_bump_service_id?: string | null
           plan_feature_key?: string | null
           price?: number | null
           price_display?: string | null
           product_type?: string | null
           redirect_url?: string | null
+          report_dimension?: string | null
           ribbon?: string | null
           route?: string | null
           service_type?: string | null
@@ -1907,11 +2406,13 @@ export type Database = {
           landing_page_url?: string | null
           meeting_type?: string | null
           name?: string
+          order_bump_service_id?: string | null
           plan_feature_key?: string | null
           price?: number | null
           price_display?: string | null
           product_type?: string | null
           redirect_url?: string | null
+          report_dimension?: string | null
           ribbon?: string | null
           route?: string | null
           service_type?: string | null
@@ -1929,6 +2430,13 @@ export type Database = {
             columns: ["espaco_id"]
             isOneToOne: false
             referencedRelation: "espacos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_services_order_bump_service_id_fkey"
+            columns: ["order_bump_service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
             referencedColumns: ["id"]
           },
         ]
@@ -2014,9 +2522,90 @@ export type Database = {
           },
         ]
       }
+      job_imports: {
+        Row: {
+          created_at: string | null
+          errors: Json | null
+          file_name: string
+          id: string
+          imported_by: string
+          inserted: number
+          raw_json: Json | null
+          skipped: number
+          total_jobs: number
+          updated: number
+        }
+        Insert: {
+          created_at?: string | null
+          errors?: Json | null
+          file_name: string
+          id?: string
+          imported_by: string
+          inserted?: number
+          raw_json?: Json | null
+          skipped?: number
+          total_jobs?: number
+          updated?: number
+        }
+        Update: {
+          created_at?: string | null
+          errors?: Json | null
+          file_name?: string
+          id?: string
+          imported_by?: string
+          inserted?: number
+          raw_json?: Json | null
+          skipped?: number
+          total_jobs?: number
+          updated?: number
+        }
+        Relationships: []
+      }
+      job_link_clicks: {
+        Row: {
+          clicked_at: string | null
+          id: string
+          job_id: string
+          link_type: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string | null
+          id?: string
+          job_id: string
+          link_type: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string | null
+          id?: string
+          job_id?: string
+          link_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_link_clicks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "brazil_friendly_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_link_clicks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
+          ai_enrichment: Json | null
           company: string
+          contact_name: string | null
+          contact_profile_link: string | null
           created_at: string | null
           description: string | null
           employment_type: string | null
@@ -2024,6 +2613,7 @@ export type Database = {
           experience_level: string | null
           expires_at: string | null
           id: string
+          industry: string | null
           is_active: boolean | null
           is_brazil_friendly: boolean | null
           is_featured: boolean | null
@@ -2032,10 +2622,13 @@ export type Database = {
           location_restrictions: string | null
           logo_url: string | null
           posted_at: string | null
+          relevance_notes: string | null
+          relevance_score: number | null
           remote_type: string | null
           salary_currency: string | null
           salary_max: number | null
           salary_min: number | null
+          salary_notes: string | null
           salary_type: string | null
           source: string
           tags: string[] | null
@@ -2046,7 +2639,10 @@ export type Database = {
           url: string
         }
         Insert: {
+          ai_enrichment?: Json | null
           company: string
+          contact_name?: string | null
+          contact_profile_link?: string | null
           created_at?: string | null
           description?: string | null
           employment_type?: string | null
@@ -2054,6 +2650,7 @@ export type Database = {
           experience_level?: string | null
           expires_at?: string | null
           id?: string
+          industry?: string | null
           is_active?: boolean | null
           is_brazil_friendly?: boolean | null
           is_featured?: boolean | null
@@ -2062,10 +2659,13 @@ export type Database = {
           location_restrictions?: string | null
           logo_url?: string | null
           posted_at?: string | null
+          relevance_notes?: string | null
+          relevance_score?: number | null
           remote_type?: string | null
           salary_currency?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          salary_notes?: string | null
           salary_type?: string | null
           source: string
           tags?: string[] | null
@@ -2076,7 +2676,10 @@ export type Database = {
           url: string
         }
         Update: {
+          ai_enrichment?: Json | null
           company?: string
+          contact_name?: string | null
+          contact_profile_link?: string | null
           created_at?: string | null
           description?: string | null
           employment_type?: string | null
@@ -2084,6 +2687,7 @@ export type Database = {
           experience_level?: string | null
           expires_at?: string | null
           id?: string
+          industry?: string | null
           is_active?: boolean | null
           is_brazil_friendly?: boolean | null
           is_featured?: boolean | null
@@ -2092,10 +2696,13 @@ export type Database = {
           location_restrictions?: string | null
           logo_url?: string | null
           posted_at?: string | null
+          relevance_notes?: string | null
+          relevance_score?: number | null
           remote_type?: string | null
           salary_currency?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          salary_notes?: string | null
           salary_type?: string | null
           source?: string
           tags?: string[] | null
@@ -2261,6 +2868,277 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      library_folders: {
+        Row: {
+          access_level: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_item_downloads: {
+        Row: {
+          downloaded_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_item_downloads_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_item_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_item_favorites_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
+          filename: string | null
+          folder_id: string
+          id: string
+          item_type: string
+          link_url: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          filename?: string | null
+          folder_id: string
+          id?: string
+          item_type: string
+          link_url?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          filename?: string | null
+          folder_id?: string
+          id?: string
+          item_type?: string
+          link_url?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_registrations: {
+        Row: {
+          attended: boolean
+          id: string
+          live_id: string
+          payment_status: string
+          registered_at: string
+          user_id: string
+        }
+        Insert: {
+          attended?: boolean
+          id?: string
+          live_id: string
+          payment_status?: string
+          registered_at?: string
+          user_id: string
+        }
+        Update: {
+          attended?: boolean
+          id?: string
+          live_id?: string
+          payment_status?: string
+          registered_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_registrations_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lives: {
+        Row: {
+          access_type: Database["public"]["Enums"]["live_access_type"]
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          long_description: string | null
+          max_attendees: number | null
+          meeting_link: string | null
+          mentor_id: string
+          og_image_url: string | null
+          price: number
+          recording_url: string | null
+          scheduled_at: string
+          slug: string
+          status: Database["public"]["Enums"]["live_status"]
+          thumbnail_url: string | null
+          ticto_checkout_url: string | null
+          ticto_product_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          access_type?: Database["public"]["Enums"]["live_access_type"]
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          long_description?: string | null
+          max_attendees?: number | null
+          meeting_link?: string | null
+          mentor_id: string
+          og_image_url?: string | null
+          price?: number
+          recording_url?: string | null
+          scheduled_at: string
+          slug: string
+          status?: Database["public"]["Enums"]["live_status"]
+          thumbnail_url?: string | null
+          ticto_checkout_url?: string | null
+          ticto_product_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          access_type?: Database["public"]["Enums"]["live_access_type"]
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          long_description?: string | null
+          max_attendees?: number | null
+          meeting_link?: string | null
+          mentor_id?: string
+          og_image_url?: string | null
+          price?: number
+          recording_url?: string | null
+          scheduled_at?: string
+          slug?: string
+          status?: Database["public"]["Enums"]["live_status"]
+          thumbnail_url?: string | null
+          ticto_checkout_url?: string | null
+          ticto_product_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       material_downloads: {
         Row: {
@@ -2460,6 +3338,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "mentor_services_mentor_profile_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mentor_services_service_id_fkey"
             columns: ["service_id"]
@@ -2942,6 +3827,7 @@ export type Database = {
       profiles: {
         Row: {
           alternative_email: string | null
+          area_profissional: string | null
           birth_date: string | null
           created_at: string | null
           current_city: string | null
@@ -2955,8 +3841,11 @@ export type Database = {
           is_whatsapp: boolean | null
           last_login_at: string | null
           linkedin_url: string | null
+          nivel_ingles: string | null
+          objetivo: string | null
           phone: string | null
           phone_country_code: string | null
+          prazo_movimento: string | null
           preferred_name: string | null
           profile_photo_url: string | null
           resume_url: string | null
@@ -2967,6 +3856,7 @@ export type Database = {
         }
         Insert: {
           alternative_email?: string | null
+          area_profissional?: string | null
           birth_date?: string | null
           created_at?: string | null
           current_city?: string | null
@@ -2980,8 +3870,11 @@ export type Database = {
           is_whatsapp?: boolean | null
           last_login_at?: string | null
           linkedin_url?: string | null
+          nivel_ingles?: string | null
+          objetivo?: string | null
           phone?: string | null
           phone_country_code?: string | null
+          prazo_movimento?: string | null
           preferred_name?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
@@ -2992,6 +3885,7 @@ export type Database = {
         }
         Update: {
           alternative_email?: string | null
+          area_profissional?: string | null
           birth_date?: string | null
           created_at?: string | null
           current_city?: string | null
@@ -3005,8 +3899,11 @@ export type Database = {
           is_whatsapp?: boolean | null
           last_login_at?: string | null
           linkedin_url?: string | null
+          nivel_ingles?: string | null
+          objetivo?: string | null
           phone?: string | null
           phone_country_code?: string | null
+          prazo_movimento?: string | null
           preferred_name?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
@@ -4044,6 +4941,388 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_intelligence_reports: {
+        Row: {
+          ai_analysis: Json | null
+          ai_analysis_text: string | null
+          approved_for_assistant: boolean
+          assistant_directives: string | null
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          error_message: string | null
+          generation_method: string
+          id: string
+          model_used: string | null
+          period_end: string
+          period_start: string
+          raw_metrics: Json | null
+          status: string
+          tokens_used: number | null
+          webhook_dispatched: boolean | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_analysis_text?: string | null
+          approved_for_assistant?: boolean
+          assistant_directives?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_method?: string
+          id?: string
+          model_used?: string | null
+          period_end: string
+          period_start: string
+          raw_metrics?: Json | null
+          status?: string
+          tokens_used?: number | null
+          webhook_dispatched?: boolean | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_analysis_text?: string | null
+          approved_for_assistant?: boolean
+          assistant_directives?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_method?: string
+          id?: string
+          model_used?: string | null
+          period_end?: string
+          period_start?: string
+          raw_metrics?: Json | null
+          status?: string
+          tokens_used?: number | null
+          webhook_dispatched?: boolean | null
+        }
+        Relationships: []
+      }
+      whatsapp_batch_contacts: {
+        Row: {
+          batch_job_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          lead_email: string | null
+          lead_id: string | null
+          lead_name: string | null
+          phone: string
+          position: number
+          processed_at: string | null
+          session_id: string | null
+          skip_reason: string | null
+          status: string
+          variables: Json | null
+        }
+        Insert: {
+          batch_job_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name?: string | null
+          phone: string
+          position?: number
+          processed_at?: string | null
+          session_id?: string | null
+          skip_reason?: string | null
+          status?: string
+          variables?: Json | null
+        }
+        Update: {
+          batch_job_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lead_email?: string | null
+          lead_id?: string | null
+          lead_name?: string | null
+          phone?: string
+          position?: number
+          processed_at?: string | null
+          session_id?: string | null
+          skip_reason?: string | null
+          status?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_batch_contacts_batch_job_id_fkey"
+            columns: ["batch_job_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_batch_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_batch_contacts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_flow_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_batch_jobs: {
+        Row: {
+          business_hours_only: boolean | null
+          completed_at: string | null
+          contacts_failed: number | null
+          contacts_per_cycle: number
+          contacts_queued: number | null
+          contacts_sent: number | null
+          contacts_skipped: number | null
+          created_at: string | null
+          created_by: string | null
+          error_rate: number | null
+          flow_id: string
+          id: string
+          last_cycle_at: string | null
+          metadata: Json | null
+          name: string
+          paused_at: string | null
+          source_config: Json | null
+          source_type: string
+          started_at: string | null
+          status: string
+          total_contacts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_hours_only?: boolean | null
+          completed_at?: string | null
+          contacts_failed?: number | null
+          contacts_per_cycle?: number
+          contacts_queued?: number | null
+          contacts_sent?: number | null
+          contacts_skipped?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          error_rate?: number | null
+          flow_id: string
+          id?: string
+          last_cycle_at?: string | null
+          metadata?: Json | null
+          name: string
+          paused_at?: string | null
+          source_config?: Json | null
+          source_type: string
+          started_at?: string | null
+          status?: string
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_hours_only?: boolean | null
+          completed_at?: string | null
+          contacts_failed?: number | null
+          contacts_per_cycle?: number
+          contacts_queued?: number | null
+          contacts_sent?: number | null
+          contacts_skipped?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          error_rate?: number | null
+          flow_id?: string
+          id?: string
+          last_cycle_at?: string | null
+          metadata?: Json | null
+          name?: string
+          paused_at?: string | null
+          source_config?: Json | null
+          source_type?: string
+          started_at?: string | null
+          status?: string
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_batch_jobs_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_flow_sessions: {
+        Row: {
+          completed_at: string | null
+          current_step_id: string | null
+          error_message: string | null
+          flow_id: string
+          id: string
+          last_activity_at: string | null
+          last_reply_text: string | null
+          lead_id: string | null
+          messages_received: number | null
+          messages_sent: number | null
+          metadata: Json | null
+          phone: string
+          resume_at: string | null
+          started_at: string | null
+          status: string
+          timeout_at: string | null
+          trigger_data: Json | null
+          trigger_type: string | null
+          variables: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step_id?: string | null
+          error_message?: string | null
+          flow_id: string
+          id?: string
+          last_activity_at?: string | null
+          last_reply_text?: string | null
+          lead_id?: string | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          metadata?: Json | null
+          phone: string
+          resume_at?: string | null
+          started_at?: string | null
+          status?: string
+          timeout_at?: string | null
+          trigger_data?: Json | null
+          trigger_type?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          current_step_id?: string | null
+          error_message?: string | null
+          flow_id?: string
+          id?: string
+          last_activity_at?: string | null
+          last_reply_text?: string | null
+          lead_id?: string | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          metadata?: Json | null
+          phone?: string
+          resume_at?: string | null
+          started_at?: string | null
+          status?: string
+          timeout_at?: string | null
+          trigger_data?: Json | null
+          trigger_type?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_flow_sessions_current_step_id_fkey"
+            columns: ["current_step_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_flow_sessions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_flow_steps: {
+        Row: {
+          config: Json
+          created_at: string | null
+          display_name: string | null
+          flow_id: string
+          id: string
+          step_key: string
+          step_order: number
+          step_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          display_name?: string | null
+          flow_id: string
+          id?: string
+          step_key: string
+          step_order: number
+          step_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          display_name?: string | null
+          flow_id?: string
+          id?: string
+          step_key?: string
+          step_order?: number
+          step_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_flow_steps_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_flows: {
+        Row: {
+          allow_concurrent: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_name: string
+          id: string
+          name: string
+          session_timeout_hours: number | null
+          status: string
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_concurrent?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          name: string
+          session_timeout_hours?: number | null
+          status?: string
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_concurrent?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          name?: string
+          session_timeout_hours?: number | null
+          status?: string
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_logs: {
         Row: {
           created_at: string
@@ -4099,6 +5378,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_optouts: {
+        Row: {
+          opted_out_at: string
+          phone: string
+          source: string
+        }
+        Insert: {
+          opted_out_at?: string
+          phone: string
+          source?: string
+        }
+        Update: {
+          opted_out_at?: string
+          phone?: string
+          source?: string
+        }
+        Relationships: []
       }
       whatsapp_templates: {
         Row: {
@@ -4225,6 +5522,10 @@ export type Database = {
         Args: { p_api_key: string; p_credentials_json: Json }
         Returns: undefined
       }
+      award_course_points: {
+        Args: { p_action_type: string; p_context?: Json; p_user_id: string }
+        Returns: Json
+      }
       calculate_level: { Args: { p_points: number }; Returns: number }
       can_access_session: {
         Args: { _session_id: string; _user_id: string }
@@ -4244,15 +5545,9 @@ export type Database = {
         }[]
       }
       check_job_exists: { Args: { job_url: string }; Returns: boolean }
-      check_prime_jobs_quota: {
-        Args: { p_user_id: string }
-        Returns: {
-          can_apply: boolean
-          monthly_limit: number
-          plan_id: string
-          remaining: number
-          used_this_month: number
-        }[]
+      check_live_access: {
+        Args: { p_live_id: string; p_user_id: string }
+        Returns: Json
       }
       check_upsell_blacklist: {
         Args: { p_service_id: string; p_user_id: string }
@@ -4362,6 +5657,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_career_data_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          area: string
+          english_level: string
+          objetivo: string
+          timeline: string
+        }[]
+      }
       get_community_ranking: {
         Args: { p_limit?: number }
         Returns: {
@@ -4427,7 +5731,7 @@ export type Database = {
       get_job_by_id: {
         Args: { p_job_id: string; p_user_id?: string }
         Returns: {
-          apply_url: string
+          ai_enrichment: Json
           benefits: string
           category: string
           company_logo_url: string
@@ -4436,6 +5740,7 @@ export type Database = {
           description: string
           experience_level: string
           id: string
+          industry: string
           is_applied: boolean
           is_bookmarked: boolean
           is_featured: boolean
@@ -4446,6 +5751,7 @@ export type Database = {
           salary_currency: string
           salary_max: number
           salary_min: number
+          salary_notes: string
           tech_stack: string[]
           title: string
         }[]
@@ -4529,6 +5835,15 @@ export type Database = {
           total_active_jobs: number
         }[]
       }
+      get_service_session_info: {
+        Args: { p_service_id: string; p_student_id: string }
+        Returns: {
+          available: number
+          sessions_total: number
+          sessions_used: number
+          upcoming_confirmed: number
+        }[]
+      }
       get_student_booking_stats: {
         Args: { p_student_id: string }
         Returns: {
@@ -4538,6 +5853,21 @@ export type Database = {
           remaining_slots: number
           total_bookings: number
           upcoming_bookings: number
+        }[]
+      }
+      get_user_access_history: {
+        Args: { p_user_id: string }
+        Returns: {
+          application_id: string
+          applied_at: string
+          category: string
+          company_logo_url: string
+          company_name: string
+          experience_level: string
+          is_active: boolean
+          job_id: string
+          remote_type: string
+          title: string
         }[]
       }
       get_user_quota: {
@@ -4569,6 +5899,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_flow_step_with_shift: {
+        Args: {
+          p_config: Json
+          p_display_name: string
+          p_flow_id: string
+          p_step_key: string
+          p_step_order: number
+          p_step_type: string
+        }
+        Returns: string
+      }
       invoke_edge_function: {
         Args: { p_body?: Json; p_function_name: string }
         Returns: number
@@ -4584,6 +5925,10 @@ export type Database = {
       }
       is_phone_available: {
         Args: { p_country_code: string; p_phone: string; p_user_id?: string }
+        Returns: boolean
+      }
+      mark_booking_no_show: {
+        Args: { p_booking_id: string; p_user_id: string }
         Returns: boolean
       }
       mark_upsell_click: {
@@ -4616,6 +5961,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      reorder_flow_steps: {
+        Args: { p_flow_id: string; p_steps: Json }
+        Returns: undefined
+      }
       reschedule_booking:
         | {
             Args: {
@@ -4643,6 +5992,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      update_content_studio_cron: {
+        Args: { p_cron_expression: string }
+        Returns: Json
+      }
       user_has_plan_feature: {
         Args: { p_feature: string; p_user_id: string }
         Returns: boolean
@@ -4650,7 +6003,7 @@ export type Database = {
     }
     Enums: {
       access_level: "public" | "restricted"
-      app_role: "admin" | "mentor" | "student"
+      app_role: "admin" | "mentor" | "student" | "assistant"
       assignment_status: "draft" | "published" | "closed"
       attendance_status: "present" | "absent" | "unmarked"
       booking_action:
@@ -4695,6 +6048,8 @@ export type Database = {
         | "jpg"
         | "link"
       invitation_status: "pending" | "accepted" | "expired" | "cancelled"
+      live_access_type: "free" | "paid" | "subscribers" | "pro" | "vip"
+      live_status: "draft" | "scheduled" | "live" | "completed" | "cancelled"
       material_type: "pdf" | "link" | "video" | "other"
       notification_type:
         | "reminder_24h"
@@ -4840,7 +6195,7 @@ export const Constants = {
   public: {
     Enums: {
       access_level: ["public", "restricted"],
-      app_role: ["admin", "mentor", "student"],
+      app_role: ["admin", "mentor", "student", "assistant"],
       assignment_status: ["draft", "published", "closed"],
       attendance_status: ["present", "absent", "unmarked"],
       booking_action: [
@@ -4881,6 +6236,8 @@ export const Constants = {
       feedback_type: ["bug", "enhancement"],
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       invitation_status: ["pending", "accepted", "expired", "cancelled"],
+      live_access_type: ["free", "paid", "subscribers", "pro", "vip"],
+      live_status: ["draft", "scheduled", "live", "completed", "cancelled"],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [
         "reminder_24h",

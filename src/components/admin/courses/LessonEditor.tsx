@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Save } from 'lucide-react';
 import { VideoUploader } from './VideoUploader';
 import { AttachmentUploader } from './AttachmentUploader';
+import { QuizEditor } from './QuizEditor';
 import { useUpdateLesson } from '@/hooks/useAdminCourses';
+import { supabase } from '@/integrations/supabase/client';
 import type { CourseLesson } from '@/types/course';
 
 interface LessonEditorProps {
@@ -28,6 +31,21 @@ export function LessonEditor({ lesson, espacoId, open, onOpenChange }: LessonEdi
   const [isFreePreview, setIsFreePreview] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const updateLesson = useUpdateLesson();
+  const queryClient = useQueryClient();
+
+  // Fetch Bunny library ID for admin preview embed
+  const { data: bunnyLibraryId } = useQuery({
+    queryKey: ['bunny-library-id'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('api_configs')
+        .select('credentials')
+        .eq('api_key', 'bunny_stream')
+        .single();
+      return (data?.credentials as any)?.library_id as string | undefined;
+    },
+    staleTime: Infinity,
+  });
 
   useEffect(() => {
     if (lesson) {
@@ -98,8 +116,9 @@ export function LessonEditor({ lesson, espacoId, open, onOpenChange }: LessonEdi
                 currentVideoId={lesson.bunny_video_id}
                 videoStatus={lesson.video_status}
                 thumbnailUrl={lesson.thumbnail_url}
+                libraryId={bunnyLibraryId}
                 onUploadComplete={() => {
-                  // Refetch happens via query invalidation
+                  queryClient.invalidateQueries({ queryKey: ['admin-course', espacoId] });
                 }}
               />
               <div className="space-y-2 pt-2">
@@ -136,6 +155,14 @@ export function LessonEditor({ lesson, espacoId, open, onOpenChange }: LessonEdi
             <div className="space-y-2">
               <Label className="text-base font-semibold">Materiais de Apoio</Label>
               <AttachmentUploader lessonId={lesson.id} />
+            </div>
+
+            <Separator />
+
+            {/* Quiz */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Quiz</Label>
+              <QuizEditor lessonId={lesson.id} />
             </div>
 
             <Separator />

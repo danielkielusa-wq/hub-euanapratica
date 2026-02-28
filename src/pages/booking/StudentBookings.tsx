@@ -1,16 +1,22 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { BookingCard } from '@/components/booking/BookingCard';
 import { EmptyBookings } from '@/components/booking/EmptyBookings';
 import { RescheduleModal } from '@/components/booking/RescheduleModal';
 import { CancelModal } from '@/components/booking/CancelModal';
-import { useUpcomingBookings, usePastBookings, useBookingStats } from '@/hooks/useBookings';
-import { useBookingLimits } from '@/hooks/useBookingPolicies';
+import { MonthCalendar } from '@/components/calendar/MonthCalendar';
+import { useBookings, useBookingStats } from '@/hooks/useBookings';
+import {
+  useBookingPoliciesMap,
+  resolvePolicyForBooking,
+  computeBookingLimits,
+} from '@/hooks/useBookingPolicies';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, List, Loader2 } from 'lucide-react';
+import { Calendar, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookingWithDetails } from '@/types/booking';
+import type { CalendarEvent } from '@/types/calendar';
 
 type Tab = 'upcoming' | 'past';
 type ViewType = 'list' | 'calendar';
@@ -21,17 +27,42 @@ export default function StudentBookings() {
   const [rescheduleBooking, setRescheduleBooking] = useState<BookingWithDetails | null>(null);
   const [cancelBooking, setCancelBooking] = useState<BookingWithDetails | null>(null);
 
-  // Queries
-  const { data: upcomingBookings, isLoading: loadingUpcoming } = useUpcomingBookings();
-  const { data: pastBookings, isLoading: loadingPast } = usePastBookings();
+  // All queries fire in parallel; past bookings deferred until tab is active
+  const { data: upcomingBookings, isLoading: loadingUpcoming } = useBookings('upcoming');
+  const { data: pastBookings, isLoading: loadingPast } = useBookings('past', {
+    enabled: activeTab === 'past',
+  });
   const { data: stats } = useBookingStats();
+  const { data: policiesMap } = useBookingPoliciesMap();
 
   const bookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
   const isLoading = activeTab === 'upcoming' ? loadingUpcoming : loadingPast;
 
+  const getLimits = (booking: BookingWithDetails) => {
+    if (!policiesMap || !stats) return null;
+    const policy = resolvePolicyForBooking(booking, policiesMap);
+    if (!policy) return null;
+    return computeBookingLimits(booking, policy, stats);
+  };
+
   const handleJoinMeeting = (booking: BookingWithDetails) => {
     if (booking.meeting_link) {
       window.open(booking.meeting_link, '_blank');
+    }
+  };
+
+  const calendarEvents = useMemo<CalendarEvent[]>(() => {
+    if (!bookings) return [];
+    return bookings.map(b => ({
+      kind: 'booking' as const,
+      data: b,
+      datetime: b.scheduled_start,
+    }));
+  }, [bookings]);
+
+  const handleCalendarJoinMeeting = (event: CalendarEvent) => {
+    if (event.kind === 'booking' && event.data.meeting_link) {
+      window.open(event.data.meeting_link, '_blank');
     }
   };
 
@@ -145,12 +176,21 @@ export default function StudentBookings() {
                 <Skeleton key={i} className="h-36 rounded-[24px]" />
               ))}
             </div>
+          ) : viewType === 'calendar' ? (
+            <MonthCalendar
+              events={calendarEvents}
+              perspective="student"
+              onJoinMeeting={handleCalendarJoinMeeting}
+              onViewMaterials={() => {}}
+              onViewRecording={() => {}}
+            />
           ) : bookings && bookings.length > 0 ? (
             <div className="space-y-4">
               {bookings.map((booking) => (
-                <BookingCardWithLimits
+                <BookingCard
                   key={booking.id}
                   booking={booking}
+                  limits={getLimits(booking)}
                   onReschedule={setRescheduleBooking}
                   onCancel={setCancelBooking}
                   onJoinMeeting={handleJoinMeeting}
@@ -175,31 +215,6 @@ export default function StudentBookings() {
         onOpenChange={(open) => !open && setCancelBooking(null)}
       />
     </DashboardLayout>
-  );
-}
-
-// Wrapper component to fetch limits for each booking
-function BookingCardWithLimits({
-  booking,
-  onReschedule,
-  onCancel,
-  onJoinMeeting,
-}: {
-  booking: BookingWithDetails;
-  onReschedule: (booking: BookingWithDetails) => void;
-  onCancel: (booking: BookingWithDetails) => void;
-  onJoinMeeting: (booking: BookingWithDetails) => void;
-}) {
-  const { data: limits } = useBookingLimits(booking);
-
-  return (
-    <BookingCard
-      booking={booking}
-      limits={limits}
-      onReschedule={onReschedule}
-      onCancel={onCancel}
-      onJoinMeeting={onJoinMeeting}
-    />
   );
 }
 

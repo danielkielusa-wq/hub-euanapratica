@@ -16,6 +16,7 @@ export function useHubServices() {
       if (error) throw error;
       return data as HubService[];
     },
+    staleTime: 5 * 60_000, // 5 min — service catalog rarely changes
   });
 }
 
@@ -37,6 +38,7 @@ export function useUserHubAccess() {
       return data.map((d) => d.service_id);
     },
     enabled: !!user?.id,
+    staleTime: 60_000, // 1 min
   });
 }
 
@@ -60,6 +62,27 @@ export function useUserHubServices() {
     },
     enabled: !!user?.id,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Fetch a single hub_service by ID (fast, no joins)
+ */
+export function useServiceById(serviceId: string | undefined) {
+  return useQuery({
+    queryKey: ['hub-service', serviceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('hub_services')
+        .select('*')
+        .eq('id', serviceId!)
+        .single();
+
+      if (error) throw error;
+      return data as HubService;
+    },
+    enabled: !!serviceId,
+    staleTime: 5 * 60 * 1000, // 5 min — service metadata rarely changes
   });
 }
 

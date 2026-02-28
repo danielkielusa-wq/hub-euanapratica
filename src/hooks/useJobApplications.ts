@@ -4,7 +4,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { JobApplication, PrimeJobsQuota } from '@/types/jobs';
 
-// Hook for getting user's job applications
+// Lightweight type returned by the history RPC (no full Job object)
+export interface AccessHistoryItem {
+  application_id: string;
+  job_id: string;
+  applied_at: string;
+  title: string;
+  company_name: string;
+  company_logo_url: string | null;
+  experience_level: string;
+  remote_type: string;
+  category: string;
+  is_active: boolean;
+}
+
+// Hook for getting user's job applications (PostgREST join — used by useHasApplied)
 export function useJobApplications() {
   const { user } = useAuth();
 
@@ -16,8 +30,8 @@ export function useJobApplications() {
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
-          *,
-          job:jobs (*)
+          id, user_id, job_id, status, notes, applied_at, updated_at,
+          job:jobs (id, title, company, logo_url, is_active)
         `)
         .eq('user_id', user.id)
         .order('applied_at', { ascending: false });
@@ -30,7 +44,27 @@ export function useJobApplications() {
   });
 }
 
-// Hook for checking Prime Jobs quota
+// Fast hook for access history page — uses dedicated RPC, no PostgREST join
+export function useAccessHistory() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['access-history', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .rpc('get_user_access_history', { p_user_id: user.id });
+
+      if (error) throw error;
+      return (data || []) as AccessHistoryItem[];
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+// Hook for checking Prime Jobs quota (unified credit system via get_app_quota)
 export function usePrimeJobsQuota() {
   const { user } = useAuth();
 
@@ -48,16 +82,18 @@ export function usePrimeJobsQuota() {
       }
 
       const { data, error } = await supabase
-        .rpc('check_prime_jobs_quota', { p_user_id: user.id });
+        .rpc('get_app_quota', { p_user_id: user.id, p_app_id: 'prime_jobs' });
 
       if (error) throw error;
 
       const row = Array.isArray(data) ? data[0] : data;
+      const monthlyLimit = row?.monthly_limit || 0;
+      const remaining = row?.remaining || 0;
       return {
-        canApply: row?.can_apply || false,
+        canApply: remaining > 0 && monthlyLimit > 0,
         usedThisMonth: row?.used_this_month || 0,
-        monthlyLimit: row?.monthly_limit || 0,
-        remaining: row?.remaining || 0,
+        monthlyLimit,
+        remaining,
         planId: row?.plan_id || 'basic',
       } as PrimeJobsQuota;
     },
@@ -66,50 +102,45 @@ export function usePrimeJobsQuota() {
   });
 }
 
-// Hook for applying to a job
+// Hook for applying to a job (via link proxy — URL never exposed in DOM)
 export function useApplyToJob() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ jobId, applyUrl }: { jobId: string; applyUrl: string }) => {
+    mutationFn: async ({ jobId }: { jobId: string }) => {
       if (!user) throw new Error('Você precisa estar logado para aplicar');
 
-      // Call the RPC to record the application (with quota check)
-      const { data, error } = await supabase
-        .rpc('record_prime_jobs_application', {
-          p_user_id: user.id,
-          p_job_id: jobId,
-        });
+      // Call the link proxy Edge Function — handles quota check, click logging,
+      // application recording, and returns the redirect URL
+      const { data, error } = await supabase.functions.invoke('job-link-proxy', {
+        body: { job_id: jobId, type: 'post_link' },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error('Erro ao buscar link da vaga');
 
-      const result = Array.isArray(data) ? data[0] : data;
-
-      if (!result?.success) {
-        throw new Error(result?.message || 'Não foi possível registrar a aplicação');
+      if (!data?.redirect_url) {
+        throw new Error(data?.error || 'Link não disponível para esta vaga');
       }
 
-      return { ...result, applyUrl };
+      // Open the URL in the same user-gesture context to avoid popup blockers
+      window.open(data.redirect_url, '_blank');
+
+      return { success: true };
     },
-    onSuccess: (result) => {
-      // Invalidate relevant queries
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prime-jobs-quota'] });
       queryClient.invalidateQueries({ queryKey: ['job-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['access-history'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
 
-      toast.success('Aplicação registrada!', {
-        description: 'Boa sorte na sua candidatura.',
+      toast.success('Acesso liberado!', {
+        description: 'A vaga está nas suas mãos. Bora!',
       });
-
-      // Open the external application URL in a new tab
-      if (result.applyUrl) {
-        window.open(result.applyUrl, '_blank');
-      }
     },
     onError: (error: Error) => {
-      toast.error('Erro ao aplicar', {
+      toast.error('Erro ao acessar vaga', {
         description: error.message,
       });
     },

@@ -10,8 +10,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useAllPendingTasks, useUpdateTaskStatus } from '@/hooks/useAdminLeadDetail';
 import type { GlobalTask } from '@/hooks/useAdminLeadDetail';
+import { PageHelpButton } from '@/components/assistant/PageHelpButton';
+import { ATIVIDADES_HELP } from '@/lib/assistantHelpContent';
 
 const PRIORITY_STYLES: Record<string, string> = {
   urgent: 'bg-red-50 text-red-700 border-red-200',
@@ -87,12 +91,15 @@ function categorizeTasks(tasks: GlobalTask[]) {
   return { overdue, todayTasks, thisWeek, later, noDue };
 }
 
-function formatDueDate(dateStr?: string | null): string {
+function formatDueDate(dateStr: string | null | undefined, tz: string): string {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  return formatInTz(dateStr, tz, 'dd/MM');
 }
 
-export default function AdminAtividades() {
+export type AtividadesViewMode = 'admin' | 'assistant';
+
+export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: AtividadesViewMode }) {
+  const leadBasePath = viewMode === 'assistant' ? '/assistant/leads' : '/admin/leads';
   const navigate = useNavigate();
   const { data: tasks = [], isLoading } = useAllPendingTasks();
   const updateTaskStatus = useUpdateTaskStatus();
@@ -123,6 +130,9 @@ export default function AdminAtividades() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {viewMode === 'assistant' && (
+              <PageHelpButton pageTitle={ATIVIDADES_HELP.pageTitle} description={ATIVIDADES_HELP.description} sections={ATIVIDADES_HELP.sections} />
+            )}
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="h-8 text-xs rounded-xl w-32">
                 <Filter className="w-3 h-3 mr-1" />
@@ -183,7 +193,7 @@ export default function AdminAtividades() {
                 borderColor="border-l-red-500"
                 tasks={overdue}
                 onComplete={handleComplete}
-                onNavigate={(task) => navigate(`/admin/leads/${task.lead_id}`)}
+                onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
               />
             )}
             {todayTasks.length > 0 && (
@@ -193,7 +203,7 @@ export default function AdminAtividades() {
                 borderColor="border-l-amber-500"
                 tasks={todayTasks}
                 onComplete={handleComplete}
-                onNavigate={(task) => navigate(`/admin/leads/${task.lead_id}`)}
+                onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
               />
             )}
             {thisWeek.length > 0 && (
@@ -203,7 +213,7 @@ export default function AdminAtividades() {
                 borderColor="border-l-blue-500"
                 tasks={thisWeek}
                 onComplete={handleComplete}
-                onNavigate={(task) => navigate(`/admin/leads/${task.lead_id}`)}
+                onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
               />
             )}
             {later.length > 0 && (
@@ -213,7 +223,7 @@ export default function AdminAtividades() {
                 borderColor="border-l-green-500"
                 tasks={later}
                 onComplete={handleComplete}
-                onNavigate={(task) => navigate(`/admin/leads/${task.lead_id}`)}
+                onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
               />
             )}
             {noDue.length > 0 && (
@@ -223,7 +233,7 @@ export default function AdminAtividades() {
                 borderColor="border-l-gray-400"
                 tasks={noDue}
                 onComplete={handleComplete}
-                onNavigate={(task) => navigate(`/admin/leads/${task.lead_id}`)}
+                onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
               />
             )}
           </div>
@@ -261,6 +271,7 @@ function TaskSection({
   onComplete: (task: GlobalTask, status: 'done' | 'skipped') => void;
   onNavigate: (task: GlobalTask) => void;
 }) {
+  const tz = useUserTimezone();
   return (
     <div>
       <h3 className={cn('text-sm font-semibold mb-3 flex items-center gap-2', titleColor)}>
@@ -311,7 +322,7 @@ function TaskSection({
                     {task.priority}
                   </Badge>
                   {task.due_date && (
-                    <span className="text-[10px] text-gray-500">{formatDueDate(task.due_date)}</span>
+                    <span className="text-[10px] text-gray-500">{formatDueDate(task.due_date, tz)}</span>
                   )}
                 </div>
               </div>

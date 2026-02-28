@@ -8,7 +8,7 @@ interface OnboardingHorizontalStepperProps {
   currentStep: OnboardingStep;
 }
 
-const stepLabels = ['INÍCIO', 'PERFIL', 'CONTATO', 'CARREIRA', 'DESTINO', 'FINAL'];
+const stepLabels = ['INÍCIO', 'PERFIL', 'DESTINO', 'CARREIRA', 'FINAL'];
 
 export function OnboardingHorizontalStepper({ currentStep }: OnboardingHorizontalStepperProps) {
   return (

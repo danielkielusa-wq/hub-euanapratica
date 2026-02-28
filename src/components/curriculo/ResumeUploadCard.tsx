@@ -24,26 +24,31 @@ export function ResumeUploadCard({
 }: ResumeUploadCardProps) {
   const [showDocWarning, setShowDocWarning] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
     // Check if disabled first
     if (disabled) {
       onBlockedAction?.();
       return;
     }
 
-    if (acceptedFiles.length > 0) {
-      const uploadedFile = acceptedFiles[0];
-      const fileName = uploadedFile.name.toLowerCase();
-      
-      // Check for legacy .doc format
-      if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
-        setShowDocWarning(true);
-      } else {
-        setShowDocWarning(false);
-      }
-      
-      onFileChange(uploadedFile);
+    // Handle rejected files — on Windows, DOCX MIME type can mismatch
+    // so check by extension and accept if valid
+    const file = acceptedFiles[0] || fileRejections[0]?.file;
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const validExt = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
+
+    if (!validExt) return;
+
+    // Check for legacy .doc format
+    if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
+      setShowDocWarning(true);
+    } else {
+      setShowDocWarning(false);
     }
+
+    onFileChange(file);
   }, [onFileChange, disabled, onBlockedAction]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -52,10 +57,12 @@ export function ResumeUploadCard({
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/msword': ['.doc'],
+      'application/octet-stream': ['.docx', '.doc'],
     },
     maxFiles: 1,
     maxSize: 10 * 1024 * 1024, // 10MB
     disabled: disabled,
+    useFsAccessApi: false, // Workaround: Windows File System Access API can misreport MIME types
   });
 
   const removeFile = (e: React.MouseEvent) => {

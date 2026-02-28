@@ -4,6 +4,7 @@ import {
   normalizePhone,
   findLeadByPhone,
   logWhatsAppMessage,
+  sendWhatsAppMessage,
 } from "../_shared/whatsappService.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
@@ -81,6 +82,20 @@ serve(async (req) => {
 
       console.log(`[receive-whatsapp] Inbound from ${senderPhone}: "${messageText.slice(0, 50)}..."`);
 
+      // ── Deduplication: skip if this message was already processed ──
+      if (messageId) {
+        const { data: existing } = await supabase
+          .from("whatsapp_logs" as any)
+          .select("id")
+          .eq("evolution_message_id", messageId)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          console.log(`[receive-whatsapp] Duplicate message ${messageId}, skipping`);
+          return ok();
+        }
+      }
+
       // Find matching lead
       const lead = await findLeadByPhone(supabase, senderPhone);
 
@@ -132,6 +147,10 @@ serve(async (req) => {
           interaction_id: interaction?.id ?? null,
           timestamp: messageTimestamp,
         }, supabase);
+
+        // ── Flow Engine: check for active sessions waiting for reply ──
+        await triggerFlowReply(supabase, senderPhone, messageText, lead.id, lead.name);
+
       } else {
         // Unknown number — log only to whatsapp_logs
         console.warn(
@@ -147,6 +166,9 @@ serve(async (req) => {
           status: "received",
           metadata: { raw_event: "messages.upsert", unmatched: true },
         });
+
+        // Even for unknown numbers, check flow sessions + keyword triggers
+        await triggerFlowReply(supabase, senderPhone, messageText, null, null);
       }
 
       return ok();
@@ -266,4 +288,142 @@ function ok() {
     JSON.stringify({ received: true }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+/**
+ * Check for active flow sessions waiting for reply, then check keyword triggers.
+ * Fire-and-forget: never throws, never blocks the webhook response.
+ */
+async function triggerFlowReply(
+  supabase: ReturnType<typeof createClient>,
+  phone: string,
+  messageText: string,
+  leadId: string | null,
+  leadName: string | null
+): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || "";
+
+  try {
+    // Normalize phone to match stored session phones consistently
+    const normalizedPhone = normalizePhone(phone);
+
+    // 0. Check for opt-out keywords FIRST — before any flow logic
+    // Only unambiguous opt-out signals. Avoid "cancelar"/"sair" — too ambiguous
+    // (user might mean "cancel this booking", not "opt out of all messages")
+    const STOP_KEYWORDS = ["stop", "parar", "pare", "descadastrar", "desinscrever"];
+    const normalizedMsgEarly = messageText?.trim().toLowerCase() || "";
+    const isOptOut = STOP_KEYWORDS.some((k) => normalizedMsgEarly === k);
+
+    if (isOptOut) {
+      console.log(`[receive-whatsapp] Opt-out request from ${normalizedPhone}`);
+
+      // Record opt-out (upsert in case they opt-out again)
+      await supabase.from("whatsapp_optouts").upsert(
+        { phone: normalizedPhone, opted_out_at: new Date().toISOString(), source: "keyword" },
+        { onConflict: "phone" }
+      );
+
+      // Cancel all active sessions for this phone
+      await supabase
+        .from("whatsapp_flow_sessions")
+        .update({ status: "cancelled", completed_at: new Date().toISOString() })
+        .eq("phone", normalizedPhone)
+        .in("status", ["active", "waiting_delay", "waiting_reply"]);
+
+      // Send confirmation message
+      await sendWhatsAppMessage({
+        phone: normalizedPhone,
+        text: "Você foi descadastrado e não receberá mais mensagens automáticas. Para se recadastrar, preencha o formulário novamente.",
+      });
+
+      return;
+    }
+
+    // 1. Check for sessions waiting for reply from this phone
+    const { data: waitingSessions } = await supabase
+      .from("whatsapp_flow_sessions")
+      .select("id")
+      .eq("phone", normalizedPhone)
+      .eq("status", "waiting_reply")
+      .order("last_activity_at", { ascending: false })
+      .limit(1);
+
+    if (waitingSessions && waitingSessions.length > 0) {
+      const sessionId = waitingSessions[0].id;
+      console.log(`[receive-whatsapp] Resuming flow session ${sessionId} with reply`);
+
+      try {
+        const resp = await fetch(`${supabaseUrl}/functions/v1/execute-whatsapp-flow`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": internalSecret,
+          },
+          body: JSON.stringify({ session_id: sessionId, reply_text: messageText }),
+        });
+        if (!resp.ok) {
+          console.error(`[receive-whatsapp] Flow resume failed: ${resp.status} ${await resp.text()}`);
+        }
+      } catch (err) {
+        console.error("[receive-whatsapp] Flow resume network error:", err);
+      }
+
+      return; // Reply handled by existing session, skip keyword check
+    }
+
+    // 2. Check for keyword-triggered flows
+    const { data: keywordFlows } = await supabase
+      .from("whatsapp_flows")
+      .select("id, trigger_config")
+      .eq("trigger_type", "keyword")
+      .eq("status", "active");
+
+    if (!keywordFlows || keywordFlows.length === 0) return;
+
+    const normalizedMsg = messageText?.trim().toLowerCase() || "";
+
+    for (const flow of keywordFlows) {
+      const config = flow.trigger_config || {};
+      const keywords = (config as any).keywords || [];
+      const matchType = (config as any).match_type || "exact";
+
+      const matched = matchType === "contains"
+        ? keywords.some((k: string) => normalizedMsg.includes(k.toLowerCase()))
+        : keywords.some((k: string) => normalizedMsg === k.toLowerCase());
+
+      if (matched) {
+        console.log(`[receive-whatsapp] Keyword match '${normalizedMsg}' → flow ${flow.id}`);
+
+        try {
+          const resp = await fetch(`${supabaseUrl}/functions/v1/execute-whatsapp-flow`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-secret": internalSecret,
+            },
+            body: JSON.stringify({
+              trigger_type: "keyword",
+              trigger_data: {
+                event: "keyword_match",
+                phone: normalizedPhone,
+                lead_id: leadId,
+                lead_name: leadName,
+                matched_keyword: normalizedMsg,
+              },
+            }),
+          });
+          if (!resp.ok) {
+            console.error(`[receive-whatsapp] Keyword flow trigger failed: ${resp.status} ${await resp.text()}`);
+          }
+        } catch (err) {
+          console.error("[receive-whatsapp] Keyword flow trigger network error:", err);
+        }
+
+        break; // Only trigger first matching flow
+      }
+    }
+  } catch (err) {
+    console.error("[receive-whatsapp] Flow trigger error:", err);
+  }
 }

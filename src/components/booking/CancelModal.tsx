@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { format, differenceInHours } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInHours } from 'date-fns';
 import { AlertTriangle, Loader2, Calendar } from 'lucide-react';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -23,6 +24,7 @@ interface CancelModalProps {
 }
 
 export function CancelModal({ booking, open, onOpenChange }: CancelModalProps) {
+  const tz = useUserTimezone();
   const [reason, setReason] = useState('');
 
   // Query
@@ -66,9 +68,7 @@ export function CancelModal({ booking, open, onOpenChange }: CancelModalProps) {
                 <p className="font-bold text-gray-900">{booking.service?.name}</p>
                 <p className="text-gray-500 text-sm flex items-center gap-2 mt-1">
                   <Calendar className="h-4 w-4" />
-                  {format(sessionDate, "EEEE, d 'de' MMMM 'às' HH:mm", {
-                    locale: ptBR,
-                  })}
+                  {formatInTz(sessionDate, tz, "EEEE, d 'de' MMMM 'às' HH:mm")}
                 </p>
               </div>
 

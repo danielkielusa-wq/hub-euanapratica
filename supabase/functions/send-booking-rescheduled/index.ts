@@ -1,13 +1,14 @@
 /**
  * Send Booking Rescheduled Email
  *
- * Sends an email to the student when a booking is rescheduled.
+ * Sends an email to BOTH the student and the mentor when a booking is rescheduled.
  * Uses centralized email template service for database-driven templates.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { buildBookingCalendarData } from "../_shared/calendarService.ts";
 
 interface BookingRescheduledRequest {
   booking_id: string;
@@ -45,8 +46,8 @@ Deno.serve(async (req) => {
       .from("bookings")
       .select(`
         *,
-        student:profiles!bookings_student_id_fkey(id, full_name, email, timezone),
-        mentor:profiles!bookings_mentor_id_fkey(id, full_name, email),
+        student:profiles!bookings_student_profile_fkey(id, full_name, email, timezone),
+        mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email),
         service:hub_services(id, name)
       `)
       .eq("id", booking_id)
@@ -92,25 +93,59 @@ Deno.serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://hub-euanapratica.vercel.app";
 
-    // Send templated email
-    const result = await sendTemplatedEmail({
+    // Build calendar attachment and Google Calendar link
+    const calendarData = buildBookingCalendarData({
+      scheduled_start: booking.scheduled_start,
+      scheduled_end: booking.scheduled_end,
+      service_name: booking.service?.name || "Sessão",
+      mentor_name: booking.mentor?.full_name || "Mentor",
+      meeting_link: booking.meeting_link,
+    });
+
+    const sharedVars = {
+      "{{serviceName}}": booking.service?.name || "Sessão",
+      "{{oldDateSection}}": oldDateSection,
+      "{{formattedDate}}": dateFormatter.format(newDate),
+      "{{formattedTime}}": `${timeFormatter.format(newDate)} - ${timeFormatter.format(newEndDate)}`,
+      "{{manageBookingLink}}": `${origin}/dashboard/agendamentos`,
+      "{{calendarSection}}": calendarData.calendarSectionHtml,
+    };
+
+    // Send email to student
+    const studentResult = await sendTemplatedEmail({
       templateName: "booking_rescheduled",
       to: booking.student?.email,
       variables: {
         "{{studentName}}": booking.student?.full_name || "Aluno(a)",
-        "{{serviceName}}": booking.service?.name || "Sessão",
-        "{{oldDateSection}}": oldDateSection,
-        "{{formattedDate}}": dateFormatter.format(newDate),
-        "{{formattedTime}}": `${timeFormatter.format(newDate)} - ${timeFormatter.format(newEndDate)}`,
         "{{mentorName}}": booking.mentor?.full_name || "Mentor",
-        "{{manageBookingLink}}": `${origin}/dashboard/agendamentos`,
+        ...sharedVars,
       },
     });
 
-    console.log("Reschedule email result:", { bookingId: booking_id, to: booking.student?.email, ...result });
+    console.log("Student reschedule email:", { bookingId: booking_id, to: booking.student?.email, sent: studentResult.emailSent });
+
+    // Send email to mentor
+    let mentorEmailSent = false;
+    if (booking.mentor?.email) {
+      const mentorResult = await sendTemplatedEmail({
+        templateName: "booking_rescheduled_mentor",
+        to: booking.mentor.email,
+        variables: {
+          "{{mentorName}}": booking.mentor.full_name || "Mentor",
+          "{{studentName}}": booking.student?.full_name || "Aluno(a)",
+          ...sharedVars,
+        },
+      });
+      mentorEmailSent = !!mentorResult.emailSent;
+      console.log("Mentor reschedule email:", { bookingId: booking_id, to: booking.mentor.email, sent: mentorEmailSent });
+    }
 
     return new Response(
-      JSON.stringify({ success: result.success, emailSent: result.emailSent }),
+      JSON.stringify({
+        success: studentResult.success,
+        emailSent: studentResult.emailSent,
+        mentorEmailSent,
+      }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {

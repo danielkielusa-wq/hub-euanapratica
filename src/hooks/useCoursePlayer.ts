@@ -20,7 +20,7 @@ export function useCourseData(espacoId: string) {
 
       if (espacoError) throw espacoError;
 
-      // Fetch published modules
+      // Fetch published modules (include unlock_days_after_enrollment for drip)
       const { data: modules, error: modulesError } = await supabase
         .from('course_modules')
         .select('*')
@@ -29,6 +29,19 @@ export function useCourseData(espacoId: string) {
         .order('display_order');
 
       if (modulesError) throw modulesError;
+
+      // Fetch enrollment date for drip content (F6)
+      let enrolledAt: Date | null = null;
+      if (user?.id) {
+        const { data: enrollment } = await supabase
+          .from('user_espacos')
+          .select('enrolled_at')
+          .eq('user_id', user.id)
+          .eq('espaco_id', espacoId)
+          .eq('status', 'active')
+          .maybeSingle();
+        enrolledAt = enrollment?.enrolled_at ? new Date(enrollment.enrolled_at) : null;
+      }
 
       // Fetch published lessons
       const moduleIds = (modules || []).map((m) => m.id);
@@ -69,10 +82,23 @@ export function useCourseData(espacoId: string) {
         }
       }
 
-      const modulesWithLessons: CourseModule[] = (modules || []).map((m) => ({
-        ...(m as CourseModule),
-        lessons: lessonsMap[m.id] || [],
-      }));
+      const modulesWithLessons: CourseModule[] = (modules || []).map((m) => {
+        const unlockDays = (m as any).unlock_days_after_enrollment as number | null;
+        let isLocked = false;
+        let unlockDate: Date | null = null;
+
+        if (unlockDays != null && unlockDays > 0 && enrolledAt) {
+          unlockDate = new Date(enrolledAt.getTime() + unlockDays * 24 * 60 * 60 * 1000);
+          isLocked = new Date() < unlockDate;
+        }
+
+        return {
+          ...(m as CourseModule),
+          lessons: isLocked ? [] : (lessonsMap[m.id] || []),
+          isLocked,
+          unlockDate,
+        };
+      });
 
       // Flatten all lessons for easy navigation
       const allLessons = modulesWithLessons.flatMap((m) => m.lessons || []);
@@ -151,10 +177,30 @@ export function useUpsertProgress() {
         .upsert(updateData, { onConflict: 'user_id,lesson_id' });
 
       if (error) throw error;
+
+      return { status };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       // Silently invalidate — no toast for progress saves
       queryClient.invalidateQueries({ queryKey: ['course-data'] });
+
+      // Award points on lesson completion (F8 Gamification)
+      if (result?.status === 'completed') {
+        supabase.rpc('award_course_points', {
+          p_user_id: user!.id,
+          p_action_type: 'lesson_completed',
+        }).then(({ data }) => {
+          if (data?.awarded) {
+            import('sonner').then(({ toast }) => {
+              toast.success(`+${data.points} pontos!`, { duration: 2000 });
+              if (data.level_up) {
+                toast.success(`Level Up! Nível ${data.new_level}`, { duration: 3000 });
+              }
+            });
+            queryClient.invalidateQueries({ queryKey: ['course-streak'] });
+          }
+        }).catch(() => { /* fire-and-forget */ });
+      }
     },
   });
 }

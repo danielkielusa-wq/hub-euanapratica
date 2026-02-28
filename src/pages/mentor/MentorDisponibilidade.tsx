@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { formatDateTimeBr, localInputToUTC, getTimezoneLabel, getTimezoneAbbr } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { DashboardTopHeader } from '@/components/dashboard/DashboardTopHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -51,6 +53,7 @@ import { DAY_OF_WEEK_LABELS, type DayOfWeek } from '@/types/booking';
 const dayOrder: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 export default function MentorDisponibilidade() {
+  const tz = useUserTimezone();
   const { data: mentorServices, isLoading: loadingMS } = useMyMentorServices();
   const { data: availability, isLoading: loadingAvail } = useMyAvailability();
   const { data: blockedTimes } = useMyBlockedTimes();
@@ -249,9 +252,10 @@ export default function MentorDisponibilidade() {
                   <div key={bt.id} className="flex items-center justify-between rounded-lg border p-3">
                     <div>
                       <p className="text-sm font-medium">
-                        {new Date(bt.start_datetime).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTimeBr(bt.start_datetime, tz)}
                         {' — '}
-                        {new Date(bt.end_datetime).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTimeBr(bt.end_datetime, tz)}
+                        {' ('}{getTimezoneAbbr(tz)}{')'}
                       </p>
                       {bt.reason && <p className="text-xs text-muted-foreground">{bt.reason}</p>}
                     </div>
@@ -332,6 +336,7 @@ export default function MentorDisponibilidade() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Adicionar Bloqueio</DialogTitle>
+              <p className="text-sm text-muted-foreground">Horários interpretados no fuso: {getTimezoneLabel(tz)}</p>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -365,8 +370,8 @@ export default function MentorDisponibilidade() {
                 onClick={() => {
                   if (!blockForm.start_datetime || !blockForm.end_datetime) return;
                   createBlock.mutate({
-                    start_datetime: new Date(blockForm.start_datetime).toISOString(),
-                    end_datetime: new Date(blockForm.end_datetime).toISOString(),
+                    start_datetime: localInputToUTC(blockForm.start_datetime, tz),
+                    end_datetime: localInputToUTC(blockForm.end_datetime, tz),
                     reason: blockForm.reason || undefined,
                   }, {
                     onSuccess: () => {

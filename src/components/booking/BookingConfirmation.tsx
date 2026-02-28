@@ -1,5 +1,3 @@
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import {
   Calendar,
   Clock,
@@ -8,6 +6,8 @@ import {
   CheckCircle2,
   Loader2,
 } from 'lucide-react';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,7 +21,7 @@ interface BookingConfirmationProps {
   mentor: {
     full_name: string;
     profile_photo_url: string | null;
-  };
+  } | null;
   selectedSlot: TimeSlot;
   policy?: BookingPolicy;
   studentNotes: string;
@@ -42,6 +42,7 @@ export function BookingConfirmation({
   onBack,
   isConfirming,
 }: BookingConfirmationProps) {
+  const tz = useUserTimezone();
   const startTime = new Date(selectedSlot.slot_start);
   const endTime = new Date(selectedSlot.slot_end);
 
@@ -69,35 +70,35 @@ export function BookingConfirmation({
             </div>
             <div>
               <p className="font-bold text-gray-900">
-                {format(startTime, "EEEE, d 'de' MMMM 'de' yyyy", {
-                  locale: ptBR,
-                })}
+                {formatInTz(startTime, tz, "EEEE, d 'de' MMMM 'de' yyyy")}
               </p>
               <p className="text-gray-500 text-sm">
-                {format(startTime, 'HH:mm', { locale: ptBR })} -{' '}
-                {format(endTime, 'HH:mm', { locale: ptBR })} (
+                {formatInTz(startTime, tz, 'HH:mm')} -{' '}
+                {formatInTz(endTime, tz, 'HH:mm')} (
                 {selectedSlot.duration_minutes} minutos)
               </p>
             </div>
           </div>
 
           {/* Mentor */}
-          <div className="flex items-center gap-4">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={mentor.profile_photo_url || undefined} />
-              <AvatarFallback className="bg-gray-100 text-gray-600">
-                {mentor.full_name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium text-gray-900">{mentor.full_name}</p>
-              <p className="text-gray-500 text-sm">Mentor</p>
+          {mentor && (
+            <div className="flex items-center gap-4">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={mentor.profile_photo_url || undefined} />
+                <AvatarFallback className="bg-gray-100 text-gray-600">
+                  {mentor.full_name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium text-gray-900">{mentor.full_name}</p>
+                <p className="text-gray-500 text-sm">Profissional</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

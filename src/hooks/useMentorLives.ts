@@ -1,0 +1,231 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import type { Live, CreateLiveInput, UpdateLiveInput, LiveRegistrationWithProfile } from '@/types/live';
+
+/**
+ * Fetch mentor's own lives
+ */
+export function useMentorLives() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['mentor-lives', user?.id],
+    queryFn: async (): Promise<Live[]> => {
+      const { data, error } = await supabase
+        .from('lives')
+        .select('*')
+        .eq('mentor_id', user!.id)
+        .order('scheduled_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as Live[];
+    },
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Fetch a single live by ID (mentor view)
+ */
+export function useMentorLiveById(liveId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['mentor-live', liveId],
+    queryFn: async (): Promise<Live | null> => {
+      const { data, error } = await supabase
+        .from('lives')
+        .select('*')
+        .eq('id', liveId!)
+        .limit(1);
+
+      if (error) throw error;
+      return (data?.[0] as Live) || null;
+    },
+    enabled: !!user?.id && !!liveId,
+  });
+}
+
+/**
+ * Create a new live
+ */
+export function useCreateLive() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateLiveInput) => {
+      const { data, error } = await supabase
+        .from('lives')
+        .insert({
+          ...input,
+          mentor_id: user!.id,
+          price: input.price || 0,
+          duration_minutes: input.duration_minutes || 60,
+          status: input.status || 'scheduled',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Live;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-lives'] });
+      queryClient.invalidateQueries({ queryKey: ['lives'] });
+      toast({ title: 'Live criada!', description: 'Sua live foi criada com sucesso.' });
+    },
+    onError: (error: Error) => {
+      if (error.message.includes('lives_slug_key')) {
+        toast({
+          title: 'Slug já existe',
+          description: 'Esse slug já está em uso. Tente outro.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Erro ao criar live',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    },
+  });
+}
+
+/**
+ * Update an existing live
+ */
+export function useUpdateLive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...input }: UpdateLiveInput) => {
+      const { data, error } = await supabase
+        .from('lives')
+        .update(input)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Live;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-lives'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-live', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['live', data.slug] });
+      queryClient.invalidateQueries({ queryKey: ['lives'] });
+      toast({ title: 'Live atualizada!' });
+
+      // When going live, notify all registered participants (fire-and-forget)
+      if (data.status === 'live') {
+        supabase.functions
+          .invoke('send-live-notification', {
+            body: { live_id: data.id, notification_type: 'going_live' },
+          })
+          .then(({ error }) => {
+            if (error) console.error('Live notification email error:', error);
+          });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao atualizar live',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Delete a live (only drafts can be hard-deleted)
+ */
+export function useDeleteLive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (liveId: string) => {
+      const { error } = await supabase
+        .from('lives')
+        .delete()
+        .eq('id', liveId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-lives'] });
+      queryClient.invalidateQueries({ queryKey: ['lives'] });
+      toast({ title: 'Live removida.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao remover live',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Fetch registrations for a live (mentor view with profiles)
+ */
+export function useLiveRegistrations(liveId: string | undefined) {
+  return useQuery({
+    queryKey: ['live-registrations', liveId],
+    queryFn: async (): Promise<LiveRegistrationWithProfile[]> => {
+      const { data, error } = await supabase
+        .from('live_registrations')
+        .select('*')
+        .eq('live_id', liveId!)
+        .order('registered_at', { ascending: false });
+
+      if (error) throw error;
+      if (!data?.length) return [];
+
+      // Fetch profiles
+      const userIds = data.map((r: any) => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, profile_photo_url')
+        .in('id', userIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((p: any) => [p.id, p])
+      );
+
+      return data.map((r: any) => ({
+        ...r,
+        profile: profileMap.get(r.user_id) || null,
+      }));
+    },
+    enabled: !!liveId,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Toggle attended status for a registration
+ */
+export function useToggleAttended() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ registrationId, attended }: { registrationId: string; attended: boolean }) => {
+      const { error } = await supabase
+        .from('live_registrations')
+        .update({ attended })
+        .eq('id', registrationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['live-registrations'] });
+    },
+  });
+}

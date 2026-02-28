@@ -27,6 +27,8 @@ import {
 import { useUpcomingMentorBookings, usePastMentorBookings } from '@/hooks/useMentorBookings';
 import { useCompleteBooking } from '@/hooks/useCancelBooking';
 import { BOOKING_STATUS_CONFIG, type BookingWithDetails } from '@/types/booking';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 
 export default function MentorAgendamentos() {
   const { data: upcoming, isLoading: loadingUpcoming } = useUpcomingMentorBookings();
@@ -36,17 +38,11 @@ export default function MentorAgendamentos() {
   const [completeNotes, setCompleteNotes] = useState('');
   const completeMutation = useCompleteBooking();
 
+  const tz = useUserTimezone();
   const isLoading = loadingUpcoming || loadingPast;
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-  };
-
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatDate = (iso: string) => formatInTz(iso, tz, 'EEE, dd MMM');
+  const formatTime = (iso: string) => formatInTz(iso, tz, 'HH:mm');
 
   const upcomingCount = upcoming?.length ?? 0;
   const completedCount = past?.filter(b => b.status === 'completed').length ?? 0;
@@ -193,8 +189,8 @@ function BookingCardMentor({
   booking: BookingWithDetails;
   onComplete?: () => void;
 }) {
+  const tz = useUserTimezone();
   const statusConf = BOOKING_STATUS_CONFIG[booking.status];
-  const date = new Date(booking.scheduled_start);
 
   return (
     <Card className="overflow-hidden">
@@ -203,13 +199,13 @@ function BookingCardMentor({
           {/* Date box */}
           <div className="flex flex-col items-center justify-center w-20 bg-primary/5 p-3 text-center flex-shrink-0">
             <span className="text-xs font-medium text-primary uppercase">
-              {date.toLocaleDateString('pt-BR', { weekday: 'short' })}
+              {formatInTz(booking.scheduled_start, tz, 'EEE')}
             </span>
             <span className="text-2xl font-bold text-primary">
-              {date.getDate()}
+              {formatInTz(booking.scheduled_start, tz, 'd')}
             </span>
             <span className="text-xs text-muted-foreground">
-              {date.toLocaleDateString('pt-BR', { month: 'short' })}
+              {formatInTz(booking.scheduled_start, tz, 'MMM')}
             </span>
           </div>
 
@@ -227,9 +223,9 @@ function BookingCardMentor({
                 <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
-                    {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {formatInTz(booking.scheduled_start, tz, 'HH:mm')}
                     {' — '}
-                    {new Date(booking.scheduled_end).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {formatInTz(booking.scheduled_end, tz, 'HH:mm')}
                   </span>
                   <span>{booking.duration_minutes}min</span>
                 </div>

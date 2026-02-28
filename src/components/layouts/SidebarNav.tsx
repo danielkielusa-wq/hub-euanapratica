@@ -35,7 +35,13 @@ import {
   Lightbulb,
   PlayCircle,
   Zap,
-  Menu
+  Menu,
+  Video,
+  Radio,
+  Brain,
+  Workflow,
+  Library,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -71,6 +77,7 @@ const studentNavGroups: NavGroup[] = [
       { label: 'Comunidade', href: '/comunidade', icon: Users, menuKey: 'comunidade', badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
       { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
       { label: 'Explore', href: '/catalogo', icon: Search, menuKey: 'catalogo', badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
+      { label: 'Lives', href: '/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, menuKey: 'cursos', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid, menuKey: 'espacos' },
     ],
@@ -80,6 +87,7 @@ const studentNavGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, menuKey: 'dashboard' },
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
+      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library, menuKey: 'biblioteca_global' },
       { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
   },
@@ -134,6 +142,7 @@ const mentorNavGroups: NavGroup[] = [
       { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid, menuKey: 'espacos' },
       { label: 'Agendamentos', href: '/mentor/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
       { label: 'Disponibilidade', href: '/mentor/disponibilidade', icon: Calendar, menuKey: 'disponibilidade' },
+      { label: 'Lives', href: '/mentor/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Agenda', href: '/mentor/agenda', icon: Calendar, menuKey: 'agenda' },
       { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
@@ -142,6 +151,7 @@ const mentorNavGroups: NavGroup[] = [
     label: 'CONTEÚDO',
     items: [
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
+      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library, menuKey: 'biblioteca_global' },
       { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload, menuKey: 'upload_materiais' },
     ],
   },
@@ -163,12 +173,14 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Leads Dashboard', href: '/admin/leads-dashboard', icon: BarChart3 },
       { label: 'Atividades', href: '/admin/atividades', icon: ListTodo },
       { label: 'Custos de API', href: '/admin/custos-api', icon: DollarSign },
+      { label: 'Inteligencia Semanal', href: '/admin/inteligencia-semanal', icon: Brain, badge: { text: 'AI', variant: 'ai' as const } },
     ],
   },
   {
     label: 'GESTÃO DO NEGÓCIO',
     items: [
       { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
+      { label: 'Content Studio', href: '/admin/content-studio', icon: Video, badge: { text: 'AI', variant: 'ai' as const } },
     ],
   },
   {
@@ -180,12 +192,16 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Produtos', href: '/admin/produtos', icon: Package },
       { label: 'Planos', href: '/admin/planos', icon: CreditCard },
       { label: 'Pedidos', href: '/admin/pedidos', icon: ShoppingBag },
+      { label: 'Lives', href: '/mentor/lives', icon: Radio },
+      { label: 'Prime Jobs', href: '/admin/prime-jobs', icon: Briefcase },
     ],
   },
   {
     label: 'BIBLIOTECA',
     items: [
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
+      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library },
+      { label: 'Gerenciar Biblioteca', href: '/admin/biblioteca-global', icon: Settings },
       { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload },
     ],
   },
@@ -203,15 +219,35 @@ const adminNavGroups: NavGroup[] = [
     label: 'CONFIGURAÇÕES',
     items: [
       { label: 'Configurações', href: '/admin/configuracoes', icon: Settings },
+      { label: 'Hub Dashboard', href: '/admin/hub-config', icon: LayoutDashboard },
       { label: 'Menu do App', href: '/admin/menu-config', icon: Menu },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
       { label: 'Automacoes N8N', href: '/admin/automacoes', icon: Zap },
+      { label: 'Fluxos WhatsApp', href: '/admin/whatsapp-flows', icon: Workflow },
       { label: 'Páginas Legais', href: '/admin/paginas-legais', icon: FileText },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },
       { label: 'Ticto Simulator', href: '/admin/ticto-simulator', icon: TestTube },
+    ],
+  },
+  {
+    label: 'MINHA CONTA',
+    items: [
+      { label: 'Perfil', href: '/perfil', icon: User },
+    ],
+  },
+];
+
+// Assistant (Customer Associate) Navigation
+const assistantNavGroups: NavGroup[] = [
+  {
+    label: 'MEU TRABALHO',
+    items: [
+      { label: 'Leads', href: '/assistant/leads', icon: BarChart3 },
+      { label: 'Atividades', href: '/assistant/atividades', icon: ListTodo },
+      { label: 'Inteligência Semanal', href: '/assistant/inteligencia-semanal', icon: Brain },
     ],
   },
   {
@@ -246,6 +282,8 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
     switch (user?.role) {
       case 'admin':
         return adminNavGroups;
+      case 'assistant':
+        return assistantNavGroups;
       case 'mentor': {
         return mentorNavGroups
           .map(group => ({

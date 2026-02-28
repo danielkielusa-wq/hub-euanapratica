@@ -35,7 +35,7 @@ import {
 import { Loader2, Tag, Palette, CreditCard, MousePointerClick, ExternalLink, ChevronDown, Layout, Plus, Trash2, Sparkles, Gift } from 'lucide-react';
 import { IconSelector } from './IconSelector';
 import { ServiceTypeSelector } from './ServiceTypeSelector';
-import { HubService, ServiceLandingPageData, ThankYouPageData, RIBBON_OPTIONS, PRODUCT_TYPE_LABELS, ProductType, ServiceStatus } from '@/types/hub';
+import { HubService, ServiceLandingPageData, ThankYouPageData, RIBBON_OPTIONS, PRODUCT_TYPE_LABELS, ProductType, ServiceStatus, REPORT_DIMENSION_OPTIONS } from '@/types/hub';
 
 const ICON_OPTIONS = [
   'Briefcase', 'Globe', 'Users', 'MapPin', 'Target',
@@ -63,7 +63,7 @@ const formSchema = z.object({
   description: z.string().max(160, 'Máximo 160 caracteres').optional(),
   icon_name: z.string().default('FileCheck'),
   status: z.enum(['available', 'premium', 'coming_soon']),
-  service_type: z.enum(['ai_tool', 'live_mentoring', 'recorded_course', 'consulting']),
+  service_type: z.enum(['ai_tool', 'live_mentoring', 'recorded_course', 'consulting', 'live_event']),
   ribbon: z.string().nullable(),
   category: z.string().optional(),
   route: z.string().optional(),
@@ -79,6 +79,7 @@ const formSchema = z.object({
   product_type: z.enum(['one_time', 'lifetime', 'subscription_monthly', 'subscription_annual']),
   stripe_price_id: z.string().optional(),
   accent_color: z.string().optional(),
+  report_dimension: z.string().nullable().optional(),
   landing_page_url: z.string().optional(),
   // Course link
   espaco_id: z.string().optional(),
@@ -117,6 +118,8 @@ const formSchema = z.object({
   keywords: z.array(z.string()).default([]),
   target_tier: z.string().default('all'),
   is_visible_for_upsell: z.boolean().default(true),
+  // Order bump
+  order_bump_service_id: z.string().optional(),
   // Thank-you page fields
   thankyou_title_line1: z.string().optional(),
   thankyou_title_gradient: z.string().optional(),
@@ -159,6 +162,7 @@ export interface HubServiceFormSubmitData {
   product_type: string;
   stripe_price_id?: string;
   accent_color?: string;
+  report_dimension?: string | null;
   landing_page_url?: string;
   ticto_product_id?: string;
   ticto_checkout_url?: string;
@@ -170,6 +174,7 @@ export interface HubServiceFormSubmitData {
   target_tier?: string;
   is_visible_for_upsell?: boolean;
   espaco_id?: string;
+  order_bump_service_id?: string;
 }
 
 interface HubServiceFormProps {
@@ -283,14 +288,14 @@ function buildThankYouPageData(data: FormData): ThankYouPageData | null {
   return result;
 }
 
-function CourseEspacoSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function EspacoSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     import('@/integrations/supabase/client').then(({ supabase }) => {
       supabase
         .from('espacos')
         .select('id, name')
-        .eq('category', 'course')
+        .in('category', ['course', 'group_mentoring', 'workshop'])
         .order('name')
         .then(({ data }) => {
           if (data) setOptions(data);
@@ -299,15 +304,46 @@ function CourseEspacoSelect({ value, onChange }: { value: string; onChange: (v: 
   }, []);
 
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value || '__none__'} onValueChange={(v) => onChange(v === '__none__' ? '' : v)}>
       <SelectTrigger>
         <SelectValue placeholder="Selecione um curso..." />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="">Nenhum</SelectItem>
+        <SelectItem value="__none__">Nenhum</SelectItem>
         {options.map((opt) => (
           <SelectItem key={opt.id} value={opt.id}>
             {opt.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function OrderBumpServiceSelect({ value, onChange, excludeId }: { value: string; onChange: (v: string) => void; excludeId?: string }) {
+  const [options, setOptions] = useState<{ id: string; name: string; price: number }[]>([]);
+  useEffect(() => {
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase
+        .from('hub_services')
+        .select('id, name, price')
+        .order('name')
+        .then(({ data }) => {
+          if (data) setOptions(data.filter((s) => s.id !== excludeId));
+        });
+    });
+  }, [excludeId]);
+
+  return (
+    <Select value={value || '__none__'} onValueChange={(v) => onChange(v === '__none__' ? '' : v)}>
+      <SelectTrigger>
+        <SelectValue placeholder="Nenhum (sem order bump)" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">Nenhum</SelectItem>
+        {options.map((opt) => (
+          <SelectItem key={opt.id} value={opt.id}>
+            {opt.name} (R$ {opt.price?.toFixed(2)})
           </SelectItem>
         ))}
       </SelectContent>
@@ -348,6 +384,7 @@ export function HubServiceForm({
       product_type: 'one_time',
       stripe_price_id: '',
       accent_color: '',
+      report_dimension: null,
       landing_page_url: '',
       espaco_id: '',
       ticto_product_id: '',
@@ -369,6 +406,7 @@ export function HubServiceForm({
       keywords: [],
       target_tier: 'all',
       is_visible_for_upsell: true,
+      order_bump_service_id: '',
       // Thank-you defaults
       thankyou_title_line1: '',
       thankyou_title_gradient: '',
@@ -445,6 +483,7 @@ export function HubServiceForm({
         product_type: (service?.product_type as ProductType) || 'one_time',
         stripe_price_id: service?.stripe_price_id || '',
         accent_color: service?.accent_color || '',
+        report_dimension: (service as any)?.report_dimension || null,
         landing_page_url: service?.landing_page_url || '',
         espaco_id: service?.espaco_id || '',
         ticto_product_id: service?.ticto_product_id || '',
@@ -466,6 +505,7 @@ export function HubServiceForm({
         keywords: service?.keywords || [],
         target_tier: service?.target_tier || 'all',
         is_visible_for_upsell: service?.is_visible_for_upsell ?? true,
+        order_bump_service_id: (service as any)?.order_bump_service_id || '',
         // Thank-you page
         thankyou_title_line1: ty?.hero?.title_line1 || '',
         thankyou_title_gradient: ty?.hero?.title_gradient || '',
@@ -528,6 +568,7 @@ export function HubServiceForm({
       product_type: data.product_type,
       stripe_price_id: data.stripe_price_id,
       accent_color: data.accent_color,
+      report_dimension: data.report_dimension || null,
       landing_page_url: landingPageUrl,
       ticto_product_id: data.ticto_product_id,
       ticto_checkout_url: data.ticto_checkout_url,
@@ -539,6 +580,7 @@ export function HubServiceForm({
       target_tier: data.target_tier,
       is_visible_for_upsell: data.is_visible_for_upsell,
       espaco_id: data.espaco_id || undefined,
+      order_bump_service_id: data.order_bump_service_id || undefined,
     });
   };
 
@@ -635,6 +677,35 @@ export function HubServiceForm({
                     <FormControl>
                       <Input placeholder="Ex: CARREIRA, IMERSÃO" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="report_dimension"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dimensão do Relatório (Upsell)</FormLabel>
+                    <Select
+                      value={field.value || '__none__'}
+                      onValueChange={(v) => field.onChange(v === '__none__' ? null : v)}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nenhuma (sem vínculo)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        {REPORT_DIMENSION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -875,23 +946,32 @@ export function HubServiceForm({
                 )}
               />
 
-              {form.watch('service_type') === 'recorded_course' && (
-                <FormField
-                  control={form.control}
-                  name="espaco_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Curso Vinculado</FormLabel>
-                      <FormControl>
-                        <CourseEspacoSelect value={field.value || ''} onChange={field.onChange} />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Vincule a um curso para matrícula automática na compra
-                      </p>
-                      <FormMessage />
-                    </FormItem>
+              {['live_mentoring', 'recorded_course', 'live_event'].includes(form.watch('service_type')) && (
+                <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 space-y-2">
+                  {service?.espaco_id ? (
+                    <FormField
+                      control={form.control}
+                      name="espaco_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Espaço Vinculado</FormLabel>
+                          <FormControl>
+                            <EspacoSelect value={field.value || ''} onChange={field.onChange} />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Altere o espaço vinculado ou deixe vazio para criar um novo automaticamente
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-primary">
+                      <Sparkles className="h-4 w-4" />
+                      <span>Um espaço será criado automaticamente ao salvar</span>
+                    </div>
                   )}
-                />
+                </div>
               )}
 
               <FormField
@@ -1114,6 +1194,33 @@ export function HubServiceForm({
                     <p className="text-[11px] text-muted-foreground">
                       Define para qual plano de assinatura este serviço será sugerido
                     </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Order Bump */}
+            <div className="rounded-xl border bg-amber-50/50 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Gift className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-900">PRODUTO COMPLEMENTAR (ORDER BUMP)</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Exibido na landing page como oferta adicional antes do checkout
+              </p>
+
+              <FormField
+                control={form.control}
+                name="order_bump_service_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Produto Complementar</FormLabel>
+                    <OrderBumpServiceSelect
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      excludeId={service?.id}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

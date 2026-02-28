@@ -10,6 +10,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { LeadTask } from '@/types/leads';
 import { useState } from 'react';
 
@@ -50,12 +52,12 @@ const SOURCE_LABELS: Record<string, string> = {
   n8n_automation: 'Automação',
 };
 
-function formatDueDate(dateStr?: string | null): { text: string; className: string } | null {
+function formatDueDate(dateStr: string | null | undefined, tz: string): { text: string; className: string } | null {
   if (!dateStr) return null;
   const date = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.round((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  const formatted = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const formatted = formatInTz(dateStr, tz, 'dd/MM');
 
   if (diffDays < 0) return { text: `${formatted} (${Math.abs(diffDays)}d atrás)`, className: 'text-red-600 font-medium' };
   if (diffDays === 0) return { text: `${formatted} (hoje)`, className: 'text-amber-600 font-medium' };
@@ -64,6 +66,7 @@ function formatDueDate(dateStr?: string | null): { text: string; className: stri
 }
 
 export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdateStatus, onEdit, onDelete }: LeadTasksTabProps) {
+  const tz = useUserTimezone();
   const [showCompleted, setShowCompleted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LeadTask | null>(null);
 
@@ -112,7 +115,7 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
           {pending.length > 0 && (
             <div className="space-y-2">
               {pending.map(task => {
-                const dueInfo = formatDueDate(task.due_date);
+                const dueInfo = formatDueDate(task.due_date, tz);
                 return (
                   <Card key={task.id} variant="glass" className="hover:shadow-md transition-shadow">
                     <CardContent className="p-3 flex items-start gap-3">
@@ -205,7 +208,7 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
                           <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
                             <span>{task.status === 'done' ? 'Concluída' : 'Pulada'}</span>
                             {task.completed_at && (
-                              <><span>·</span><span>{new Date(task.completed_at).toLocaleDateString('pt-BR')}</span></>
+                              <><span>·</span><span>{formatInTz(task.completed_at, tz, 'dd/MM/yyyy')}</span></>
                             )}
                             {task.completer_name && (
                               <><span>·</span><span>por {task.completer_name}</span></>

@@ -40,6 +40,8 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminFeedback from "./pages/admin/AdminFeedback";
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
+import AdminGlobalLibrary from "./pages/admin/AdminGlobalLibrary";
+import GlobalLibrary from "./pages/library/GlobalLibrary";
 import AdminE2ETests from "./pages/admin/AdminE2ETests";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminApis from "./pages/admin/AdminApis";
@@ -53,6 +55,7 @@ import CurriculoReport from "./pages/curriculo/CurriculoReport";
 import SavedReportPage from "./pages/curriculo/SavedReportPage";
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
+import StudentHubGlass from "./pages/hub/StudentHubGlass";
 import ServiceCatalog from "./pages/hub/ServiceCatalog";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyOrders from "./pages/orders/MyOrders";
@@ -69,7 +72,9 @@ import PostDetail from "./pages/community/PostDetail";
 import { ServiceGuard } from "./components/guards/ServiceGuard";
 import PrimeJobs from "./pages/jobs/PrimeJobs";
 import JobDetailsPage from "./pages/jobs/JobDetailsPage";
+import JobDetailsWrapper from "./pages/jobs/JobDetailsWrapper";
 import JobBookmarks from "./pages/jobs/JobBookmarks";
+import JobAccessHistory from "./pages/jobs/JobAccessHistory";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 import ServiceDetail from "./pages/services/ServiceDetail";
 import ThankYouDetail from "./pages/services/ThankYouDetail";
@@ -84,19 +89,34 @@ import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
 import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminLeadsDashboard from "./pages/admin/AdminLeadsDashboard";
 import AdminCustosApi from "./pages/admin/AdminCustosApi";
+import AdminWeeklyReport from "./pages/admin/AdminWeeklyReport";
 import AdminIdeaKanban from "./pages/admin/AdminIdeaKanban";
 import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
 import AdminAtividades from "./pages/admin/AdminAtividades";
 import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
 import AdminAutomations from "./pages/admin/AdminAutomations";
+import AdminPrimeJobs from "./pages/admin/AdminPrimeJobs";
+import AdminWhatsAppFlows from "./pages/admin/AdminWhatsAppFlows";
+import AdminWhatsAppFlowEditor from "./pages/admin/AdminWhatsAppFlowEditor";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminCourseBuilder from "./pages/admin/AdminCourseBuilder";
 import AdminAgendamentos from "./pages/admin/AdminAgendamentos";
 import AdminMenuConfig from "./pages/admin/AdminMenuConfig";
+import AdminHubConfig from "./pages/admin/AdminHubConfig";
+import AdminContentStudio from "./pages/admin/AdminContentStudio";
 import MentorDisponibilidade from "./pages/mentor/MentorDisponibilidade";
 import MentorAgendamentos from "./pages/mentor/MentorAgendamentos";
+import MentorLives from "./pages/mentor/MentorLives";
+import MentorCreateLive from "./pages/mentor/MentorCreateLive";
+import MentorLiveDetail from "./pages/mentor/MentorLiveDetail";
 import StudentCourses from "./pages/student/StudentCourses";
 import CoursePlayer from "./pages/student/CoursePlayer";
+import LivesDiscovery from "./pages/lives/LivesDiscovery";
+import LiveLandingPage from "./pages/lives/LiveLandingPage";
+import AssistantLeadsDashboard from "./pages/assistant/AssistantLeadsDashboard";
+import AssistantLeadDetail from "./pages/assistant/AssistantLeadDetail";
+import AssistantAtividades from "./pages/assistant/AssistantAtividades";
+import AssistantWeeklyReport from "./pages/assistant/AssistantWeeklyReport";
 
 
 const queryClient = new QueryClient();
@@ -130,17 +150,18 @@ function ProtectedRoute({ children, allowedRoles, skipOnboardingCheck }: { child
       student: '/dashboard/hub',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
+      assistant: '/assistant/leads',
     };
     return <Navigate to={routes[user.role]} replace />;
   }
-  
+
   return <>{children}</>;
 }
 
 // Public route - redirect to dashboard if already authenticated
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
-  
+
   // Wait for auth state to be resolved before redirecting
   if (isLoading) {
     return (
@@ -149,12 +170,13 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (isAuthenticated && user) {
     const routes: Record<string, string> = {
       student: '/dashboard/hub',
       mentor: '/mentor/dashboard',
       admin: '/admin/dashboard',
+      assistant: '/assistant/leads',
     };
     return <Navigate to={routes[user.role]} replace />;
   }
@@ -183,6 +205,11 @@ function AppRoutes() {
       <Route path="/dashboard/hub" element={
         <ProtectedRoute allowedRoles={['student']}>
           <StudentHub />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hub-glass" element={
+        <ProtectedRoute allowedRoles={['student', 'admin']}>
+          <StudentHubGlass />
         </ProtectedRoute>
       } />
       <Route path="/dashboard" element={
@@ -246,7 +273,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/dashboard/agendar/:serviceId" element={
-        <ProtectedRoute allowedRoles={['student']}>
+        <ProtectedRoute allowedRoles={['student', 'admin']}>
           <BookingFlow />
         </ProtectedRoute>
       } />
@@ -280,7 +307,7 @@ function AppRoutes() {
 
       {/* Profile route - accessible by all authenticated users */}
       <Route path="/perfil" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin', 'assistant']}>
           <ProfilePage />
         </ProtectedRoute>
       } />
@@ -305,7 +332,19 @@ function AppRoutes() {
           </ServiceGuard>
         </ProtectedRoute>
       } />
-      
+
+      {/* Global Library routes - available to all authenticated users */}
+      <Route path="/biblioteca-global" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <GlobalLibrary />
+        </ProtectedRoute>
+      } />
+      <Route path="/biblioteca-global/pasta/:folderId" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <GlobalLibrary />
+        </ProtectedRoute>
+      } />
+
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
@@ -377,7 +416,27 @@ function AppRoutes() {
           <ReviewSubmissions />
         </ProtectedRoute>
       } />
-      
+      <Route path="/mentor/lives" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorLives />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/lives/nova" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorCreateLive />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/lives/:id" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorLiveDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/mentor/lives/:id/editar" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorCreateLive />
+        </ProtectedRoute>
+      } />
+
       {/* Admin routes */}
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['admin']}>
@@ -429,6 +488,11 @@ function AppRoutes() {
           <UploadMaterials />
         </ProtectedRoute>
       } />
+      <Route path="/admin/biblioteca-global" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminGlobalLibrary />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/testes-e2e" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminE2ETests />
@@ -442,6 +506,11 @@ function AppRoutes() {
       <Route path="/admin/menu-config" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminMenuConfig />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/hub-config" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminHubConfig />
         </ProtectedRoute>
       } />
       <Route path="/admin/configuracoes" element={
@@ -514,6 +583,11 @@ function AppRoutes() {
           <AdminCustosApi />
         </ProtectedRoute>
       } />
+      <Route path="/admin/inteligencia-semanal" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWeeklyReport />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/idea-kanban" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminIdeaKanban />
@@ -527,6 +601,26 @@ function AppRoutes() {
       <Route path="/admin/automacoes" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminAutomations />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/prime-jobs" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminPrimeJobs />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/whatsapp-flows" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWhatsAppFlows />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/whatsapp-flows/:flowId" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWhatsAppFlowEditor />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/content-studio" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminContentStudio />
         </ProtectedRoute>
       } />
       <Route path="/admin/paginas-legais" element={
@@ -556,6 +650,18 @@ function AppRoutes() {
       <Route path="/thank-you/curriculo" element={<ThankYouCurriculo />} />
       {/* Dynamic Thank You Pages (generated from hub_services config) */}
       <Route path="/thank-you/:slug" element={<ThankYouDetail />} />
+
+      {/* Lives routes */}
+      <Route path="/lives" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <LivesDiscovery />
+        </ProtectedRoute>
+      } />
+      <Route path="/live/:slug" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <LiveLandingPage />
+        </ProtectedRoute>
+      } />
 
       {/* Service Landing Pages (in-platform) */}
       <Route path="/servicos/:slug" element={
@@ -600,16 +706,18 @@ function AppRoutes() {
           <PrimeJobs />
         </ProtectedRoute>
       } />
-      <Route path="/prime-jobs/:id" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <JobDetailsPage />
-        </ProtectedRoute>
-      } />
+      {/* Public-accessible: wrapper shows preview for unauthenticated, full for authenticated */}
+      <Route path="/prime-jobs/:id" element={<JobDetailsWrapper />} />
       <Route path="/prime-jobs/bookmarks" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceGuard serviceRoute="/prime-jobs/bookmarks">
             <JobBookmarks />
           </ServiceGuard>
+        </ProtectedRoute>
+      } />
+      <Route path="/prime-jobs/historico" element={
+        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
+          <JobAccessHistory />
         </ProtectedRoute>
       } />
 
@@ -642,6 +750,28 @@ function AppRoutes() {
           <ServiceGuard serviceRoute="/title-translator">
             <TitleTranslator />
           </ServiceGuard>
+        </ProtectedRoute>
+      } />
+
+      {/* Assistant (Customer Associate) routes */}
+      <Route path="/assistant/leads" element={
+        <ProtectedRoute allowedRoles={['assistant']}>
+          <AssistantLeadsDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/assistant/leads/:id" element={
+        <ProtectedRoute allowedRoles={['assistant']}>
+          <AssistantLeadDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/assistant/atividades" element={
+        <ProtectedRoute allowedRoles={['assistant']}>
+          <AssistantAtividades />
+        </ProtectedRoute>
+      } />
+      <Route path="/assistant/inteligencia-semanal" element={
+        <ProtectedRoute allowedRoles={['assistant']}>
+          <AssistantWeeklyReport />
         </ProtectedRoute>
       } />
 

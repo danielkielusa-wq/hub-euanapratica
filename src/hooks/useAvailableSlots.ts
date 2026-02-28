@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { addDays, startOfDay, format } from 'date-fns';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { TimeSlot, DaySlots, WeekSlots, DayOfWeek } from '@/types/booking';
 
 /**
@@ -43,6 +45,7 @@ export function useAvailableSlots(
  */
 export function useWeeklySlots(serviceId: string | undefined, weekOffset: number = 0) {
   const { user } = useAuth();
+  const tz = useUserTimezone();
 
   // Calculate week boundaries
   const today = startOfDay(new Date());
@@ -53,7 +56,7 @@ export function useWeeklySlots(serviceId: string | undefined, weekOffset: number
 
   // Transform flat slots into organized week structure
   const weekSlots: WeekSlots | null = query.data
-    ? organizeSlotsByDay(query.data, startDate, endDate)
+    ? organizeSlotsByDay(query.data, startDate, endDate, tz)
     : null;
 
   return {
@@ -70,7 +73,8 @@ export function useWeeklySlots(serviceId: string | undefined, weekOffset: number
 function organizeSlotsByDay(
   slots: TimeSlot[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  tz: string,
 ): WeekSlots {
   const days: DaySlots[] = [];
   let currentDate = startDate;
@@ -79,10 +83,9 @@ function organizeSlotsByDay(
     const dateStr = format(currentDate, 'yyyy-MM-dd');
     const dayName = format(currentDate, 'EEEE').toLowerCase() as DayOfWeek;
 
-    // Filter slots for this day
+    // Filter slots for this day (compare in user's timezone, not browser timezone)
     const daySlots = slots.filter((slot) => {
-      const slotDate = new Date(slot.slot_start);
-      return format(slotDate, 'yyyy-MM-dd') === dateStr;
+      return formatInTz(new Date(slot.slot_start), tz, 'yyyy-MM-dd') === dateStr;
     });
 
     days.push({
@@ -150,7 +153,7 @@ export function useMentorForService(serviceId: string | undefined) {
         .from('mentor_services')
         .select(`
           *,
-          mentor:profiles!mentor_services_mentor_id_fkey(
+          mentor:profiles!mentor_services_mentor_profile_fkey(
             id,
             full_name,
             email,
@@ -165,10 +168,10 @@ export function useMentorForService(serviceId: string | undefined) {
         `)
         .eq('service_id', serviceId!)
         .eq('is_active', true)
-        .single();
+        .limit(1);
 
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user && !!serviceId,
   });

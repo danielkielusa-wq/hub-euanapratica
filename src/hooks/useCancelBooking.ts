@@ -40,6 +40,9 @@ export function useCancelBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking-stats'] });
       queryClient.invalidateQueries({ queryKey: ['booking-counts'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['session-credits'] });
+      queryClient.invalidateQueries({ queryKey: ['user-hub-services'] });
+      queryClient.invalidateQueries({ queryKey: ['my-hub'] });
 
       // Send cancellation email (fire-and-forget)
       supabase.functions.invoke('send-booking-cancelled', {
@@ -86,6 +89,9 @@ export function useCompleteBooking() {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booking', variables.booking_id] });
       queryClient.invalidateQueries({ queryKey: ['booking-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['session-credits'] });
+      queryClient.invalidateQueries({ queryKey: ['user-hub-services'] });
+      queryClient.invalidateQueries({ queryKey: ['my-hub'] });
 
       toast({
         title: 'Sessão concluída',

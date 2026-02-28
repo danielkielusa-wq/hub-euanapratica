@@ -10,13 +10,20 @@ interface DigestRequest {
 interface JobForDigest {
   id: string;
   title: string;
-  company_name: string;
-  company_logo_url: string | null;
+  company: string;
+  logo_url: string | null;
   location: string;
   remote_type: string;
   salary_min: number | null;
   salary_max: number | null;
   salary_currency: string;
+  industry: string | null;
+  ai_enrichment: {
+    timezone_analysis?: { compatibility_score?: number };
+    english_level_required?: string;
+    salary_brl_context?: { monthly_brl?: number };
+    application_tips?: string[];
+  } | null;
   created_at: string;
 }
 
@@ -41,6 +48,21 @@ function formatSalary(min: number | null, max: number | null, currency: string):
   if (min) return `A partir de ${formatter.format(min)}`;
   if (max) return `Até ${formatter.format(max)}`;
   return "A combinar";
+}
+
+const DEFAULT_TIP = "Personalize seu currículo para cada vaga usando nosso ResumePass AI. Candidatos com currículos personalizados têm 3x mais chances de receber retorno!";
+
+function getWeeklyTip(jobs: JobForDigest[]): string {
+  // Collect all application tips from enriched jobs
+  const allTips: string[] = [];
+  for (const job of jobs) {
+    if (job.ai_enrichment?.application_tips) {
+      allTips.push(...job.ai_enrichment.application_tips);
+    }
+  }
+  if (allTips.length === 0) return DEFAULT_TIP;
+  // Pick a random tip
+  return allTips[Math.floor(Math.random() * allTips.length)];
 }
 
 Deno.serve(async (req) => {
@@ -87,7 +109,7 @@ Deno.serve(async (req) => {
 
     const { data: newJobs, error: jobsError } = await supabase
       .from("jobs")
-      .select("id, title, company_name, company_logo_url, location, remote_type, salary_min, salary_max, salary_currency, created_at")
+      .select("id, title, company, logo_url, location, remote_type, salary_min, salary_max, salary_currency, industry, ai_enrichment, created_at")
       .eq("is_active", true)
       .gte("created_at", oneWeekAgo.toISOString())
       .order("is_featured", { ascending: false })
@@ -184,14 +206,28 @@ Deno.serve(async (req) => {
         const totalJobsAvailable = newJobs.length;
         const showUpgradePrompt = !recipient.isPremium && totalJobsAvailable > 3;
 
-        const jobCardsHtml = jobsToShow.map((job: JobForDigest) => `
+        const jobCardsHtml = jobsToShow.map((job: JobForDigest) => {
+          const ai = job.ai_enrichment;
+          const enrichmentBadges = ai ? [
+            ai.timezone_analysis?.compatibility_score != null
+              ? `<span style="display:inline-block;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">⏰ Fuso ${ai.timezone_analysis.compatibility_score}/10</span>`
+              : "",
+            ai.english_level_required
+              ? `<span style="display:inline-block;padding:2px 8px;background:#f0fdf4;color:#166534;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">🌐 ${ai.english_level_required}</span>`
+              : "",
+            ai.salary_brl_context?.monthly_brl
+              ? `<span style="display:inline-block;padding:2px 8px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:11px;font-weight:600;">💰 R$${ai.salary_brl_context.monthly_brl.toLocaleString("pt-BR")}/mês</span>`
+              : "",
+          ].filter(Boolean).join("") : "";
+
+          return `
           <tr>
             <td style="padding: 16px 0; border-bottom: 1px solid #e4e4e7;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="width: 48px; vertical-align: top;">
                     <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; text-align: center; line-height: 48px;">
-                      ${job.company_name.substring(0, 2).toUpperCase()}
+                      ${job.company.substring(0, 2).toUpperCase()}
                     </div>
                   </td>
                   <td style="padding-left: 16px; vertical-align: top;">
@@ -199,11 +235,12 @@ Deno.serve(async (req) => {
                       ${job.title}
                     </p>
                     <p style="margin: 0 0 8px; font-size: 14px; color: #71717a;">
-                      ${job.company_name} • ${REMOTE_TYPE_LABELS[job.remote_type] || job.remote_type}
+                      ${job.company} • ${REMOTE_TYPE_LABELS[job.remote_type] || job.remote_type}${job.industry ? ` • ${job.industry}` : ""}
                     </p>
-                    <p style="margin: 0; font-size: 14px; font-weight: 600; color: #10b981;">
+                    <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #10b981;">
                       ${formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
                     </p>
+                    ${enrichmentBadges ? `<p style="margin:0;">${enrichmentBadges}</p>` : ""}
                   </td>
                   <td style="width: 100px; vertical-align: middle; text-align: right;">
                     <a href="${origin}/prime-jobs/${job.id}" style="display: inline-block; background: #18181b; color: white; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;">
@@ -214,7 +251,7 @@ Deno.serve(async (req) => {
               </table>
             </td>
           </tr>
-        `).join("");
+        `}).join("");
 
         const upgradePromptHtml = showUpgradePrompt ? `
           <tr>
@@ -293,7 +330,7 @@ Deno.serve(async (req) => {
                         <div style="background-color: #f0fdf4; border-radius: 12px; padding: 16px; margin: 24px 0; border: 1px solid #bbf7d0;">
                           <p style="color: #166534; font-size: 14px; font-weight: 600; margin: 0 0 8px;">💡 Dica da semana</p>
                           <p style="color: #15803d; font-size: 14px; margin: 0;">
-                            Personalize seu currículo para cada vaga usando nosso ResumePass AI. Candidatos com currículos personalizados têm 3x mais chances de receber retorno!
+                            ${getWeeklyTip(newJobs as JobForDigest[])}
                           </p>
                         </div>
                       </td>

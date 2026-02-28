@@ -22,6 +22,8 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { PageHelpButton } from '@/components/assistant/PageHelpButton';
+import { LEADS_HELP } from '@/lib/assistantHelpContent';
 
 const REPORT_BASE = 'https://hub.euanapratica.com/report/';
 const PER_PAGE = 20;
@@ -113,7 +115,10 @@ function Card({ children, className, title, icon: Icon, subtitle, tooltip }: {
   );
 }
 
-export default function AdminLeadsDashboard() {
+export type LeadsDashboardViewMode = 'admin' | 'assistant';
+
+export default function AdminLeadsDashboard({ viewMode = 'admin' }: { viewMode?: LeadsDashboardViewMode }) {
+  const isAssistant = viewMode === 'assistant';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [allData, setAllData] = useState<LeadRow[]>([]);
@@ -128,6 +133,7 @@ export default function AdminLeadsDashboard() {
   const [prioritiesOpen, setPrioritiesOpen] = useState(false);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
   const deleteLead = useDeleteLead();
+  const leadDetailPath = isAssistant ? '/assistant/leads' : '/admin/leads';
 
   const fetchData = useCallback(async () => {
     try {
@@ -293,7 +299,10 @@ export default function AdminLeadsDashboard() {
               className={cn("p-2.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all", loading && "animate-pulse")}>
               <RefreshCw className={cn("w-5 h-5 text-gray-500", loading && "animate-spin")} />
             </button>
-            <Sheet>
+            {isAssistant && (
+              <PageHelpButton pageTitle={LEADS_HELP.pageTitle} description={LEADS_HELP.description} sections={LEADS_HELP.sections} />
+            )}
+            {!isAssistant && <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 rounded-2xl border-gray-100 text-xs font-semibold">
                   <HelpCircle className="w-4 h-4" />
@@ -389,7 +398,7 @@ export default function AdminLeadsDashboard() {
                   </section>
                 </div>
               </SheetContent>
-            </Sheet>
+            </Sheet>}
             <button onClick={() => setPrioritiesOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all">
               <Brain className="w-4 h-4" />
@@ -469,8 +478,8 @@ export default function AdminLeadsDashboard() {
         </div>
 
         {/* Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card title="LTV Estimado" icon={DollarSign} subtitle="Potencial financeiro dos leads"
+        <div className={cn("grid grid-cols-1 gap-6", isAssistant ? "lg:grid-cols-2" : "lg:grid-cols-3")}>
+          {!isAssistant && <Card title="LTV Estimado" icon={DollarSign} subtitle="Potencial financeiro dos leads"
             tooltip={"Potencial de receita estimado por lead com base no score e orçamento:\n≥71 pts + orçamento → R$10.000\n≥71 pts → R$3.000\n≥51 pts + orçamento → R$2.500\n≥51 pts → R$500\n≥31 pts + orçamento → R$700\n≥31 pts → R$200\n\n'Com orçamento': investment_range acima de R$1.500."}>
             <div className="space-y-6">
               <div>
@@ -495,7 +504,7 @@ export default function AdminLeadsDashboard() {
                 </div>
               </div>
             </div>
-          </Card>
+          </Card>}
 
           <Card title="Barreiras Comuns" icon={ShieldAlert} subtitle="Principais dificuldades detectadas"
             tooltip={"Calculado a partir das respostas do formulário:\n• Inglês: nível Básico ou Intermediário\n• Visto: nunca iniciou o processo\n• Financeiro: renda até R$5k ou impedimento financeiro\n• Experiência: menos de 5 anos na área\n• Família: tem filhos ou impedimento familiar\n• Clareza: objetivo de entender direção\n• Tempo: impedimento de tempo/rotina\n\nUm lead pode ter múltiplas barreiras."}>
@@ -576,7 +585,7 @@ export default function AdminLeadsDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {pageSlice.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => navigate(`/admin/leads/${d.id}`)}>
+                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => navigate(`${leadDetailPath}/${d.id}`)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
@@ -624,13 +633,15 @@ export default function AdminLeadsDashboard() {
                             Ver Relatório <ExternalLink className="w-3 h-3" />
                           </button>
                         ) : <span className="text-xs text-gray-300">—</span>}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteLeadId(d.id); }}
-                          className="p-1.5 rounded-xl border border-gray-100 text-gray-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all"
-                          title="Excluir lead"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isAssistant && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteLeadId(d.id); }}
+                            className="p-1.5 rounded-xl border border-gray-100 text-gray-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all"
+                            title="Excluir lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -661,30 +672,32 @@ export default function AdminLeadsDashboard() {
       </div>
       <AIDailyPrioritiesPanel open={prioritiesOpen} onOpenChange={setPrioritiesOpen} />
 
-      <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => { if (!open) setDeleteLeadId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação é permanente e irá remover o lead junto com todas as suas interações e tarefas. Não é possível desfazer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-              onClick={async () => {
-                if (!deleteLeadId) return;
-                await deleteLead.mutateAsync(deleteLeadId);
-                setDeleteLeadId(null);
-                await fetchData();
-              }}
-            >
-              {deleteLead.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {!isAssistant && (
+        <AlertDialog open={!!deleteLeadId} onOpenChange={(open) => { if (!open) setDeleteLeadId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é permanente e irá remover o lead junto com todas as suas interações e tarefas. Não é possível desfazer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                onClick={async () => {
+                  if (!deleteLeadId) return;
+                  await deleteLead.mutateAsync(deleteLeadId);
+                  setDeleteLeadId(null);
+                  await fetchData();
+                }}
+              >
+                {deleteLead.isPending ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </DashboardLayout>
     </TooltipProvider>
   );

@@ -1,9 +1,10 @@
 import { OnboardingProfile } from '@/types/onboarding';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { User } from 'lucide-react';
 
 interface PersonalInfoStepProps {
   data: Partial<OnboardingProfile>;
-  onChange: (field: keyof OnboardingProfile, value: string) => void;
+  onChange: (field: keyof OnboardingProfile, value: string | boolean) => void;
   errors: Record<string, string>;
 }
 
@@ -76,6 +77,24 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
           />
           {errors.birth_date && (
             <p className="text-xs text-destructive">{errors.birth_date}</p>
+          )}
+        </div>
+
+        {/* Phone */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+            TELEFONE <span className="text-destructive">*</span>
+          </label>
+          <PhoneInput
+            value={data.phone || ''}
+            countryCode={data.phone_country_code || '+55'}
+            isWhatsApp={data.is_whatsapp || false}
+            onValueChange={(phone) => onChange('phone', phone)}
+            onCountryCodeChange={(code) => onChange('phone_country_code', code)}
+            onWhatsAppChange={(isWhatsApp) => onChange('is_whatsapp', isWhatsApp)}
+          />
+          {errors.phone && (
+            <p className="text-xs text-destructive">{errors.phone}</p>
           )}
         </div>
       </div>

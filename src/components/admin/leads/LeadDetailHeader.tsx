@@ -17,6 +17,7 @@ interface LeadDetailHeaderProps {
   onAddNote: () => void;
   onAddTask: () => void;
   onSendWhatsApp: () => void;
+  viewMode?: 'admin' | 'assistant';
 }
 
 const TEMP_STYLES: Record<string, string> = {
@@ -31,7 +32,7 @@ function getTempStyle(temp?: string) {
   return TEMP_STYLES[temp.toLowerCase()] || TEMP_STYLES[(temp || '').toUpperCase() === 'QUENTE' ? 'quente' : temp.toLowerCase()] || 'bg-gray-50 text-gray-500 border-gray-200';
 }
 
-export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp }: LeadDetailHeaderProps) {
+export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp, viewMode = 'admin' }: LeadDetailHeaderProps) {
   const navigate = useNavigate();
   const updatePhone = useUpdateLeadPhone();
 
@@ -56,7 +57,7 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp }:
         variant="ghost"
         size="icon"
         className="self-start rounded-xl"
-        onClick={() => navigate('/admin/leads-dashboard')}
+        onClick={() => navigate(viewMode === 'assistant' ? '/assistant/leads' : '/admin/leads-dashboard')}
       >
         <ArrowLeft className="h-4 w-4" />
       </Button>

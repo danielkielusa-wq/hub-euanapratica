@@ -31,8 +31,13 @@ interface ModuleListProps {
 export function ModuleList({ espacoId, modules }: ModuleListProps) {
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [addingModule, setAddingModule] = useState(false);
-  const [editingLesson, setEditingLesson] = useState<CourseLesson | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [deleteModuleId, setDeleteModuleId] = useState<string | null>(null);
+
+  // Derive the lesson from fresh module data (not stale state)
+  const editingLesson = editingLessonId
+    ? modules.flatMap((m) => m.lessons || []).find((l) => l.id === editingLessonId) ?? null
+    : null;
 
   const createModule = useCreateModule();
   const reorderModules = useReorderModules();
@@ -88,7 +93,7 @@ export function ModuleList({ espacoId, modules }: ModuleListProps) {
               module={module}
               index={index}
               espacoId={espacoId}
-              onEditLesson={setEditingLesson}
+              onEditLesson={(lesson) => setEditingLessonId(lesson.id)}
               onDeleteModule={(id) => setDeleteModuleId(id)}
             />
           ))}
@@ -127,8 +132,8 @@ export function ModuleList({ espacoId, modules }: ModuleListProps) {
       <LessonEditor
         lesson={editingLesson}
         espacoId={espacoId}
-        open={!!editingLesson}
-        onOpenChange={(open) => { if (!open) setEditingLesson(null); }}
+        open={!!editingLessonId}
+        onOpenChange={(open) => { if (!open) setEditingLessonId(null); }}
       />
 
       {/* Delete module confirmation */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { X, Calendar, AlertCircle, Loader2 } from 'lucide-react';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ export function RescheduleModal({
   open,
   onOpenChange,
 }: RescheduleModalProps) {
+  const tz = useUserTimezone();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
@@ -83,9 +84,7 @@ export function RescheduleModal({
             <p className="font-bold text-gray-900">{booking.service?.name}</p>
             <p className="text-gray-500 text-sm flex items-center gap-2 mt-1">
               <Calendar className="h-4 w-4" />
-              {format(currentDate, "EEEE, d 'de' MMMM 'às' HH:mm", {
-                locale: ptBR,
-              })}
+              {formatInTz(currentDate, tz, "EEEE, d 'de' MMMM 'às' HH:mm")}
             </p>
           </div>
 

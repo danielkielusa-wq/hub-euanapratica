@@ -28,7 +28,8 @@ export type PlanFeatureKey =
   | 'show_power_verbs'
   | 'show_cheat_sheet'
   | 'allow_pdf'
-  | 'full_report_access';
+  | 'full_report_access'
+  | 'library_full_access';
 
 // Limited features (with usage counts)
 export type LimitedFeature = 'resume_pass' | 'title_translator' | 'job_concierge';
@@ -69,7 +70,10 @@ export interface PlanFeatures {
 
   // Diagnostic report access
   full_report_access: boolean;
-  
+
+  // Global library access (restricted folders)
+  library_full_access: boolean;
+
   // Discounts
   discounts: PlanDiscounts;
   
@@ -150,6 +154,7 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   show_cheat_sheet: false,
   allow_pdf: false,
   full_report_access: false,
+  library_full_access: false,
   discounts: {
     base: 0,
     consulting: 0,

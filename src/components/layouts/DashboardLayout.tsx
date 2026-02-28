@@ -13,9 +13,11 @@ import logoHorizontal from '@/assets/logo-horizontal.png';
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  rootClassName?: string;
+  contentClassName?: string;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children, rootClassName, contentClassName }: DashboardLayoutProps) {
   const { user, logout, isImpersonating } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,7 +35,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const closeSidebar = () => setSidebarOpen(false);
   
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
+    <div className={rootClassName ?? "min-h-screen bg-[#F8F9FB]"}>
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-sm border-b border-border z-50 flex items-center px-4">
         <Button
@@ -110,7 +112,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         // Impersonation adjustment
         isImpersonating && "pt-24 lg:pt-10"
       )}>
-        <div className="p-4 lg:p-6">
+        <div className={contentClassName ?? "p-4 lg:p-6"}>
           <DunningBanner />
           {children}
         </div>

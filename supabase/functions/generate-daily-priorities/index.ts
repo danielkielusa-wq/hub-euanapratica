@@ -15,7 +15,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
-import { getCorsHeaders, requireAdmin } from "../_shared/authGuard.ts";
+import { getCorsHeaders, requireAdminOrAssistant } from "../_shared/authGuard.ts";
 
 // ── Default system prompt ────────────────────────────────────────────────
 
@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Auth: admin only
-  const authError = await requireAdmin(req);
+  // Auth: admin or assistant
+  const authError = await requireAdminOrAssistant(req);
   if (authError) return authError;
 
   try {

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { format, addDays, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { addDays, isSameDay, isToday, isBefore, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TimeSlotPicker } from './TimeSlotPicker';
+import { formatInTz, getTimezoneLabel } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { TimeSlot, WeekSlots } from '@/types/booking';
 
 interface WeekCalendarProps {
@@ -26,6 +27,7 @@ export function WeekCalendar({
   isLoading,
   maxAdvanceDays = 30,
 }: WeekCalendarProps) {
+  const tz = useUserTimezone();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Calculate if we can navigate to previous/next week
@@ -57,7 +59,7 @@ export function WeekCalendar({
         <div className="text-center">
           <h3 className="font-bold text-gray-900">
             {weekSlots
-              ? `${format(weekSlots.startDate, "d 'de' MMMM", { locale: ptBR })} - ${format(weekSlots.endDate, "d 'de' MMMM", { locale: ptBR })}`
+              ? `${formatInTz(weekSlots.startDate, tz, "d 'de' MMMM")} - ${formatInTz(weekSlots.endDate, tz, "d 'de' MMMM")}`
               : 'Carregando...'}
           </h3>
           <p className="text-xs text-gray-500 mt-1">
@@ -114,7 +116,7 @@ export function WeekCalendar({
                     isSelected ? 'text-indigo-200' : 'text-gray-400'
                   )}
                 >
-                  {format(day.date, 'EEE', { locale: ptBR })}
+                  {formatInTz(day.date, tz, 'EEE')}
                 </span>
 
                 {/* Day number */}
@@ -125,7 +127,7 @@ export function WeekCalendar({
                     isDayToday && !isSelected && 'text-indigo-600'
                   )}
                 >
-                  {format(day.date, 'd')}
+                  {formatInTz(day.date, tz, 'd')}
                 </span>
 
                 {/* Slot indicator */}
@@ -158,19 +160,20 @@ export function WeekCalendar({
         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
           <h4 className="font-bold text-gray-900 mb-4">
             Horários disponíveis para{' '}
-            {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            {formatInTz(selectedDate, tz, "EEEE, d 'de' MMMM")}
           </h4>
           <TimeSlotPicker
             slots={selectedDaySlots}
             selectedSlot={selectedSlot}
             onSelectSlot={onSelectSlot}
+            userTimezone={tz}
           />
         </div>
       )}
 
       {/* Timezone notice */}
       <p className="text-center text-xs text-gray-400">
-        Horários exibidos no fuso horário de Brasília (BRT)
+        Horários exibidos no fuso horário: {getTimezoneLabel(tz)}
       </p>
     </div>
   );

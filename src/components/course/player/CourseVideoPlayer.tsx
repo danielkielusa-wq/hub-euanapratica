@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { Loader2, PlayCircle, AlertCircle, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { useVideoToken, useUpsertProgress } from '@/hooks/useCoursePlayer';
 import type { CourseLesson, CourseProgress } from '@/types/course';
 import { cn } from '@/lib/utils';
@@ -8,9 +9,10 @@ interface CourseVideoPlayerProps {
   lesson: CourseLesson;
   progress: CourseProgress | undefined;
   hasAccess: boolean;
+  onVideoEnded?: () => void;
 }
 
-export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPlayerProps) {
+export function CourseVideoPlayer({ lesson, progress, hasAccess, onVideoEnded }: CourseVideoPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const lastSavedRef = useRef(0);
@@ -23,9 +25,14 @@ export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPl
     canWatch && hasBunnyVideo ? lesson.id : undefined
   );
 
+  // Track latest position for save-on-unmount
+  const latestPositionRef = useRef<{ seconds: number; duration: number } | null>(null);
+
   // Debounced progress save
   const saveProgress = useCallback(
     (seconds: number, duration: number) => {
+      latestPositionRef.current = { seconds, duration };
+
       const now = Date.now();
       // Save at most every 5 seconds
       if (now - lastSavedRef.current < 5000) return;
@@ -66,6 +73,7 @@ export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPl
             status: 'completed',
             watchPercentage: 100,
           });
+          onVideoEnded?.();
         }
       } catch {
         // Not a JSON message from the player
@@ -74,14 +82,43 @@ export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPl
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [tokenData?.embedUrl, lesson.id, saveProgress, upsertProgress]);
+  }, [tokenData?.embedUrl, lesson.id, saveProgress, upsertProgress, onVideoEnded]);
 
-  // Save on unmount
+  // F15: Resume toast indicator
+  const resumeToastShownRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      progress?.last_position_seconds &&
+      progress.last_position_seconds > 5 &&
+      resumeToastShownRef.current !== lesson.id
+    ) {
+      resumeToastShownRef.current = lesson.id;
+      const mins = Math.floor(progress.last_position_seconds / 60);
+      const secs = progress.last_position_seconds % 60;
+      toast.info(`Continuando de ${mins}:${String(secs).padStart(2, '0')}`, {
+        duration: 3000,
+      });
+    }
+  }, [lesson.id, progress?.last_position_seconds]);
+
+  // Force save on unmount (when user navigates away or closes the player)
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      // Save the latest position if we have unsaved data
+      const pos = latestPositionRef.current;
+      if (pos && pos.duration > 0) {
+        const pct = Math.round((pos.seconds / pos.duration) * 100);
+        upsertProgress.mutate({
+          lessonId: lesson.id,
+          status: pct >= 90 ? 'completed' : 'in_progress',
+          watchPercentage: Math.min(pct, 100),
+          lastPositionSeconds: Math.round(pos.seconds),
+        });
+      }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.id]);
 
   // No access
   if (!canWatch) {
@@ -164,7 +201,7 @@ export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPl
     );
   }
 
-  // Bunny iframe with resume position
+  // Bunny iframe with resume position + responsive for Player.js events
   const startTime = progress?.last_position_seconds
     ? `&t=${progress.last_position_seconds}`
     : '';
@@ -173,7 +210,7 @@ export function CourseVideoPlayer({ lesson, progress, hasAccess }: CourseVideoPl
     <div className="relative aspect-video rounded-2xl overflow-hidden bg-gray-900 shadow-2xl shadow-black/20 ring-1 ring-white/5">
       <iframe
         ref={iframeRef}
-        src={`${tokenData.embedUrl}${startTime}`}
+        src={`${tokenData.embedUrl}&responsive=true${startTime}`}
         className="absolute inset-0 w-full h-full"
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
         allowFullScreen

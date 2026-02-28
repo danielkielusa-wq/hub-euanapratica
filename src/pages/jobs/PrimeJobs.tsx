@@ -7,7 +7,8 @@ import {
   TrendingUp,
   Zap,
   Filter,
-  X
+  X,
+  History
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import JobCard from '@/components/jobSearch/JobCard';
@@ -19,10 +20,9 @@ import { useToggleBookmark } from '@/hooks/useJobBookmarks';
 import { usePrimeJobsQuota } from '@/hooks/useJobApplications';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAppConfigs } from '@/hooks/useAppConfigs';
 import type { JobFilters, Job } from '@/types/jobs';
 import { JOB_CATEGORIES, EXPERIENCE_LABELS, REMOTE_TYPE_LABELS, JOB_TYPE_LABELS } from '@/types/jobs';
-
-const FREE_PREVIEW_COUNT = 3;
 
 export default function PrimeJobs() {
   const navigate = useNavigate();
@@ -35,6 +35,10 @@ export default function PrimeJobs() {
 
   // Determine user plan for UI
   const userPlan = isVipPlan ? 'vip' : isPremiumPlan ? 'pro' : 'free';
+
+  // Free preview count (admin-configurable via app_configs)
+  const { getConfigValue } = useAppConfigs();
+  const freePreviewCount = parseInt(getConfigValue('prime_jobs_free_preview_count') || '3', 10);
 
   // Fetch jobs
   const { jobs, totalCount, isLoading, refetch } = useJobs({ filters, limit: 50 });
@@ -114,12 +118,12 @@ export default function PrimeJobs() {
     setShowUpgradeModal(true);
   };
 
-  // Stats data
+  // Stats data (all sourced from get_prime_jobs_stats RPC)
   const statsData = [
     { label: 'Vagas Ativas', val: stats?.totalActiveJobs?.toLocaleString() || '0', icon: Briefcase, color: 'text-brand-600', bg: 'bg-brand-50' },
-    { label: 'Média Salarial', val: stats?.avgSalaryMin ? `$${Math.round(stats.avgSalaryMin / 1000)}k` : '$0', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Média Salarial', val: stats?.avgSalaryMin ? `$${Math.round(stats.avgSalaryMin / 1000)}k` : '—', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Novas Esta Semana', val: `+${stats?.newThisWeek || 0}`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Setor em Alta', val: stats?.topCategory || 'Engineering', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' }
+    { label: 'Setor em Alta', val: stats?.topCategory || '—', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' }
   ];
 
   return (
@@ -144,12 +148,29 @@ export default function PrimeJobs() {
           </div>
 
           <div className="flex items-center gap-3">
-            {quota && userPlan !== 'free' && (
-              <div className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm">
-                <span className="text-gray-500">Aplicações:</span>{' '}
-                <span className="font-bold text-gray-900">{quota.remaining}/{quota.monthlyLimit}</span>
-              </div>
+            {quota && quota.monthlyLimit > 0 && (
+              <button
+                onClick={() => navigate('/prime-jobs/historico')}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm hover:border-gray-300 hover:shadow-sm transition-all"
+                title="Ver histórico de acessos"
+              >
+                <span className="text-gray-500">Acessos:</span>{' '}
+                <span className={`font-bold ${quota.remaining <= 0 ? 'text-amber-600' : quota.remaining <= 3 ? 'text-amber-500' : 'text-gray-900'}`}>
+                  {quota.usedThisMonth}/{quota.monthlyLimit}
+                </span>
+              </button>
             )}
+            <Button
+              onClick={() => {
+                logEvent({ event_type: 'prime_jobs_open_history' });
+                navigate('/prime-jobs/historico');
+              }}
+              variant="outline"
+              className="rounded-xl"
+            >
+              <History size={16} className="mr-2" />
+              Histórico
+            </Button>
             <Button
               onClick={() => {
                 logEvent({ event_type: 'prime_jobs_open_bookmarks' });
@@ -297,9 +318,9 @@ export default function PrimeJobs() {
           <p className="text-sm font-bold text-gray-500">
             {totalCount} vaga{totalCount !== 1 ? 's' : ''} encontrada{totalCount !== 1 ? 's' : ''}
           </p>
-          {userPlan === 'free' && totalCount > FREE_PREVIEW_COUNT && (
+          {userPlan === 'free' && totalCount > freePreviewCount && (
             <p className="text-sm text-amber-600 font-bold">
-              Você está vendo {FREE_PREVIEW_COUNT} de {totalCount} vagas. Faça upgrade para ver todas!
+              Você está vendo {freePreviewCount} de {totalCount} vagas. Faça upgrade para ver todas!
             </p>
           )}
         </div>
@@ -331,7 +352,7 @@ export default function PrimeJobs() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
             {jobs.map((job, index) => {
-              const isLocked = userPlan === 'free' && index >= FREE_PREVIEW_COUNT;
+              const isLocked = userPlan === 'free' && index >= freePreviewCount;
 
               return (
                 <JobCard

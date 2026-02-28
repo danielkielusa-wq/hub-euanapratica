@@ -67,6 +67,7 @@ Deno.serve(async (req: Request) => {
         const apiKey = bunnyConfig.credentials.api_key;
         const libraryId = bunnyConfig.credentials.library_id;
 
+        // Fetch video metadata
         const videoRes = await fetch(
           `https://video.bunnycdn.com/library/${libraryId}/videos/${VideoGuid}`,
           { headers: { "AccessKey": apiKey } }
@@ -75,9 +76,31 @@ Deno.serve(async (req: Request) => {
         if (videoRes.ok) {
           const videoData = await videoRes.json();
           duration = videoData.length ? Math.round(videoData.length) : null;
-          // Bunny thumbnail URL format
-          thumbnailUrl = `https://vz-${libraryId}.b-cdn.net/${VideoGuid}/thumbnail.jpg`;
-          console.log("[bunny-webhook] Video metadata:", { duration, thumbnailUrl, status: videoData.status });
+
+          // Get CDN hostname — try credential first, then fetch from library API
+          let cdnHostname = bunnyConfig.credentials.cdn_hostname;
+          if (!cdnHostname) {
+            try {
+              const libRes = await fetch(
+                `https://video.bunnycdn.com/library/${libraryId}`,
+                { headers: { "AccessKey": apiKey } }
+              );
+              if (libRes.ok) {
+                const libData = await libRes.json();
+                cdnHostname = libData.CdnHostname || libData.cdnHostname;
+                console.log("[bunny-webhook] Fetched CDN hostname:", cdnHostname);
+              }
+            } catch (libErr) {
+              console.warn("[bunny-webhook] Could not fetch library CDN hostname:", libErr);
+            }
+          }
+
+          if (cdnHostname) {
+            const thumbFile = videoData.thumbnailFileName || "thumbnail.jpg";
+            thumbnailUrl = `https://${cdnHostname}/${VideoGuid}/${thumbFile}`;
+          }
+
+          console.log("[bunny-webhook] Video metadata:", { duration, thumbnailUrl, cdnHostname, status: videoData.status });
         }
       } catch (metaErr) {
         console.error("[bunny-webhook] Failed to fetch video metadata:", metaErr);
@@ -114,6 +137,54 @@ Deno.serve(async (req: Request) => {
         console.error("[bunny-webhook] Failed to update lesson:", error);
       } else {
         console.log("[bunny-webhook] Lesson marked as failed:", VideoGuid);
+      }
+    } else if (Status === 9) {
+      // CaptionsGenerated — mark lesson as having captions
+      const { error } = await supabase
+        .from("course_lessons")
+        .update({ captions_generated: true, updated_at: new Date().toISOString() })
+        .eq("bunny_video_id", VideoGuid);
+
+      if (error) {
+        console.error("[bunny-webhook] Failed to update captions flag:", error);
+      } else {
+        console.log("[bunny-webhook] Captions generated:", VideoGuid);
+      }
+    } else if (Status === 10) {
+      // TitleOrDescriptionGenerated — auto-fill empty lesson description
+      try {
+        const bunnyConfig = await getApiConfig("bunny_stream");
+        const apiKey = bunnyConfig.credentials.api_key;
+        const libraryId = bunnyConfig.credentials.library_id;
+
+        const videoRes = await fetch(
+          `https://video.bunnycdn.com/library/${libraryId}/videos/${VideoGuid}`,
+          { headers: { "AccessKey": apiKey } }
+        );
+
+        if (videoRes.ok) {
+          const videoData = await videoRes.json();
+          const aiDescription = videoData.metaDescription || videoData.MetaDescription;
+
+          if (aiDescription) {
+            // Only fill if lesson currently has no description
+            const { data: lesson } = await supabase
+              .from("course_lessons")
+              .select("id, description")
+              .eq("bunny_video_id", VideoGuid)
+              .maybeSingle();
+
+            if (lesson && !lesson.description) {
+              await supabase
+                .from("course_lessons")
+                .update({ description: aiDescription, updated_at: new Date().toISOString() })
+                .eq("id", lesson.id);
+              console.log("[bunny-webhook] AI description set for:", VideoGuid);
+            }
+          }
+        }
+      } catch (metaErr) {
+        console.error("[bunny-webhook] Status 10 handling error:", metaErr);
       }
     } else {
       console.log("[bunny-webhook] Ignoring status:", Status);

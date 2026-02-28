@@ -16,9 +16,13 @@ export interface OnboardingProfile {
   current_city?: string | null;
   target_country?: string | null;
   timezone?: string | null;
+  area_profissional?: string | null;
+  nivel_ingles?: string | null;
+  objetivo?: string | null;
+  prazo_movimento?: string | null;
 }
 
-export type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
 export interface OnboardingState {
   currentStep: OnboardingStep;
@@ -51,27 +55,20 @@ export const ONBOARDING_STEPS: StepConfig[] = [
   },
   {
     step: 3,
-    title: 'Como podemos falar com você?',
-    subtitle: 'Defina os melhores canais de comunicação.',
-    sidebarTitle: 'Vamos manter contato',
-    sidebarSubtitle: 'Configure seus canais de comunicação',
-  },
-  {
-    step: 4,
-    title: 'LinkedIn e currículo',
-    subtitle: 'Esses dados ajudam nas mentorias e oportunidades.',
-    sidebarTitle: 'Sua presença profissional',
-    sidebarSubtitle: 'Compartilhe seu perfil profissional',
-  },
-  {
-    step: 5,
     title: 'Localização e destino',
     subtitle: 'Essas informações ajudam a contextualizar sua rota internacional.',
     sidebarTitle: 'De onde para onde?',
     sidebarSubtitle: 'Sua jornada internacional',
   },
   {
-    step: 6,
+    step: 4,
+    title: 'Sobre sua carreira',
+    subtitle: 'Essas informações ajudam a personalizar sua experiência no Hub.',
+    sidebarTitle: 'Perfil de carreira',
+    sidebarSubtitle: 'Conte-nos sobre seus objetivos',
+  },
+  {
+    step: 5,
     title: 'Seu perfil está configurado com sucesso',
     subtitle: 'Agora você está pronto para avançar na sua jornada internacional.',
     sidebarTitle: 'Tudo pronto',
@@ -114,4 +111,35 @@ export const TARGET_COUNTRIES = [
   { code: 'ES', name: 'Espanha' },
   { code: 'NL', name: 'Holanda' },
   { code: 'CH', name: 'Suíça' },
+];
+
+export const CAREER_AREAS = [
+  'Tecnologia',
+  'Engenharia',
+  'Negócios / Administração',
+  'Marketing / Comunicação',
+  'Saúde',
+  'Estudante',
+  'Outro',
+];
+
+export const ENGLISH_LEVELS = [
+  'Básico',
+  'Intermediário',
+  'Avançado',
+  'Fluente',
+];
+
+export const CAREER_OBJECTIVES = [
+  'Emprego remoto em dólar',
+  'Imigrar / Green Card trabalhando na minha área',
+  'Estudar nos EUA como porta de entrada',
+  'Ainda não tenho clareza, quero entender minhas opções',
+];
+
+export const CAREER_TIMELINES = [
+  'Já estou em movimento / próximos 3 meses',
+  'Entre 3 e 6 meses',
+  'Entre 6 e 12 meses',
+  'Ainda não tenho prazo definido',
 ];

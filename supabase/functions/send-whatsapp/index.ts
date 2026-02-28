@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
+import { requireAdminOrAssistant, getCorsHeaders } from "../_shared/authGuard.ts";
 import {
   normalizePhone,
   sendWhatsAppMessage,
@@ -15,8 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    // Admin-only
-    const authError = await requireAdmin(req);
+    // Admin or Assistant
+    const authError = await requireAdminOrAssistant(req);
     if (authError) return authError;
 
     const { lead_id, message, template_name, variables } = await req.json();
@@ -97,7 +97,7 @@ serve(async (req) => {
 
       // Auto-fill known variables
       const reportLink = lead.access_token
-        ? `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.co") || ""}/report/${lead.access_token}`
+        ? `https://hub.euanapratica.com/report/${lead.access_token}`
         : "";
 
       const defaultVars: Record<string, string> = {
@@ -106,8 +106,15 @@ serve(async (req) => {
         "{{leadEmail}}": lead.email || "",
       };
 
-      // Merge user-provided variables (override defaults)
-      const mergedVars = { ...defaultVars, ...(variables || {}) };
+      // Normalize user-provided variables to {{key}} format so they override defaults
+      const normalizedUserVars: Record<string, string> = {};
+      for (const [key, value] of Object.entries(variables || {})) {
+        const wrappedKey = key.startsWith("{{") ? key : `{{${key}}}`;
+        normalizedUserVars[wrappedKey] = String(value);
+      }
+
+      // Merge: user-provided variables override defaults
+      const mergedVars = { ...defaultVars, ...normalizedUserVars };
 
       messageText = substituteVariables(template.body, mergedVars);
       usedTemplateName = template_name;

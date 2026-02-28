@@ -4,6 +4,39 @@ import { HubService } from '@/types/hub';
 import type { HubServiceFormSubmitData } from '@/components/admin/hub/HubServiceForm';
 import { toast } from 'sonner';
 
+const ESPACO_CATEGORY_MAP: Record<string, string> = {
+  live_mentoring: 'group_mentoring',
+  recorded_course: 'course',
+  live_event: 'workshop',
+};
+
+function needsEspaco(serviceType: string): boolean {
+  return serviceType in ESPACO_CATEGORY_MAP;
+}
+
+async function autoCreateEspaco(name: string, description: string | null | undefined, serviceType: string): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: newEspaco, error } = await supabase
+    .from('espacos')
+    .insert({
+      name,
+      description: description || null,
+      category: ESPACO_CATEGORY_MAP[serviceType] as 'immersion' | 'group_mentoring' | 'workshop' | 'bootcamp' | 'course',
+      visibility: 'private' as const,
+      status: 'active',
+      mentor_id: user?.id || null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(`Erro ao criar espaço vinculado: ${error.message}`);
+  }
+
+  return newEspaco.id;
+}
+
 export function useAdminHubServices() {
   return useQuery({
     queryKey: ['admin-hub-services'],
@@ -24,6 +57,14 @@ export function useCreateHubService() {
 
   return useMutation({
     mutationFn: async (formData: HubServiceFormSubmitData) => {
+      const serviceType = formData.service_type || 'ai_tool';
+      let espacoId = formData.espaco_id || null;
+
+      // Auto-create espaco if service type requires one and none provided
+      if (needsEspaco(serviceType) && !espacoId) {
+        espacoId = await autoCreateEspaco(formData.name, formData.description, serviceType);
+      }
+
       const { data, error } = await supabase
         .from('hub_services')
         .insert({
@@ -31,7 +72,7 @@ export function useCreateHubService() {
           description: formData.description || null,
           icon_name: formData.icon_name || 'FileCheck',
           status: formData.status || 'available',
-          service_type: formData.service_type || 'ai_tool',
+          service_type: serviceType,
           ribbon: formData.ribbon || null,
           category: formData.category || null,
           route: formData.route || null,
@@ -47,6 +88,7 @@ export function useCreateHubService() {
           product_type: formData.product_type || 'one_time',
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          report_dimension: formData.report_dimension || null,
           landing_page_url: formData.landing_page_url || null,
           // Ticto fields
           ticto_product_id: formData.ticto_product_id || null,
@@ -61,7 +103,9 @@ export function useCreateHubService() {
           target_tier: formData.target_tier || 'all',
           is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
           // Course link
-          espaco_id: formData.espaco_id || null,
+          espaco_id: espacoId,
+          // Order bump
+          order_bump_service_id: formData.order_bump_service_id || null,
         })
         .select()
         .single();
@@ -69,10 +113,16 @@ export function useCreateHubService() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-hub-services'] });
       queryClient.invalidateQueries({ queryKey: ['hub-services'] });
-      toast.success('Produto criado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['admin-espacos'] });
+
+      if (data.espaco_id && needsEspaco(data.service_type || '')) {
+        toast.success('Produto criado com espaço vinculado!');
+      } else {
+        toast.success('Produto criado com sucesso!');
+      }
     },
     onError: (error) => {
       toast.error('Erro ao criar produto');
@@ -93,6 +143,19 @@ export function useUpdateHubService() {
           .neq('id', id);
       }
 
+      const serviceType = formData.service_type || 'ai_tool';
+      let espacoId = formData.espaco_id || null;
+
+      // Auto-create espaco if type requires one and none linked
+      if (needsEspaco(serviceType) && !espacoId) {
+        espacoId = await autoCreateEspaco(formData.name, formData.description, serviceType);
+      }
+
+      // Clear espaco link if type no longer requires one (don't delete the espaco)
+      if (!needsEspaco(serviceType)) {
+        espacoId = null;
+      }
+
       const { data, error } = await supabase
         .from('hub_services')
         .update({
@@ -100,7 +163,7 @@ export function useUpdateHubService() {
           description: formData.description || null,
           icon_name: formData.icon_name,
           status: formData.status,
-          service_type: formData.service_type,
+          service_type: serviceType,
           ribbon: formData.ribbon || null,
           category: formData.category || null,
           route: formData.route || null,
@@ -116,6 +179,7 @@ export function useUpdateHubService() {
           product_type: formData.product_type,
           stripe_price_id: formData.stripe_price_id || null,
           accent_color: formData.accent_color || null,
+          report_dimension: formData.report_dimension || null,
           landing_page_url: formData.landing_page_url || null,
           // Ticto fields
           ticto_product_id: formData.ticto_product_id || null,
@@ -130,7 +194,9 @@ export function useUpdateHubService() {
           target_tier: formData.target_tier || 'all',
           is_visible_for_upsell: formData.is_visible_for_upsell ?? true,
           // Course link
-          espaco_id: formData.espaco_id || null,
+          espaco_id: espacoId,
+          // Order bump
+          order_bump_service_id: formData.order_bump_service_id || null,
         })
         .eq('id', id)
         .select()
@@ -139,10 +205,16 @@ export function useUpdateHubService() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-hub-services'] });
       queryClient.invalidateQueries({ queryKey: ['hub-services'] });
-      toast.success('Produto atualizado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['admin-espacos'] });
+
+      if (data.espaco_id && needsEspaco(data.service_type || '')) {
+        toast.success('Produto atualizado com espaço vinculado!');
+      } else {
+        toast.success('Produto atualizado com sucesso!');
+      }
     },
     onError: (error) => {
       toast.error('Erro ao atualizar produto');

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { formatInTz, formatDateTimeBr, localInputToUTC, getTimezoneLabel, getTimezoneAbbr } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -146,13 +148,8 @@ function BookingsTab() {
   const completeMutation = useAdminCompleteBooking();
   const noShowMutation = useAdminMarkNoShow();
 
-  const formatDateTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
-  };
+  const tz = useUserTimezone();
+  const formatDateTime = (iso: string) => formatDateTimeBr(iso, tz);
 
   if (isLoading) {
     return (
@@ -387,6 +384,7 @@ function BookingsTab() {
 // ============================================
 
 function AvailabilityTab() {
+  const tz = useUserTimezone();
   const [selectedMentorId, setSelectedMentorId] = useState<string>('');
   const { data: mentors, isLoading: loadingMentors } = useMentors();
   const { data: mentorServices, isLoading: loadingMS } = useAdminMentorServices();
@@ -420,7 +418,7 @@ function AvailabilityTab() {
   const createBlock = useCreateBlockedTime();
   const deleteBlock = useDeleteBlockedTime();
 
-  const liveMentoringServices = hubServices?.filter(s => s.service_type === 'live_mentoring') ?? [];
+  const bookableServices = hubServices?.filter(s => s.service_type === 'live_mentoring' || s.service_type === 'consulting') ?? [];
 
   const openMsDialog = (ms?: MentorServiceExtended) => {
     if (ms) {
@@ -471,8 +469,8 @@ function AvailabilityTab() {
     if (!selectedMentorId || !blockForm.start_datetime || !blockForm.end_datetime) return;
     createBlock.mutate({
       mentor_id: selectedMentorId,
-      start_datetime: new Date(blockForm.start_datetime).toISOString(),
-      end_datetime: new Date(blockForm.end_datetime).toISOString(),
+      start_datetime: localInputToUTC(blockForm.start_datetime, tz),
+      end_datetime: localInputToUTC(blockForm.end_datetime, tz),
       reason: blockForm.reason || undefined,
     }, {
       onSuccess: () => {
@@ -516,7 +514,7 @@ function AvailabilityTab() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">Mentores e Serviços</CardTitle>
-              <CardDescription>Atribua mentores a serviços de mentoria ao vivo</CardDescription>
+              <CardDescription>Atribua mentores a serviços agendáveis</CardDescription>
             </div>
             <Button onClick={() => openMsDialog()} className="gap-2">
               <Plus className="h-4 w-4" /> Atribuir Mentor
@@ -686,9 +684,10 @@ function AvailabilityTab() {
                   <div key={bt.id} className="flex items-center justify-between rounded-lg border p-3">
                     <div>
                       <p className="text-sm font-medium">
-                        {new Date(bt.start_datetime).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTimeBr(bt.start_datetime, tz)}
                         {' — '}
-                        {new Date(bt.end_datetime).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTimeBr(bt.end_datetime, tz)}
+                        {' ('}{getTimezoneAbbr(tz)}{')'}
                       </p>
                       {bt.reason && <p className="text-xs text-muted-foreground">{bt.reason}</p>}
                     </div>
@@ -727,11 +726,11 @@ function AvailabilityTab() {
               </Select>
             </div>
             <div>
-              <Label>Serviço (Mentoria ao Vivo)</Label>
+              <Label>Serviço</Label>
               <Select value={msForm.service_id} onValueChange={v => setMsForm(f => ({ ...f, service_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Selecione o serviço" /></SelectTrigger>
                 <SelectContent>
-                  {liveMentoringServices.map(s => (
+                  {bookableServices.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -829,6 +828,7 @@ function AvailabilityTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Adicionar Bloqueio</DialogTitle>
+            <DialogDescription>Horários interpretados no fuso: {getTimezoneLabel(tz)}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

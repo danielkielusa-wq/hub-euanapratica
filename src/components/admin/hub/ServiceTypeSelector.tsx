@@ -1,4 +1,4 @@
-import { Brain, Video, Users, Briefcase } from 'lucide-react';
+import { Brain, Video, Users, Briefcase, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ServiceType, SERVICE_TYPE_LABELS } from '@/types/hub';
@@ -8,6 +8,7 @@ const typeConfig: Record<ServiceType, { icon: React.ElementType; color: string }
   live_mentoring: { icon: Users, color: 'bg-green-100 text-green-700 border-green-300' },
   recorded_course: { icon: Video, color: 'bg-purple-100 text-purple-700 border-purple-300' },
   consulting: { icon: Briefcase, color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  live_event: { icon: CalendarCheck, color: 'bg-pink-100 text-pink-700 border-pink-300' },
 };
 
 interface ServiceTypeSelectorProps {

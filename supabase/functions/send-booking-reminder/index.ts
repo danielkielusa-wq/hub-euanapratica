@@ -1,7 +1,7 @@
 /**
  * Send Booking Reminder Email
  *
- * Sends reminder emails to students for upcoming bookings.
+ * Sends reminder emails to BOTH students and mentors for upcoming bookings.
  * Supports both 24-hour and 1-hour reminders with different templates.
  * Uses centralized email template service for database-driven templates.
  *
@@ -13,6 +13,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { buildBookingCalendarData } from "../_shared/calendarService.ts";
 
 interface ReminderRequest {
   booking_id?: string;  // Optional: send for specific booking
@@ -50,8 +51,8 @@ Deno.serve(async (req) => {
       .from("bookings")
       .select(`
         *,
-        student:profiles!bookings_student_id_fkey(id, full_name, email, timezone),
-        mentor:profiles!bookings_mentor_id_fkey(id, full_name, email),
+        student:profiles!bookings_student_profile_fkey(id, full_name, email, timezone),
+        mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email),
         service:hub_services(id, name)
       `)
       .eq("status", "confirmed");
@@ -109,7 +110,8 @@ Deno.serve(async (req) => {
           timeZone: studentTimezone,
         });
 
-        const templateName = isOneHourReminder ? "booking_reminder_1h" : "booking_reminder";
+        const studentTemplateName = isOneHourReminder ? "booking_reminder_1h" : "booking_reminder";
+        const mentorTemplateName = isOneHourReminder ? "booking_reminder_1h_mentor" : "booking_reminder_mentor";
 
         // Build meeting link section (pre-rendered HTML or empty)
         let meetingLinkSection = "";
@@ -127,24 +129,59 @@ Deno.serve(async (req) => {
             </p>`;
         }
 
-        const result = await sendTemplatedEmail({
-          templateName,
+        // Build calendar attachment and Google Calendar link
+        const calendarData = buildBookingCalendarData({
+          scheduled_start: booking.scheduled_start,
+          scheduled_end: booking.scheduled_end,
+          service_name: booking.service?.name || "Sessão",
+          mentor_name: booking.mentor?.full_name || "Mentor",
+          meeting_link: booking.meeting_link,
+        });
+
+        const sharedVars = {
+          "{{serviceName}}": booking.service?.name || "Sessão",
+          "{{formattedDate}}": dateFormatter.format(startDate),
+          "{{formattedTime}}": timeFormatter.format(startDate),
+          "{{meetingLinkSection}}": meetingLinkSection,
+          "{{calendarSection}}": calendarData.calendarSectionHtml,
+        };
+
+        // Send to student
+        const studentResult = await sendTemplatedEmail({
+          templateName: studentTemplateName,
           to: booking.student?.email,
           variables: {
             "{{studentName}}": booking.student?.full_name || "Aluno(a)",
-            "{{serviceName}}": booking.service?.name || "Sessão",
-            "{{formattedDate}}": dateFormatter.format(startDate),
-            "{{formattedTime}}": timeFormatter.format(startDate),
             "{{mentorName}}": booking.mentor?.full_name || "Mentor",
-            "{{meetingLinkSection}}": meetingLinkSection,
+            ...sharedVars,
           },
         });
 
-        if (result.emailSent) {
+        if (studentResult.emailSent) {
           emailsSent++;
-          console.log("✅ Reminder sent to:", booking.student?.email);
-        } else if (!result.success) {
-          errors.push(`Failed for ${booking.student?.email}: ${result.message}`);
+          console.log("✅ Student reminder sent to:", booking.student?.email);
+        } else if (!studentResult.success) {
+          errors.push(`Failed for student ${booking.student?.email}: ${studentResult.message}`);
+        }
+
+        // Send to mentor
+        if (booking.mentor?.email) {
+          const mentorResult = await sendTemplatedEmail({
+            templateName: mentorTemplateName,
+            to: booking.mentor.email,
+            variables: {
+              "{{mentorName}}": booking.mentor.full_name || "Mentor",
+              "{{studentName}}": booking.student?.full_name || "Aluno(a)",
+              ...sharedVars,
+            },
+          });
+
+          if (mentorResult.emailSent) {
+            emailsSent++;
+            console.log("✅ Mentor reminder sent to:", booking.mentor.email);
+          } else if (!mentorResult.success) {
+            errors.push(`Failed for mentor ${booking.mentor.email}: ${mentorResult.message}`);
+          }
         }
       } catch (err) {
         errors.push(`Error for booking ${booking.id}: ${err}`);

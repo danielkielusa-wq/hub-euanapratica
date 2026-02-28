@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Check, Play, Circle, Clock, Eye } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, Play, Circle, Clock, Eye, Lock, Flame } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +16,7 @@ interface CoursePlayerSidebarProps {
   completedLessons: number;
   progressPercent: number;
   onSelectLesson: (lessonId: string) => void;
+  streak?: number;
 }
 
 export function CoursePlayerSidebar({
@@ -26,6 +27,7 @@ export function CoursePlayerSidebar({
   completedLessons,
   progressPercent,
   onSelectLesson,
+  streak,
 }: CoursePlayerSidebarProps) {
   const [openModules, setOpenModules] = useState<Record<string, boolean>>(() => {
     // Auto-open the module containing the current lesson
@@ -49,9 +51,17 @@ export function CoursePlayerSidebar({
           <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
             Progresso
           </span>
-          <span className="text-xs font-semibold text-emerald-400">
-            {completedLessons}/{totalLessons} aulas
-          </span>
+          <div className="flex items-center gap-2">
+            {streak != null && streak > 0 && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-orange-400">
+                <Flame className="h-3.5 w-3.5" />
+                {streak}d
+              </span>
+            )}
+            <span className="text-xs font-semibold text-emerald-400">
+              {completedLessons}/{totalLessons} aulas
+            </span>
+          </div>
         </div>
         <Progress
           value={progressPercent}
@@ -68,6 +78,35 @@ export function CoursePlayerSidebar({
               (l) => progressMap[l.id]?.status === 'completed'
             ).length;
             const isOpen = openModules[module.id] ?? false;
+            const isLocked = module.isLocked ?? false;
+
+            // Locked module — show lock UI, no expand
+            if (isLocked) {
+              const unlockDate = module.unlockDate;
+              const daysLeft = unlockDate
+                ? Math.max(1, Math.ceil((unlockDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+                : null;
+
+              return (
+                <div
+                  key={module.id}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/[0.02] opacity-60"
+                >
+                  <Lock className="h-4 w-4 text-white/30 flex-shrink-0" />
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[13px] font-medium text-white/50 truncate">
+                      {module.title}
+                    </p>
+                    <p className="text-[11px] text-amber-400/70 mt-0.5">
+                      {daysLeft != null
+                        ? `Disponível em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''}`
+                        : 'Conteúdo bloqueado'}
+                    </p>
+                  </div>
+                  <Lock className="h-3.5 w-3.5 text-amber-500/50 flex-shrink-0" />
+                </div>
+              );
+            }
 
             return (
               <Collapsible
@@ -141,6 +180,20 @@ export function CoursePlayerSidebar({
                             )}>
                               {lesson.title}
                             </p>
+                            {/* Watch percentage for in-progress lessons */}
+                            {isInProgress && prog?.watch_percentage != null && prog.watch_percentage > 0 && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary/60 rounded-full transition-all"
+                                    style={{ width: `${Math.min(prog.watch_percentage, 100)}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-white/25 tabular-nums">
+                                  {prog.watch_percentage}%
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Meta */}

@@ -33,6 +33,9 @@ export function useCreateBooking() {
             'Este horário não está mais disponível. Por favor, escolha outro.'
           );
         }
+        if (error.message.includes('créditos de sessão')) {
+          throw new Error('Você não tem créditos de sessão disponíveis para este serviço.');
+        }
         if (error.message.includes('limite')) {
           throw new Error(error.message);
         }
@@ -50,6 +53,9 @@ export function useCreateBooking() {
       queryClient.invalidateQueries({ queryKey: ['booking-stats'] });
       queryClient.invalidateQueries({ queryKey: ['booking-counts'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['session-credits'] });
+      queryClient.invalidateQueries({ queryKey: ['user-hub-services'] });
+      queryClient.invalidateQueries({ queryKey: ['my-hub'] });
 
       // Send confirmation email (fire-and-forget, don't block UX)
       supabase.functions.invoke('send-booking-confirmation', {

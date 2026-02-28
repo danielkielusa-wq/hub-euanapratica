@@ -1,0 +1,2 @@
+-- Previously applied migration (lives/bookings system)
+-- This file exists only to satisfy migration tracking

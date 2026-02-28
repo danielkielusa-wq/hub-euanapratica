@@ -17,6 +17,7 @@ interface SendWhatsAppDialogProps {
   leadId: string;
   leadName: string;
   leadPhone: string | undefined;
+  accessToken?: string;
 }
 
 export function SendWhatsAppDialog({
@@ -25,6 +26,7 @@ export function SendWhatsAppDialog({
   leadId,
   leadName,
   leadPhone,
+  accessToken,
 }: SendWhatsAppDialogProps) {
   const sendWhatsApp = useSendWhatsApp();
   const { data: templates = [] } = useWhatsAppTemplates();
@@ -53,18 +55,23 @@ export function SendWhatsAppDialog({
   // Auto-fill known variables when template changes
   useEffect(() => {
     if (!template) return;
+    const reportLink = accessToken
+      ? `https://hub.euanapratica.com/report/${accessToken}`
+      : '';
     const vars: Record<string, string> = {};
     for (const v of template.variables || []) {
       const key = v.replace(/\{\{|\}\}/g, '');
       if (key === 'leadName') {
         vars[key] = leadName;
+      } else if (key === 'reportLink' && reportLink) {
+        vars[key] = reportLink;
       } else {
         vars[key] = variables[key] || '';
       }
     }
     setVariables(vars);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template, leadName]);
+  }, [template, leadName, accessToken]);
 
   // Preview: substitute variables into template body
   const preview = useMemo(() => {

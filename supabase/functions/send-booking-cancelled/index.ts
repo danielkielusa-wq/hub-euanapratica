@@ -1,7 +1,7 @@
 /**
  * Send Booking Cancelled Email
  *
- * Sends a cancellation or no-show email to the student.
+ * Sends a cancellation or no-show email to BOTH the student and the mentor.
  * Uses different templates for regular cancellation vs no-show.
  * Uses centralized email template service for database-driven templates.
  */
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
       .from("bookings")
       .select(`
         *,
-        student:profiles!bookings_student_id_fkey(id, full_name, email, timezone),
-        mentor:profiles!bookings_mentor_id_fkey(id, full_name, email),
+        student:profiles!bookings_student_profile_fkey(id, full_name, email, timezone),
+        mentor:profiles!bookings_mentor_profile_fkey(id, full_name, email),
         service:hub_services(id, name)
       `)
       .eq("id", booking_id)
@@ -90,24 +90,49 @@ Deno.serve(async (req) => {
         </div>`;
     }
 
-    // Send templated email
-    const result = await sendTemplatedEmail({
+    const sharedVars = {
+      "{{serviceName}}": booking.service?.name || "Sessão",
+      "{{formattedDate}}": dateFormatter.format(startDate),
+      "{{formattedTime}}": timeFormatter.format(startDate),
+      "{{cancellationReasonSection}}": cancellationReasonSection,
+    };
+
+    // Send email to student
+    const studentResult = await sendTemplatedEmail({
       templateName,
       to: booking.student?.email,
       variables: {
         "{{studentName}}": booking.student?.full_name || "Aluno(a)",
-        "{{serviceName}}": booking.service?.name || "Sessão",
-        "{{formattedDate}}": dateFormatter.format(startDate),
-        "{{formattedTime}}": timeFormatter.format(startDate),
         "{{mentorName}}": booking.mentor?.full_name || "Mentor",
-        "{{cancellationReasonSection}}": cancellationReasonSection,
+        ...sharedVars,
       },
     });
 
-    console.log("Cancellation email result:", { bookingId: booking_id, isNoShow, to: booking.student?.email, ...result });
+    console.log("Student cancellation email:", { bookingId: booking_id, isNoShow, to: booking.student?.email, sent: studentResult.emailSent });
+
+    // Send email to mentor
+    let mentorEmailSent = false;
+    if (booking.mentor?.email) {
+      const mentorTemplateName = isNoShow ? "booking_no_show_mentor" : "booking_cancelled_mentor";
+      const mentorResult = await sendTemplatedEmail({
+        templateName: mentorTemplateName,
+        to: booking.mentor.email,
+        variables: {
+          "{{mentorName}}": booking.mentor.full_name || "Mentor",
+          "{{studentName}}": booking.student?.full_name || "Aluno(a)",
+          ...sharedVars,
+        },
+      });
+      mentorEmailSent = !!mentorResult.emailSent;
+      console.log("Mentor cancellation email:", { bookingId: booking_id, isNoShow, to: booking.mentor.email, sent: mentorEmailSent });
+    }
 
     return new Response(
-      JSON.stringify({ success: result.success, emailSent: result.emailSent }),
+      JSON.stringify({
+        success: studentResult.success,
+        emailSent: studentResult.emailSent,
+        mentorEmailSent,
+      }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {

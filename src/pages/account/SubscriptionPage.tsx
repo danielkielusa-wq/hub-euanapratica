@@ -18,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CancellationFlow } from '@/components/subscription/CancellationFlow';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { SubscriptionEvent } from '@/types/plans';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
@@ -62,6 +64,7 @@ export default function SubscriptionPage() {
     refetch,
   } = usePlanAccess();
 
+  const tz = useUserTimezone();
   const [events, setEvents] = useState<SubscriptionEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
@@ -90,11 +93,7 @@ export default function SubscriptionPage() {
 
   const formatDate = (date: string | null) => {
     if (!date) return '—';
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatInTz(date, tz, "dd 'de' MMMM 'de' yyyy");
   };
 
   const formatCycle = (cycle: string | null) => {
@@ -282,7 +281,7 @@ export default function SubscriptionPage() {
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground shrink-0 ml-4">
-                    {new Date(event.createdAt).toLocaleDateString('pt-BR')}
+                    {formatInTz(event.createdAt, tz, 'dd/MM/yyyy')}
                   </span>
                 </div>
               ))}

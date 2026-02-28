@@ -126,6 +126,44 @@ export function useAdminCourse(id: string) {
         }
       }
 
+      // Fetch quiz data for lessons (to show indicators)
+      const allLessonIds = Object.values(lessonsMap).flat().map((l) => l.id);
+      let quizMap: Record<string, number> = {}; // lesson_id → question count
+
+      if (allLessonIds.length > 0) {
+        const { data: quizzes } = await supabase
+          .from('course_quizzes')
+          .select('id, lesson_id')
+          .in('lesson_id', allLessonIds);
+
+        if (quizzes && quizzes.length > 0) {
+          const quizIds = quizzes.map((q) => q.id);
+          const { data: questions } = await supabase
+            .from('course_quiz_questions')
+            .select('quiz_id')
+            .in('quiz_id', quizIds);
+
+          // Count questions per quiz, then map to lesson
+          const quizQuestionCount: Record<string, number> = {};
+          questions?.forEach((q) => {
+            quizQuestionCount[q.quiz_id] = (quizQuestionCount[q.quiz_id] || 0) + 1;
+          });
+          quizzes.forEach((q) => {
+            quizMap[q.lesson_id] = quizQuestionCount[q.id] || 0;
+          });
+        }
+      }
+
+      // Enrich lessons with quiz info
+      for (const lessons of Object.values(lessonsMap)) {
+        for (const lesson of lessons) {
+          if (lesson.id in quizMap) {
+            lesson.has_quiz = true;
+            lesson.quiz_question_count = quizMap[lesson.id];
+          }
+        }
+      }
+
       const modulesWithLessons: CourseModule[] = (modules || []).map((m) => ({
         ...(m as CourseModule),
         lessons: lessonsMap[m.id] || [],
@@ -153,6 +191,15 @@ export function useAdminCourse(id: string) {
       };
     },
     enabled: !!id,
+    // Poll every 5s while any lesson is uploading or processing (waiting for Bunny webhook)
+    refetchInterval: (query) => {
+      const data = query.state.data as any;
+      if (!data?.modules) return false;
+      const hasActiveVideo = data.modules.some((m: any) =>
+        m.lessons?.some((l: any) => l.video_status === 'uploading' || l.video_status === 'processing')
+      );
+      return hasActiveVideo ? 5000 : false;
+    },
   });
 }
 
@@ -242,7 +289,7 @@ export function useUpdateModule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, espacoId, ...data }: { id: string; espacoId: string; title?: string; description?: string; is_published?: boolean }) => {
+    mutationFn: async ({ id, espacoId, ...data }: { id: string; espacoId: string; title?: string; description?: string; is_published?: boolean; unlock_days_after_enrollment?: number | null }) => {
       const { error } = await supabase
         .from('course_modules')
         .update({ ...data, updated_at: new Date().toISOString() })

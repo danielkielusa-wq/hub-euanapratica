@@ -24,6 +24,8 @@ export interface CallLLMOptions {
   maxTokens?: number;
   /** OpenAI JSON schema for structured output (optional, ignored for Anthropic) */
   responseFormat?: { name: string; strict: boolean; schema: Record<string, unknown> };
+  /** Force JSON object output. OpenAI: response_format json_object. Anthropic: assistant prefill. */
+  jsonMode?: boolean;
   /** User ID for cost logging (nullable for cron/internal calls) */
   userId?: string | null;
   /** Edge function name for cost logging */
@@ -229,6 +231,14 @@ async function callAnthropic(
 ): Promise<{ content: string; inputTokens: number | null; outputTokens: number | null }> {
   const baseUrl = config.base_url || "https://api.anthropic.com/v1";
 
+  // When jsonMode is on, use assistant prefill to force JSON output
+  const messages: Array<{ role: string; content: string }> = [
+    { role: "user", content: options.userMessage },
+  ];
+  if (options.jsonMode) {
+    messages.push({ role: "assistant", content: "{" });
+  }
+
   const response = await fetch(`${baseUrl}/messages`, {
     method: "POST",
     headers: {
@@ -240,7 +250,7 @@ async function callAnthropic(
       model,
       max_tokens: options.maxTokens ?? 4000,
       system: options.systemPrompt,
-      messages: [{ role: "user", content: options.userMessage }],
+      messages,
     }),
     signal,
   });
@@ -257,10 +267,15 @@ async function callAnthropic(
 
   const data = await response.json();
   const { inputTokens, outputTokens } = extractTokenUsage(data, "anthropic");
-  const text = data.content?.[0]?.text;
+  let text = data.content?.[0]?.text;
 
   if (!text) {
     throw new LLMError("Empty Anthropic response", 500, false);
+  }
+
+  // When jsonMode is on, prepend the "{" that was used as assistant prefill
+  if (options.jsonMode) {
+    text = "{" + text;
   }
 
   return { content: text, inputTokens, outputTokens };
@@ -295,6 +310,8 @@ async function callOpenAI(
         strict: options.responseFormat.strict,
       },
     };
+  } else if (options.jsonMode) {
+    body.response_format = { type: "json_object" };
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {

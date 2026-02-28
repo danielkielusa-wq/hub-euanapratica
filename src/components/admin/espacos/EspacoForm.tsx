@@ -196,14 +196,14 @@ export function EspacoForm({
           <div className="space-y-2">
             <Label>Mentor Responsável</Label>
             <Select
-              value={mentorId || ''}
-              onValueChange={(value) => setValue('mentor_id', value || undefined)}
+              value={mentorId || '__none__'}
+              onValueChange={(value) => setValue('mentor_id', value === '__none__' ? undefined : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um mentor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum</SelectItem>
+                <SelectItem value="__none__">Nenhum</SelectItem>
                 {mentors?.map((mentor: any) => (
                   <SelectItem key={mentor.id} value={mentor.id}>
                     {mentor.full_name} ({mentor.email})

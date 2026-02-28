@@ -497,6 +497,7 @@ export function useAdminCompleteBooking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['session-credits'] });
       toast.success('Sessão marcada como concluída!');
     },
     onError: (error) => {
@@ -511,26 +512,16 @@ export function useAdminMarkNoShow() {
 
   return useMutation({
     mutationFn: async ({ booking_id }: { booking_id: string }) => {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'no_show' as BookingStatus,
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: user!.id,
-        })
-        .eq('id', booking_id);
-      if (error) throw error;
-
-      // Record history
-      await supabase.from('booking_history').insert({
-        booking_id,
-        action: 'no_show_marked',
-        performed_by: user!.id,
-        notes: 'Marcado como no-show pelo admin',
+      const { data, error } = await supabase.rpc('mark_booking_no_show', {
+        p_booking_id: booking_id,
+        p_user_id: user!.id,
       });
+      if (error) throw error;
+      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['session-credits'] });
       supabase.functions.invoke('send-booking-cancelled', {
         body: { booking_id: variables.booking_id },
       }).catch(() => {});

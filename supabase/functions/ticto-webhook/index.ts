@@ -228,6 +228,75 @@ serve(async (req) => {
 
       console.log("Service lookup:", { found: !!service, productId });
 
+      // ---- LIVES FALLBACK: if no hub_service matched, check lives table ----
+      if (profile && !service && productId) {
+        const { data: liveData } = await supabase
+          .from("lives")
+          .select("id, title, slug")
+          .eq("ticto_product_id", productId)
+          .maybeSingle();
+
+        if (liveData) {
+          console.log("Live found for purchase:", { liveId: liveData.id, title: liveData.title });
+
+          // Upsert live registration with payment_status = paid
+          const { error: regError } = await supabase
+            .from("live_registrations")
+            .upsert(
+              {
+                live_id: liveData.id,
+                user_id: profile.id,
+                payment_status: "paid",
+                registered_at: new Date().toISOString(),
+              },
+              { onConflict: "live_id,user_id" }
+            );
+
+          if (regError) {
+            console.error("Error registering for live:", regError);
+          } else {
+            console.log("Live registration created/updated:", { userId: profile.id, liveId: liveData.id });
+          }
+
+          // Create order record
+          const paidAmount = payload.order?.paid_amount || 0;
+          const amountInCurrency = (paidAmount / 100).toFixed(2);
+
+          const { error: orderError } = await supabase.from("orders").insert({
+            user_id: profile.id,
+            product_name: payload.item?.product_name || liveData.title || "Live",
+            product_type: "one_time_service",
+            amount: parseFloat(amountInCurrency),
+            currency: "BRL",
+            status: "paid",
+            ticto_order_id: transactionId,
+            ticto_event_type: eventStatus,
+            paid_at: new Date().toISOString(),
+          });
+
+          if (orderError) {
+            console.error("Error creating live order:", orderError);
+          } else {
+            console.log("Live order created:", { userId: profile.id, liveId: liveData.id, amount: amountInCurrency });
+          }
+
+          // Log and return early — live purchase handled
+          await supabase.from("payment_logs").upsert({
+            user_id: profile.id,
+            transaction_id: transactionId,
+            event_type: eventStatus,
+            payload,
+            status: "processed_live",
+            processed_at: new Date().toISOString(),
+          }, { onConflict: "transaction_id,event_type" });
+
+          return new Response(JSON.stringify({ success: true, status: eventStatus, type: "live_purchase" }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // Grant access if user and service found
       if (profile && service) {
         // Compute metadata and sessions_total based on service_type
@@ -429,6 +498,31 @@ serve(async (req) => {
               userId: profile.id,
               transactionId,
             });
+          }
+        }
+
+        // ---- LIVES REFUND FALLBACK ----
+        if (profile && !service) {
+          const { data: liveData } = await supabase
+            .from("lives")
+            .select("id")
+            .eq("ticto_product_id", productId)
+            .maybeSingle();
+
+          if (liveData) {
+            await supabase
+              .from("live_registrations")
+              .update({ payment_status: "refunded" })
+              .eq("live_id", liveData.id)
+              .eq("user_id", profile.id);
+
+            console.log("Live registration refunded:", { userId: profile.id, liveId: liveData.id });
+
+            await supabase
+              .from("orders")
+              .update({ status: "refunded", updated_at: new Date().toISOString() })
+              .eq("user_id", profile.id)
+              .eq("ticto_order_id", transactionId);
           }
         }
 

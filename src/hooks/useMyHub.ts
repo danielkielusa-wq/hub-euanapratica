@@ -42,8 +42,9 @@ function computeStatus(
     case 'consulting': {
       const hasSessions = (row.sessions_total ?? 1) > row.sessions_used;
       if (!hasSessions) return 'completed';
-      if (!booking || booking.status === 'cancelled') return 'needs_action';
-      if (booking.status === 'completed') return 'completed';
+      // Has remaining sessions — check latest booking state
+      if (!booking || booking.status === 'cancelled' || booking.status === 'completed')
+        return 'needs_action';
       if (booking.status === 'confirmed') return 'scheduled';
       return 'needs_action';
     }
@@ -123,22 +124,29 @@ export function useMyHub() {
         .map((r) => r.service_id);
 
       const bookingMap = new Map<string, BookingWithDetails>();
+      const confirmedBookingCounts = new Map<string, number>();
       if (consultingServiceIds.length > 0) {
+        // Note: bookings.mentor_id references auth.users, not profiles,
+        // so we can't use FK hints for profiles join here.
+        // JourneyCard only needs status, scheduled_start, meeting_link.
         const { data: bookings } = await supabase
           .from('bookings')
-          .select(`
-            *,
-            service:hub_services!bookings_service_id_fkey(id, name, description, icon_name),
-            mentor:profiles!bookings_mentor_id_fkey(id, full_name, email, profile_photo_url)
-          `)
+          .select('*')
           .eq('student_id', user.id)
           .in('service_id', consultingServiceIds)
           .neq('status', 'cancelled')
           .order('created_at', { ascending: false });
 
         if (bookings) {
-          // Keep only the latest booking per service_id
           for (const b of bookings) {
+            // Count confirmed (not yet completed) bookings per service
+            if (b.status === 'confirmed') {
+              confirmedBookingCounts.set(
+                b.service_id,
+                (confirmedBookingCounts.get(b.service_id) ?? 0) + 1
+              );
+            }
+            // Keep only the latest booking per service_id for display
             if (!bookingMap.has(b.service_id)) {
               bookingMap.set(b.service_id, b as BookingWithDetails);
             }
@@ -179,12 +187,21 @@ export function useMyHub() {
           : undefined;
         const computed_status = computeStatus(row, booking, nextSessionDatetime);
 
+        // How many sessions can still be booked?
+        // remaining = total - used (completed) - confirmed (in-flight)
+        const confirmedCount = confirmedBookingCounts.get(row.service_id) ?? 0;
+        const remaining_bookable =
+          row.hub_services.service_type === 'consulting'
+            ? Math.max(0, (row.sessions_total ?? 1) - (row.sessions_used ?? 0) - confirmedCount)
+            : 0;
+
         return {
           user_service_id: row.id,
           service: row.hub_services,
           access_source: row.access_source ?? 'purchase',
           sessions_total: row.sessions_total,
           sessions_used: row.sessions_used ?? 0,
+          remaining_bookable,
           computed_status,
           booking,
           next_session_datetime: nextSessionDatetime,

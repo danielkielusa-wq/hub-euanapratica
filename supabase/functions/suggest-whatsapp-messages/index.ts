@@ -4,14 +4,14 @@
  * Analisa o perfil completo de um lead e usa LLM para sugerir
  * de 2 a 4 mensagens WhatsApp personalizadas para enviar ao lead.
  *
- * Auth:   requireAdmin
+ * Auth:   requireAdminOrAssistant
  * Input:  { lead_id: string }
  * Output: { suggestions: MessageSuggestion[] }
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM } from "../_shared/llmService.ts";
-import { getCorsHeaders, requireAdmin } from "../_shared/authGuard.ts";
+import { getCorsHeaders, requireAdminOrAssistant } from "../_shared/authGuard.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const authError = await requireAdmin(req);
+  const authError = await requireAdminOrAssistant(req);
   if (authError) return authError;
 
   try {

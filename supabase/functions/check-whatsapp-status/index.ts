@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
+import { requireAdminOrAssistant, getCorsHeaders } from "../_shared/authGuard.ts";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 
 serve(async (req) => {
@@ -10,8 +10,8 @@ serve(async (req) => {
   }
 
   try {
-    // Admin-only
-    const authError = await requireAdmin(req);
+    // Admin or Assistant
+    const authError = await requireAdminOrAssistant(req);
     if (authError) return authError;
 
     const config = await getApiConfig("evolution_api");

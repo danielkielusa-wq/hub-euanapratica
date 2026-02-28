@@ -11,9 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench, Copy, Search, Brain } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminApis, type ApiConfigInput, type ApiConfig } from '@/hooks/useAdminApis';
+import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,10 +24,26 @@ const KNOWN_CREDENTIAL_KEYS: Record<string, string[]> = {
   resend_email: ['api_key'],
   ticto_webhook: ['secret_key'],
   anthropic_api: ['api_key'],
+  bunny_stream: ['api_key', 'library_id', 'token_auth_key', 'cdn_hostname'],
 };
+
+const nameToSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
 
 export default function AdminApis() {
   const { apis, isLoading, isSaving, isTesting, createApi, updateApi, deleteApi, testConnection } = useAdminApis();
+  const { getConfigValue, updateConfig, isSaving: isSavingConfig } = useAppConfigs();
+
+  // Weekly report LLM selector state — synced from app_configs after load
+  const [weeklyApiKey, setWeeklyApiKey] = useState('');
+  const configuredWeeklyKey = getConfigValue('weekly_report_api_key');
+  if (configuredWeeklyKey && weeklyApiKey === '') {
+    setWeeklyApiKey(configuredWeeklyKey);
+  }
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingApi, setEditingApi] = useState<ApiConfig | null>(null);
@@ -46,6 +63,8 @@ export default function AdminApis() {
 
   // Parameter rows for create dialog
   const [paramRows, setParamRows] = useState<{ key: string; value: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [slugTouched, setSlugTouched] = useState(false);
 
   const resetForm = () => {
     setFormName('');
@@ -57,10 +76,34 @@ export default function AdminApis() {
     setFormFallback(null);
     setCredRows([{ key: '', value: '' }]);
     setParamRows([]);
+    setSlugTouched(false);
   };
 
   const openCreateDialog = () => {
     resetForm();
+    setShowCreateDialog(true);
+  };
+
+  const openCloneDialog = (api: ApiConfig) => {
+    resetForm();
+    setFormName(`${api.name} (cópia)`);
+    setFormApiKey(`${api.api_key}_copy`);
+    setSlugTouched(true);
+    setFormBaseUrl(api.base_url || '');
+    setFormDescription(api.description || '');
+    setFormIsActive(api.is_active);
+    setFormFallback(api.fallback_api_key || null);
+
+    // Pre-populate credential keys without values (credentials are masked)
+    const knownKeys = KNOWN_CREDENTIAL_KEYS[api.api_key];
+    const existingKeys = Object.keys(api.credentials || {});
+    const keys = knownKeys || (existingKeys.length > 0 ? existingKeys : ['api_key']);
+    setCredRows(keys.map(k => ({ key: k, value: '' })));
+
+    // Clone parameters
+    const paramEntries = Object.entries(api.parameters || {});
+    setParamRows(paramEntries.map(([k, v]) => ({ key: k, value: String(v) })));
+
     setShowCreateDialog(true);
   };
 
@@ -420,7 +463,10 @@ export default function AdminApis() {
                     <Input
                       placeholder="Ex: OpenAI API"
                       value={formName}
-                      onChange={e => setFormName(e.target.value)}
+                      onChange={e => {
+                        setFormName(e.target.value);
+                        if (!slugTouched) setFormApiKey(nameToSlug(e.target.value));
+                      }}
                       className="rounded-xl"
                     />
                   </div>
@@ -429,7 +475,10 @@ export default function AdminApis() {
                     <Input
                       placeholder="Ex: openai_api"
                       value={formApiKey}
-                      onChange={e => setFormApiKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                      onChange={e => {
+                        setSlugTouched(true);
+                        setFormApiKey(e.target.value.toLowerCase().replace(/\s+/g, '_'));
+                      }}
                       className="rounded-xl font-mono"
                     />
                   </div>
@@ -590,6 +639,19 @@ export default function AdminApis() {
           </div>
         </div>
 
+        {/* Search */}
+        {!isLoading && apis.length > 0 && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, slug ou URL..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="rounded-xl pl-9"
+            />
+          </div>
+        )}
+
         {/* API Cards Grid */}
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -613,7 +675,16 @@ export default function AdminApis() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {apis.map(api => (
+            {apis.filter(api => {
+              if (!searchQuery.trim()) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                api.name.toLowerCase().includes(q) ||
+                api.api_key.toLowerCase().includes(q) ||
+                (api.base_url && api.base_url.toLowerCase().includes(q)) ||
+                (api.description && api.description.toLowerCase().includes(q))
+              );
+            }).map(api => (
               <Card key={api.id} className="rounded-[24px]">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -642,6 +713,15 @@ export default function AdminApis() {
                         ) : (
                           <TestTube className="w-4 h-4" />
                         )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openCloneDialog(api)}
+                        className="h-8 w-8"
+                        title="Clonar"
+                      >
+                        <Copy className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -731,6 +811,65 @@ export default function AdminApis() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* LLM Feature Settings */}
+        {!isLoading && apis.length > 0 && (
+          <Card className="rounded-[24px] border-indigo-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
+                  <Brain className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">LLM por Feature</CardTitle>
+                  <CardDescription className="text-xs">Escolha qual API é usada por cada funcionalidade de IA</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Weekly Intelligence Report */}
+              <div className="flex items-center justify-between gap-4 p-3 rounded-xl border bg-muted/30">
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-sm font-medium">Relatório Semanal de Inteligência</p>
+                  <p className="text-xs text-muted-foreground">
+                    Gera análise de leads, funil, receita e briefing de vendas toda segunda-feira.
+                    Configurável também em <span className="font-mono">app_configs → weekly_report_api_key</span>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Select
+                    value={weeklyApiKey || '_none'}
+                    onValueChange={v => setWeeklyApiKey(v === '_none' ? '' : v)}
+                  >
+                    <SelectTrigger className="rounded-xl w-48">
+                      <SelectValue placeholder="Selecionar API..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">
+                        <span className="text-muted-foreground">Selecionar API...</span>
+                      </SelectItem>
+                      {apis
+                        .filter(a => a.is_active && !NON_LLM_SLUGS.includes(a.api_key))
+                        .map(api => (
+                          <SelectItem key={api.api_key} value={api.api_key}>
+                            {api.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={!weeklyApiKey || weeklyApiKey === configuredWeeklyKey || isSavingConfig}
+                    onClick={() => updateConfig('weekly_report_api_key', weeklyApiKey)}
+                  >
+                    {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Info Card */}

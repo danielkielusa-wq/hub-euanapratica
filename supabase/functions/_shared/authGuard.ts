@@ -14,13 +14,16 @@ const ALLOWED_ORIGINS = [
   "https://hub.euanapratica.com",
   "https://www.euanapratica.com",
   "https://euanapratica.com",
+  "https://hub-euanapratica.vercel.app",
 ];
 
 function getCorsHeaders(req?: Request): Record<string, string> {
   const origin = req?.headers?.get("origin") || "";
-  // Always allow any localhost origin (any port) for local development
+  // Allow any localhost origin (any port) for local development
   const isLocalhost = /^http:\/\/localhost(:\d+)?$/.test(origin);
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) || isLocalhost ? origin : ALLOWED_ORIGINS[0];
+  // Allow Vercel preview URLs (e.g. hub-euanapratica-abc123-user.vercel.app)
+  const isVercelPreview = /^https:\/\/hub-euanapratica.*\.vercel\.app$/.test(origin);
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) || isLocalhost || isVercelPreview ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -147,6 +150,33 @@ export async function requireAdmin(req: Request): Promise<Response | null> {
   if (auth.role !== "admin") {
     return new Response(
       JSON.stringify({ error: "Forbidden: Admin role required" }),
+      { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Valida que a chamada é de um admin OU assistant (Customer Associate).
+ * Retorna resposta de erro se falhar, ou null se autorizado.
+ */
+export async function requireAdminOrAssistant(req: Request): Promise<Response | null> {
+  if (validateInternalCall(req)) {
+    return null;
+  }
+
+  const auth = await validateUserAuth(req);
+  if (!auth.authenticated) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
+    );
+  }
+
+  if (auth.role !== "admin" && auth.role !== "assistant") {
+    return new Response(
+      JSON.stringify({ error: "Forbidden: Admin or Assistant role required" }),
       { status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }

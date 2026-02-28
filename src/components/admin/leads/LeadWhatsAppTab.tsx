@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatInTz } from '@/lib/timezone';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import type { LeadInteraction } from '@/types/leads';
 
 interface LeadWhatsAppTabProps {
@@ -15,19 +17,12 @@ interface LeadWhatsAppTabProps {
   onSuggestWhatsApp: () => void;
 }
 
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatTime(dateStr: string, tz: string): string {
+  return formatInTz(dateStr, tz, 'HH:mm');
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
+function formatDate(dateStr: string, tz: string): string {
+  return formatInTz(dateStr, tz, "dd 'de' MMMM 'de' yyyy");
 }
 
 function DeliveryIcon({ status }: { status?: string }) {
@@ -52,6 +47,7 @@ export function LeadWhatsAppTab({
   onSendMessage,
   onSuggestWhatsApp,
 }: LeadWhatsAppTabProps) {
+  const tz = useUserTimezone();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Filter WhatsApp messages and sort ascending (oldest first for chat)
@@ -144,7 +140,7 @@ export function LeadWhatsAppTab({
                 {/* Date separator */}
                 <div className="flex justify-center my-3">
                   <span className="text-[10px] bg-white/90 text-gray-500 px-3 py-1 rounded-lg shadow-sm">
-                    {formatDate(group.messages[0].created_at)}
+                    {formatDate(group.messages[0].created_at, tz)}
                   </span>
                 </div>
 
@@ -184,7 +180,7 @@ export function LeadWhatsAppTab({
                         {/* Footer: time + delivery status */}
                         <div className="flex items-center justify-end gap-1 mt-0.5">
                           <span className="text-[10px] text-gray-400">
-                            {formatTime(msg.created_at)}
+                            {formatTime(msg.created_at, tz)}
                           </span>
                           {isOutbound && <DeliveryIcon status={deliveryStatus} />}
                         </div>

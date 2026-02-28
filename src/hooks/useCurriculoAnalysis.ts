@@ -109,12 +109,13 @@ export function useCurriculoAnalysis() {
       // Step 3: Clean up - delete temp file
       await supabase.storage.from('temp-resumes').remove([filePath]);
 
-      // Check for 402 LIMIT_REACHED error from edge function
+      // Check for errors from edge function (non-2xx responses)
       if (error) {
-        // Check if it's a FunctionsHttpError with status 402
         const errorBody = error.message;
         try {
           const parsedError = JSON.parse(errorBody);
+
+          // Handle quota limit
           if (parsedError.error_code === 'LIMIT_REACHED') {
             setState(prev => ({
               ...prev,
@@ -127,8 +128,22 @@ export function useCurriculoAnalysis() {
               description: parsedError.error_message,
               variant: 'destructive',
             });
-            // Refetch quota to update UI
             await refetchQuota();
+            return;
+          }
+
+          // Handle file format / parsing errors (UNSUPPORTED_FORMAT, EXTRACTION_FAILED, etc.)
+          if (parsedError.error_code || parsedError.parsing_error) {
+            setState(prev => ({
+              ...prev,
+              status: 'error',
+              error: parsedError.error_message || parsedError.error,
+            }));
+            toast({
+              title: parsedError.error || 'Erro no processamento',
+              description: parsedError.error_message || 'Não foi possível processar seu currículo.',
+              variant: 'destructive',
+            });
             return;
           }
         } catch {

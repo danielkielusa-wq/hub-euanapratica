@@ -122,12 +122,14 @@ async function routeTest(config: ApiConfig): Promise<TestResult> {
       return testResend(config);
     case "ticto_webhook":
       return { success: true, message: "Ticto é um webhook (não requer teste de conexão ativa)" };
+    case "bunny_stream":
+      return testBunny(config);
   }
 
   // Slug customizado: detecta pela base_url
   const baseUrl = (config.base_url || "").toLowerCase();
 
-  if (baseUrl.includes("openai.com")) {
+  if (baseUrl.includes("openai.com") || baseUrl.includes("openrouter.ai")) {
     return testOpenAI(config);
   }
   if (baseUrl.includes("anthropic.com")) {
@@ -135,6 +137,9 @@ async function routeTest(config: ApiConfig): Promise<TestResult> {
   }
   if (baseUrl.includes("resend.com")) {
     return testResend(config);
+  }
+  if (baseUrl.includes("bunnycdn.com") || baseUrl.includes("bunny.net")) {
+    return testBunny(config);
   }
 
   // Tenta teste genérico se tem base_url
@@ -301,6 +306,70 @@ async function testResend(config: ApiConfig): Promise<TestResult> {
 }
 
 /**
+ * Testa conexão com Bunny.net Stream API
+ */
+async function testBunny(config: ApiConfig): Promise<TestResult> {
+  try {
+    const apiKey = config.credentials.api_key;
+    const libraryId = config.credentials.library_id;
+
+    if (!apiKey) {
+      return { success: false, message: "API key não configurada. Edite a API e adicione api_key em credentials." };
+    }
+    if (!libraryId) {
+      return { success: false, message: "Library ID não configurado. Adicione library_id em credentials." };
+    }
+
+    // List videos (page=1, limit=1) to validate credentials
+    const response = await fetch(
+      `https://video.bunnycdn.com/library/${libraryId}/videos?page=1&itemsPerPage=1`,
+      {
+        method: "GET",
+        headers: {
+          "AccessKey": apiKey,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const totalCount = data.totalItems ?? 0;
+      const hasToken = !!config.credentials.token_auth_key;
+      return {
+        success: true,
+        message: `Conexão com Bunny.net Stream estabelecida. ${totalCount} vídeos na biblioteca.${hasToken ? "" : " ⚠️ token_auth_key não configurado (necessário para player seguro)."}`,
+        details: { status: response.status, total_videos: totalCount, token_configured: hasToken },
+      };
+    } else if (response.status === 401) {
+      return {
+        success: false,
+        message: "API key inválida. Verifique a credencial api_key.",
+        details: { status: response.status },
+      };
+    } else if (response.status === 404) {
+      return {
+        success: false,
+        message: `Library ID "${libraryId}" não encontrada. Verifique o valor de library_id.`,
+        details: { status: response.status },
+      };
+    } else {
+      const errorText = await response.text();
+      return {
+        success: false,
+        message: `Erro na conexão: HTTP ${response.status}`,
+        details: { status: response.status, error: errorText.slice(0, 500) },
+      };
+    }
+  } catch (err) {
+    return {
+      success: false,
+      message: `Falha na conexão com Bunny.net: ${err instanceof Error ? err.message : "Erro desconhecido"}`,
+    };
+  }
+}
+
+/**
  * Teste genérico: tenta acessar a base_url
  */
 async function testGenericEndpoint(config: ApiConfig): Promise<TestResult> {
@@ -313,7 +382,7 @@ async function testGenericEndpoint(config: ApiConfig): Promise<TestResult> {
     });
 
     return {
-      success: response.status < 500,
+      success: response.ok,
       message: response.ok
         ? `Endpoint acessível (HTTP ${response.status})`
         : `Endpoint retornou HTTP ${response.status}`,

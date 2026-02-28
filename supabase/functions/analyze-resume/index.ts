@@ -168,6 +168,7 @@ Responda em português brasileiro de forma clara e direta.`;
     
     let resumeContent: string;
     let pdfBase64: string = "";
+    let sourceFormat: "pdf" | "docx" = "pdf";
     
     if (isPdf) {
       // For PDF, convert to base64 for multimodal processing
@@ -210,13 +211,49 @@ Responda em português brasileiro de forma clara e direta.`;
         const documentXml = await documentBlob.text();
         await zipReader.close();
         
-        // Extract text from <w:t> tags
-        const textMatches = documentXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-        const extractedText = textMatches
-          .map((match: string) => match.replace(/<[^>]+>/g, ''))
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+        // Decode XML entities helper
+        const decodeXmlEntities = (text: string): string => {
+          return text
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&apos;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+        };
+
+        // Extract text preserving paragraph structure
+        // Split by </w:p> to identify paragraph boundaries
+        const paragraphs = documentXml.split(/<\/w:p>/);
+        const lines: string[] = [];
+
+        for (const para of paragraphs) {
+          // Extract text from <w:t> tags within this paragraph
+          const textMatches = para.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+          if (textMatches.length === 0) continue;
+
+          // Handle tab elements between runs — replace <w:tab/> with tab char
+          let paraWithTabs = para.replace(/<w:tab\s*\/>/g, '\t__TAB__\t');
+
+          // Re-extract after tab injection (tabs split text runs)
+          const parts: string[] = [];
+          const segments = paraWithTabs.split('__TAB__');
+          for (const segment of segments) {
+            const segTextMatches = segment.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+            const segText = segTextMatches
+              .map((match: string) => decodeXmlEntities(match.replace(/<[^>]+>/g, '')))
+              .join('');
+            parts.push(segText);
+          }
+
+          const lineText = parts.join('\t').trim();
+          if (lineText) {
+            lines.push(lineText);
+          }
+        }
+
+        const extractedText = lines.join('\n');
         
         if (extractedText.length < 100) {
           return new Response(
@@ -231,6 +268,7 @@ Responda em português brasileiro de forma clara e direta.`;
         }
         
         resumeContent = extractedText.slice(0, 15000);
+        sourceFormat = "docx";
         console.log(`[analyze-resume] Step 6 OK: DOCX extracted (${resumeContent.length} chars)`);
 
       } catch (zipError) {
@@ -450,11 +488,11 @@ Responda em português brasileiro de forma clara e direta.`;
           },
           parsing_error: {
             type: "boolean",
-            description: "Set to true if the resume content could not be properly read or is corrupted",
+            description: "Set to true ONLY if the resume content is completely unreadable gibberish (e.g. random characters, encoded binary). If the text is readable and contains resume-like content (name, experience, skills), set to false even if formatting is plain or imperfect.",
           },
           parsing_error_message: {
             type: "string",
-            description: "Error message in Portuguese if parsing_error is true",
+            description: "Error message in Portuguese if parsing_error is true. Use empty string if parsing_error is false.",
           },
         },
         required: [
@@ -479,6 +517,11 @@ Responda em português brasileiro de forma clara e direta.`;
 
     const llmStartTime = Date.now();
 
+    // DOCX context: tell the LLM the text was extracted from a properly formatted DOCX
+    const docxContext = sourceFormat === "docx"
+      ? `\n\nIMPORTANT CONTEXT: The resume content below was extracted from a .DOCX file. The original document has proper formatting (headings, bullet points, sections) but you are receiving the extracted plain text only. Do NOT penalize the ATS format score due to lack of visual formatting — DOCX is an ATS-friendly format. Evaluate ats_format based on content structure (presence of clear sections like Experience, Education, Skills, proper section ordering, consistent date formats, etc.), NOT visual layout. Set parsing_error to false — the text was successfully extracted.`
+      : "";
+
     if (isAnthropic) {
       // ========== Anthropic Messages API ==========
       const anthropicUserContent = isPdf
@@ -495,7 +538,7 @@ Responda em português brasileiro de forma clara e direta.`;
         : [
             {
               type: "text",
-              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.${docxContext}\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
             },
           ];
 
@@ -587,7 +630,7 @@ Responda em português brasileiro de forma clara e direta.`;
         : [
             {
               type: "input_text",
-              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
+              text: `Aqui esta o curriculo do candidato e a descricao da vaga para analise.${docxContext}\n\nDESCRICAO DA VAGA:\n${jobDescription}\n\nCONTEUDO DO CURRICULO:\n${resumeContent}`,
             },
           ];
 

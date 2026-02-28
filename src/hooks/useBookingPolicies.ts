@@ -45,8 +45,7 @@ export function useGlobalBookingPolicy() {
 }
 
 /**
- * Calculate policy limits for a specific booking
- * Determines if user can cancel/reschedule based on policy and timing
+ * Calculate policy limits for a specific booking (per-card hook — kept for backward compatibility)
  */
 export function useBookingLimits(booking: Booking | undefined) {
   const { data: policy, isLoading: policyLoading } = useBookingPolicy(
@@ -55,34 +54,71 @@ export function useBookingLimits(booking: Booking | undefined) {
   const { data: stats, isLoading: statsLoading } = useBookingStats();
 
   if (!booking || !policy || policyLoading || statsLoading) {
-    return {
-      isLoading: policyLoading || statsLoading,
-      data: null,
-    };
+    return { isLoading: policyLoading || statsLoading, data: null };
   }
 
+  return { isLoading: false, data: computeBookingLimits(booking, policy, stats) };
+}
+
+/**
+ * Fetch ALL active booking policies in one query.
+ * Returns a Map keyed by service_id (or '__global__' for the global policy).
+ * Eliminates N+1: one query instead of one per unique service_id.
+ */
+export function useBookingPoliciesMap() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['booking-policies-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('booking_policies')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const map = new Map<string, BookingPolicy>();
+      for (const p of data as BookingPolicy[]) {
+        map.set(p.service_id ?? '__global__', p);
+      }
+      return map;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Resolve the correct policy for a booking from the policies map.
+ * Falls back to global policy if no service-specific policy exists.
+ */
+export function resolvePolicyForBooking(
+  booking: Booking,
+  policiesMap: Map<string, BookingPolicy>
+): BookingPolicy | undefined {
+  return policiesMap.get(booking.service_id) ?? policiesMap.get('__global__');
+}
+
+/**
+ * Pure function: compute limits for a booking given a policy and stats.
+ */
+export function computeBookingLimits(
+  booking: Booking,
+  policy: BookingPolicy,
+  stats: { remaining_slots: number } | null
+): BookingPolicyLimits {
   const now = new Date();
   const sessionStart = new Date(booking.scheduled_start);
   const hoursUntilSession = differenceInHours(sessionStart, now);
 
   const limits: BookingPolicyLimits = {
-    // Can book if under concurrent limit
     canBook: (stats?.remaining_slots ?? 0) > 0,
-
-    // Can reschedule if:
-    // 1. Status is confirmed
-    // 2. Under reschedule limit
-    // 3. Outside cancellation window
     canReschedule:
       booking.status === 'confirmed' &&
       booking.reschedule_count < policy.max_reschedules_per_booking &&
       hoursUntilSession >= policy.cancellation_window_hours,
-
-    // Can cancel if:
-    // 1. Status is confirmed
-    // 2. Outside cancellation window (or will be marked as no-show)
     canCancel: booking.status === 'confirmed',
-
     remainingBookings: stats?.remaining_slots ?? 0,
     remainingReschedules: Math.max(
       0,
@@ -92,7 +128,6 @@ export function useBookingLimits(booking: Booking | undefined) {
     cancellationWindowHours: policy.cancellation_window_hours,
   };
 
-  // Generate appropriate messages
   if (!limits.canReschedule && booking.status === 'confirmed') {
     if (booking.reschedule_count >= policy.max_reschedules_per_booking) {
       limits.message = `Você já reagendou esta sessão ${booking.reschedule_count} vezes (limite máximo).`;
@@ -101,10 +136,7 @@ export function useBookingLimits(booking: Booking | undefined) {
     }
   }
 
-  return {
-    isLoading: false,
-    data: limits,
-  };
+  return limits;
 }
 
 /**
@@ -138,20 +170,64 @@ function useBookingStats() {
 }
 
 /**
- * Check if user can create a new booking
+ * Fetch session credit info for a specific service
  */
-export function useCanCreateBooking() {
+export function useSessionCredits(serviceId?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['session-credits', user?.id, serviceId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_service_session_info', {
+        p_student_id: user!.id,
+        p_service_id: serviceId!,
+      });
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as {
+        sessions_total: number | null;
+        sessions_used: number;
+        upcoming_confirmed: number;
+        available: number | null; // null = unlimited
+      };
+    },
+    enabled: !!user?.id && !!serviceId,
+  });
+}
+
+/**
+ * Check if user can create a new booking
+ * Combines concurrent slot limit + session credit check
+ */
+export function useCanCreateBooking(serviceId?: string) {
   const { data: stats, isLoading } = useBookingStats();
   const { data: policy, isLoading: policyLoading } = useGlobalBookingPolicy();
+  const { data: credits, isLoading: creditsLoading } = useSessionCredits(serviceId);
+
+  const concurrentCanBook = (stats?.remaining_slots ?? 0) > 0;
+
+  // Session credit check: null available = unlimited (skip check)
+  const hasCredits = credits?.available === null || credits?.available === undefined || credits.available > 0;
+
+  const canBook = concurrentCanBook && hasCredits;
+
+  let message: string | null = null;
+  if (!concurrentCanBook) {
+    message = `Você atingiu o limite de ${policy?.max_concurrent_bookings ?? 3} agendamentos simultâneos.`;
+  } else if (!hasCredits) {
+    message = `Você já utilizou todas as sessões disponíveis para este serviço (${credits?.sessions_total ?? 0} sessões).`;
+  }
 
   return {
-    isLoading: isLoading || policyLoading,
-    canBook: (stats?.remaining_slots ?? 0) > 0,
+    isLoading: isLoading || policyLoading || creditsLoading,
+    canBook,
     remainingSlots: stats?.remaining_slots ?? 0,
     maxSlots: policy?.max_concurrent_bookings ?? 3,
-    message:
-      (stats?.remaining_slots ?? 0) <= 0
-        ? `Você atingiu o limite de ${policy?.max_concurrent_bookings ?? 3} agendamentos simultâneos.`
-        : null,
+    // Session credit info
+    sessionsTotal: credits?.sessions_total ?? null,
+    sessionsUsed: credits?.sessions_used ?? 0,
+    sessionsAvailable: credits?.available ?? null,
+    message,
   };
 }

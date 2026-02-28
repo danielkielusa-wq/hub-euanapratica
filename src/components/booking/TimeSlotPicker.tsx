@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatInTz, DEFAULT_TIMEZONE } from '@/lib/timezone';
 import type { TimeSlot } from '@/types/booking';
 
 interface TimeSlotPickerProps {
@@ -14,7 +13,7 @@ export function TimeSlotPicker({
   slots,
   selectedSlot,
   onSelectSlot,
-  userTimezone = 'America/Sao_Paulo',
+  userTimezone = DEFAULT_TIMEZONE,
 }: TimeSlotPickerProps) {
   if (slots.length === 0) {
     return (
@@ -43,7 +42,7 @@ export function TimeSlotPicker({
                 : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50'
             )}
           >
-            {format(slotTime, 'HH:mm', { locale: ptBR })}
+            {formatInTz(slotTime, userTimezone, 'HH:mm')}
           </button>
         );
       })}
@@ -56,6 +55,7 @@ interface TimeSlotGridProps {
   selectedSlot: TimeSlot | null;
   onSelectSlot: (slot: TimeSlot) => void;
   showDuration?: boolean;
+  userTimezone?: string;
 }
 
 /**
@@ -66,6 +66,7 @@ export function TimeSlotGrid({
   selectedSlot,
   onSelectSlot,
   showDuration = false,
+  userTimezone = DEFAULT_TIMEZONE,
 }: TimeSlotGridProps) {
   if (slots.length === 0) {
     return (
@@ -101,7 +102,7 @@ export function TimeSlotGrid({
             )}
           >
             <div className="font-bold">
-              {format(startTime, 'HH:mm', { locale: ptBR })}
+              {formatInTz(startTime, userTimezone, 'HH:mm')}
             </div>
             {showDuration && (
               <div
@@ -110,7 +111,7 @@ export function TimeSlotGrid({
                   isSelected ? 'text-indigo-200' : 'text-gray-400'
                 )}
               >
-                até {format(endTime, 'HH:mm', { locale: ptBR })}
+                até {formatInTz(endTime, userTimezone, 'HH:mm')}
               </div>
             )}
           </button>

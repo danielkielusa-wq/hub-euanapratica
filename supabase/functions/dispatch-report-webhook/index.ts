@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
+import { normalizePhone } from "../_shared/whatsappService.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -72,7 +73,46 @@ serve(async (req) => {
       barriers:            report.barriers_analysis?.critical_blockers || [],
     }, supabase);
 
-    console.log(`[dispatch-report-webhook] Dispatched for ${ev.email} (${evaluation_id})`);
+    console.log(`[dispatch-report-webhook] N8N dispatched for ${ev.email} (${evaluation_id})`);
+
+    // Also trigger WhatsApp flow engine for report.generated event
+    const leadPhone = ev.phone ?? lead_phone;
+    if (leadPhone) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+        const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || "";
+        const normalized = normalizePhone(leadPhone);
+
+        const flowResp = await fetch(`${supabaseUrl}/functions/v1/execute-whatsapp-flow`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-secret": internalSecret,
+          },
+          body: JSON.stringify({
+            trigger_type: "event",
+            trigger_data: {
+              event: "report.generated",
+              phone: normalized,
+              lead_id: ev.id,
+              lead_name: ev.name ?? lead_name,
+              lead_email: ev.email ?? lead_email,
+              access_token: ev.access_token ?? access_token,
+              report_link: reportLink,
+            },
+          }),
+        });
+
+        if (!flowResp.ok) {
+          console.error(`[dispatch-report-webhook] Flow trigger failed: ${flowResp.status} ${await flowResp.text()}`);
+        } else {
+          console.log(`[dispatch-report-webhook] Flow engine triggered for ${normalized}`);
+        }
+      } catch (flowErr) {
+        console.error("[dispatch-report-webhook] Flow trigger error:", flowErr);
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (err) {
     console.error("[dispatch-report-webhook] Error:", err);

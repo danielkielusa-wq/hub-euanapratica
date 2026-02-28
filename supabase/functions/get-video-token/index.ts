@@ -115,7 +115,7 @@ Deno.serve(async (req: Request) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const embedUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${lesson.bunny_video_id}?token=${token}&expires=${expiresAt}&autoplay=false&preload=true&responsive=true`;
+    const embedUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${lesson.bunny_video_id}?token=${token}&expires=${expiresAt}&autoplay=false&preload=true&responsive=true&showPlaybackSpeed=true&showChapters=true`;
 
     return new Response(
       JSON.stringify({ embedUrl, provider: "bunny" }),

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useMentorForService, useWeeklySlots } from '@/hooks/useAvailableSlots';
 import { useBookingPolicy, useCanCreateBooking } from '@/hooks/useBookingPolicies';
 import { useCreateBooking } from '@/hooks/useCreateBooking';
-import { useUserHubAccess } from '@/hooks/useHubServices';
+import { useUserHubAccess, useServiceById } from '@/hooks/useHubServices';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import type { TimeSlot, BookingFlowState } from '@/types/booking';
@@ -27,13 +27,14 @@ export default function BookingFlow() {
   const [studentNotes, setStudentNotes] = useState('');
   const [bookingId, setBookingId] = useState<string | null>(null);
 
-  // Queries
+  // Queries — service info loads fast (direct by ID), mentor loads separately
+  const { data: service, isLoading: loadingService } = useServiceById(serviceId);
   const { data: mentorService, isLoading: loadingMentor } =
     useMentorForService(serviceId);
   const { data: weekSlots, isLoading: loadingSlots, startDate, endDate } =
     useWeeklySlots(serviceId, weekOffset);
   const { data: policy } = useBookingPolicy(serviceId);
-  const { canBook, remainingSlots, message: limitMessage } = useCanCreateBooking();
+  const { isLoading: loadingBookability, canBook, remainingSlots, sessionsTotal, sessionsAvailable, message: limitMessage } = useCanCreateBooking(serviceId);
 
   // Access check
   const { data: userAccess, isLoading: accessLoading } = useUserHubAccess();
@@ -98,30 +99,8 @@ export default function BookingFlow() {
     );
   }
 
-  // Render booking limit warning
-  if (!canBook) {
-    return (
-      <DashboardLayout>
-        <DashboardTopHeader />
-        <div className="flex-1 p-6">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-red-50 rounded-2xl p-8 border border-red-100 text-center">
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Limite de agendamentos atingido
-              </h2>
-              <p className="text-gray-600 mb-6">{limitMessage}</p>
-              <Button onClick={() => navigate('/dashboard/agendamentos')}>
-                Ver meus agendamentos
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Render success state
+  // Render success state (must come BEFORE the limit gate —
+  // after booking, session credits drop to 0 and canBook becomes false)
   if (step === 'success') {
     return (
       <DashboardLayout>
@@ -157,6 +136,29 @@ export default function BookingFlow() {
     );
   }
 
+  // Render booking limit warning (only after loading completes)
+  if (!loadingBookability && !canBook) {
+    return (
+      <DashboardLayout>
+        <DashboardTopHeader />
+        <div className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-red-50 rounded-2xl p-8 border border-red-100 text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                Limite de agendamentos atingido
+              </h2>
+              <p className="text-gray-600 mb-6">{limitMessage}</p>
+              <Button onClick={() => navigate('/dashboard/agendamentos')}>
+                Ver meus agendamentos
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <DashboardTopHeader />
@@ -181,19 +183,28 @@ export default function BookingFlow() {
 
           {/* Service & Mentor Header */}
           <ServiceHeader
-            service={mentorService?.service}
+            service={service}
             mentor={mentorService?.mentor}
-            duration={mentorService?.slot_duration_minutes || 60}
-            isLoading={loadingMentor}
+            duration={mentorService?.slot_duration_minutes || service?.duration || 60}
+            isLoadingService={loadingService}
+            isLoadingMentor={loadingMentor}
           />
 
-          {/* Remaining slots indicator */}
+          {/* Session credits indicator */}
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>
-              Você pode agendar mais{' '}
-              <strong className="text-indigo-600">{remainingSlots}</strong>{' '}
-              {remainingSlots === 1 ? 'sessão' : 'sessões'}
-            </span>
+            {sessionsTotal !== null ? (
+              <span>
+                Créditos de sessão:{' '}
+                <strong className="text-indigo-600">{sessionsAvailable ?? 0}</strong>{' '}
+                de {sessionsTotal} {sessionsAvailable === 1 ? 'disponível' : 'disponíveis'}
+              </span>
+            ) : (
+              <span>
+                Você pode agendar mais{' '}
+                <strong className="text-indigo-600">{remainingSlots}</strong>{' '}
+                {remainingSlots === 1 ? 'sessão' : 'sessões'}
+              </span>
+            )}
           </div>
 
           {/* Step content */}
@@ -228,10 +239,10 @@ export default function BookingFlow() {
             </div>
           )}
 
-          {step === 'confirm' && selectedSlot && mentorService && (
+          {step === 'confirm' && selectedSlot && service && (
             <BookingConfirmation
-              service={mentorService.service}
-              mentor={mentorService.mentor}
+              service={service}
+              mentor={mentorService?.mentor ?? null}
               selectedSlot={selectedSlot}
               policy={policy}
               studentNotes={studentNotes}

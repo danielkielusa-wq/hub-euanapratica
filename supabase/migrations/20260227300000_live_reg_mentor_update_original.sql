@@ -1,0 +1,3 @@
+-- Original live_reg_mentor_update policy (already applied remotely)
+-- Moved to 20260227300001 due to timestamp collision
+-- This file exists only to satisfy migration tracking
