@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Mail, Plus, Edit, Trash2, MoreVertical, Search, Eye, Send, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminEmailTemplates, type EmailTemplate } from '@/hooks/useAdminEmailTemplates';
 import { format } from 'date-fns';
@@ -79,20 +80,7 @@ export default function AdminEmailTemplates() {
   return (
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100">
-              <Mail className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Templates de Email</h1>
-              <p className="text-sm text-muted-foreground">
-                Gerencie os templates de email do sistema
-              </p>
-            </div>
-          </div>
-
+        <PageHeader title="Templates de Email" subtitle="Gerencie os templates de email do sistema" icon={Mail}>
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
@@ -212,7 +200,7 @@ export default function AdminEmailTemplates() {
               Novo Template
             </Button>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Search */}
         <div className="flex items-center gap-4">

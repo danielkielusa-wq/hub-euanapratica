@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { WhatsAppConnectionStatus } from '@/components/admin/whatsapp/WhatsAppConnectionStatus';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
@@ -422,15 +423,7 @@ export default function AdminSettings() {
   return (
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
-            <Settings className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Configurações da Plataforma</h1>
-            <p className="text-sm text-muted-foreground">Gerencie as configurações globais do sistema</p>
-          </div>
-        </div>
+        <PageHeader title="Configurações da Plataforma" subtitle="Gerencie as configurações globais do sistema" icon={Settings} />
 
         <Tabs defaultValue="prompts" className="space-y-6">
           <TabsList className="rounded-xl">

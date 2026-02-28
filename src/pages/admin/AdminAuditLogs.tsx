@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuditLogRow {
@@ -46,8 +47,8 @@ const actionLabels: Record<string, string> = {
   plan_changed: 'Plano Alterado',
   usage_reset: 'Uso Resetado',
   usage_recorded: 'Uso Registrado',
-  user_deleted: 'Usuário Excluído',
-  impersonation_started: 'Impersonação Iniciada',
+  user_deleted: 'Usuï¿½rio Excluï¿½do',
+  impersonation_started: 'Impersonaï¿½ï¿½o Iniciada',
 };
 
 export default function AdminAuditLogs() {
@@ -132,9 +133,9 @@ export default function AdminAuditLogs() {
   }, [logs, search, actionFilter, sourceFilter, dateFrom, dateTo]);
 
   const renderChanges = (oldValues: Record<string, unknown> | null, newValues: Record<string, unknown> | null) => {
-    if (!newValues) return <span className="text-muted-foreground">—</span>;
+    if (!newValues) return <span className="text-muted-foreground">ï¿½</span>;
     const keys = Object.keys(newValues);
-    if (keys.length === 0) return <span className="text-muted-foreground">—</span>;
+    if (keys.length === 0) return <span className="text-muted-foreground">ï¿½</span>;
 
     return (
       <div className="space-y-1 text-xs">
@@ -157,18 +158,12 @@ export default function AdminAuditLogs() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Auditoria do Sistema</h1>
-            <p className="text-muted-foreground">
-              Registro de alterações e ações administrativas
-            </p>
-          </div>
+        <PageHeader title="Auditoria do Sistema" subtitle="Registro de alteraÃ§Ãµes e aÃ§Ãµes administrativas">
           <div className="flex items-center gap-3">
             <div className="relative w-[260px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por usuário, email, ação..."
+                placeholder="Buscar por usuï¿½rio, email, aï¿½ï¿½o..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -176,10 +171,10 @@ export default function AdminAuditLogs() {
             </div>
             <Select value={actionFilter} onValueChange={setActionFilter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Ação" />
+                <SelectValue placeholder="Aï¿½ï¿½o" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as ações</SelectItem>
+                <SelectItem value="all">Todas as aï¿½ï¿½es</SelectItem>
                 {Object.entries(actionLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -213,7 +208,7 @@ export default function AdminAuditLogs() {
               className="w-[150px]"
             />
           </div>
-        </div>
+        </PageHeader>
 
         <Card className="rounded-[24px] overflow-hidden">
           <CardContent className="p-0">
@@ -230,8 +225,8 @@ export default function AdminAuditLogs() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Quando</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Ação</TableHead>
+                    <TableHead>Usuï¿½rio</TableHead>
+                    <TableHead>Aï¿½ï¿½o</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Por</TableHead>
                     <TableHead>Detalhes</TableHead>
@@ -245,7 +240,7 @@ export default function AdminAuditLogs() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{log.user?.full_name || 'Usuário removido'}</div>
+                          <div className="font-medium">{log.user?.full_name || 'Usuï¿½rio removido'}</div>
                           <div className="text-muted-foreground">{log.user?.email || log.user_id}</div>
                         </div>
                       </TableCell>

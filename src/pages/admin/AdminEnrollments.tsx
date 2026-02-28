@@ -36,6 +36,7 @@ import { useAdminEspacos } from '@/hooks/useAdminEspacos';
 import type { EnrollmentFilters } from '@/types/admin';
 import { ENROLLMENT_STATUS_LABELS } from '@/types/admin';
 import { Search, MoreVertical, X, Clock, ArrowRightLeft, Loader2, Upload, Download } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -122,20 +123,12 @@ export default function AdminEnrollments() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Matrículas</h1>
-            <p className="text-muted-foreground">
-              Visualize e gerencie todas as matrículas
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={exportToCSV}>
-              <Download className="mr-2 h-4 w-4" />
-              Exportar CSV
-            </Button>
-          </div>
-        </div>
+        <PageHeader title="Gestão de Matrículas" subtitle="Visualize e gerencie todas as matrículas">
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </Button>
+        </PageHeader>
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">

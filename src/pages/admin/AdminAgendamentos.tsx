@@ -63,6 +63,7 @@ import {
   UserCircle,
   Save,
 } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import {
   useAdminBookings,
   useAdminMentorServices,
@@ -94,15 +95,7 @@ export default function AdminAgendamentos() {
   return (
     <DashboardLayout>
       <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <CalendarCheck className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
-            <p className="text-sm text-muted-foreground">
-              Gerencie agendamentos, disponibilidade de mentores e políticas
-            </p>
-          </div>
-        </div>
+        <PageHeader title="Gestão de Agendamentos" subtitle="Gerencie agendamentos, disponibilidade de mentores e políticas" icon={CalendarCheck} />
 
         <Tabs defaultValue="bookings" className="space-y-6">
           <TabsList>

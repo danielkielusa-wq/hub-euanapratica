@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Search, BookOpen, Users, Film, Clock } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { useAdminCourses, useCreateCourse } from '@/hooks/useAdminCourses';
 import { formatDuration } from '@/types/course';
 
@@ -43,19 +44,12 @@ export default function AdminCourses() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Cursos</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie seus cursos gravados com vídeo-aulas
-            </p>
-          </div>
+        <PageHeader title="Cursos" subtitle="Gerencie seus cursos gravados com vídeo-aulas">
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Criar Curso
           </Button>
-        </div>
+        </PageHeader>
 
         {/* Search */}
         <div className="relative max-w-sm">

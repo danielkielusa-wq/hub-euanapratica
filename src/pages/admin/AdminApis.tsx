@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench, Copy, Search, Brain } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminApis, type ApiConfigInput, type ApiConfig } from '@/hooks/useAdminApis';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
@@ -339,17 +340,7 @@ export default function AdminApis() {
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100">
-              <Settings className="w-5 h-5 text-indigo-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Configurações de APIs</h1>
-              <p className="text-sm text-muted-foreground">Gerencie as integrações externas do sistema</p>
-            </div>
-          </div>
-
+        <PageHeader title="Configurações de APIs" subtitle="Gerencie as integrações externas do sistema" icon={Settings}>
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
@@ -637,7 +628,7 @@ export default function AdminApis() {
             </AlertDialogContent>
           </AlertDialog>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Search */}
         {!isLoading && apis.length > 0 && (

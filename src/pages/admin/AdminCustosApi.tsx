@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, RefreshCw, Loader2, TrendingUp, Cpu, Users, Zap, Settings2, Save, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
@@ -215,19 +216,7 @@ export default function AdminCustosApi() {
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
         {/* ─── Header ─────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
-              <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Custos de API</h1>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe gastos com OpenAI, Anthropic e outros provedores de IA.
-              </p>
-            </div>
-          </div>
-
+        <PageHeader title="Custos de API" subtitle="Acompanhe gastos com OpenAI, Anthropic e outros provedores de IA." icon={DollarSign}>
           <div className="flex items-center gap-2">
             <div className="flex bg-muted rounded-lg p-0.5">
               {periods.map((p) => (
@@ -339,7 +328,7 @@ export default function AdminCustosApi() {
               </SheetContent>
             </Sheet>
           </div>
-        </div>
+        </PageHeader>
 
         {/* ─── Summary Cards ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

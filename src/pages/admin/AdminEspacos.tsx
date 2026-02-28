@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useAdminEspacos';
 import type { EspacoFilters, EspacoExtended, EspacoCategory, EspacoVisibility } from '@/types/admin';
 import { Plus, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/admin/shared/PageHeader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,18 +75,12 @@ export default function AdminEspacos() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Espaços</h1>
-            <p className="text-muted-foreground">
-              Gerencie espaços, imersões e programas educacionais
-            </p>
-          </div>
+        <PageHeader title="Gestão de Espaços" subtitle="Gerencie espaços, imersões e programas educacionais">
           <Button variant="gradient" onClick={() => setFormOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Espaço
           </Button>
-        </div>
+        </PageHeader>
 
         <EspacoFiltersComponent filters={filters} onChange={setFilters} />
 
