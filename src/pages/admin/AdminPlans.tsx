@@ -11,7 +11,7 @@ export default function AdminPlans() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-muted/30 p-6 md:p-8">
+      <div>
         <div className="max-w-7xl mx-auto animate-fade-in pb-20">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

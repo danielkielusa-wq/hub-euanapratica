@@ -422,7 +422,7 @@ export default function AdminSettings() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="space-y-6">
         <PageHeader title="Configurações da Plataforma" subtitle="Gerencie as configurações globais do sistema" icon={Settings} />
 
         <Tabs defaultValue="prompts" className="space-y-6">

@@ -156,7 +156,7 @@ export default function AdminWhatsAppFlowEditor() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="p-6 md:p-8 space-y-6">
+        <div className="space-y-6">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-96 rounded-[24px]" />
         </div>
@@ -167,7 +167,7 @@ export default function AdminWhatsAppFlowEditor() {
   if (!flow) {
     return (
       <DashboardLayout>
-        <div className="p-6 md:p-8">
+        <div>
           <p className="text-muted-foreground">Fluxo nao encontrado.</p>
           <Button variant="outline" className="mt-4 rounded-xl" onClick={() => navigate('/admin/whatsapp-flows')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -180,7 +180,7 @@ export default function AdminWhatsAppFlowEditor() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

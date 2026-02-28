@@ -62,7 +62,7 @@ export default function AdminLegalPages() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="p-6 md:p-8 space-y-6">
+        <div className="space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-[600px] w-full" />
         </div>
@@ -72,7 +72,7 @@ export default function AdminLegalPages() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-5xl">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">

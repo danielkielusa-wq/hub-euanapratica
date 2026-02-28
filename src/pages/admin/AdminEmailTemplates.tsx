@@ -79,7 +79,7 @@ export default function AdminEmailTemplates() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="space-y-6">
         <PageHeader title="Templates de Email" subtitle="Gerencie os templates de email do sistema" icon={Mail}>
           <div className="flex items-center gap-2">
             <Sheet>

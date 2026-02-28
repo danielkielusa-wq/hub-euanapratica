@@ -41,7 +41,7 @@ export default function AdminOrders() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-muted/30 p-6">
+      <div>
         <div className="mx-auto max-w-7xl">
           {/* Header */}
           <div className="mb-8">

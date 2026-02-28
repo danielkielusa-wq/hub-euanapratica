@@ -210,7 +210,7 @@ export default function AdminHubServices() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-muted/30 p-4 sm:p-6 lg:p-10">
+      <div>
         <div className="mx-auto max-w-7xl space-y-6 sm:space-y-8">
           {/* Page Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">

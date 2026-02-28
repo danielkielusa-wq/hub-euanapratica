@@ -338,7 +338,7 @@ export default function AdminApis() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <PageHeader title="Configurações de APIs" subtitle="Gerencie as integrações externas do sistema" icon={Settings}>
           <div className="flex items-center gap-2">

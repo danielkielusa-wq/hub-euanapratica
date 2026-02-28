@@ -176,7 +176,7 @@ export default function AdminTictoSimulator() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-muted/30 p-4 md:p-8">
+      <div>
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
