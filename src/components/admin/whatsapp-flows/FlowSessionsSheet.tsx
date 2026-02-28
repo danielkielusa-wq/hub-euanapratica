@@ -69,7 +69,7 @@ export function FlowSessionsSheet({ flowId, onClose }: FlowSessionsSheetProps) {
           ) : !sessions || sessions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>Nenhuma sessao encontrada</p>
+              <p>Nenhuma sessão encontrada</p>
             </div>
           ) : (
             <Table>

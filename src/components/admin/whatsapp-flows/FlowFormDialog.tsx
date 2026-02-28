@@ -281,7 +281,7 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
           </div>
 
           <div className="space-y-2">
-            <Label>Timeout da sessao (horas)</Label>
+            <Label>Timeout da sessão (horas)</Label>
             <Input
               type="number"
               value={sessionTimeout}

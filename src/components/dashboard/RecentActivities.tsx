@@ -136,7 +136,7 @@ export function RecentActivities({ onViewAll }: RecentActivitiesProps) {
         ) : (
           <Card className="p-6 rounded-[20px] border border-border bg-card text-center">
             <p className="text-sm text-muted-foreground">
-              Nenhuma atividade atribuida para voce no momento.
+              Nenhuma atividade atribuída para você no momento.
             </p>
           </Card>
         )}

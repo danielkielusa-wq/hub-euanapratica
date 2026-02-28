@@ -94,7 +94,7 @@ export function SessionsSidebar() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhuma sessao agendada
+              Nenhuma sessão agendada
             </p>
           )}
         </>

@@ -47,8 +47,8 @@ const actionLabels: Record<string, string> = {
   plan_changed: 'Plano Alterado',
   usage_reset: 'Uso Resetado',
   usage_recorded: 'Uso Registrado',
-  user_deleted: 'Usu�rio Exclu�do',
-  impersonation_started: 'Impersona��o Iniciada',
+  user_deleted: 'Usuário Excluído',
+  impersonation_started: 'Impersonação Iniciada',
 };
 
 export default function AdminAuditLogs() {
@@ -133,9 +133,9 @@ export default function AdminAuditLogs() {
   }, [logs, search, actionFilter, sourceFilter, dateFrom, dateTo]);
 
   const renderChanges = (oldValues: Record<string, unknown> | null, newValues: Record<string, unknown> | null) => {
-    if (!newValues) return <span className="text-muted-foreground">�</span>;
+    if (!newValues) return <span className="text-muted-foreground">—</span>;
     const keys = Object.keys(newValues);
-    if (keys.length === 0) return <span className="text-muted-foreground">�</span>;
+    if (keys.length === 0) return <span className="text-muted-foreground">—</span>;
 
     return (
       <div className="space-y-1 text-xs">
@@ -163,7 +163,7 @@ export default function AdminAuditLogs() {
             <div className="relative w-[260px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por usu�rio, email, a��o..."
+                placeholder="Buscar por usuário, email, ação..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -171,10 +171,10 @@ export default function AdminAuditLogs() {
             </div>
             <Select value={actionFilter} onValueChange={setActionFilter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="A��o" />
+                <SelectValue placeholder="Ação" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as a��es</SelectItem>
+                <SelectItem value="all">Todas as ações</SelectItem>
                 {Object.entries(actionLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -225,8 +225,8 @@ export default function AdminAuditLogs() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Quando</TableHead>
-                    <TableHead>Usu�rio</TableHead>
-                    <TableHead>A��o</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Ação</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Por</TableHead>
                     <TableHead>Detalhes</TableHead>
@@ -240,7 +240,7 @@ export default function AdminAuditLogs() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{log.user?.full_name || 'Usu�rio removido'}</div>
+                          <div className="font-medium">{log.user?.full_name || 'Usuário removido'}</div>
                           <div className="text-muted-foreground">{log.user?.email || log.user_id}</div>
                         </div>
                       </TableCell>
