@@ -23,15 +23,15 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-32 h-32 flex-shrink-0">
+    <div className="relative w-32 h-32 flex-shrink-0 drop-shadow-lg">
       <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="8" />
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/60" />
         <circle
           cx="60"
           cy="60"
           r={radius}
           fill="none"
-          stroke={color || '#6366f1'}
+          stroke={color || '#7367f0'}
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -40,8 +40,8 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black text-gray-900">{score}</span>
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">/ 100</span>
+        <span className="text-3xl font-black text-foreground">{score}</span>
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">/ 100</span>
       </div>
     </div>
   );
@@ -56,12 +56,12 @@ export function CareerHeroSection({ config, insights, planName, userName }: Care
     return (
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2 flex-wrap">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Seu Hub</h1>
-          <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200">
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Seu Hub</h1>
+          <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold border border-border">
             Plano {planName}
           </span>
         </div>
-        <p className="text-gray-500">{greeting}</p>
+        <p className="text-muted-foreground">{greeting}</p>
       </div>
     );
   }
@@ -73,21 +73,24 @@ export function CareerHeroSection({ config, insights, planName, userName }: Care
 
   return (
     <div className="mb-10">
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 md:p-8">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+      <div className="relative bg-card rounded-[24px] shadow-lg overflow-hidden p-6 md:p-8">
+        {/* Subtle gradient tint */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-secondary/[0.03]" />
+
+        <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
           {/* Score ring */}
           <ScoreRing score={insights.score} color={ringColor} />
 
           {/* Text content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <p className="text-gray-500 text-sm">{greeting}</p>
-              <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold border border-gray-200">
+              <p className="text-muted-foreground text-sm">{greeting}</p>
+              <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-[10px] font-bold border border-border">
                 Plano {planName}
               </span>
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-2">
+            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight mb-2">
               Prontidão: {insights.score}/100
             </h1>
 
@@ -117,7 +120,7 @@ export function CareerHeroSection({ config, insights, planName, userName }: Care
 
             {/* Short diagnosis */}
             {insights.shortDiagnosis && (
-              <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
                 {insights.shortDiagnosis}
               </p>
             )}
@@ -126,7 +129,7 @@ export function CareerHeroSection({ config, insights, planName, userName }: Care
             {insights.reportToken && (
               <Link
                 to={`/report/${insights.reportToken}`}
-                className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:gap-3 transition-all"
+                className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-primary hover:text-primary/80 hover:gap-3 transition-all"
               >
                 Ver Relatório Completo <ArrowRight size={16} />
               </Link>

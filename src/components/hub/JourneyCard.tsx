@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { MyHubItem, PlanTool } from '@/hooks/useMyHub';
 
@@ -120,13 +121,13 @@ function SubInfo({ item, tz }: { item: MyHubItem; tz: string }) {
     if (progress > 0) {
       return (
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+          <div className="flex-1 bg-muted rounded-full h-1.5">
             <div
-              className="bg-emerald-500 h-1.5 rounded-full"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-1.5 rounded-full transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs text-gray-500 font-medium">{progress}%</span>
+          <span className="text-xs text-muted-foreground font-medium">{progress}%</span>
         </div>
       );
     }
@@ -272,10 +273,10 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
   const isCompleted = computed_status === 'completed';
 
   return (
-    <div
+    <Card
+      variant="dashboard"
       className={cn(
-        'bg-white rounded-2xl border border-gray-100 shadow-sm pl-5 pr-5 py-4 border-l-4 flex flex-col gap-3',
-        'hover:shadow-md transition-shadow',
+        'pl-5 pr-5 py-4 border-l-4 flex flex-col gap-3 card-hover-lift',
         BORDER_BY_STATUS[computed_status],
         isCompleted && 'opacity-60'
       )}
@@ -285,8 +286,8 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
         <div className="flex items-start gap-2 min-w-0">
           <StatusIcon status={computed_status} />
           <div className="min-w-0">
-            <p className="font-bold text-gray-900 text-sm leading-tight truncate">{service.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{service.description?.slice(0, 60)}{(service.description?.length ?? 0) > 60 ? '…' : ''}</p>
+            <p className="font-bold text-foreground text-sm leading-tight truncate">{service.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{service.description?.slice(0, 60)}{(service.description?.length ?? 0) > 60 ? '…' : ''}</p>
           </div>
         </div>
         <AccessBadge source={access_source} />
@@ -315,7 +316,7 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
       <div className="flex justify-end">
         <JourneyCTA item={item} />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -336,12 +337,12 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
     : 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow border-l-4 border-l-blue-300">
+    <Card variant="dashboard" className="p-5 flex flex-col gap-3 card-hover-lift border-l-4 border-l-blue-300">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-blue-500" />
-          <p className="font-bold text-gray-900 text-sm">{tool.service.name}</p>
+          <p className="font-bold text-foreground text-sm">{tool.service.name}</p>
         </div>
         <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 whitespace-nowrap">
           Incluso no plano
@@ -353,17 +354,17 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
         <p className="text-xs text-emerald-600 font-medium">Uso ilimitado este mês</p>
       ) : (
         <div className="space-y-1.5">
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>{tool.credits_used} utilizados</span>
             <span>{tool.credits_remaining} restantes</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-1.5">
+          <div className="w-full bg-muted rounded-full h-1.5">
             <div
-              className="bg-blue-500 h-1.5 rounded-full transition-all"
+              className="bg-gradient-to-r from-blue-500 to-blue-400 h-1.5 rounded-full transition-all"
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400">{tool.credits_total} créditos/mês</p>
+          <p className="text-xs text-muted-foreground">{tool.credits_total} créditos/mês</p>
         </div>
       )}
 
@@ -378,6 +379,6 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
           <ArrowRight className="h-3 w-3" />
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }

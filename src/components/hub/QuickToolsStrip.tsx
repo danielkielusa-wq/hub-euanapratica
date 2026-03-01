@@ -57,7 +57,7 @@ export function QuickToolsStrip(props: QuickToolsStripProps) {
   return (
     <div className="mb-10">
       <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-xl font-black text-gray-900">Ferramentas</h2>
+        <h2 className="text-xl font-black text-foreground">Ferramentas</h2>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -68,13 +68,13 @@ export function QuickToolsStrip(props: QuickToolsStripProps) {
             <button
               key={tool.key}
               onClick={() => navigate(tool.route)}
-              className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 md:p-5 hover:shadow-md hover:border-indigo-100 transition-all group text-left"
+              className="bg-card rounded-2xl border border-border/40 shadow-sm p-4 md:p-5 hover:shadow-lg hover:-translate-y-1 transition-all group text-left"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${tool.iconBg} group-hover:scale-110 transition-transform`}>
                 <Icon size={20} />
               </div>
-              <p className="text-sm font-bold text-gray-900 mb-1">{tool.label}</p>
-              <p className="text-xs text-gray-400 font-medium">{stat}</p>
+              <p className="text-sm font-bold text-foreground mb-1">{tool.label}</p>
+              <p className="text-xs text-muted-foreground font-medium">{stat}</p>
             </button>
           );
         })}
