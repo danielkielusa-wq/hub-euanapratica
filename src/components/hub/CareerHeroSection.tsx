@@ -10,28 +10,28 @@ interface CareerHeroSectionProps {
   userName: string;
 }
 
-const TEMP_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Flame }> = {
-  'muito-quente': { label: 'Muito Quente', color: 'text-red-600', bg: 'bg-red-50 border-red-200', icon: Flame },
-  quente: { label: 'Quente', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', icon: Flame },
-  morno: { label: 'Morno', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', icon: Sun },
-  frio: { label: 'Frio', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', icon: Snowflake },
+const TEMP_CONFIG: Record<string, { label: string; icon: typeof Flame }> = {
+  'muito-quente': { label: 'Muito Quente', icon: Flame },
+  quente: { label: 'Quente', icon: Flame },
+  morno: { label: 'Morno', icon: Sun },
+  frio: { label: 'Frio', icon: Snowflake },
 };
 
-function ScoreRing({ score, color }: { score: number; color: string }) {
+function ScoreRing({ score }: { score: number }) {
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="relative w-32 h-32 flex-shrink-0 drop-shadow-lg">
+    <div className="relative w-32 h-32 flex-shrink-0">
       <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/60" />
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
         <circle
           cx="60"
           cy="60"
           r={radius}
           fill="none"
-          stroke={color || '#7367f0'}
+          stroke="white"
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -40,8 +40,8 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black text-foreground">{score}</span>
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">/ 100</span>
+        <span className="text-3xl font-black text-white">{score}</span>
+        <span className="text-[10px] font-medium text-white/60 uppercase tracking-wider">/ 100</span>
       </div>
     </div>
   );
@@ -51,90 +51,81 @@ export function CareerHeroSection({ config, insights, planName, userName }: Care
   const hasReport = insights?.hasReport ?? false;
   const greeting = getGreeting(config, userName, hasReport);
 
-  // No report: simple greeting
+  // No report: simple Vuexy card
   if (!hasReport || !insights) {
     return (
-      <div className="mb-10">
+      <div className="bg-card rounded-md shadow-md p-6">
         <div className="flex items-center gap-3 mb-2 flex-wrap">
-          <h1 className="text-3xl font-black text-foreground tracking-tight">Seu Hub</h1>
-          <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold border border-border">
+          <h1 className="text-xl font-medium text-foreground">Seu Hub</h1>
+          <span className="vuexy-badge-primary">
             Plano {planName}
           </span>
         </div>
-        <p className="text-muted-foreground">{greeting}</p>
+        <p className="text-[15px] text-muted-foreground">{greeting}</p>
       </div>
     );
   }
 
-  // With report: score ring + phase + diagnosis
+  // With report: purple gradient hero like Vuexy "Website Analytics"
   const temp = insights.temperature ? TEMP_CONFIG[insights.temperature] : null;
   const TempIcon = temp?.icon ?? Zap;
-  const ringColor = insights.phase?.color || '#6366f1';
 
   return (
-    <div className="mb-10">
-      <div className="relative bg-card rounded-[24px] shadow-lg overflow-hidden p-6 md:p-8">
-        {/* Subtle gradient tint */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-secondary/[0.03]" />
+    <div className="relative bg-gradient-to-br from-[#7367f0] to-[#9e95f5] rounded-md shadow-md overflow-hidden p-6 md:p-8">
+      {/* Decorative circles */}
+      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
+      <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white/5" />
 
-        <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          {/* Score ring */}
-          <ScoreRing score={insights.score} color={ringColor} />
+      <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
+        {/* Score ring */}
+        <ScoreRing score={insights.score} />
 
-          {/* Text content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <p className="text-muted-foreground text-sm">{greeting}</p>
-              <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-[10px] font-bold border border-border">
-                Plano {planName}
+        {/* Text content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <p className="text-white/70 text-sm font-medium">{greeting}</p>
+            <span className="px-2.5 py-1 rounded-[4px] bg-white/15 text-white text-[11px] font-medium border border-white/25">
+              Plano {planName}
+            </span>
+          </div>
+
+          <h1 className="text-2xl md:text-3xl font-medium text-white tracking-tight mb-2">
+            Prontidão: {insights.score}/100
+          </h1>
+
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            {/* Phase badge */}
+            {insights.phase && (
+              <span className="px-2.5 py-1 rounded-[4px] text-xs font-medium bg-white/15 text-white border border-white/25">
+                {insights.phase.emoji} {insights.phase.name}
               </span>
-            </div>
-
-            <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight mb-2">
-              Prontidão: {insights.score}/100
-            </h1>
-
-            <div className="flex items-center gap-3 flex-wrap mb-3">
-              {/* Phase badge */}
-              {insights.phase && (
-                <span
-                  className="px-3 py-1 rounded-full text-xs font-bold border"
-                  style={{
-                    backgroundColor: `${insights.phase.color}15`,
-                    borderColor: `${insights.phase.color}40`,
-                    color: insights.phase.color,
-                  }}
-                >
-                  {insights.phase.emoji} {insights.phase.name}
-                </span>
-              )}
-
-              {/* Temperature badge */}
-              {temp && (
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${temp.bg} ${temp.color}`}>
-                  <TempIcon size={12} />
-                  {temp.label}
-                </span>
-              )}
-            </div>
-
-            {/* Short diagnosis */}
-            {insights.shortDiagnosis && (
-              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                {insights.shortDiagnosis}
-              </p>
             )}
 
-            {/* CTA to full report */}
-            {insights.reportToken && (
-              <Link
-                to={`/report/${insights.reportToken}`}
-                className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-primary hover:text-primary/80 hover:gap-3 transition-all"
-              >
-                Ver Relatório Completo <ArrowRight size={16} />
-              </Link>
+            {/* Temperature badge */}
+            {temp && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[4px] text-xs font-medium bg-white/15 text-white border border-white/25">
+                <TempIcon size={12} />
+                {temp.label}
+              </span>
             )}
           </div>
+
+          {/* Short diagnosis */}
+          {insights.shortDiagnosis && (
+            <p className="text-sm text-white/80 leading-relaxed line-clamp-2">
+              {insights.shortDiagnosis}
+            </p>
+          )}
+
+          {/* CTA to full report */}
+          {insights.reportToken && (
+            <Link
+              to={`/report/${insights.reportToken}`}
+              className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-white hover:text-white/90 hover:gap-3 transition-all"
+            >
+              Ver Relatório Completo <ArrowRight size={16} />
+            </Link>
+          )}
         </div>
       </div>
     </div>
