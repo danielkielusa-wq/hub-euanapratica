@@ -31,8 +31,7 @@ export function LiveHubCard({ item }: { item: MyLive }) {
   return (
     <div
       className={cn(
-        'bg-white rounded-2xl border border-gray-100 shadow-sm pl-5 pr-5 py-4 border-l-4 flex flex-col gap-3',
-        'hover:shadow-md transition-shadow',
+        'rounded-md border border-border/30 shadow-none bg-card/50 pl-5 pr-5 py-4 border-l-[3px] flex flex-col gap-3',
         isLive && 'border-l-red-400',
         isUpcoming && 'border-l-blue-400',
         isCompleted && 'border-l-gray-200 opacity-60'
@@ -49,9 +48,9 @@ export function LiveHubCard({ item }: { item: MyLive }) {
             <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
           )}
           <div className="min-w-0">
-            <p className="font-bold text-gray-900 text-sm leading-tight truncate">{live.title}</p>
+            <p className="font-medium text-foreground text-sm leading-tight truncate">{live.title}</p>
             {live.description && (
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{live.description.slice(0, 60)}{(live.description.length) > 60 ? '…' : ''}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{live.description.slice(0, 60)}{(live.description.length) > 60 ? '…' : ''}</p>
             )}
           </div>
         </div>
@@ -66,7 +65,7 @@ export function LiveHubCard({ item }: { item: MyLive }) {
       {/* Date/time */}
       <p className={cn(
         'text-sm font-medium',
-        isLive ? 'text-red-600' : isUpcoming ? 'text-blue-600' : 'text-gray-400'
+        isLive ? 'text-red-600' : isUpcoming ? 'text-blue-600' : 'text-muted-foreground'
       )}>
         {isLive ? 'Acontecendo agora!' : format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
       </p>
@@ -74,7 +73,7 @@ export function LiveHubCard({ item }: { item: MyLive }) {
       {/* CTA */}
       <div className="flex justify-end">
         {isCompleted && !live.recording_url ? (
-          <span className="text-xs text-gray-400 font-medium">Concluída</span>
+          <span className="text-xs text-muted-foreground font-medium">Concluída</span>
         ) : (
           <Button
             size="sm"

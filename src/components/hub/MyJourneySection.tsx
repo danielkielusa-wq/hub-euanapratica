@@ -47,11 +47,8 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
 
   if (isLoading) {
     return (
-      <div className="mb-10 space-y-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Skeleton className="h-5 w-5 rounded" />
-          <Skeleton className="h-6 w-40" />
-        </div>
+      <div className="bg-card rounded-md shadow-md p-6 space-y-4">
+        <Skeleton className="h-6 w-40" />
         <SectionSkeleton />
       </div>
     );
@@ -60,12 +57,12 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
   if (!hasAnything) return null;
 
   return (
-    <div className="mb-10 space-y-8">
-      <div className="flex items-center gap-2">
-        <h2 className="text-xl font-black text-gray-900">Minha Jornada</h2>
-        <span className="text-xs text-gray-400 font-medium">
-          — tudo que você tem acesso
-        </span>
+    <div className="bg-card rounded-md shadow-md p-6 space-y-6">
+      <div>
+        <h2 className="text-lg font-medium text-foreground">Minha Jornada</h2>
+        <p className="text-[13px] text-muted-foreground mt-0.5">
+          Tudo que você tem acesso
+        </p>
       </div>
 
       {/* Purchased / active services grouped by section */}
@@ -77,10 +74,10 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
           <div key={section.id}>
             <div className="flex items-center gap-2 mb-3">
               <Icon className={`h-4 w-4 ${iconColor}`} />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-[13px] font-medium text-foreground uppercase tracking-wide">
                 {section.label}
               </h3>
-              <span className="text-xs text-gray-400 ml-1">({section.items.length})</span>
+              <span className="text-xs text-muted-foreground ml-1">({section.items.length})</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {section.items.map((item) => (
@@ -96,7 +93,7 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-blue-500" />
-            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+            <h3 className="text-[13px] font-medium text-foreground uppercase tracking-wide">
               Ferramentas do seu Plano
             </h3>
           </div>
@@ -124,10 +121,10 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Radio className="h-4 w-4 text-red-500" />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-[13px] font-medium text-foreground uppercase tracking-wide">
                 Minhas Lives
               </h3>
-              <span className="text-xs text-gray-400 ml-1">({total})</span>
+              <span className="text-xs text-muted-foreground ml-1">({total})</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {display.map((item) => (
@@ -138,7 +135,7 @@ export function MyJourneySection({ excludeHistory = false }: MyJourneySectionPro
               <div className="mt-3 text-center">
                 <Link
                   to="/lives"
-                  className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+                  className="text-sm font-medium text-[#7367f0] hover:text-[#7367f0]/80 hover:underline"
                 >
                   Ver todas ({total})
                 </Link>

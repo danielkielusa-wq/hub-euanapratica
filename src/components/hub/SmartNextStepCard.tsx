@@ -7,22 +7,10 @@ interface SmartNextStepCardProps {
   step: SmartNextStep | null;
 }
 
-const URGENCY_STYLES: Record<string, string> = {
-  high: 'border-amber-200 bg-amber-50/50',
-  medium: 'border-indigo-200 bg-indigo-50/30',
-  low: 'border-gray-100 bg-white',
-};
-
 const URGENCY_ICON_BG: Record<string, string> = {
-  high: 'bg-amber-100 text-amber-600',
-  medium: 'bg-indigo-100 text-indigo-600',
-  low: 'bg-gray-100 text-gray-600',
-};
-
-const URGENCY_CTA: Record<string, string> = {
-  high: 'text-amber-600',
-  medium: 'text-indigo-600',
-  low: 'text-gray-700',
+  high: 'bg-[#fff3e8] text-[#ff9f43]',
+  medium: 'bg-[#eae8fd] text-[#7367f0]',
+  low: 'bg-muted text-muted-foreground',
 };
 
 export function SmartNextStepCard({ step }: SmartNextStepCardProps) {
@@ -31,32 +19,28 @@ export function SmartNextStepCard({ step }: SmartNextStepCardProps) {
   if (!step) return null;
 
   const Icon = (icons as Record<string, LucideIcon>)[step.icon] || icons.Zap;
-  const borderClass = URGENCY_STYLES[step.urgencyLevel] ?? URGENCY_STYLES.low;
   const iconBg = URGENCY_ICON_BG[step.urgencyLevel] ?? URGENCY_ICON_BG.low;
-  const ctaColor = URGENCY_CTA[step.urgencyLevel] ?? URGENCY_CTA.low;
 
   return (
-    <div className="mb-8">
-      <button
-        onClick={() => navigate(step.actionHref)}
-        className={`w-full text-left rounded-[24px] border p-5 md:p-6 shadow-sm hover:shadow-md transition-all group ${borderClass}`}
-      >
-        <div className="flex items-start gap-4">
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-            <Icon size={22} />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Próximo Passo</p>
-            <h3 className="text-base font-bold text-gray-900 mb-1">{step.title}</h3>
-            <p className="text-sm text-gray-500 line-clamp-2">{step.description}</p>
-          </div>
-
-          <div className={`flex items-center gap-1 text-sm font-bold flex-shrink-0 ${ctaColor} group-hover:gap-2 transition-all`}>
-            {step.actionLabel} <ArrowRight size={16} />
-          </div>
+    <button
+      onClick={() => navigate(step.actionHref)}
+      className="w-full text-left rounded-md border-0 bg-card p-5 shadow-md hover:shadow-lg transition-all duration-200 group"
+    >
+      <div className="flex items-start gap-4">
+        <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+          <Icon size={20} />
         </div>
-      </button>
-    </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mb-1">Próximo Passo</p>
+          <h3 className="text-sm font-medium text-foreground mb-1">{step.title}</h3>
+          <p className="text-[13px] text-muted-foreground line-clamp-2">{step.description}</p>
+
+          <span className="inline-flex items-center gap-1 mt-3 text-[13px] font-medium text-[#7367f0] group-hover:gap-2 transition-all">
+            {step.actionLabel} <ArrowRight size={14} />
+          </span>
+        </div>
+      </div>
+    </button>
   );
 }

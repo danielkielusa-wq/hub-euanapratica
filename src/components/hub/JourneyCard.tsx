@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { MyHubItem, PlanTool } from '@/hooks/useMyHub';
 
@@ -273,10 +272,9 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
   const isCompleted = computed_status === 'completed';
 
   return (
-    <Card
-      variant="dashboard"
+    <div
       className={cn(
-        'pl-5 pr-5 py-4 border-l-4 flex flex-col gap-3 card-hover-lift',
+        'rounded-md border border-border/30 shadow-none bg-card/50 pl-5 pr-5 py-4 border-l-[3px] flex flex-col gap-3',
         BORDER_BY_STATUS[computed_status],
         isCompleted && 'opacity-60'
       )}
@@ -286,7 +284,7 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
         <div className="flex items-start gap-2 min-w-0">
           <StatusIcon status={computed_status} />
           <div className="min-w-0">
-            <p className="font-bold text-foreground text-sm leading-tight truncate">{service.name}</p>
+            <p className="font-medium text-foreground text-sm leading-tight truncate">{service.name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{service.description?.slice(0, 60)}{(service.description?.length ?? 0) > 60 ? '…' : ''}</p>
           </div>
         </div>
@@ -316,7 +314,7 @@ export function JourneyCard({ item }: { item: MyHubItem }) {
       <div className="flex justify-end">
         <JourneyCTA item={item} />
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -337,12 +335,12 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
     : 0;
 
   return (
-    <Card variant="dashboard" className="p-5 flex flex-col gap-3 card-hover-lift border-l-4 border-l-blue-300">
+    <div className="rounded-md border border-border/30 shadow-none bg-card/50 p-5 flex flex-col gap-3 border-l-[3px] border-l-blue-300">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-blue-500" />
-          <p className="font-bold text-foreground text-sm">{tool.service.name}</p>
+          <p className="font-medium text-foreground text-sm">{tool.service.name}</p>
         </div>
         <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 whitespace-nowrap">
           Incluso no plano
@@ -373,12 +371,12 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
         <Button
           size="sm"
           onClick={handleClick}
-          className="gap-1.5 text-xs font-bold h-8 bg-blue-600 hover:bg-blue-700 text-white"
+          className="gap-1.5 text-xs font-medium h-8 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {tool.service.cta_text || 'Usar Ferramenta'}
           <ArrowRight className="h-3 w-3" />
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
