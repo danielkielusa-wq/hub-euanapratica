@@ -85,12 +85,12 @@ export default function StudentAgenda() {
   return (
     <DashboardLayout>
 
-      <div className="flex-1 p-6 bg-gray-50/50">
+      <div className="space-y-6">
         {/* Header Row */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
-            <p className="text-gray-500">Planejamento mensal</p>
+            <h1 className="text-2xl font-bold text-foreground">Agenda</h1>
+            <p className="text-muted-foreground">Planejamento mensal</p>
           </div>
 
           {/* Filters */}
@@ -141,7 +141,7 @@ export default function StudentAgenda() {
 
         {/* Calendar */}
         {isLoading ? (
-          <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6">
+          <div className="bg-card rounded-2xl border border-border/40 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <Skeleton className="h-10 w-[150px]" />
               <Skeleton className="h-6 w-[120px]" />

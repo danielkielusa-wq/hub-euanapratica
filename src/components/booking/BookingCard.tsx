@@ -33,17 +33,17 @@ export function BookingCard({
   const canJoin = isUpcoming && booking.meeting_link;
 
   return (
-    <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md transition-all">
+    <div className="bg-card p-6 rounded-2xl border border-border/40 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
       <div className="flex flex-col md:flex-row gap-6">
         {/* Date Box */}
-        <div className="flex-shrink-0 flex md:flex-col items-center gap-2 md:gap-0 bg-gray-50 rounded-2xl p-4 min-w-[100px] justify-center border border-gray-100">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+        <div className="flex-shrink-0 flex md:flex-col items-center gap-2 md:gap-0 bg-muted rounded-2xl p-4 min-w-[100px] justify-center border border-border/40">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             {formatInTz(startDate, tz, 'MMM')}
           </span>
-          <span className="text-2xl font-black text-gray-900">
+          <span className="text-2xl font-black text-foreground">
             {formatInTz(startDate, tz, 'd')}
           </span>
-          <span className="text-xs font-medium text-gray-500 bg-white px-2 py-0.5 rounded-md mt-1">
+          <span className="text-xs font-medium text-muted-foreground bg-card px-2 py-0.5 rounded-md mt-1">
             {formatInTz(startDate, tz, 'HH:mm')}
           </span>
         </div>
@@ -51,13 +51,13 @@ export function BookingCard({
         {/* Info */}
         <div className="flex-1 flex flex-col justify-center">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-lg font-bold text-gray-900">
+            <h3 className="text-lg font-bold text-foreground">
               {booking.service?.name || 'Serviço'}
             </h3>
             <BookingStatusBadge status={booking.status} />
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
               {booking.duration_minutes} min
@@ -78,7 +78,7 @@ export function BookingCard({
                     {booking.mentor.full_name?.[0]}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-foreground">
                   {booking.mentor.full_name}
                 </span>
               </span>
@@ -91,7 +91,7 @@ export function BookingCard({
               {canJoin && onJoinMeeting && (
                 <Button
                   onClick={() => onJoinMeeting(booking)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-xs"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs"
                   size="sm"
                 >
                   Entrar na Reunião
@@ -111,7 +111,7 @@ export function BookingCard({
                       <DropdownMenuItem onClick={() => onReschedule(booking)}>
                         Reagendar
                         {booking.reschedule_count > 0 && (
-                          <span className="ml-2 text-gray-400">
+                          <span className="ml-2 text-muted-foreground">
                             ({limits.remainingReschedules} restantes)
                           </span>
                         )}
@@ -130,7 +130,7 @@ export function BookingCard({
               )}
 
               {!limits?.canReschedule && !limits?.canCancel && limits?.message && (
-                <span className="text-xs text-gray-400 italic">
+                <span className="text-xs text-muted-foreground italic">
                   {limits.message}
                 </span>
               )}
@@ -139,14 +139,14 @@ export function BookingCard({
 
           {/* Past booking info */}
           {!isUpcoming && booking.status === 'completed' && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Sessão concluída em{' '}
               {formatInTz(booking.completed_at!, tz, "d 'de' MMMM")}
             </p>
           )}
 
           {!isUpcoming && booking.status === 'cancelled' && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Cancelado{' '}
               {booking.cancelled_at &&
                 `em ${formatInTz(booking.cancelled_at, tz, "d 'de' MMMM")}`}

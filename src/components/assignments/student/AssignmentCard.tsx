@@ -70,24 +70,24 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
       to={`/dashboard/tarefas/${assignment.id}`}
       className="block"
     >
-      <div className="flex items-center gap-4 p-4 bg-white rounded-[20px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border/40 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
         {/* Icon */}
-        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-          <Icon className="h-5 w-5 text-indigo-600" />
+        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-        
+
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate">
+          <h3 className="font-semibold text-foreground truncate">
             {assignment.title}
           </h3>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             {assignment.espaco && (
-              <Badge variant="secondary" className="bg-gray-100 text-gray-600 rounded-full px-2.5 py-0.5 text-xs font-medium">
+              <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-xs font-medium">
                 {assignment.espaco.name}
               </Badge>
             )}
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-muted-foreground">
               Prazo: {formattedDueDate}
             </span>
           </div>
@@ -99,12 +99,12 @@ export function AssignmentCard({ assignment }: AssignmentCardProps) {
         </div>
         
         {/* Arrow */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="flex-shrink-0 rounded-full hover:bg-gray-100"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="flex-shrink-0 rounded-full hover:bg-muted"
         >
-          <ChevronRight className="h-5 w-5 text-gray-400" />
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </Button>
       </div>
     </Link>

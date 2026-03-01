@@ -69,29 +69,28 @@ export default function StudentBookings() {
   return (
     <DashboardLayout>
 
-      <div className="flex-1 p-6 bg-gray-50/50">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+              <h1 className="text-3xl font-black text-foreground tracking-tight">
                 Meus Agendamentos
               </h1>
-              <p className="text-gray-500 mt-1">
+              <p className="text-muted-foreground mt-1">
                 Gerencie suas sessões de mentoria.
               </p>
             </div>
 
             <div className="flex gap-4 items-center">
               {/* View Toggle */}
-              <div className="bg-gray-100 p-1 rounded-xl flex">
+              <div className="bg-muted p-1 rounded-xl flex">
                 <button
                   onClick={() => setViewType('list')}
                   className={cn(
                     'p-2 rounded-lg transition-all',
                     viewType === 'list'
-                      ? 'bg-white shadow text-gray-900'
-                      : 'text-gray-400 hover:text-gray-600'
+                      ? 'bg-card shadow text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   <List className="h-5 w-5" />
@@ -101,8 +100,8 @@ export default function StudentBookings() {
                   className={cn(
                     'p-2 rounded-lg transition-all',
                     viewType === 'calendar'
-                      ? 'bg-white shadow text-gray-900'
-                      : 'text-gray-400 hover:text-gray-600'
+                      ? 'bg-card shadow text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   <Calendar className="h-5 w-5" />
@@ -110,19 +109,19 @@ export default function StudentBookings() {
               </div>
 
               {/* Tabs */}
-              <div className="bg-white p-1.5 rounded-full shadow-sm border border-gray-100 inline-flex">
+              <div className="bg-card p-1.5 rounded-full shadow-sm border border-border/40 inline-flex">
                 <button
                   onClick={() => setActiveTab('upcoming')}
                   className={cn(
                     'px-6 py-2.5 rounded-full text-sm font-bold transition-all',
                     activeTab === 'upcoming'
-                      ? 'bg-gray-900 text-white shadow-md'
-                      : 'text-gray-500 hover:text-gray-900'
+                      ? 'bg-foreground text-background shadow-md'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Próximos
                   {stats?.upcoming_bookings ? (
-                    <span className="ml-2 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs">
+                    <span className="ml-2 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs">
                       {stats.upcoming_bookings}
                     </span>
                   ) : null}
@@ -132,8 +131,8 @@ export default function StudentBookings() {
                   className={cn(
                     'px-6 py-2.5 rounded-full text-sm font-bold transition-all',
                     activeTab === 'past'
-                      ? 'bg-gray-900 text-white shadow-md'
-                      : 'text-gray-500 hover:text-gray-900'
+                      ? 'bg-foreground text-background shadow-md'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Anteriores
@@ -199,7 +198,6 @@ export default function StudentBookings() {
           ) : (
             <EmptyBookings type={activeTab} />
           )}
-        </div>
       </div>
 
       {/* Modals */}
@@ -228,21 +226,21 @@ function StatCard({
   color: 'indigo' | 'green' | 'gray' | 'blue';
 }) {
   const colorClasses = {
-    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    green: 'bg-green-50 text-green-600 border-green-100',
-    gray: 'bg-gray-50 text-gray-600 border-gray-200',
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    indigo: 'bg-primary/5 text-primary border-primary/10',
+    green: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30',
+    gray: 'bg-muted text-muted-foreground border-border/40',
+    blue: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30',
   };
 
   return (
     <div
       className={cn(
-        'p-4 rounded-xl border',
+        'p-4 rounded-2xl border shadow-sm hover:shadow-md transition-all',
         colorClasses[color]
       )}
     >
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-sm opacity-75">{label}</p>
+      <p className="text-3xl font-black">{value}</p>
+      <p className="text-sm opacity-75 mt-1">{label}</p>
     </div>
   );
 }
