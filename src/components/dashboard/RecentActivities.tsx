@@ -24,10 +24,10 @@ const typeConfig: Record<ActivityType, { icon: React.ElementType; bgColor: strin
   aula: { icon: Video, bgColor: 'bg-emerald-500/10', iconColor: 'text-emerald-500' },
 };
 
-const statusConfig: Record<ActivityStatus, { label: string; className: string }> = {
-  pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/10' },
-  in_progress: { label: 'Em andamento', className: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/10' },
-  completed: { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10' },
+const statusConfig: Record<ActivityStatus, { label: string; className: string; borderColor: string }> = {
+  pending: { label: 'Pendente', className: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/10', borderColor: 'border-l-amber-500' },
+  in_progress: { label: 'Em andamento', className: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/10', borderColor: 'border-l-blue-500' },
+  completed: { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10', borderColor: 'border-l-emerald-500' },
 };
 
 function ActivityCard({ activity }: { activity: Activity }) {
@@ -37,8 +37,9 @@ function ActivityCard({ activity }: { activity: Activity }) {
   const Icon = config.icon;
 
   return (
-    <Card 
-      className="p-4 rounded-[20px] border border-border bg-card hover:shadow-md transition-shadow cursor-pointer"
+    <Card
+      variant="dashboard"
+      className={cn("p-4 border-l-4 cursor-pointer", status.borderColor)}
       onClick={() => navigate('/dashboard/tarefas')}
     >
       <div className="flex items-center justify-between">
@@ -112,7 +113,7 @@ export function RecentActivities({ onViewAll }: RecentActivitiesProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Atividades Recentes</h2>
+        <h2 className="text-xl font-bold text-foreground">Atividades Recentes</h2>
         <Button 
           variant="link" 
           className="text-primary p-0 h-auto"

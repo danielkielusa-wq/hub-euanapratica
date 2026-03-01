@@ -37,8 +37,8 @@ function SessionItem({ session }: { session: Session }) {
   const day = format(sessionDate, 'd');
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-      <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group">
+      <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 to-secondary/15 flex items-center justify-center text-primary font-black text-base group-hover:scale-105 transition-transform">
         {day}
       </span>
       <div className="flex-1 min-w-0">
@@ -68,9 +68,9 @@ export function SessionsSidebar() {
   const displaySessions = otherSessions;
 
   return (
-    <Card className="p-4 rounded-[24px] border border-border bg-card">
+    <Card variant="elevated" className="p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-foreground">Próximas Sessões</h2>
+        <h2 className="text-lg font-bold text-foreground">Próximas Sessões</h2>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
           <MoreVertical className="h-4 w-4" />
         </Button>
@@ -100,9 +100,8 @@ export function SessionsSidebar() {
         </>
       )}
 
-      <Button 
-        variant="outline" 
-        className="w-full mt-4 rounded-xl"
+      <Button
+        className="w-full mt-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 shadow-md"
         onClick={() => navigate('/dashboard/agenda')}
       >
         Ver Calendário Completo
