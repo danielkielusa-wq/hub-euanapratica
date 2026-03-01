@@ -21,7 +21,6 @@ import { CareerDimensionsSection } from '@/components/hub/CareerDimensionsSectio
 import { CommunityPulseSection } from '@/components/hub/CommunityPulseSection';
 import { SmartUpsellSection } from '@/components/hub/SmartUpsellSection';
 import { QuickToolsStrip } from '@/components/hub/QuickToolsStrip';
-import type { HubDashboardSectionId } from '@/types/hub';
 
 export default function StudentHub() {
   const navigate = useNavigate();
@@ -80,139 +79,129 @@ export default function StudentHub() {
     return Icon || icons.FileCheck;
   };
 
-  // Section renderer — maps sectionId to component
-  const renderSection = (sectionId: HubDashboardSectionId) => {
-    if (!isSectionVisible(config, sectionId)) return null;
-
-    switch (sectionId) {
-      case 'career_hero':
-        return (
-          <CareerHeroSection
-            key={sectionId}
-            config={config}
-            insights={careerInsights ?? null}
-            planName={planName}
-            userName={userName}
-          />
-        );
-
-      case 'smart_next_step':
-        return <SmartNextStepCard key={sectionId} step={smartStep} />;
-
-      case 'active_items':
-        return <MyJourneySection key={sectionId} excludeHistory />;
-
-      case 'career_dimensions':
-        if (!careerInsights?.hasReport) return null;
-        return (
-          <CareerDimensionsSection
-            key={sectionId}
-            insights={careerInsights}
-            config={config}
-          />
-        );
-
-      case 'community_pulse':
-        if (!communityPulse) return null;
-        return (
-          <CommunityPulseSection
-            key={sectionId}
-            pulse={communityPulse}
-            config={config}
-          />
-        );
-
-      case 'smart_upsell':
-        return (
-          <SmartUpsellSection
-            key={sectionId}
-            insights={careerInsights ?? null}
-            highlightedService={highlightedService ?? null}
-            config={config}
-          />
-        );
-
-      case 'quick_tools':
-        return (
-          <QuickToolsStrip
-            key={sectionId}
-            config={config}
-            remainingCredits={remainingCredits}
-          />
-        );
-
-      case 'getting_started':
-        return (
-          <div key={sectionId} className="mb-10">
-            <GettingStartedChecklist />
-          </div>
-        );
-
-      case 'secondary_services':
-        if (!secondaryServices || secondaryServices.length === 0) return null;
-        return (
-          <div key={sectionId}>
-            <div className="flex items-center justify-between mb-8 px-2">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                Outros Serviços
-              </h3>
-              <button
-                onClick={() => navigate('/catalogo')}
-                className="text-xs font-bold text-gray-400 hover:text-gray-900 flex items-center gap-1"
-              >
-                Ver todos <MoreHorizontal size={16} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {secondaryServices.map((service) => {
-                const ServiceIcon = getIcon(service.icon_name);
-                return (
-                  <div key={service.id} className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm hover:border-indigo-100 hover:shadow-md transition-all group flex flex-col">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gray-50 text-gray-600">
-                      <ServiceIcon size={24} />
-                    </div>
-                    <h4 className="font-bold text-gray-900 mb-2">{service.name}</h4>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-6 flex-1">{service.description}</p>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      {service.price > 0 ? (
-                        <PriceDisplay
-                          price={service.price}
-                          priceDisplay={service.price_display}
-                          anchorPrice={service.anchor_price}
-                          size="sm"
-                        />
-                      ) : (
-                        <span className="text-xs font-bold text-gray-900">Grátis</span>
-                      )}
-                      <button
-                        onClick={() => handleServiceAction(service)}
-                        className="text-[10px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all"
-                      >
-                        {service.cta_text || 'CONTRATAR'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   return (
     <DashboardLayout>
-      <div className="animate-fade-in pb-20 max-w-6xl mx-auto p-4 md:p-6 lg:p-10">
+      <div className="animate-fade-in pb-20 max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8">
         {/* Guided Tour (headless — triggers driver.js on first visit) */}
         <DashboardTour />
 
-        {/* Render sections in config-defined order */}
-        {config.sections_order.map(renderSection)}
+        {/* Vuexy 12-col grid layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Row 1: Hero (8) + NextStep/Checklist (4) */}
+          {isSectionVisible(config, 'career_hero') && (
+            <div className="lg:col-span-8">
+              <CareerHeroSection
+                config={config}
+                insights={careerInsights ?? null}
+                planName={planName}
+                userName={userName}
+              />
+            </div>
+          )}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            {isSectionVisible(config, 'smart_next_step') && (
+              <SmartNextStepCard step={smartStep} />
+            )}
+            {isSectionVisible(config, 'getting_started') && (
+              <GettingStartedChecklist />
+            )}
+          </div>
+
+          {/* Row 2: Journey (7) + Dimensions (5) */}
+          {isSectionVisible(config, 'active_items') && (
+            <div className="lg:col-span-7">
+              <MyJourneySection excludeHistory />
+            </div>
+          )}
+          {isSectionVisible(config, 'career_dimensions') && careerInsights?.hasReport && (
+            <div className="lg:col-span-5">
+              <CareerDimensionsSection
+                insights={careerInsights}
+                config={config}
+              />
+            </div>
+          )}
+
+          {/* Row 3: Quick Tools (full width) */}
+          {isSectionVisible(config, 'quick_tools') && (
+            <div className="lg:col-span-12">
+              <QuickToolsStrip
+                config={config}
+                remainingCredits={remainingCredits}
+              />
+            </div>
+          )}
+
+          {/* Row 4: Community (5) + Upsell (7) */}
+          {isSectionVisible(config, 'community_pulse') && communityPulse && (
+            <div className="lg:col-span-5">
+              <CommunityPulseSection
+                pulse={communityPulse}
+                config={config}
+              />
+            </div>
+          )}
+          {isSectionVisible(config, 'smart_upsell') && (
+            <div className="lg:col-span-7">
+              <SmartUpsellSection
+                insights={careerInsights ?? null}
+                highlightedService={highlightedService ?? null}
+                config={config}
+              />
+            </div>
+          )}
+
+          {/* Row 5: Secondary Services (full width) */}
+          {isSectionVisible(config, 'secondary_services') && secondaryServices && secondaryServices.length > 0 && (
+            <div className="lg:col-span-12">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-medium text-foreground">
+                  Outros Serviços
+                </h3>
+                <button
+                  onClick={() => navigate('/catalogo')}
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                >
+                  Ver todos <MoreHorizontal size={16} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {secondaryServices.map((service) => {
+                  const ServiceIcon = getIcon(service.icon_name);
+                  return (
+                    <div key={service.id} className="bg-card p-6 rounded-md border-0 shadow-md hover:shadow-lg transition-all duration-200 group flex flex-col">
+                      <div className="w-10 h-10 rounded-[4px] flex items-center justify-center mb-4 bg-primary/10 text-primary">
+                        <ServiceIcon size={20} />
+                      </div>
+                      <h4 className="font-medium text-foreground mb-2">{service.name}</h4>
+                      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6 flex-1">{service.description}</p>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                        {service.price > 0 ? (
+                          <PriceDisplay
+                            price={service.price}
+                            priceDisplay={service.price_display}
+                            anchorPrice={service.anchor_price}
+                            size="sm"
+                          />
+                        ) : (
+                          <span className="text-xs font-medium text-foreground">Grátis</span>
+                        )}
+                        <button
+                          onClick={() => handleServiceAction(service)}
+                          className="text-[11px] font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-md group-hover:bg-[#7367f0] group-hover:text-white transition-all"
+                        >
+                          {service.cta_text || 'CONTRATAR'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
