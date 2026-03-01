@@ -35,6 +35,15 @@ const cardVariants = cva(
           "hover:-translate-y-1",
           "overflow-hidden",
         ].join(" "),
+        vuexy: [
+          "rounded-md",
+          "bg-card",
+          "border-0",
+          "shadow-md",
+          "hover:shadow-lg",
+          "p-6",
+          "transition-all duration-200",
+        ].join(" "),
       },
     },
     defaultVariants: {

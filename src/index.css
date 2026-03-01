@@ -241,6 +241,20 @@ All colors MUST be HSL.
     transform: translateY(-2px);
   }
 
+  /* Vuexy pastel badge variants (4px radius, dark-mode-aware via badge tokens) */
+  .vuexy-badge-primary {
+    @apply bg-[hsl(var(--badge-purple))] text-[hsl(var(--badge-purple-text))] text-xs font-medium rounded-[4px] px-2.5 py-1 border-0 inline-flex items-center gap-1;
+  }
+  .vuexy-badge-success {
+    @apply bg-[hsl(var(--badge-emerald))] text-[hsl(var(--badge-emerald-text))] text-xs font-medium rounded-[4px] px-2.5 py-1 border-0 inline-flex items-center gap-1;
+  }
+  .vuexy-badge-warning {
+    @apply bg-[hsl(var(--badge-amber))] text-[hsl(var(--badge-amber-text))] text-xs font-medium rounded-[4px] px-2.5 py-1 border-0 inline-flex items-center gap-1;
+  }
+  .vuexy-badge-danger {
+    @apply bg-[hsl(var(--badge-rose))] text-[hsl(var(--badge-rose-text))] text-xs font-medium rounded-[4px] px-2.5 py-1 border-0 inline-flex items-center gap-1;
+  }
+
   /* Gradient text */
   .text-gradient-primary {
     background: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
