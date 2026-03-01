@@ -8,20 +8,32 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        default: "rounded-lg border bg-card shadow-sm",
+        default: "rounded-xl bg-card shadow-sm hover:shadow-md",
         glass: [
           "rounded-[24px]",
           "bg-white/80 dark:bg-slate-900/80",
           "backdrop-blur-xl",
           "border border-white/60 dark:border-white/10",
-          "shadow-[0_4px_24px_-1px_rgba(0,0,0,0.05),0_2px_8px_-1px_rgba(0,0,0,0.03)]",
-          "hover:shadow-[0_8px_32px_-1px_rgba(0,0,0,0.08),0_4px_12px_-1px_rgba(0,0,0,0.04)]",
+          "shadow-[var(--shadow-glass)]",
+          "hover:shadow-[var(--shadow-glass-hover)]",
+          "hover:-translate-y-0.5",
         ].join(" "),
         elevated: [
           "rounded-[24px]",
           "bg-card",
           "border-0",
           "shadow-xl",
+          "hover:shadow-2xl",
+          "hover:-translate-y-0.5",
+        ].join(" "),
+        dashboard: [
+          "rounded-2xl",
+          "bg-card",
+          "border border-border/40",
+          "shadow-sm",
+          "hover:shadow-lg",
+          "hover:-translate-y-1",
+          "overflow-hidden",
         ].join(" "),
       },
     },

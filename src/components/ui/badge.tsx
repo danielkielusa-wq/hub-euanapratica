@@ -18,6 +18,9 @@ const badgeVariants = cva(
         pastelEmerald: "border-0 bg-[hsl(var(--badge-emerald))] text-[hsl(var(--badge-emerald-text))]",
         pastelAmber: "border-0 bg-[hsl(var(--badge-amber))] text-[hsl(var(--badge-amber-text))]",
         pastelSlate: "border-0 bg-[hsl(var(--badge-slate))] text-[hsl(var(--badge-slate-text))]",
+        // Trend indicator variants
+        trendUp: "border-0 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 font-semibold",
+        trendDown: "border-0 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 font-semibold",
       },
     },
     defaultVariants: {
