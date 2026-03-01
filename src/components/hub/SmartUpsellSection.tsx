@@ -24,7 +24,7 @@ function UpsellCard({
   onBuy: () => void;
 }) {
   return (
-    <div className="relative bg-[#0F172A] rounded-[40px] p-8 md:p-12 overflow-hidden shadow-2xl shadow-indigo-900/20 group">
+    <div className="relative bg-[#0F172A] rounded-md p-8 md:p-12 overflow-hidden shadow-2xl shadow-indigo-900/20 group">
       {/* Decorative */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600 rounded-full blur-[120px] opacity-20 -translate-y-1/2 translate-x-1/3 group-hover:opacity-30 transition-opacity" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-600 rounded-full blur-[100px] opacity-20 translate-y-1/2 -translate-x-1/4" />
@@ -54,7 +54,7 @@ function UpsellCard({
         </div>
 
         <div className="lg:col-span-2">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 text-center hover:bg-white/10 transition-colors">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-md p-8 text-center hover:bg-white/10 transition-colors">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
               {service.product_type === 'one_time' ? 'Investimento Único' : 'Investimento'}
             </p>
@@ -77,7 +77,7 @@ function UpsellCard({
 
             <button
               onClick={onBuy}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95 mb-4 flex items-center justify-center gap-2"
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-md shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95 mb-4 flex items-center justify-center gap-2"
             >
               {service.cta_text || 'Agendar Sessão'} <Calendar size={18} />
             </button>
@@ -129,7 +129,7 @@ export function SmartUpsellSection({ insights, highlightedService, config }: Sma
     : config.social_proof.general_upsell;
 
   return (
-    <div className="mb-16">
+    <div>
       <UpsellCard
         service={service}
         headline={headline}
