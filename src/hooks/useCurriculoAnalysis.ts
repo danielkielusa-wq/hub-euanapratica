@@ -111,43 +111,57 @@ export function useCurriculoAnalysis() {
 
       // Check for errors from edge function (non-2xx responses)
       if (error) {
-        const errorBody = error.message;
+        // supabase-js v2: FunctionsHttpError has error.context = Response object
+        // error.message is always "Edge Function returned a non-2xx status code"
+        let parsedError: Record<string, unknown> | null = null;
         try {
-          const parsedError = JSON.parse(errorBody);
+          if (error.context && typeof error.context.json === 'function') {
+            parsedError = await error.context.json();
+          }
+        } catch {
+          // Response body already consumed or not JSON
+        }
+        // Fallback: try parsing error.message directly
+        if (!parsedError) {
+          try {
+            parsedError = JSON.parse(error.message);
+          } catch {
+            // Not JSON
+          }
+        }
 
+        if (parsedError) {
           // Handle quota limit
           if (parsedError.error_code === 'LIMIT_REACHED') {
             setState(prev => ({
               ...prev,
               status: 'limit_reached',
-              error: parsedError.error_message,
+              error: parsedError!.error_message as string,
             }));
             setShowUpgradeModal(true);
             toast({
               title: 'Limite mensal atingido',
-              description: parsedError.error_message,
+              description: (parsedError.error_message as string) || 'Créditos insuficientes.',
               variant: 'destructive',
             });
             await refetchQuota();
             return;
           }
 
-          // Handle file format / parsing errors (UNSUPPORTED_FORMAT, EXTRACTION_FAILED, etc.)
+          // Handle file format / parsing / API errors
           if (parsedError.error_code || parsedError.parsing_error) {
             setState(prev => ({
               ...prev,
               status: 'error',
-              error: parsedError.error_message || parsedError.error,
+              error: (parsedError!.error_message || parsedError!.error) as string,
             }));
             toast({
-              title: parsedError.error || 'Erro no processamento',
-              description: parsedError.error_message || 'Não foi possível processar seu currículo.',
+              title: (parsedError.error as string) || 'Erro no processamento',
+              description: (parsedError.error_message as string) || 'Não foi possível processar seu currículo.',
               variant: 'destructive',
             });
             return;
           }
-        } catch {
-          // Not a JSON error, handle normally
         }
         throw error;
       }
@@ -251,7 +265,7 @@ export function useCurriculoAnalysis() {
     setJobDescription,
     analyze,
     reset,
-    canAnalyze: !!state.uploadedFile && !!state.jobDescription.trim() && (!quota || quota.remaining > 0),
+    canAnalyze: !!state.uploadedFile && !!state.jobDescription.trim() && (quota ? quota.remaining > 0 : false),
     refetchQuota,
     showUpgradeModal,
     setShowUpgradeModal,

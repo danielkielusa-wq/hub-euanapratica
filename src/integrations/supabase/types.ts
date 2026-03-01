@@ -3476,11 +3476,55 @@ export type Database = {
           },
         ]
       }
+      notification_type_configs: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          display_name: string
+          email_enabled: boolean | null
+          icon: string | null
+          id: string
+          in_app_enabled: boolean | null
+          type_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          email_enabled?: boolean | null
+          icon?: string | null
+          id?: string
+          in_app_enabled?: boolean | null
+          type_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          email_enabled?: boolean | null
+          icon?: string | null
+          id?: string
+          in_app_enabled?: boolean | null
+          type_key?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
+          action_url: string | null
+          category: string | null
           created_at: string | null
+          icon: string | null
           id: string
           message: string | null
+          metadata: Json | null
+          read_at: string | null
           sent_at: string | null
           session_id: string | null
           status: string | null
@@ -3489,9 +3533,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_url?: string | null
+          category?: string | null
           created_at?: string | null
+          icon?: string | null
           id?: string
           message?: string | null
+          metadata?: Json | null
+          read_at?: string | null
           sent_at?: string | null
           session_id?: string | null
           status?: string | null
@@ -3500,9 +3549,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_url?: string | null
+          category?: string | null
           created_at?: string | null
+          icon?: string | null
           id?: string
           message?: string | null
+          metadata?: Json | null
+          read_at?: string | null
           sent_at?: string | null
           session_id?: string | null
           status?: string | null
@@ -3827,13 +3881,18 @@ export type Database = {
       profiles: {
         Row: {
           alternative_email: string | null
+          anos_experiencia: string | null
           area_profissional: string | null
           birth_date: string | null
+          cargo_atual: string | null
+          composicao_familiar: string | null
           created_at: string | null
           current_city: string | null
           current_country: string | null
           current_state: string | null
           email: string
+          faixa_investimento: string | null
+          faixa_renda: string | null
           full_name: string
           guided_tour_state: Json | null
           has_completed_onboarding: boolean | null
@@ -3841,28 +3900,37 @@ export type Database = {
           is_whatsapp: boolean | null
           last_login_at: string | null
           linkedin_url: string | null
+          maior_duvida: string | null
           nivel_ingles: string | null
           objetivo: string | null
           phone: string | null
           phone_country_code: string | null
           prazo_movimento: string | null
           preferred_name: string | null
+          principal_obstaculo: string | null
           profile_photo_url: string | null
           resume_url: string | null
           status: string | null
+          status_visto: string | null
           target_country: string | null
           timezone: string | null
+          trabalha_internacional: string | null
           updated_at: string | null
         }
         Insert: {
           alternative_email?: string | null
+          anos_experiencia?: string | null
           area_profissional?: string | null
           birth_date?: string | null
+          cargo_atual?: string | null
+          composicao_familiar?: string | null
           created_at?: string | null
           current_city?: string | null
           current_country?: string | null
           current_state?: string | null
           email: string
+          faixa_investimento?: string | null
+          faixa_renda?: string | null
           full_name: string
           guided_tour_state?: Json | null
           has_completed_onboarding?: boolean | null
@@ -3870,28 +3938,37 @@ export type Database = {
           is_whatsapp?: boolean | null
           last_login_at?: string | null
           linkedin_url?: string | null
+          maior_duvida?: string | null
           nivel_ingles?: string | null
           objetivo?: string | null
           phone?: string | null
           phone_country_code?: string | null
           prazo_movimento?: string | null
           preferred_name?: string | null
+          principal_obstaculo?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
           status?: string | null
+          status_visto?: string | null
           target_country?: string | null
           timezone?: string | null
+          trabalha_internacional?: string | null
           updated_at?: string | null
         }
         Update: {
           alternative_email?: string | null
+          anos_experiencia?: string | null
           area_profissional?: string | null
           birth_date?: string | null
+          cargo_atual?: string | null
+          composicao_familiar?: string | null
           created_at?: string | null
           current_city?: string | null
           current_country?: string | null
           current_state?: string | null
           email?: string
+          faixa_investimento?: string | null
+          faixa_renda?: string | null
           full_name?: string
           guided_tour_state?: Json | null
           has_completed_onboarding?: boolean | null
@@ -3899,17 +3976,21 @@ export type Database = {
           is_whatsapp?: boolean | null
           last_login_at?: string | null
           linkedin_url?: string | null
+          maior_duvida?: string | null
           nivel_ingles?: string | null
           objetivo?: string | null
           phone?: string | null
           phone_country_code?: string | null
           prazo_movimento?: string | null
           preferred_name?: string | null
+          principal_obstaculo?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
           status?: string | null
+          status_visto?: string | null
           target_country?: string | null
           timezone?: string | null
+          trabalha_internacional?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -4745,6 +4826,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          id: string
+          in_app_enabled: boolean | null
+          type_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          type_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          id?: string
+          in_app_enabled?: boolean | null
+          type_key?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_products: {
         Row: {
@@ -5584,6 +5692,13 @@ export type Database = {
             }
             Returns: string
           }
+      generate_career_report_from_profile: {
+        Args: { p_user_id: string }
+        Returns: {
+          evaluation_id: string
+          status: string
+        }[]
+      }
       get_api_config_by_key: {
         Args: { p_api_key: string }
         Returns: {
@@ -5855,6 +5970,7 @@ export type Database = {
           upcoming_bookings: number
         }[]
       }
+      get_unread_notification_count: { Args: never; Returns: number }
       get_user_access_history: {
         Args: { p_user_id: string }
         Returns: {
@@ -5927,9 +6043,14 @@ export type Database = {
         Args: { p_country_code: string; p_phone: string; p_user_id?: string }
         Returns: boolean
       }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_booking_no_show: {
         Args: { p_booking_id: string; p_user_id: string }
         Returns: boolean
+      }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
       }
       mark_upsell_click: {
         Args: { p_impression_id: string }
@@ -6057,6 +6178,24 @@ export type Database = {
         | "recording_available"
         | "session_cancelled"
         | "new_session"
+        | "post_commented"
+        | "post_liked"
+        | "product_launch"
+        | "live_scheduled"
+        | "live_starting"
+        | "live_reminder"
+        | "new_course_content"
+        | "badge_earned"
+        | "course_completed"
+        | "credits_recharged"
+        | "subscription_activated"
+        | "subscription_cancelled"
+        | "payment_failed"
+        | "welcome"
+        | "booking_confirmed"
+        | "booking_cancelled"
+        | "booking_rescheduled"
+        | "espaco_invitation"
       review_result: "approved" | "revision" | "rejected"
       session_status: "scheduled" | "live" | "completed" | "cancelled"
       submission_status: "draft" | "submitted" | "reviewed"
@@ -6245,6 +6384,24 @@ export const Constants = {
         "recording_available",
         "session_cancelled",
         "new_session",
+        "post_commented",
+        "post_liked",
+        "product_launch",
+        "live_scheduled",
+        "live_starting",
+        "live_reminder",
+        "new_course_content",
+        "badge_earned",
+        "course_completed",
+        "credits_recharged",
+        "subscription_activated",
+        "subscription_cancelled",
+        "payment_failed",
+        "welcome",
+        "booking_confirmed",
+        "booking_cancelled",
+        "booking_rescheduled",
+        "espaco_invitation",
       ],
       review_result: ["approved", "revision", "rejected"],
       session_status: ["scheduled", "live", "completed", "cancelled"],

@@ -95,6 +95,7 @@ import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
 import AdminAtividades from "./pages/admin/AdminAtividades";
 import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
 import AdminAutomations from "./pages/admin/AdminAutomations";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminPrimeJobs from "./pages/admin/AdminPrimeJobs";
 import AdminWhatsAppFlows from "./pages/admin/AdminWhatsAppFlows";
 import AdminWhatsAppFlowEditor from "./pages/admin/AdminWhatsAppFlowEditor";
@@ -297,6 +298,12 @@ function AppRoutes() {
       {/* Legal Pages (public, no auth required) */}
       <Route path="/termos-assinatura" element={
         <LegalPage configKey="legal_termos_assinatura" title="Termos de Assinatura" />
+      } />
+      <Route path="/termos-de-uso" element={
+        <LegalPage configKey="legal_termos_uso" title="Termos de Uso" />
+      } />
+      <Route path="/privacidade" element={
+        <LegalPage configKey="legal_politica_privacidade" title="Política de Privacidade" />
       } />
       <Route path="/politica-privacidade" element={
         <LegalPage configKey="legal_politica_privacidade" title="Política de Privacidade" />
@@ -601,6 +608,11 @@ function AppRoutes() {
       <Route path="/admin/automacoes" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminAutomations />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/notificacoes" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminNotifications />
         </ProtectedRoute>
       } />
       <Route path="/admin/prime-jobs" element={

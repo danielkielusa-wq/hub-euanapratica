@@ -1,13 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, X, AlertTriangle, Lock } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Upload, FileText, CheckCircle, X, AlertTriangle, FileType, Lock } from 'lucide-react';
 
 interface ResumeUploadCardProps {
   file: File | null;
@@ -16,39 +9,35 @@ interface ResumeUploadCardProps {
   onBlockedAction?: () => void;
 }
 
-export function ResumeUploadCard({ 
-  file, 
-  onFileChange, 
+export function ResumeUploadCard({
+  file,
+  onFileChange,
   disabled = false,
-  onBlockedAction 
+  onBlockedAction
 }: ResumeUploadCardProps) {
   const [showDocWarning, setShowDocWarning] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
-    // Check if disabled first
     if (disabled) {
       onBlockedAction?.();
       return;
     }
 
     // Handle rejected files — on Windows, DOCX MIME type can mismatch
-    // so check by extension and accept if valid
-    const file = acceptedFiles[0] || fileRejections[0]?.file;
-    if (!file) return;
+    const f = acceptedFiles[0] || fileRejections[0]?.file;
+    if (!f) return;
 
-    const fileName = file.name.toLowerCase();
+    const fileName = f.name.toLowerCase();
     const validExt = fileName.endsWith('.pdf') || fileName.endsWith('.docx') || fileName.endsWith('.doc');
-
     if (!validExt) return;
 
-    // Check for legacy .doc format
     if (fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
       setShowDocWarning(true);
     } else {
       setShowDocWarning(false);
     }
 
-    onFileChange(file);
+    onFileChange(f);
   }, [onFileChange, disabled, onBlockedAction]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -60,9 +49,9 @@ export function ResumeUploadCard({
       'application/octet-stream': ['.docx', '.doc'],
     },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
-    disabled: disabled,
-    useFsAccessApi: false, // Workaround: Windows File System Access API can misreport MIME types
+    maxSize: 10 * 1024 * 1024,
+    disabled,
+    useFsAccessApi: false,
   });
 
   const removeFile = (e: React.MouseEvent) => {
@@ -71,29 +60,23 @@ export function ResumeUploadCard({
     onFileChange(null);
   };
 
-  const handleBlockedClick = () => {
-    if (disabled) {
-      onBlockedAction?.();
-    }
-  };
-
   return (
     <div className="space-y-3">
       <div className="relative">
         {/* Disabled overlay */}
         {disabled && (
-          <div 
-            className="absolute inset-0 bg-background/70 backdrop-blur-sm rounded-[32px] z-10 
+          <div
+            className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-2xl z-10
                        flex items-center justify-center cursor-pointer transition-all
-                       hover:bg-background/80"
-            onClick={handleBlockedClick}
+                       hover:bg-white/80"
+            onClick={() => onBlockedAction?.()}
           >
             <div className="text-center p-4">
-              <Lock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">
+              <Lock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-500">
                 Limite de créditos atingido
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Clique para fazer upgrade
               </p>
             </div>
@@ -102,90 +85,63 @@ export function ResumeUploadCard({
 
         <div
           {...getRootProps()}
-          className={cn(
-            "relative h-80 rounded-[32px] border-2 border-dashed transition-all duration-200",
-            "flex flex-col items-center justify-center gap-4 p-6",
-            disabled 
-              ? "border-muted bg-muted/20 cursor-not-allowed opacity-60"
-              : isDragActive 
-                ? "border-primary bg-primary/5 cursor-pointer" 
-                : "border-border bg-background hover:border-primary hover:bg-primary/5 cursor-pointer",
-            file && !disabled && "border-solid border-primary/50 bg-primary/5"
-          )}
+          className={`
+            relative rounded-2xl border-2 border-dashed transition-all duration-200 flex flex-col min-h-[280px] lg:min-h-[400px]
+            ${disabled
+              ? 'border-gray-200 bg-gray-50/50 cursor-not-allowed opacity-60'
+              : isDragActive
+                ? 'border-[#7367F0] bg-indigo-50/30 ring-4 ring-indigo-100'
+                : file
+                  ? 'border-solid border-[#7367F0]/50 bg-indigo-50/10'
+                  : 'border-gray-300 bg-white hover:border-[#7367F0] hover:bg-gray-50/50'
+            }
+          `}
         >
           <input {...getInputProps()} />
-          
+
           {file ? (
-            <>
-              <div className="flex items-center justify-center w-16 h-16 rounded-[20px] bg-primary/10">
-                <FileText className="w-8 h-8 text-primary" />
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mb-3 sm:mb-4 animate-in zoom-in duration-300">
+                <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-foreground">{file.name}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-              </div>
+              <h3 className="text-base sm:text-xl font-bold text-gray-800 mb-1 text-center break-all px-2">{file.name}</h3>
+              <p className="text-sm text-gray-500 mb-4 sm:mb-6">
+                {(file.size / 1024 / 1024).toFixed(2)} MB &bull; Pronto para análise
+              </p>
               {!disabled && (
                 <button
                   onClick={removeFile}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                  className="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
                 >
-                  <X className="w-4 h-4 text-muted-foreground" />
+                  <X className="w-4 h-4" /> Remover arquivo
                 </button>
               )}
-            </>
+            </div>
           ) : (
-            <>
-              <div className={cn(
-                "flex items-center justify-center w-16 h-16 rounded-[20px] transition-colors",
-                isDragActive ? "bg-primary/10" : "bg-muted group-hover:bg-primary/10"
-              )}>
-                <Upload className={cn(
-                  "w-8 h-8 transition-colors",
-                  isDragActive ? "text-primary" : "text-muted-foreground"
-                )} />
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center cursor-pointer">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4 sm:mb-6 transition-transform duration-300">
+                <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-[#7367F0]" />
               </div>
-              
-              <div className="text-center">
-                <p className="font-semibold text-foreground">Seu Currículo</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Arraste e solte seu arquivo<br />
-                  (PDF/DOCX) aqui ou clique para enviar.
-                </p>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Seu Currículo</h3>
+              <p className="text-sm text-gray-500 max-w-xs mb-6 sm:mb-8 leading-relaxed">
+                Arraste e solte seu arquivo (PDF ou DOCX) aqui ou clique para buscar no computador.
+              </p>
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full uppercase tracking-wide">
+                <FileType className="w-3 h-3" /> PDF Preferencial
               </div>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted cursor-help">
-                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Formato preferencial: PDF
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="text-sm">
-                      Sistemas ATS leem PDFs simples com mais precisão. Evite currículos com colunas,
-                      tabelas, caixas de texto ou ícones — esses elementos confundem o robô.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
+            </div>
           )}
         </div>
       </div>
 
       {/* Warning for legacy .doc files */}
       {showDocWarning && (
-        <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-2xl">
-          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-medium text-destructive">Arquivo .doc detectado</p>
-            <p className="text-destructive/80 mt-1">
-              Arquivos .doc (formato legado) podem não ser processados corretamente. 
+            <p className="font-medium text-red-600">Arquivo .doc detectado</p>
+            <p className="text-red-500/80 mt-1">
+              Arquivos .doc (formato legado) podem não ser processados corretamente.
               Recomendamos converter para PDF para melhores resultados.
             </p>
           </div>

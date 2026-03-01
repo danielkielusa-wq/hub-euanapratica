@@ -1,50 +1,37 @@
 import { useNavigate } from 'react-router-dom';
-import { FileText, Calendar, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { FileText, History, ChevronRight } from 'lucide-react';
 import { useResumePassReports } from '@/hooks/useResumePassReports';
 
-// Helper function to get score styling and label
-function getScoreInfo(score: number) {
-  if (score < 50) {
-    return {
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      label: '· abaixo do mínimo recomendado',
-      labelColor: 'text-red-600',
-    };
+function getScoreStatus(score: number): 'good' | 'warning' | 'critical' {
+  if (score >= 70) return 'good';
+  if (score >= 50) return 'warning';
+  return 'critical';
+}
+
+function getStatusColor(status: 'good' | 'warning' | 'critical') {
+  switch (status) {
+    case 'good': return 'text-green-600 bg-green-50 border-green-100';
+    case 'warning': return 'text-yellow-600 bg-yellow-50 border-yellow-100';
+    case 'critical': return 'text-red-600 bg-red-50 border-red-100';
   }
-  if (score < 70) {
-    return {
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
-      label: '· pode ser melhorado',
-      labelColor: 'text-yellow-600',
-    };
+}
+
+function getStatusLabel(status: 'good' | 'warning' | 'critical') {
+  switch (status) {
+    case 'good': return 'Boa compatibilidade';
+    case 'warning': return 'Pode ser melhorado';
+    case 'critical': return 'Abaixo do recomendado';
   }
-  return {
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    label: '· boa compatibilidade',
-    labelColor: 'text-green-600',
-  };
 }
 
 export function ReportHistory() {
   const navigate = useNavigate();
   const { data: reports, isLoading, error } = useResumePassReports();
 
-  console.log('[ReportHistory]', { isLoading, error: error?.message, reportsCount: reports?.length, reports: reports?.map(r => ({ id: r.id, title: r.title, hasData: !!r.report_data })) });
-
   if (error) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-        DEBUG: ReportHistory query error: {String(error)}
+        Erro ao carregar histórico: {String(error)}
       </div>
     );
   }
@@ -52,15 +39,20 @@ export function ReportHistory() {
   if (isLoading || !reports || reports.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <FileText className="w-4 h-4 text-muted-foreground" />
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="px-4 py-4 sm:p-6 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="font-bold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
+          <History className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
           Histórico de Relatórios
         </h3>
+        {reports.length > 3 && (
+          <button className="text-xs sm:text-sm text-[#7367F0] font-bold hover:underline">
+            Ver todos
+          </button>
+        )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+      <div className="divide-y divide-gray-100">
         {reports.map((report) => {
           const date = new Date(report.created_at);
           const formattedDate = date.toLocaleDateString('pt-BR', {
@@ -69,62 +61,44 @@ export function ReportHistory() {
             year: 'numeric',
           });
           const score = report.report_data?.header?.score;
-          const scoreInfo = score !== undefined ? getScoreInfo(score) : null;
+          const status = score !== undefined ? getScoreStatus(score) : null;
 
           return (
             <div
               key={report.id}
-              className="flex items-center justify-between p-4 hover:bg-gray-50/50 transition-colors"
+              onClick={() => navigate(`/resumepass/report/${report.id}`)}
+              className="px-3 py-3 sm:p-4 hover:bg-gray-50 transition-colors flex items-center justify-between group cursor-pointer gap-3"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary flex-shrink-0">
-                  <FileText className="w-4 h-4" />
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-[#7367F0] shrink-0">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-gray-800 text-xs sm:text-sm mb-0.5 group-hover:text-[#7367F0] transition-colors truncate">
                     {report.title}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                    <Calendar className="w-3 h-3" />
+                  </h4>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-500 flex-wrap">
                     <span>{formattedDate}</span>
-                    {score !== undefined && scoreInfo && (
+                    {score !== undefined && status && (
                       <>
-                        <span className="text-gray-300">|</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="flex items-center gap-1 cursor-help">
-                                <span className={`font-semibold ${scoreInfo.color}`}>
-                                  {score}%
-                                </span>
-                                <span className={`text-[10px] ${scoreInfo.labelColor}`}>
-                                  {scoreInfo.label}
-                                </span>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" className="max-w-xs">
-                              <p className="text-sm">
-                                Scores abaixo de 70% são frequentemente descartados automaticamente
-                                pelos sistemas ATS antes de chegar a um recrutador.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <span className="hidden sm:inline">&bull;</span>
+                        <span className={`hidden sm:inline ${status === 'critical' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-green-500'}`}>
+                          {getStatusLabel(status)}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 text-primary hover:text-primary/80 flex-shrink-0"
-                onClick={() => navigate(`/resumepass/report/${report.id}`)}
-              >
-                Ver relatório
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                {score !== undefined && status && (
+                  <div className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border text-[10px] sm:text-xs font-bold ${getStatusColor(status)}`}>
+                    {score}%
+                  </div>
+                )}
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#7367F0] transition-colors" />
+              </div>
             </div>
           );
         })}

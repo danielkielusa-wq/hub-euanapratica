@@ -59,30 +59,34 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // 2. Check quota via unified credit system (only for post_link)
+  // 2. Check unified credit pool (only for post_link — costs 1 credit)
   if (type === "post_link") {
     const { data: quota, error: quotaError } = await supabase.rpc(
-      "get_app_quota",
-      { p_user_id: auth.userId, p_app_id: "prime_jobs" }
+      "get_unified_credits",
+      { p_user_id: auth.userId }
     );
 
     if (quotaError) {
-      console.error("[job-link-proxy] Quota check error:", quotaError);
+      console.error("[job-link-proxy] Credit check error:", quotaError);
       return new Response(
-        JSON.stringify({ error: "Erro ao verificar quota" }),
+        JSON.stringify({ error: "Erro ao verificar créditos" }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
     const q = Array.isArray(quota) ? quota[0] : quota;
-    const canApply = q && q.remaining > 0 && q.monthly_limit > 0;
-    if (!canApply) {
+    const primeJobsEnabled = q?.features?.prime_jobs === true;
+    const hasCredits = q && q.remaining_credits >= 1;
+
+    if (!primeJobsEnabled || !hasCredits) {
       return new Response(
         JSON.stringify({
-          error: "Limite mensal de aplicações atingido",
+          error: !primeJobsEnabled
+            ? "Seu plano não inclui acesso ao Prime Jobs"
+            : "Créditos mensais insuficientes",
           error_code: "LIMIT_REACHED",
-          monthly_limit: q?.monthly_limit || 0,
-          used: q?.used_this_month || 0,
+          monthly_credits: q?.monthly_credits || 0,
+          used_credits: q?.used_credits || 0,
           plan_id: q?.plan_id || "basic",
         }),
         { status: 403, headers: { ...cors, "Content-Type": "application/json" } }

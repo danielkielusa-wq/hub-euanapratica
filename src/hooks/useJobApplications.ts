@@ -64,7 +64,7 @@ export function useAccessHistory() {
   });
 }
 
-// Hook for checking Prime Jobs quota (unified credit system via get_app_quota)
+// Hook for checking Prime Jobs quota (unified credit pool)
 export function usePrimeJobsQuota() {
   const { user } = useAuth();
 
@@ -82,17 +82,20 @@ export function usePrimeJobsQuota() {
       }
 
       const { data, error } = await supabase
-        .rpc('get_app_quota', { p_user_id: user.id, p_app_id: 'prime_jobs' });
+        .rpc('get_unified_credits', { p_user_id: user.id });
 
       if (error) throw error;
 
       const row = Array.isArray(data) ? data[0] : data;
-      const monthlyLimit = row?.monthly_limit || 0;
-      const remaining = row?.remaining || 0;
+      const monthlyCredits = row?.monthly_credits || 0;
+      const remaining = row?.remaining_credits || 0;
+      const features = row?.features || {};
+      const primeJobsEnabled = features.prime_jobs === true;
+
       return {
-        canApply: remaining > 0 && monthlyLimit > 0,
-        usedThisMonth: row?.used_this_month || 0,
-        monthlyLimit,
+        canApply: primeJobsEnabled && remaining >= 1,
+        usedThisMonth: row?.used_credits || 0,
+        monthlyLimit: monthlyCredits,
         remaining,
         planId: row?.plan_id || 'basic',
       } as PrimeJobsQuota;
@@ -117,7 +120,24 @@ export function useApplyToJob() {
         body: { job_id: jobId, type: 'post_link' },
       });
 
-      if (error) throw new Error('Erro ao buscar link da vaga');
+      if (error) {
+        // supabase-js v2: extract real error body from Response context
+        let parsedError: any = null;
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            parsedError = await ctx.json();
+          }
+        } catch { /* ignore */ }
+        if (!parsedError) {
+          try { parsedError = JSON.parse(error.message); } catch { /* ignore */ }
+        }
+
+        if (parsedError?.error_code === 'LIMIT_REACHED') {
+          throw new Error(parsedError.error || 'Créditos insuficientes. Faça upgrade para continuar.');
+        }
+        throw new Error(parsedError?.error || 'Erro ao buscar link da vaga');
+      }
 
       if (!data?.redirect_url) {
         throw new Error(data?.error || 'Link não disponível para esta vaga');

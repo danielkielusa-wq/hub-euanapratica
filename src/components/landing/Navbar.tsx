@@ -1,124 +1,133 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import logoHorizontal from '@/assets/logo-horizontal.png';
+import { usePlatformLogo } from '@/hooks/usePlatformLogo';
 
-const NAV_LINKS = [
-  { label: 'Serviços', href: '#servicos' },
-  { label: 'Tecnologia', href: '#ia' },
-  { label: 'Metodologia', href: '#metodologia' },
+const navLinks = [
+  { label: 'Início', href: '#landingHero' },
+  { label: 'Funcionalidades', href: '#landingFeatures' },
+  { label: 'Equipe', href: '#landingTeam' },
+  { label: 'FAQ', href: '#landingFAQ' },
+  { label: 'Contato', href: '#landingContact' },
 ];
 
-export function Navbar() {
+export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { logoHorizontal } = usePlatformLogo();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  const handleNavClick = (href: string) => {
+    setMobileOpen(false);
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <header
+    <nav
       className={cn(
-        'fixed top-0 z-50 w-full transition-all duration-300',
-        scrolled || mobileOpen
-          ? 'border-b border-landing-border bg-white/80 shadow-sm backdrop-blur-xl'
+        'fixed top-0 left-0 right-0 z-50 py-0 transition-all duration-200',
+        scrolled
+          ? 'bg-white/90 backdrop-blur-xl shadow-sm'
           : 'bg-transparent'
       )}
     >
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:h-[72px]">
-        {/* Logo */}
-        <Link to="/" className="flex items-center">
-          <img src={logoHorizontal} alt="EUA Na Prática" className="h-7 sm:h-8" />
-        </Link>
-
-        {/* Desktop Nav Links */}
-        <nav className="hidden items-center gap-6 md:flex lg:gap-8">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-landing-text-muted transition-colors hover:text-landing-text"
+      <div className="container mx-auto max-w-7xl">
+        <div className="flex items-center justify-between px-3 py-3 md:px-8">
+          {/* Logo */}
+          <div className="flex items-center gap-4">
+            <button
+              className="lg:hidden border-0 p-0"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle navigation"
             >
-              {link.label}
+              {mobileOpen ? (
+                <X className="h-6 w-6 text-landing-text" />
+              ) : (
+                <Menu className="h-6 w-6 text-landing-text" />
+              )}
+            </button>
+            <a href="#landingHero" className="flex items-center gap-2" onClick={() => handleNavClick('#landingHero')}>
+              <img
+                src={logoHorizontal}
+                alt="EUA na Prática"
+                className="h-8"
+              />
             </a>
-          ))}
-        </nav>
+          </div>
 
-        {/* Desktop CTAs + Mobile hamburger */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Link to="/login" className="hidden sm:block">
-            <Button
-              variant="ghost"
-              className="text-xs font-medium text-landing-text-muted hover:bg-transparent hover:text-landing-text sm:text-sm"
-            >
-              Entrar
-            </Button>
-          </Link>
-          <Link to="/cadastro" className="hidden sm:block">
-            <Button className="rounded-full bg-landing-primary px-4 text-xs font-medium text-white transition-all hover:bg-landing-primary-dark hover:shadow-lg hover:shadow-landing-primary/20 sm:px-6 sm:text-sm">
-              Acessar Hub
-            </Button>
-          </Link>
+          {/* Desktop Nav */}
+          <div className="hidden lg:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick(link.href);
+                }}
+                className="px-4 py-2 text-sm font-medium text-landing-text-muted hover:text-landing-primary transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
 
-          {/* Mobile menu toggle */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex items-center justify-center w-10 h-10 rounded-lg text-landing-text md:hidden hover:bg-gray-100 transition-colors"
-            aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile menu panel */}
-      <div
-        className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-white/95 backdrop-blur-xl",
-          mobileOpen ? "max-h-[400px] border-t border-landing-border" : "max-h-0"
-        )}
-      >
-        <nav className="container mx-auto px-4 py-4 space-y-1">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2.5 rounded-lg text-sm font-medium text-landing-text-muted hover:text-landing-text hover:bg-gray-50 transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
-
-          <div className="pt-3 mt-3 border-t border-gray-100 space-y-2">
-            <Link to="/login" onClick={() => setMobileOpen(false)}>
-              <Button variant="outline" className="w-full rounded-xl text-sm">
-                Entrar
-              </Button>
-            </Link>
-            <Link to="/cadastro" onClick={() => setMobileOpen(false)}>
-              <Button className="w-full rounded-xl bg-landing-primary text-sm text-white hover:bg-landing-primary-dark">
-                Acessar Hub
+          {/* Login Button */}
+          <div className="flex items-center gap-3">
+            <Link to="/login">
+              <Button className="bg-landing-primary hover:bg-landing-primary-dark text-white rounded-md px-5">
+                <LogIn className="mr-2 h-4 w-4 scale-x-[-1]" />
+                <span className="hidden md:inline">Entrar</span>
               </Button>
             </Link>
           </div>
-        </nav>
+        </div>
+
+        {/* Mobile Nav */}
+        <div
+          className={cn(
+            'lg:hidden overflow-hidden transition-all duration-300',
+            mobileOpen ? 'max-h-[400px] pb-4' : 'max-h-0'
+          )}
+        >
+          <div className="flex flex-col gap-1 px-3">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNavClick(link.href);
+                }}
+                className="px-4 py-2 text-sm font-medium text-landing-text-muted hover:text-landing-primary transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
-    </header>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-[-1] lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+    </nav>
   );
 }

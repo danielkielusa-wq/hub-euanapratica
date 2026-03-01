@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench, Copy, Search, Brain } from 'lucide-react';
+import { Settings, Link2, Key, Globe, Plus, Edit, Trash2, TestTube, Lock, AlertCircle, CheckCircle2, Loader2, ShieldAlert, HelpCircle, BookOpen, ChevronRight, Wrench, Copy, Search, Brain, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useAdminApis, type ApiConfigInput, type ApiConfig } from '@/hooks/useAdminApis';
@@ -44,6 +44,13 @@ export default function AdminApis() {
   const configuredWeeklyKey = getConfigValue('weekly_report_api_key');
   if (configuredWeeklyKey && weeklyApiKey === '') {
     setWeeklyApiKey(configuredWeeklyKey);
+  }
+
+  // Aurora assistant LLM selector state
+  const [auroraApiKey, setAuroraApiKey] = useState('');
+  const configuredAuroraKey = getConfigValue('admin_assistant_api_config');
+  if (configuredAuroraKey && auroraApiKey === '') {
+    setAuroraApiKey(configuredAuroraKey);
   }
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -854,6 +861,50 @@ export default function AdminApis() {
                     className="rounded-xl"
                     disabled={!weeklyApiKey || weeklyApiKey === configuredWeeklyKey || isSavingConfig}
                     onClick={() => updateConfig('weekly_report_api_key', weeklyApiKey)}
+                  >
+                    {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Aurora Admin Assistant */}
+              <div className="flex items-center justify-between gap-4 p-3 rounded-xl border bg-muted/30">
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Aurora — Assistente IA do Admin
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Chat de suporte para admins tirarem dúvidas sobre o sistema.
+                    Configurável também em <span className="font-mono">app_configs → admin_assistant_api_config</span>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Select
+                    value={auroraApiKey || '_none'}
+                    onValueChange={v => setAuroraApiKey(v === '_none' ? '' : v)}
+                  >
+                    <SelectTrigger className="rounded-xl w-48">
+                      <SelectValue placeholder="Selecionar API..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">
+                        <span className="text-muted-foreground">Selecionar API...</span>
+                      </SelectItem>
+                      {apis
+                        .filter(a => a.is_active && !NON_LLM_SLUGS.includes(a.api_key))
+                        .map(api => (
+                          <SelectItem key={api.api_key} value={api.api_key}>
+                            {api.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={!auroraApiKey || auroraApiKey === configuredAuroraKey || isSavingConfig}
+                    onClick={() => updateConfig('admin_assistant_api_config', auroraApiKey)}
                   >
                     {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
                   </Button>

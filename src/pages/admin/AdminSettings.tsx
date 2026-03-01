@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu, Image, Upload, Loader2, X } from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { WhatsAppConnectionStatus } from '@/components/admin/whatsapp/WhatsAppConnectionStatus';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
@@ -437,6 +437,7 @@ export default function AdminSettings() {
             <TabsTrigger value="suggest-whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />Sugestão WhatsApp</TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />WhatsApp</TabsTrigger>
             <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
+            <TabsTrigger value="branding" className="gap-2 rounded-lg"><Image className="h-4 w-4" />Identidade Visual</TabsTrigger>
           </TabsList>
 
           <TabsContent value="prompts" className="space-y-6">
@@ -1616,8 +1617,188 @@ export default function AdminSettings() {
               </Card>
             </div>
           </TabsContent>
+
+          <TabsContent value="branding" className="space-y-6">
+            <BrandingTab
+              getConfigValue={getConfigValue}
+              updateConfig={updateConfig}
+              isSaving={isSaving}
+              isLoading={isLoading}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
+  );
+}
+
+/* ───── Branding / Logo Upload Tab ───── */
+
+interface BrandingTabProps {
+  getConfigValue: (key: string) => string;
+  updateConfig: (key: string, value: string) => Promise<void>;
+  isSaving: boolean;
+  isLoading: boolean;
+}
+
+function BrandingTab({ getConfigValue, updateConfig, isSaving, isLoading }: BrandingTabProps) {
+  const [uploadingH, setUploadingH] = useState(false);
+  const [uploadingS, setUploadingS] = useState(false);
+
+  const logoH = getConfigValue('platform_logo_horizontal');
+  const logoS = getConfigValue('platform_logo_square');
+
+  const handleUpload = async (file: File, type: 'horizontal' | 'square') => {
+    const setUploading = type === 'horizontal' ? setUploadingH : setUploadingS;
+    const configKey = type === 'horizontal' ? 'platform_logo_horizontal' : 'platform_logo_square';
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `logos/${type}_${Date.now()}.${ext}`;
+
+      const { supabase } = await import('@/integrations/supabase/client');
+
+      const { error: uploadError } = await supabase.storage
+        .from('platform-assets')
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('platform-assets')
+        .getPublicUrl(path);
+
+      await updateConfig(configKey, urlData.publicUrl);
+    } catch (err: any) {
+      console.error('Logo upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemove = async (type: 'horizontal' | 'square') => {
+    const configKey = type === 'horizontal' ? 'platform_logo_horizontal' : 'platform_logo_square';
+    await updateConfig(configKey, '');
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="rounded-[24px]">
+        <CardContent className="p-8">
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Horizontal Logo */}
+      <Card className="rounded-[24px]">
+        <CardHeader>
+          <CardTitle className="text-lg">Logo Horizontal</CardTitle>
+          <CardDescription>
+            Usado no sidebar, header e paginas publicas. Recomendado: 400×100px, PNG ou SVG com fundo transparente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex items-center justify-center min-h-[120px] bg-gray-50">
+            {logoH ? (
+              <img src={logoH} alt="Logo horizontal" className="max-h-16 max-w-full object-contain" />
+            ) : (
+              <div className="text-center text-gray-400">
+                <Image className="w-8 h-8 mx-auto mb-2" />
+                <p className="text-sm">Nenhum logo enviado (usando padrao)</p>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <label className="flex-1">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(file, 'horizontal');
+                  e.target.value = '';
+                }}
+              />
+              <Button variant="outline" className="w-full rounded-xl" asChild disabled={uploadingH || isSaving}>
+                <span>
+                  {uploadingH ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {uploadingH ? 'Enviando...' : 'Enviar Logo'}
+                </span>
+              </Button>
+            </label>
+            {logoH && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
+                onClick={() => handleRemove('horizontal')}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Square Logo */}
+      <Card className="rounded-[24px]">
+        <CardHeader>
+          <CardTitle className="text-lg">Logo Quadrado</CardTitle>
+          <CardDescription>
+            Usado como icone e em espacos compactos. Recomendado: 200×200px, PNG ou SVG com fundo transparente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex items-center justify-center min-h-[120px] bg-gray-50">
+            {logoS ? (
+              <img src={logoS} alt="Logo quadrado" className="max-h-16 max-w-16 object-contain" />
+            ) : (
+              <div className="text-center text-gray-400">
+                <Image className="w-8 h-8 mx-auto mb-2" />
+                <p className="text-sm">Nenhum logo quadrado enviado</p>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <label className="flex-1">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUpload(file, 'square');
+                  e.target.value = '';
+                }}
+              />
+              <Button variant="outline" className="w-full rounded-xl" asChild disabled={uploadingS || isSaving}>
+                <span>
+                  {uploadingS ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {uploadingS ? 'Enviando...' : 'Enviar Logo'}
+                </span>
+              </Button>
+            </label>
+            {logoS && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
+                onClick={() => handleRemove('square')}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -12,6 +12,7 @@ interface Plan {
   name: string;
   price: number;
   monthly_limit: number;
+  monthly_credits: number;
   display_features: string[];
   cta_text: string;
   is_popular: boolean;
@@ -45,18 +46,24 @@ export function UpgradeModal({
     try {
       const { data, error } = await supabase
         .from('plans')
-        .select('id, name, price, monthly_limit, display_features, cta_text, is_popular')
+        .select('id, name, price, monthly_limit, features, display_features, cta_text, is_popular')
         .eq('is_active', true)
         .order('price', { ascending: true });
 
       if (error) throw error;
       
-      setPlans((data || []).map(p => ({
-        ...p,
-        display_features: Array.isArray(p.display_features) 
-          ? p.display_features as string[]
-          : [],
-      })));
+      setPlans((data || []).map(p => {
+        const features = (typeof p.features === 'object' && p.features !== null && !Array.isArray(p.features))
+          ? p.features as Record<string, unknown>
+          : {};
+        return {
+          ...p,
+          monthly_credits: Number(features.monthly_credits) || p.monthly_limit || 5,
+          display_features: Array.isArray(p.display_features)
+            ? p.display_features as string[]
+            : [],
+        };
+      }));
     } catch (err) {
     } finally {
       setIsLoading(false);
@@ -145,9 +152,9 @@ export function UpgradeModal({
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {plan.monthly_limit === 999 
-                        ? 'Análises ilimitadas' 
-                        : `${plan.monthly_limit} análise${plan.monthly_limit > 1 ? 's' : ''}/mês`}
+                      {plan.monthly_credits >= 999
+                        ? 'Créditos ilimitados'
+                        : `${plan.monthly_credits} crédito${plan.monthly_credits > 1 ? 's' : ''}/mês`}
                     </p>
                   </div>
 

@@ -37,6 +37,8 @@ interface WaitReplyMatch {
 }
 
 const DELAY_PRESETS = [
+  { label: '10s', duration: 10, unit: 'seconds' },
+  { label: '30s', duration: 30, unit: 'seconds' },
   { label: '30min', duration: 30, unit: 'minutes' },
   { label: '1h', duration: 1, unit: 'hours' },
   { label: '2h', duration: 2, unit: 'hours' },
@@ -82,7 +84,7 @@ export function FlowStepForm({
 
   // Delay fields
   const [delayDuration, setDelayDuration] = useState(60);
-  const [delayUnit, setDelayUnit] = useState<'minutes' | 'hours' | 'days'>('minutes');
+  const [delayUnit, setDelayUnit] = useState<'seconds' | 'minutes' | 'hours' | 'days'>('minutes');
 
   // Wait reply fields
   const [timeoutMinutes, setTimeoutMinutes] = useState(1440);
@@ -385,6 +387,7 @@ export function FlowStepForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="seconds">Segundos</SelectItem>
                     <SelectItem value="minutes">Minutos</SelectItem>
                     <SelectItem value="hours">Horas</SelectItem>
                     <SelectItem value="days">Dias</SelectItem>

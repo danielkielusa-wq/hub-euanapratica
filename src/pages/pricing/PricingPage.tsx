@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Crown, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +9,18 @@ import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { BillingCycle } from '@/types/plans';
+
+// UPDATE THESE AS FOUNDER SPOTS ARE FILLED
+const FOUNDER_SPOTS: Record<string, { total: number; remaining: number }> = {
+  blue:   { total: 100, remaining: 73 }, // Pro
+  purple: { total: 50,  remaining: 38 }, // VIP
+};
+
+// Future regular prices shown as crossed-out anchor
+const FUTURE_PRICES: Record<string, { monthly: number; annualMonthly: number }> = {
+  blue:   { monthly: 67,  annualMonthly: 54  }, // Pro
+  purple: { monthly: 147, annualMonthly: 122 }, // VIP
+};
 
 interface PlanData {
   id: string;
@@ -28,52 +39,18 @@ interface PlanData {
   is_active: boolean;
 }
 
-/**
- * Compute excluded features for each plan by collecting features
- * from higher-priced plans that this plan doesn't have.
- */
-function getExcludedFeatures(plan: PlanData, allPlans: PlanData[]): string[] {
-  const included = new Set(plan.display_features);
-  const excluded: string[] = [];
-  const seen = new Set<string>();
-
-  // Higher-priced plans come after this one (sorted by price)
-  const higherPlans = allPlans.filter(p => p.price > plan.price);
-  for (const hp of higherPlans) {
-    for (const f of hp.display_features) {
-      if (!included.has(f) && !seen.has(f)) {
-        excluded.push(f);
-        seen.add(f);
-      }
-    }
+function getPlanIcon(theme: string | null): string {
+  switch (theme) {
+    case 'purple': return '/images/landing/icons/shuttle-rocket.png';
+    case 'blue':   return '/images/landing/icons/plane.png';
+    default:       return '/images/landing/icons/paper-airplane.png';
   }
-  return excluded;
 }
 
-function getThemeStyles(theme: string | null) {
-  switch (theme) {
-    case 'purple':
-      return {
-        border: 'border-purple-200',
-        bg: 'bg-gray-900',
-        btnBg: 'bg-gray-900 hover:bg-black text-white shadow-xl',
-        tag: 'bg-purple-100 text-purple-700',
-      };
-    case 'blue':
-      return {
-        border: 'border-brand-600 shadow-xl shadow-brand-600/10',
-        bg: 'bg-brand-600',
-        btnBg: 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/20',
-        tag: 'bg-blue-100 text-blue-700',
-      };
-    default:
-      return {
-        border: 'border-gray-100',
-        bg: 'bg-gray-100',
-        btnBg: 'bg-gray-100 text-gray-400',
-        tag: 'bg-gray-100 text-gray-500',
-      };
-  }
+function getPlanBadge(plan: PlanData): { text: string; color: 'primary' | 'purple' } | null {
+  if (plan.theme === 'purple') return { text: 'Programa Completo', color: 'purple' };
+  if (plan.is_popular) return { text: 'Mais Popular', color: 'primary' };
+  return null;
 }
 
 export default function PricingPage() {
@@ -83,9 +60,11 @@ export default function PricingPage() {
   const { planId: currentPlanId, subscriptionStatus } = usePlanAccess();
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('annual');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+
+  const isAnnual = billingCycle === 'annual';
 
   useEffect(() => {
     async function fetchPlans() {
@@ -135,7 +114,6 @@ export default function PricingPage() {
       )
       .subscribe();
 
-    // Timeout fallback after 60s
     const timeout = setTimeout(() => {
       if (awaitingPayment) {
         setAwaitingPayment(false);
@@ -178,7 +156,6 @@ export default function PricingPage() {
       return;
     }
 
-    // Record terms acceptance via SECURITY DEFINER RPC (bypasses RLS)
     if (user?.id) {
       const { error: termsError } = await supabase.rpc('accept_subscription_terms', {
         p_plan_id: plan.id,
@@ -190,7 +167,6 @@ export default function PricingPage() {
       }
     }
 
-    // Build checkout URL with pre-filled email
     const url = new URL(checkoutUrl);
     if (user?.email) url.searchParams.set('email', user.email);
 
@@ -199,35 +175,34 @@ export default function PricingPage() {
   };
 
   const getPrice = (plan: PlanData) => {
-    if (plan.price === 0) return 'Grátis';
-    if (billingCycle === 'annual' && plan.price_annual) {
-      return `R$ ${Math.round(plan.price_annual / 12)}`;
+    if (plan.price === 0) return '0';
+    if (isAnnual && plan.price_annual) {
+      return `${Math.round(plan.price_annual / 12)}`;
     }
-    return `R$ ${plan.price}`;
+    return `${plan.price}`;
   };
 
-  const getPriceSuffix = (plan: PlanData) => {
-    if (plan.price === 0) return '';
-    return '/mês';
+  const getAnnualTotal = (plan: PlanData) => {
+    if (plan.price === 0 || !plan.price_annual || !isAnnual) return null;
+    return `R$${plan.price_annual} / ano`;
   };
 
-  const getAnnualSaving = (plan: PlanData) => {
-    if (plan.price === 0 || !plan.price_annual || billingCycle !== 'annual') return null;
-    const monthlyTotal = plan.price * 12;
-    const saving = monthlyTotal - plan.price_annual;
-    if (saving <= 0) return null;
-    return `Economia de R$ ${saving}/ano`;
+  const getAnnualSavingPercent = () => {
+    let maxPercent = 0;
+    for (const plan of plans) {
+      if (plan.price > 0 && plan.price_annual) {
+        const monthlyTotal = plan.price * 12;
+        const percent = Math.round(((monthlyTotal - plan.price_annual) / monthlyTotal) * 100);
+        if (percent > maxPercent) maxPercent = percent;
+      }
+    }
+    return maxPercent;
   };
 
-  const isCurrentPlan = (plan: PlanData) => {
-    return plan.id === currentPlanId && subscriptionStatus === 'active';
-  };
+  const isCurrentPlan = (plan: PlanData) =>
+    plan.id === currentPlanId && subscriptionStatus === 'active';
 
-  const getButtonLabel = (plan: PlanData) => {
-    if (isCurrentPlan(plan)) return 'Plano Atual';
-    if (plan.price === 0) return 'Plano Gratuito';
-    return plan.cta_text || 'Assinar Agora';
-  };
+  const savingPercent = getAnnualSavingPercent();
 
   if (isLoading) {
     return (
@@ -241,54 +216,75 @@ export default function PricingPage() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-muted/30 p-6 md:p-8">
+      <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-6xl mx-auto animate-fade-in">
+
           {/* Header */}
-          <div className="text-center mb-10">
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-              Potencialize sua carreira.
+          <div className="text-center mb-4">
+            <span className="inline-block rounded-md bg-landing-primary/10 px-3 py-1 text-sm font-medium text-landing-primary mb-3">
+              Planos
+            </span>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              Planos pensados para você
             </h1>
-            <p className="text-muted-foreground mt-2 font-medium max-w-lg mx-auto">
-              Escolha o plano ideal para seus objetivos de carreira nos EUA.
+            <p className="text-muted-foreground mt-1 max-w-lg mx-auto">
+              Todas as ferramentas de IA para impulsionar sua carreira internacional.
+              <br />Escolha o plano ideal para seus objetivos.
             </p>
           </div>
 
-          {/* Billing Toggle */}
-          <div className="flex justify-center mb-10">
-            <div className="bg-card border border-border rounded-2xl p-1.5 flex gap-1">
-              <button
-                onClick={() => setBillingCycle('monthly')}
-                className={cn(
-                  'px-6 py-2.5 rounded-xl text-sm font-bold transition-all',
-                  billingCycle === 'monthly'
-                    ? 'bg-foreground text-background shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Mensal
-              </button>
-              <button
-                onClick={() => setBillingCycle('annual')}
-                className={cn(
-                  'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
-                  billingCycle === 'annual'
-                    ? 'bg-foreground text-background shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Anual
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                  2 MESES GRÁTIS
+          {/* Founder scarcity banner */}
+          <div className="max-w-xl mx-auto mb-6">
+            <div className="flex items-center justify-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+              <p className="text-sm text-amber-800 font-medium text-center">
+                <span className="font-bold">Oferta de Fundador</span>
+                {' '}·{' '}
+                <span className="text-amber-700">
+                  {FOUNDER_SPOTS.blue.remaining} vagas Pro · {FOUNDER_SPOTS.purple.remaining} vagas VIP restantes
                 </span>
+                {' '}· Preço garantido para sempre
+              </p>
+            </div>
+          </div>
+
+          {/* Billing Toggle — same style as landing */}
+          <div className="text-center mb-10">
+            <div className="relative inline-flex items-center pt-3 md:pt-0">
+              <span className={cn('text-sm mr-3', !isAnnual && 'font-semibold')}>Mensal</span>
+              <button
+                onClick={() => setBillingCycle(isAnnual ? 'monthly' : 'annual')}
+                className={cn(
+                  'relative w-11 h-6 rounded-full transition-colors',
+                  isAnnual ? 'bg-landing-primary' : 'bg-gray-300'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
+                    isAnnual && 'translate-x-5'
+                  )}
+                />
               </button>
+              <span className={cn('text-sm ml-3', isAnnual && 'font-semibold')}>Anual</span>
+              {savingPercent > 0 && (
+                <div className="absolute -right-28 -top-2 hidden md:flex items-start">
+                  <img
+                    src="/images/landing/icons/pricing-plans-arrow.png"
+                    alt=""
+                    className="h-8"
+                  />
+                  <span className="text-sm font-medium mt-2 ml-1">Economize {savingPercent}%</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Awaiting Payment Overlay */}
           {awaitingPayment && (
-            <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center animate-fade-in">
+            <div className="mb-8 bg-amber-50 border border-amber-200 rounded-lg p-6 text-center animate-fade-in">
               <Loader2 className="h-6 w-6 animate-spin text-amber-600 mx-auto mb-3" />
-              <p className="font-bold text-amber-800">Aguardando confirmação de pagamento...</p>
+              <p className="font-semibold text-amber-800">Aguardando confirmação de pagamento...</p>
               <p className="text-sm text-amber-600 mt-1">
                 Complete o pagamento na aba do Ticto. Esta página será atualizada automaticamente.
               </p>
@@ -296,82 +292,144 @@ export default function PricingPage() {
           )}
 
           {/* Plans Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-0 lg:pt-5 mb-10">
             {plans.map((plan) => {
-              const styles = getThemeStyles(plan.theme);
-              const excluded = getExcludedFeatures(plan, plans);
-              const saving = getAnnualSaving(plan);
               const isCurrent = isCurrentPlan(plan);
+              const isVip = plan.theme === 'purple';
+              const annualTotal = getAnnualTotal(plan);
+              const badge = getPlanBadge(plan);
+              const founderSpots = plan.theme ? FOUNDER_SPOTS[plan.theme] : null;
+              const futurePrices = plan.theme ? FUTURE_PRICES[plan.theme] : null;
 
               return (
                 <div
                   key={plan.id}
                   className={cn(
-                    'relative rounded-[40px] p-8 flex flex-col border-2 transition-all hover:scale-[1.02] bg-card',
-                    styles.border
+                    'bg-white rounded-lg relative',
+                    plan.is_popular && 'border-2 border-landing-primary shadow-xl shadow-landing-primary/10',
+                    isVip && 'border-2 border-purple-400 shadow-xl shadow-purple-400/10',
+                    !plan.is_popular && !isVip && 'border border-gray-200 shadow-sm'
                   )}
                 >
-                  {plan.is_popular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1.5 bg-brand-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-1">
-                      <Crown className="w-3 h-3" />
-                      Popular
+                  {/* Badge */}
+                  {badge && (
+                    <div className="absolute top-0 right-5 -translate-y-1/2">
+                      <span className={cn(
+                        'text-xs font-semibold px-3 py-1 rounded-full',
+                        badge.color === 'primary' && 'bg-landing-primary text-white',
+                        badge.color === 'purple' && 'bg-purple-500 text-white',
+                      )}>
+                        {badge.text}
+                      </span>
                     </div>
                   )}
 
-                  <div className="mb-8">
-                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">
-                      {plan.name}
-                    </p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black text-foreground">{getPrice(plan)}</span>
-                      {getPriceSuffix(plan) && (
-                        <span className="text-sm font-bold text-muted-foreground">{getPriceSuffix(plan)}</span>
+                  <div className="pt-8 pb-4 px-6">
+                    <div className="text-center">
+                      <img src={getPlanIcon(plan.theme)} alt="" className="h-16 mx-auto mb-6" />
+                      <h4 className="text-xl font-semibold mb-1">{plan.name}</h4>
+                      <p className="text-gray-500 text-sm mb-4">{plan.description}</p>
+
+                      {/* Founder label + crossed-out future price */}
+                      {futurePrices && (
+                        <div className="mb-1 flex items-center justify-center gap-2">
+                          <span className="text-xs text-gray-400 line-through">
+                            R${isAnnual ? futurePrices.annualMonthly : futurePrices.monthly}/mês
+                          </span>
+                          <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                            Preço Fundador
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Price */}
+                      <div className="flex items-end justify-center gap-0.5">
+                        <span className="text-gray-400 text-sm mb-1">R$</span>
+                        <span className={cn(
+                          'text-4xl font-extrabold leading-none',
+                          isVip ? 'text-purple-500' : 'text-landing-primary'
+                        )}>
+                          {getPrice(plan)}
+                        </span>
+                        <span className="text-gray-500 text-sm mb-1">/mês</span>
+                      </div>
+                      {annualTotal && (
+                        <div className="text-gray-400 text-sm mt-1">{annualTotal}</div>
+                      )}
+
+                      {/* Spots progress bar */}
+                      {founderSpots && (
+                        <div className="mt-4">
+                          <div className="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>{founderSpots.remaining} vagas restantes</span>
+                            <span>de {founderSpots.total}</span>
+                          </div>
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full',
+                                isVip ? 'bg-purple-400' : 'bg-landing-primary'
+                              )}
+                              style={{
+                                width: `${((founderSpots.total - founderSpots.remaining) / founderSpots.total) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {saving && (
-                      <p className="text-xs font-bold text-green-600 mt-1 flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        {saving}
-                      </p>
-                    )}
-                    {billingCycle === 'annual' && plan.price_annual ? (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        R$ {plan.price_annual} cobrado anualmente
-                      </p>
-                    ) : null}
-                    <p className="text-sm font-medium text-muted-foreground mt-4 leading-relaxed">
-                      {plan.description}
-                    </p>
                   </div>
 
-                  <div className="space-y-4 mb-10 flex-1">
-                    {plan.display_features.map((f) => (
-                      <div key={f} className="flex items-center gap-3 text-sm font-bold text-foreground">
-                        <Check className="text-brand-600 shrink-0" size={18} />
-                        {f}
-                      </div>
-                    ))}
-                    {excluded.map((f) => (
-                      <div key={f} className="flex items-center gap-3 text-sm font-bold text-muted-foreground/40">
-                        <X className="shrink-0" size={18} />
-                        {f}
-                      </div>
-                    ))}
-                  </div>
+                  <div className="px-6 pb-8">
+                    <ul className="space-y-3 mb-8">
+                      {plan.display_features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              'flex items-center justify-center w-5 h-5 rounded-full shrink-0',
+                              isVip
+                                ? 'bg-purple-100 text-purple-500'
+                                : plan.is_popular
+                                  ? 'bg-landing-primary text-white'
+                                  : 'bg-landing-primary/10 text-landing-primary'
+                            )}
+                          >
+                            <Check className="h-3 w-3" />
+                          </span>
+                          <span className="text-sm font-medium text-gray-700">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
 
-                  <button
-                    onClick={() => handleSubscribe(plan)}
-                    disabled={isCurrent || plan.price === 0}
-                    className={cn(
-                      'w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2',
-                      isCurrent || plan.price === 0
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : styles.btnBg
+                    <button
+                      onClick={() => handleSubscribe(plan)}
+                      disabled={isCurrent || plan.price === 0}
+                      className={cn(
+                        'w-full py-2.5 rounded-lg font-medium transition-all text-sm',
+                        isCurrent
+                          ? 'border-2 border-green-500 bg-green-50 text-green-600 cursor-default'
+                          : plan.price === 0
+                            ? 'bg-landing-primary/10 text-landing-primary hover:bg-landing-primary/20 cursor-not-allowed'
+                            : isVip
+                              ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                              : plan.is_popular
+                                ? 'bg-landing-primary hover:bg-landing-primary-dark text-white'
+                                : 'bg-landing-primary/10 text-landing-primary hover:bg-landing-primary/20'
+                      )}
+                    >
+                      {isCurrent
+                        ? 'Plano Atual'
+                        : plan.price === 0
+                          ? 'Começar Grátis'
+                          : 'Garantir Vaga de Fundador'}
+                    </button>
+
+                    {founderSpots && (
+                      <p className="text-center text-xs text-gray-400 mt-2">
+                        Preço garantido para sempre
+                      </p>
                     )}
-                  >
-                    {getButtonLabel(plan)}
-                    {!isCurrent && plan.price > 0 && <ArrowRight size={18} />}
-                  </button>
+                  </div>
                 </div>
               );
             })}
@@ -391,7 +449,7 @@ export default function PricingPage() {
                   href="/termos-assinatura"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-600 underline font-medium"
+                  className="text-landing-primary underline font-medium"
                 >
                   Termos de Assinatura
                 </a>
@@ -400,16 +458,16 @@ export default function PricingPage() {
                   href="/politica-cancelamento"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-600 underline font-medium"
+                  className="text-landing-primary underline font-medium"
                 >
                   Política de Cancelamento
                 </a>{' '}
                 e a{' '}
                 <a
-                  href="/politica-privacidade"
+                  href="/privacidade"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-brand-600 underline font-medium"
+                  className="text-landing-primary underline font-medium"
                 >
                   Política de Privacidade
                 </a>
@@ -421,6 +479,7 @@ export default function PricingPage() {
               Garantia de 7 dias. Cancele quando quiser. Pagamento processado pela Ticto.
             </p>
           </div>
+
         </div>
       </div>
     </DashboardLayout>

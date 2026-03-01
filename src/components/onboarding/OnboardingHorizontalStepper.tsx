@@ -1,7 +1,7 @@
 import { Check, HelpCircle } from 'lucide-react';
 import { OnboardingStep, ONBOARDING_STEPS } from '@/types/onboarding';
 import { cn } from '@/lib/utils';
-import logoHorizontal from '@/assets/logo-horizontal.png';
+import { usePlatformLogo } from '@/hooks/usePlatformLogo';
 import { Link } from 'react-router-dom';
 
 interface OnboardingHorizontalStepperProps {
@@ -11,6 +11,7 @@ interface OnboardingHorizontalStepperProps {
 const stepLabels = ['INÍCIO', 'PERFIL', 'DESTINO', 'CARREIRA', 'FINAL'];
 
 export function OnboardingHorizontalStepper({ currentStep }: OnboardingHorizontalStepperProps) {
+  const { logoHorizontal } = usePlatformLogo();
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">

@@ -67,7 +67,7 @@ serve(async (req) => {
 
       if (!trigger_data.phone) {
         return new Response(
-          JSON.stringify({ error: "trigger_data.phone is required" }),
+          JSON.stringify({ error: "Telefone é obrigatório" }),
           { status: 400, headers: jsonHeaders }
         );
       }
@@ -96,7 +96,7 @@ serve(async (req) => {
         const eventName = trigger_data.event;
         if (!eventName) {
           return new Response(
-            JSON.stringify({ error: "trigger_data.event is required for event triggers" }),
+            JSON.stringify({ error: "trigger_data.event é obrigatório para triggers de evento" }),
             { status: 400, headers: jsonHeaders }
           );
         }
@@ -158,7 +158,7 @@ serve(async (req) => {
         const flowId = trigger_data.flow_id;
         if (!flowId) {
           return new Response(
-            JSON.stringify({ error: "trigger_data.flow_id is required for manual triggers" }),
+            JSON.stringify({ error: "flow_id é obrigatório para disparo manual" }),
             { status: 400, headers: jsonHeaders }
           );
         }
@@ -171,18 +171,22 @@ serve(async (req) => {
 
         if (!flow) {
           return new Response(
-            JSON.stringify({ error: "Flow not found" }),
+            JSON.stringify({ error: "Fluxo não encontrado" }),
             { status: 404, headers: jsonHeaders }
           );
         }
 
+        // Manual trigger: auto-cancel existing active sessions so admin can re-test
         if (!flow.allow_concurrent) {
           const hasExisting = await hasActiveSession(supabase, flow.id, phone);
           if (hasExisting) {
-            return new Response(
-              JSON.stringify({ error: "Contact already has an active session for this flow" }),
-              { status: 409, headers: jsonHeaders }
-            );
+            console.log(`[execute-flow] Manual trigger: cancelling existing sessions for ${phone} on flow ${flow.name}`);
+            await supabase
+              .from("whatsapp_flow_sessions")
+              .update({ status: "cancelled", completed_at: new Date().toISOString() })
+              .eq("flow_id", flow.id)
+              .eq("phone", phone)
+              .in("status", ["active", "waiting_delay", "waiting_reply"]);
           }
         }
 
@@ -205,13 +209,13 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid request. Provide trigger_type+trigger_data, session_id+reply_text, or resume_type." }),
+      JSON.stringify({ error: "Requisição inválida. Forneça trigger_type+trigger_data, session_id+reply_text, ou resume_type." }),
       { status: 400, headers: jsonHeaders }
     );
   } catch (err) {
     console.error("[execute-flow] Error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal error" }),
+      JSON.stringify({ error: "Erro interno no servidor" }),
       { status: 500, headers: jsonHeaders }
     );
   }

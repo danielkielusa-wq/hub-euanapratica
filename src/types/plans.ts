@@ -45,7 +45,10 @@ export interface PlanDiscounts {
 
 // Full plan features structure
 export interface PlanFeatures {
-  // Usage limits
+  // Unified credit pool
+  monthly_credits: number;
+
+  // Legacy per-app limits (kept for backward compat, will be removed)
   resume_pass_limit: number;
   title_translator_limit: number;
   job_concierge_count: number;
@@ -136,8 +139,16 @@ export interface SubscriptionEvent {
   createdAt: string;
 }
 
+// Credit costs per action (defaults, overridden by app_configs.credit_costs)
+export const DEFAULT_CREDIT_COSTS: Record<string, number> = {
+  curriculo_usa: 3,
+  title_translator: 1,
+  prime_jobs: 1,
+};
+
 // Default features for fallback
 export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
+  monthly_credits: 5,
   resume_pass_limit: 1,
   title_translator_limit: 1,
   job_concierge_count: 0,

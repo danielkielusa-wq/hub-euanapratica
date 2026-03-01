@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Mail, ShieldCheck } from 'lucide-react';
-import logo from '@/assets/logo-horizontal.png';
+import { usePlatformLogo } from '@/hooks/usePlatformLogo';
 
 interface ReportGatekeeperProps {
   onVerify: (email: string) => Promise<boolean>;
@@ -13,6 +13,7 @@ interface ReportGatekeeperProps {
 }
 
 export function ReportGatekeeper({ onVerify, isLoading, error }: ReportGatekeeperProps) {
+  const { logoHorizontal: logo } = usePlatformLogo();
   const [email, setEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {

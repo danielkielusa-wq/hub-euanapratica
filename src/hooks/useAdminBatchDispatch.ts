@@ -22,10 +22,11 @@ export interface BatchJob {
   contacts_sent: number;
   contacts_failed: number;
   contacts_skipped: number;
-  status: 'queued' | 'processing' | 'paused' | 'completed' | 'cancelled';
+  status: 'queued' | 'processing' | 'paused' | 'completed' | 'cancelled' | 'scheduled';
   created_at: string;
   updated_at: string;
   started_at: string | null;
+  scheduled_at: string | null;
   completed_at: string | null;
   paused_at: string | null;
   error_rate: number;
@@ -125,6 +126,7 @@ export function useCreateBatchJob() {
       contactsPerCycle?: number;
       businessHoursOnly?: boolean;
       manualContacts?: Array<{ phone: string; lead_name?: string }>;
+      scheduledAt?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase.functions.invoke('process-whatsapp-batch', {
@@ -140,8 +142,9 @@ export function useCreateBatchJob() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['batch-jobs', variables.flowId] });
+      const isScheduled = !!variables.scheduledAt;
       toast({
-        title: 'Lote criado com sucesso',
+        title: isScheduled ? 'Lote agendado com sucesso' : 'Lote criado com sucesso',
         description: `${data.totalContacts} contatos na fila`,
       });
     },

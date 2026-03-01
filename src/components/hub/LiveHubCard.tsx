@@ -1,9 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, ArrowRight, Radio, CheckCircle2, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Calendar, Video, PlayCircle } from 'lucide-react';
 import type { MyLive } from '@/hooks/useMyLives';
 
 export function LiveHubCard({ item }: { item: MyLive }) {
@@ -12,7 +10,6 @@ export function LiveHubCard({ item }: { item: MyLive }) {
   const dt = parseISO(live.scheduled_at);
   const isLive = live.status === 'live';
   const isCompleted = live.status === 'completed';
-  const isUpcoming = live.status === 'scheduled' && !isPast(dt);
 
   const handleClick = () => {
     if (isLive && live.meeting_link) {
@@ -22,74 +19,47 @@ export function LiveHubCard({ item }: { item: MyLive }) {
     }
   };
 
-  const label = isLive
-    ? 'Entrar Agora'
+  // Icon + color per status
+  const iconConfig = isLive
+    ? { icon: Video, bg: 'bg-red-100', color: 'text-red-600' }
     : isCompleted
-    ? 'Ver Gravação'
-    : 'Ver Detalhes';
+    ? { icon: PlayCircle, bg: 'bg-purple-100', color: 'text-purple-600' }
+    : { icon: Calendar, bg: 'bg-orange-100', color: 'text-orange-600' };
+
+  const Icon = iconConfig.icon;
+
+  // Status label + color
+  const statusLabel = isLive
+    ? 'Ao Vivo'
+    : isCompleted
+    ? (live.recording_url ? 'Assistir' : 'Concluída')
+    : 'Agendado';
+
+  const statusColor = isLive
+    ? 'text-red-600 animate-pulse'
+    : isCompleted
+    ? (live.recording_url ? 'text-purple-600' : 'text-gray-500')
+    : 'text-gray-500';
+
+  // Subtitle
+  const subtitle = isLive
+    ? 'Acontecendo agora!'
+    : format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR });
 
   return (
-    <div
-      className={cn(
-        'rounded-md border border-border/30 shadow-none bg-card/50 pl-5 pr-5 py-4 border-l-[3px] flex flex-col gap-3',
-        isLive && 'border-l-red-400',
-        isUpcoming && 'border-l-blue-400',
-        isCompleted && 'border-l-gray-200 opacity-60'
-      )}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2 min-w-0">
-          {isLive ? (
-            <Radio className="h-4 w-4 text-red-500 animate-pulse flex-shrink-0 mt-0.5" />
-          ) : isCompleted ? (
-            <CheckCircle2 className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-          ) : (
-            <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          )}
-          <div className="min-w-0">
-            <p className="font-medium text-foreground text-sm leading-tight truncate">{live.title}</p>
-            {live.description && (
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{live.description.slice(0, 60)}{(live.description.length) > 60 ? '…' : ''}</p>
-            )}
-          </div>
+    <button onClick={handleClick} className="w-full flex items-center justify-between text-left group">
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-lg ${iconConfig.bg} ${iconConfig.color} flex items-center justify-center flex-shrink-0`}>
+          <Icon className="w-5 h-5" />
         </div>
-
-        {isLive && (
-          <span className="text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200 whitespace-nowrap">
-            Ao Vivo
-          </span>
-        )}
+        <div>
+          <div className="text-sm font-semibold text-gray-800 dark:text-foreground">{live.title}</div>
+          <div className="text-xs text-gray-500 dark:text-muted-foreground">{subtitle}</div>
+        </div>
       </div>
-
-      {/* Date/time */}
-      <p className={cn(
-        'text-sm font-medium',
-        isLive ? 'text-red-600' : isUpcoming ? 'text-blue-600' : 'text-muted-foreground'
-      )}>
-        {isLive ? 'Acontecendo agora!' : format(dt, "EEE dd/MM 'às' HH:mm", { locale: ptBR })}
-      </p>
-
-      {/* CTA */}
-      <div className="flex justify-end">
-        {isCompleted && !live.recording_url ? (
-          <span className="text-xs text-muted-foreground font-medium">Concluída</span>
-        ) : (
-          <Button
-            size="sm"
-            onClick={handleClick}
-            className={cn(
-              'gap-1.5 text-xs font-bold h-8',
-              isLive
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-            )}
-          >
-            {label}
-            {isLive ? <ExternalLink className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
-          </Button>
-        )}
+      <div className={`text-xs font-bold ${statusColor} whitespace-nowrap`}>
+        {statusLabel}
       </div>
-    </div>
+    </button>
   );
 }

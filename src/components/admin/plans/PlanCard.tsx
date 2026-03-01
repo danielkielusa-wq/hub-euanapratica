@@ -251,43 +251,25 @@ export function PlanCard({ plan, onSave, isSaving }: PlanCardProps) {
           </div>
         </section>
 
-        {/* 1. ResumePass AI */}
+        {/* 1. Unified Monthly Credits */}
         <section>
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Zap size={14} className="text-primary" /> ResumePass AI
+            <Zap size={14} className="text-primary" /> Créditos Mensais (Pool Unificado)
           </h3>
           <div className="bg-muted/50 rounded-2xl p-4 border border-border">
+            <p className="text-[10px] text-muted-foreground mb-3">
+              Pool compartilhado entre todos os apps. Custos: Currículo USA = 3, Title Translator = 1, Prime Jobs = 1 (editável em Configurações &gt; credit_costs).
+            </p>
             <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-foreground">Limite Mensal</label>
+              <label className="text-sm font-bold text-foreground">Créditos por Mês</label>
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={localPlan.features.resume_pass_limit}
-                  onChange={(e) => updateFeature('resume_pass_limit', Number(e.target.value))}
-                  className="w-16 text-center font-bold"
+                  value={localPlan.features.monthly_credits ?? 5}
+                  onChange={(e) => updateFeature('monthly_credits', Number(e.target.value))}
+                  className="w-20 text-center font-bold"
                 />
-                <span className="text-xs text-muted-foreground font-medium">análises</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 1b. Title Translator */}
-        <section>
-          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Languages size={14} className="text-primary" /> Title Translator
-          </h3>
-          <div className="bg-muted/50 rounded-2xl p-4 border border-border">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-foreground">Limite Mensal</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  value={localPlan.features.title_translator_limit}
-                  onChange={(e) => updateFeature('title_translator_limit', Number(e.target.value))}
-                  className="w-16 text-center font-bold"
-                />
-                <span className="text-xs text-muted-foreground font-medium">traduções</span>
+                <span className="text-xs text-muted-foreground font-medium">créditos</span>
               </div>
             </div>
           </div>

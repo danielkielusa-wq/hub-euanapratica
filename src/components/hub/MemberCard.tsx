@@ -109,7 +109,7 @@ export function MemberCard({ className }: MemberCardProps) {
             {/* Credits Widget */}
             <div className="rounded-2xl bg-white/10 px-5 py-3 backdrop-blur-sm">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70">
-                CRÉDITOS CURRÍCULO USA
+                CRÉDITOS MENSAIS
               </span>
               <div className="mt-1 flex items-center gap-3">
                 <span className="text-2xl font-bold text-white">

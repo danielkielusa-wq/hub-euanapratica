@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
+import { AdminAssistantButton } from '@/components/admin/assistant';
 import { DunningBanner } from '@/components/subscription/DunningBanner';
 import { SpotlightSearch } from './SpotlightSearch';
 import { SidebarNav } from './SidebarNav';
 import { SidebarUserCard } from './SidebarUserCard';
-import logoHorizontal from '@/assets/logo-horizontal.png';
+import { DashboardTopbar } from './DashboardTopbar';
+import { HeaderCreditIndicator } from './HeaderCreditIndicator';
+import { usePlatformLogo } from '@/hooks/usePlatformLogo';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -21,7 +25,9 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
   const { user, logout, isImpersonating } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+  const { logoHorizontal } = usePlatformLogo();
+  const { planId, planName, planAccess, isLoading: planLoading } = usePlanAccess();
+
   if (!user) return null;
   
   const handleLogout = async () => {
@@ -57,6 +63,16 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
         <img src={logoHorizontal} alt="USA Hub" className="ml-4 h-8" />
+        <div className="ml-auto">
+          <HeaderCreditIndicator
+            remaining={planAccess?.remaining ?? 0}
+            monthlyLimit={planAccess?.monthlyLimit ?? 5}
+            usedThisMonth={planAccess?.usedThisMonth ?? 0}
+            planId={planId}
+            planName={planName}
+            isLoading={planLoading}
+          />
+        </div>
       </header>
       
       {/* Sidebar - Floating Glassmorphism Design */}
@@ -122,6 +138,10 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
         // Impersonation adjustment
         isImpersonating && "pt-24 lg:pt-10"
       )}>
+        {/* Desktop topbar */}
+        <div className="hidden lg:block">
+          <DashboardTopbar />
+        </div>
         <div className={contentClassName ?? "p-4 lg:p-6"}>
           <DunningBanner />
           {children}
@@ -130,6 +150,7 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
 
       {/* Botão flutuante de feedback */}
       <FeedbackFloatingButton />
+      <AdminAssistantButton />
     </div>
   );
 }

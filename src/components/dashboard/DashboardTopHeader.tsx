@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import logoHorizontal from '@/assets/logo-horizontal.png';
+import { usePlatformLogo } from '@/hooks/usePlatformLogo';
 
 const roleLabels = {
   student: 'Aluno',
@@ -13,6 +13,7 @@ const roleLabels = {
 };
 
 export function DashboardTopHeader() {
+  const { logoHorizontal } = usePlatformLogo();
   const { user } = useAuth();
   const { data: profile } = useProfile();
 

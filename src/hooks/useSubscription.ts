@@ -66,7 +66,7 @@ export function useSubscription(): UseSubscriptionReturn {
       }
 
       const { data, error: rpcError } = await supabase
-        .rpc('get_user_quota', { p_user_id: user.id });
+        .rpc('get_unified_credits', { p_user_id: user.id });
 
       if (rpcError) {
         setError('Erro ao buscar informações de quota');
@@ -86,9 +86,9 @@ export function useSubscription(): UseSubscriptionReturn {
         setQuota({
           planId: row.plan_id,
           planName: row.plan_name,
-          monthlyLimit: row.monthly_limit,
-          usedThisMonth: row.used_this_month,
-          remaining: row.remaining,
+          monthlyLimit: row.monthly_credits ?? row.monthly_limit ?? 5,
+          usedThisMonth: row.used_credits ?? row.used_this_month ?? 0,
+          remaining: row.remaining_credits ?? row.remaining ?? 0,
           features: {
             allow_pdf: featuresObj.allow_pdf ?? false,
             show_improvements: featuresObj.show_improvements ?? false,
@@ -103,9 +103,9 @@ export function useSubscription(): UseSubscriptionReturn {
         setQuota({
           planId: 'basic',
           planName: 'Básico',
-          monthlyLimit: 1,
+          monthlyLimit: 5,
           usedThisMonth: 0,
-          remaining: 1,
+          remaining: 5,
           features: DEFAULT_FEATURES,
         });
       }

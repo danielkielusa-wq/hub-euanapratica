@@ -4,7 +4,6 @@ import { formatInTz } from '@/lib/timezone';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import {
   Calendar,
-  CalendarPlus,
   ArrowRight,
   CheckCircle2,
   AlertCircle,
@@ -12,181 +11,72 @@ import {
   BookOpen,
   Zap,
   Clock,
+  Users,
+  FileText,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import type { MyHubItem, PlanTool } from '@/hooks/useMyHub';
 
 // ============================================
-// Access source badge
+// Icon + color config per service type
 // ============================================
-function AccessBadge({ source }: { source: MyHubItem['access_source'] }) {
-  if (source === 'plan') {
-    return (
-      <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
-        Incluso no plano
-      </span>
-    );
-  }
-  return (
-    <span className="text-[10px] font-black uppercase tracking-widest bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full border border-violet-200">
-      Comprado
-    </span>
-  );
-}
-
-// ============================================
-// Status icon
-// ============================================
-function StatusIcon({ status }: { status: MyHubItem['computed_status'] }) {
-  switch (status) {
-    case 'needs_action':
-      return <AlertCircle className="h-4 w-4 text-amber-500" />;
-    case 'scheduled':
-      return <Calendar className="h-4 w-4 text-indigo-500" />;
-    case 'active':
-      return <PlayCircle className="h-4 w-4 text-emerald-500" />;
-    case 'upcoming':
-      return <Clock className="h-4 w-4 text-blue-500" />;
-    case 'not_started':
-      return <BookOpen className="h-4 w-4 text-gray-400" />;
-    case 'completed':
-      return <CheckCircle2 className="h-4 w-4 text-gray-400" />;
-  }
-}
-
-// ============================================
-// Border color by status
-// ============================================
-const BORDER_BY_STATUS: Record<MyHubItem['computed_status'], string> = {
-  needs_action: 'border-l-amber-400',
-  scheduled: 'border-l-indigo-400',
-  active: 'border-l-emerald-400',
-  upcoming: 'border-l-blue-400',
-  not_started: 'border-l-gray-200',
-  completed: 'border-l-gray-200',
+const SERVICE_TYPE_ICONS: Record<string, { icon: React.ElementType; bg: string; color: string }> = {
+  consulting: { icon: Zap, bg: 'bg-indigo-100', color: 'text-indigo-600' },
+  live_mentoring: { icon: Users, bg: 'bg-green-100', color: 'text-green-600' },
+  recorded_course: { icon: BookOpen, bg: 'bg-purple-100', color: 'text-purple-600' },
+  live_event: { icon: Calendar, bg: 'bg-orange-100', color: 'text-orange-600' },
+  ai_tool: { icon: FileText, bg: 'bg-blue-100', color: 'text-blue-600' },
 };
 
 // ============================================
-// Sub-info line by service_type + status
+// Status label + color
 // ============================================
-function SubInfo({ item, tz }: { item: MyHubItem; tz: string }) {
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  needs_action: { label: 'Pendente', color: 'text-orange-500' },
+  scheduled: { label: 'Confirmado', color: 'text-green-600' },
+  active: { label: 'Em andamento', color: 'text-blue-600' },
+  upcoming: { label: 'Em breve', color: 'text-blue-600' },
+  not_started: { label: 'Não iniciado', color: 'text-gray-500' },
+  completed: { label: 'Concluído', color: 'text-gray-400' },
+};
+
+// ============================================
+// Subtitle line
+// ============================================
+function getSubtitle(item: MyHubItem, tz: string): string {
   const { service, computed_status, booking, next_session_datetime } = item;
 
   if (service.service_type === 'consulting') {
-    if (computed_status === 'needs_action') {
-      return <p className="text-sm text-amber-600 font-medium">Agende sua sessão para começar</p>;
-    }
+    if (computed_status === 'needs_action') return 'Agende sua sessão';
     if ((computed_status === 'scheduled' || computed_status === 'active') && booking) {
       const dt = parseISO(booking.scheduled_start);
-      return (
-        <p className="text-sm text-indigo-600 font-medium">
-          Sessão: {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
-        </p>
-      );
+      return formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm");
     }
-    if (computed_status === 'completed') {
-      return <p className="text-sm text-gray-400">Sessão concluída</p>;
-    }
+    if (computed_status === 'completed') return 'Sessão concluída';
   }
 
-  if (service.service_type === 'live_mentoring') {
-    if (next_session_datetime) {
-      const dt = parseISO(next_session_datetime);
-      return (
-        <p className="text-sm text-emerald-600 font-medium">
-          Próxima sessão: {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
-        </p>
-      );
-    }
-    return <p className="text-sm text-gray-400">Acesse seu Espaço para ver as próximas sessões</p>;
+  if (service.service_type === 'live_mentoring' && next_session_datetime) {
+    const dt = parseISO(next_session_datetime);
+    return `Próxima: ${formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}`;
   }
 
   if (service.service_type === 'live_event') {
     const sessionDatetime = item.metadata?.session_datetime as string | undefined;
     if (sessionDatetime) {
       const dt = parseISO(sessionDatetime);
-      return (
-        <p className="text-sm text-blue-600 font-medium">
-          {formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm")}
-        </p>
-      );
+      return formatInTz(dt, tz, "EEE dd/MM 'às' HH:mm");
     }
   }
 
-  if (service.service_type === 'recorded_course') {
-    const progress = (item.metadata?.progress_percent as number) ?? 0;
-    if (progress > 0) {
-      return (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-muted rounded-full h-1.5">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-1.5 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground font-medium">{progress}%</span>
-        </div>
-      );
-    }
-    return <p className="text-sm text-gray-400">Ainda não iniciado</p>;
-  }
-
-  return null;
+  return service.description?.slice(0, 50) || '';
 }
 
 // ============================================
-// CTA button per service_type + status
+// Navigation handler
 // ============================================
-function JourneyCTA({ item }: { item: MyHubItem }) {
-  const navigate = useNavigate();
+function getClickHandler(item: MyHubItem, navigate: ReturnType<typeof useNavigate>) {
   const { service, computed_status, booking } = item;
 
-  if (computed_status === 'completed') {
-    return (
-      <Badge variant="secondary" className="text-xs text-gray-400">
-        Concluído
-      </Badge>
-    );
-  }
-
-  // Dual CTA: consulting with a scheduled session AND remaining sessions to book
-  if (
-    service.service_type === 'consulting' &&
-    computed_status === 'scheduled' &&
-    item.remaining_bookable > 0
-  ) {
-    return (
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate(`/dashboard/agendar/${service.id}`)}
-          className="gap-1.5 text-xs font-bold h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
-        >
-          <CalendarPlus className="h-3 w-3" />
-          Agendar Sessão
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => {
-            if (booking?.meeting_link) {
-              window.open(booking.meeting_link, '_blank');
-            } else {
-              navigate('/dashboard/agendamentos');
-            }
-          }}
-          className="gap-1.5 text-xs font-bold h-8 bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          Entrar na Reunião
-          <ArrowRight className="h-3 w-3" />
-        </Button>
-      </div>
-    );
-  }
-
-  const handleClick = () => {
+  return () => {
     switch (service.service_type) {
       case 'consulting':
         if (computed_status === 'needs_action') {
@@ -198,11 +88,8 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
         }
         break;
       case 'live_mentoring':
-        if (service.espaco_id) {
-          navigate(`/dashboard/espacos/${service.espaco_id}`);
-        } else if (service.route) {
-          navigate(service.route);
-        }
+        if (service.espaco_id) navigate(`/dashboard/espacos/${service.espaco_id}`);
+        else if (service.route) navigate(service.route);
         break;
       case 'live_event':
         if (item.metadata?.meeting_link) {
@@ -210,11 +97,8 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
         }
         break;
       case 'recorded_course':
-        if (service.espaco_id) {
-          navigate(`/dashboard/espacos/${service.espaco_id}`);
-        } else if (service.route) {
-          navigate(service.route);
-        }
+        if (service.espaco_id) navigate(`/dashboard/espacos/${service.espaco_id}`);
+        else if (service.route) navigate(service.route);
         break;
       case 'ai_tool':
         if (service.route) navigate(service.route);
@@ -223,103 +107,42 @@ function JourneyCTA({ item }: { item: MyHubItem }) {
         if (service.route) navigate(service.route);
     }
   };
-
-  const label = (() => {
-    switch (service.service_type) {
-      case 'consulting':
-        if (computed_status === 'needs_action') return 'Agendar Sessão';
-        if (computed_status === 'scheduled') return 'Entrar na Reunião';
-        return 'Ver Detalhes';
-      case 'live_mentoring':
-        return 'Acessar Espaço';
-      case 'live_event':
-        return 'Entrar no Evento';
-      case 'recorded_course':
-        return computed_status === 'not_started' ? 'Começar Curso' : 'Continuar';
-      case 'ai_tool':
-        return 'Usar Ferramenta';
-      default:
-        return service.cta_text || 'Acessar';
-    }
-  })();
-
-  const isPrimary = computed_status === 'needs_action';
-
-  return (
-    <Button
-      size="sm"
-      onClick={handleClick}
-      className={cn(
-        'gap-1.5 text-xs font-bold h-8',
-        isPrimary
-          ? 'bg-amber-500 hover:bg-amber-600 text-white'
-          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-      )}
-    >
-      {label}
-      <ArrowRight className="h-3 w-3" />
-    </Button>
-  );
 }
 
 // ============================================
-// JourneyCard — main export
+// JourneyCard — ActivityItem pattern
 // ============================================
 export function JourneyCard({ item }: { item: MyHubItem }) {
+  const navigate = useNavigate();
   const tz = useUserTimezone();
-  const { service, computed_status, access_source } = item;
+  const { service, computed_status } = item;
 
-  const isCompleted = computed_status === 'completed';
+  const typeConfig = SERVICE_TYPE_ICONS[service.service_type] ?? SERVICE_TYPE_ICONS.consulting;
+  const Icon = typeConfig.icon;
+  const statusCfg = STATUS_CONFIG[computed_status] ?? STATUS_CONFIG.active;
+  const subtitle = getSubtitle(item, tz);
+  const handleClick = getClickHandler(item, navigate);
 
   return (
-    <div
-      className={cn(
-        'rounded-md border border-border/30 shadow-none bg-card/50 pl-5 pr-5 py-4 border-l-[3px] flex flex-col gap-3',
-        BORDER_BY_STATUS[computed_status],
-        isCompleted && 'opacity-60'
-      )}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2 min-w-0">
-          <StatusIcon status={computed_status} />
-          <div className="min-w-0">
-            <p className="font-medium text-foreground text-sm leading-tight truncate">{service.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{service.description?.slice(0, 60)}{(service.description?.length ?? 0) > 60 ? '…' : ''}</p>
-          </div>
+    <button onClick={handleClick} className="w-full flex items-center justify-between text-left group">
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-lg ${typeConfig.bg} ${typeConfig.color} flex items-center justify-center flex-shrink-0`}>
+          <Icon className="w-5 h-5" />
         </div>
-        <AccessBadge source={access_source} />
+        <div>
+          <div className="text-sm font-semibold text-gray-800 dark:text-foreground">{service.name}</div>
+          <div className="text-xs text-gray-500 dark:text-muted-foreground">{subtitle}</div>
+        </div>
       </div>
-
-      {/* Sub-info */}
-      <SubInfo item={item} tz={tz} />
-
-      {/* Sessions counter (consulting with multiple sessions) */}
-      {service.service_type === 'consulting' && (item.sessions_total ?? 0) > 1 && (() => {
-        const scheduled = (item.sessions_total ?? 0) - item.sessions_used - item.remaining_bookable;
-        const parts: string[] = [];
-        if (scheduled > 0) parts.push(`${scheduled} agendada${scheduled > 1 ? 's' : ''}`);
-        if (item.remaining_bookable > 0) parts.push(`${item.remaining_bookable} disponível${item.remaining_bookable > 1 ? 'eis' : ''}`);
-        if (!parts.length) return null;
-        return (
-          <div className="flex items-center gap-1.5 text-xs">
-            <Zap className="h-3 w-3 text-amber-400" />
-            <span className="text-gray-500">{parts[0]}</span>
-            {parts[1] && <span className="text-amber-600 font-medium">&middot; {parts[1]}</span>}
-          </div>
-        );
-      })()}
-
-      {/* CTA */}
-      <div className="flex justify-end">
-        <JourneyCTA item={item} />
+      <div className={`text-xs font-bold ${statusCfg.color} whitespace-nowrap ${computed_status === 'needs_action' ? 'animate-pulse' : ''}`}>
+        {statusCfg.label}
       </div>
-    </div>
+    </button>
   );
 }
 
 // ============================================
-// PlanToolCard — for plan-included AI tools
+// PlanToolCard — ActivityItem for plan tools
 // ============================================
 export function PlanToolCard({ tool }: { tool: PlanTool }) {
   const navigate = useNavigate();
@@ -328,55 +151,24 @@ export function PlanToolCard({ tool }: { tool: PlanTool }) {
     if (tool.service.route) navigate(tool.service.route);
   };
 
-  const progressPct = tool.is_unlimited
-    ? 100
-    : tool.credits_total > 0
-    ? Math.min(100, Math.round(((tool.credits_total - tool.credits_remaining) / tool.credits_total) * 100))
-    : 0;
+  const subtitle = tool.is_unlimited
+    ? 'Uso ilimitado'
+    : `${tool.credits_remaining} / ${tool.credits_total} créditos`;
 
   return (
-    <div className="rounded-md border border-border/30 shadow-none bg-card/50 p-5 flex flex-col gap-3 border-l-[3px] border-l-blue-300">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-blue-500" />
-          <p className="font-medium text-foreground text-sm">{tool.service.name}</p>
+    <button onClick={handleClick} className="w-full flex items-center justify-between text-left group">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+          <Zap className="w-5 h-5" />
         </div>
-        <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 whitespace-nowrap">
-          Incluso no plano
-        </span>
-      </div>
-
-      {/* Credit info */}
-      {tool.is_unlimited ? (
-        <p className="text-xs text-emerald-600 font-medium">Uso ilimitado este mês</p>
-      ) : (
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{tool.credits_used} utilizados</span>
-            <span>{tool.credits_remaining} restantes</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-1.5">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-blue-400 h-1.5 rounded-full transition-all"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">{tool.credits_total} créditos/mês</p>
+        <div>
+          <div className="text-sm font-semibold text-gray-800 dark:text-foreground">{tool.service.name}</div>
+          <div className="text-xs text-gray-500 dark:text-muted-foreground">{subtitle}</div>
         </div>
-      )}
-
-      {/* CTA */}
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          onClick={handleClick}
-          className="gap-1.5 text-xs font-medium h-8 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {tool.service.cta_text || 'Usar Ferramenta'}
-          <ArrowRight className="h-3 w-3" />
-        </Button>
       </div>
-    </div>
+      <div className="text-xs font-bold text-blue-600">
+        {tool.service.cta_text || 'Usar'}
+      </div>
+    </button>
   );
 }

@@ -1,5 +1,4 @@
 import { Calendar, History, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 interface EmptyBookingsProps {
@@ -11,37 +10,37 @@ export function EmptyBookings({ type }: EmptyBookingsProps) {
 
   if (type === 'upcoming') {
     return (
-      <div className="text-center py-16 bg-white rounded-[32px] border border-dashed border-gray-200">
-        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Calendar className="h-8 w-8 text-indigo-400" />
+      <div className="text-center py-12 sm:py-16 px-6">
+        <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <Calendar className="h-7 w-7 text-indigo-400 dark:text-indigo-400" />
         </div>
-        <h3 className="font-bold text-gray-900 text-lg mb-2">
+        <h3 className="font-bold text-gray-800 dark:text-foreground text-lg mb-2">
           Nenhum agendamento
         </h3>
-        <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">
+        <p className="text-gray-500 dark:text-muted-foreground text-sm max-w-sm mx-auto mb-6">
           Você não tem sessões agendadas. Explore nossos serviços e agende uma
           sessão com um mentor.
         </p>
-        <Button
+        <button
           onClick={() => navigate('/catalogo')}
-          className="bg-indigo-600 hover:bg-indigo-700"
+          className="bg-[#7367F0] text-white px-4 py-2.5 rounded-lg font-medium shadow-sm hover:bg-indigo-600 transition-colors inline-flex items-center gap-2"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4" />
           Explorar Serviços
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="text-center py-16 bg-white rounded-[32px] border border-dashed border-gray-200">
-      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-        <History className="h-8 w-8 text-gray-300" />
+    <div className="text-center py-12 sm:py-16 px-6">
+      <div className="w-14 h-14 bg-gray-50 dark:bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+        <History className="h-7 w-7 text-gray-300 dark:text-muted-foreground" />
       </div>
-      <h3 className="font-bold text-gray-900 text-lg mb-2">
+      <h3 className="font-bold text-gray-800 dark:text-foreground text-lg mb-2">
         Nenhuma sessão anterior
       </h3>
-      <p className="text-gray-500 text-sm max-w-sm mx-auto">
+      <p className="text-gray-500 dark:text-muted-foreground text-sm max-w-sm mx-auto">
         Você ainda não completou nenhuma sessão de mentoria.
       </p>
     </div>

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Image as ImageIcon,
-  Hash,
+  Link as LinkIcon,
   X,
   Loader2,
   Send,
@@ -88,27 +88,22 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show local preview immediately
     const localUrl = URL.createObjectURL(file);
     setImagePreview(localUrl);
 
-    // Expand if not already
     if (!expanded) {
       setExpanded(true);
       setTimeout(() => titleRef.current?.focus(), 50);
     }
 
-    // Upload to Supabase
     const publicUrl = await upload(file);
     if (publicUrl) {
       setUploadedImageUrl(publicUrl);
     } else {
-      // Upload failed, remove preview
       setImagePreview(null);
       URL.revokeObjectURL(localUrl);
     }
 
-    // Reset input so the same file can be selected again
     e.target.value = '';
   }, [expanded, upload]);
 
@@ -146,25 +141,6 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
     }
   };
 
-  const handleHashtagClick = useCallback(() => {
-    if (!expanded) {
-      setExpanded(true);
-      setTimeout(() => titleRef.current?.focus(), 50);
-    }
-    // Focus content area and prepend #
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        const val = textareaRef.current.value;
-        if (!val.endsWith('#') && !val.endsWith(' ')) {
-          setContent(prev => prev + (prev ? ' ' : '') + '#');
-        } else if (!val.endsWith('#')) {
-          setContent(prev => prev + '#');
-        }
-      }
-    }, 100);
-  }, [expanded]);
-
   // Auto-resize textarea
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -188,43 +164,48 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
   // --- Collapsed state ---
   if (!expanded) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-white/10 p-3 sm:p-4">
         {fileInput}
-        <div className="flex gap-4 mb-4">
-          <div className="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
+        <div className="flex gap-3 sm:gap-4">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
             {userStats?.profiles?.profile_photo_url ? (
               <img src={userStats.profiles.profile_photo_url} className="w-full h-full object-cover" alt="" />
             ) : (
               userInitials
             )}
           </div>
-          <div
-            className="flex-1 relative cursor-pointer"
-            onClick={handleExpand}
-          >
+          <div className="flex-1 min-w-0">
             <input
               type="text"
-              placeholder="Compartilhe algo..."
-              className="w-full bg-gray-50 border-none rounded-full py-2.5 px-5 text-sm outline-none cursor-pointer"
+              placeholder="No que você está pensando hoje?"
+              className="w-full bg-gray-50 dark:bg-white/5 border-none rounded-lg px-3 sm:px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 transition-all cursor-pointer dark:text-foreground dark:placeholder:text-muted-foreground mb-3"
               readOnly
+              onClick={handleExpand}
             />
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex gap-1 sm:gap-2">
+                <button
+                  onClick={handleImageSelect}
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full transition-colors"
+                >
+                  <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button
+                  onClick={handleExpand}
+                  className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full transition-colors"
+                >
+                  <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+              <button
+                onClick={handleExpand}
+                className="bg-[#7367F0] text-white px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium hover:bg-indigo-600 transition-colors flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Publicar</span>
+              </button>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleImageSelect}
-            className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors"
-          >
-            <ImageIcon className="w-5 h-5 text-blue-500" />
-            <span className="text-xs font-semibold hidden sm:inline">Imagem</span>
-          </button>
-          <button
-            onClick={handleHashtagClick}
-            className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors"
-          >
-            <Hash className="w-5 h-5 text-red-500" />
-            <span className="text-xs font-semibold hidden sm:inline">Hashtag</span>
-          </button>
         </div>
       </div>
     );
@@ -232,17 +213,17 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
 
   // --- Expanded state ---
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all">
+    <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-white/10 p-3 sm:p-4 transition-all">
       {fileInput}
-      <div className="flex gap-4">
-        <div className="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
+      <div className="flex gap-3 sm:gap-4">
+        <div className="hidden sm:flex w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
           {userStats?.profiles?.profile_photo_url ? (
             <img src={userStats.profiles.profile_photo_url} className="w-full h-full object-cover" alt="" />
           ) : (
             userInitials
           )}
         </div>
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 min-w-0 space-y-3">
           {/* Title */}
           <input
             ref={titleRef}
@@ -250,7 +231,7 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Qual é sua dúvida ou tema?"
-            className="w-full text-sm font-bold text-gray-900 placeholder-gray-400 outline-none border-b border-gray-100 pb-2"
+            className="w-full text-sm font-bold text-gray-900 dark:text-foreground placeholder-gray-400 dark:placeholder-muted-foreground outline-none border-b border-gray-100 dark:border-white/10 pb-2 bg-transparent"
           />
 
           {/* Content */}
@@ -262,12 +243,12 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
               autoResize();
             }}
             placeholder="Descreva sua questão, compartilhe sua experiência..."
-            className="w-full text-sm text-gray-700 placeholder-gray-400 outline-none resize-none min-h-[80px]"
+            className="w-full text-sm text-gray-700 dark:text-foreground/80 placeholder-gray-400 dark:placeholder-muted-foreground outline-none resize-none min-h-[80px] bg-transparent"
           />
 
           {/* Image preview */}
           {imagePreview && (
-            <div className="relative rounded-xl overflow-hidden border border-gray-200">
+            <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-white/10">
               <img
                 src={imagePreview}
                 alt="Preview"
@@ -296,25 +277,34 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
           )}
 
           {/* Category + Actions row */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-50 dark:border-white/5">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleImageSelect}
-                className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors"
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full transition-colors"
                 disabled={uploading}
               >
-                <ImageIcon className="w-5 h-5 text-blue-500" />
+                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
-                onClick={handleHashtagClick}
-                className="flex items-center gap-1.5 text-gray-500 hover:text-blue-600 transition-colors"
+                onClick={() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    const val = textareaRef.current.value;
+                    if (!val.endsWith('#') && !val.endsWith(' ')) {
+                      setContent(prev => prev + (prev ? ' ' : '') + '#');
+                    } else if (!val.endsWith('#')) {
+                      setContent(prev => prev + '#');
+                    }
+                  }
+                }}
+                className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full transition-colors"
               >
-                <Hash className="w-5 h-5 text-red-500" />
+                <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
-              {/* Compact category selector */}
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className="h-8 w-auto min-w-[130px] text-xs rounded-lg border-gray-200 bg-gray-50">
+                <SelectTrigger className="h-8 w-auto min-w-[110px] sm:min-w-[130px] text-xs rounded-lg border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
                   <SelectValue placeholder="Categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,17 +317,17 @@ export function InlinePostCreator({ categories, userStats, onSubmit }: InlinePos
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button
                 onClick={handleCollapse}
-                className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 transition-colors"
+                className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-muted-foreground dark:hover:text-foreground transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!title.trim() || !content.trim() || isSubmitting || uploading}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 bg-[#7367F0] hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors"
               >
                 {isSubmitting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -295,9 +295,8 @@ export function useGenerateInsights() {
   });
 }
 
-export function useGenerateIdeas() {
+export function useGenerateIdeas(callbacks?: { onSuccess?: (data: any) => void; onError?: (error: any) => void }) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (input: { insight_ids?: string[]; free_text?: string; content_type?: string; count?: number }) => {
@@ -324,17 +323,16 @@ export function useGenerateIdeas() {
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] });
       queryClient.invalidateQueries({ queryKey: ['content-insights'] });
       queryClient.invalidateQueries({ queryKey: ['content-generation-logs'] });
-      toast({ title: `${data?.count || 0} ideias geradas` });
+      callbacks?.onSuccess?.(data);
     },
     onError: (error: any) => {
-      toast({ title: 'Erro ao gerar ideias', description: error.message, variant: 'destructive' });
+      callbacks?.onError?.(error);
     },
   });
 }
 
-export function useGenerateScript() {
+export function useGenerateScript(callbacks?: { onSuccess?: () => void; onError?: (error: any) => void }) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (input: { idea_id: string; platform?: string }) => {
@@ -360,10 +358,10 @@ export function useGenerateScript() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-scripts'] });
       queryClient.invalidateQueries({ queryKey: ['content-generation-logs'] });
-      toast({ title: 'Roteiro gerado com sucesso' });
+      callbacks?.onSuccess?.();
     },
     onError: (error: any) => {
-      toast({ title: 'Erro ao gerar roteiro', description: error.message, variant: 'destructive' });
+      callbacks?.onError?.(error);
     },
   });
 }
@@ -448,6 +446,28 @@ export function useDeleteIdea() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-ideas'] });
       toast({ title: 'Ideia removida' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useDeleteScript() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('content_scripts')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-scripts'] });
+      toast({ title: 'Roteiro removido' });
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });

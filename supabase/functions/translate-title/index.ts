@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM, LLMError } from "../_shared/llmService.ts";
+import { getCreditCosts, checkUnifiedCredits, recordCreditUsage } from "../_shared/creditService.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,55 +50,22 @@ serve(async (req) => {
     const userId = claims.user.id;
     console.log(`[translate-title] User authenticated: ${userId}`);
 
-    // ========== SMART GATEKEEPER: Check subscription and quota ==========
-    // Use adminSupabase to bypass RLS for reliable results
-    const { data: subData } = await adminSupabase
-      .from("user_subscriptions")
-      .select("plan_id, plans(monthly_limit, features)")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
+    // ========== UNIFIED CREDIT GATEKEEPER ==========
+    const creditCosts = await getCreditCosts(adminSupabase);
+    const actionCost = creditCosts["title_translator"] ?? 1;
 
-    const planId = subData?.plan_id || "basic";
-    const plansData = subData?.plans;
-    const planObj = Array.isArray(plansData) ? plansData[0] : plansData;
-    const plan = planObj as { monthly_limit: number; features: Record<string, any> } | null || {
-      monthly_limit: 1,
-      features: {},
-    };
-    const features = plan.features || {};
+    const creditCheck = await checkUnifiedCredits(adminSupabase, userId, actionCost);
+    console.log(`[translate-title] Credits: used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits}, cost=${actionCost}, allowed=${creditCheck.allowed}`);
 
-    // Use title_translator_limit from plan features (not the generic monthly_limit which is for ResumePass)
-    const titleTranslatorLimit = Number(features.title_translator_limit) || 1;
-
-    // Count usage this month for title_translator
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { count: usageCount, error: countError } = await adminSupabase
-      .from("usage_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("app_id", "title_translator")
-      .gte("created_at", startOfMonth.toISOString());
-
-    if (countError) {
-      console.error("Error counting usage:", countError);
-    }
-
-    const currentUsage = usageCount || 0;
-    console.log(`[translate-title] Plan: ${planId}, Usage: ${currentUsage}/${titleTranslatorLimit}`);
-
-    if (currentUsage >= titleTranslatorLimit) {
+    if (!creditCheck.allowed) {
       return new Response(
         JSON.stringify({
           error_code: "LIMIT_REACHED",
-          error: "Limite mensal atingido",
-          error_message: `Voce atingiu o limite de ${titleTranslatorLimit} traducao(es) do seu plano este mes.`,
-          plan_id: planId,
-          monthly_limit: titleTranslatorLimit,
-          used: currentUsage,
+          error: "Créditos insuficientes",
+          error_message: creditCheck.errorMessage,
+          monthly_credits: creditCheck.monthlyCredits,
+          used_credits: creditCheck.usedCredits,
+          cost: actionCost,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -225,29 +193,8 @@ serve(async (req) => {
       );
     }
 
-    // ========== RECORD USAGE with retry ==========
-    const recordUsageWithRetry = async (uid: string, maxRetries = 3): Promise<boolean> => {
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const { error } = await adminSupabase
-            .from("usage_logs")
-            .insert({ user_id: uid, app_id: "title_translator" });
-          if (!error) {
-            console.log(`Usage recorded for user ${uid} on attempt ${attempt + 1}`);
-            return true;
-          }
-          console.error(`Usage recording attempt ${attempt + 1} failed:`, error);
-        } catch (err) {
-          console.error(`Usage recording attempt ${attempt + 1} threw:`, err);
-        }
-        if (attempt < maxRetries - 1) {
-          await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
-        }
-      }
-      return false;
-    };
-
-    const usageRecorded = await recordUsageWithRetry(userId);
+    // ========== RECORD USAGE ==========
+    const usageRecorded = await recordCreditUsage(adminSupabase, userId, "title_translator", actionCost);
     if (!usageRecorded) {
       console.error("CRITICAL: Failed to record usage for user:", userId);
       return new Response(

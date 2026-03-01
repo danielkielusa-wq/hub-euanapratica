@@ -305,8 +305,15 @@ async function triggerFlowReply(
   const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || "";
 
   try {
-    // Normalize phone to match stored session phones consistently
+    // Normalize phone for Brazilian number matching (adds "55" prefix).
+    // NOTE: WhatsApp remoteJid already provides the full international number
+    // (e.g. "14704469625" for US, "5511999999999" for BR). normalizePhone()
+    // incorrectly prepends "55" to 10-11 digit international numbers (e.g. US).
+    // To handle both BR and international numbers, we query with BOTH variants.
     const normalizedPhone = normalizePhone(phone);
+    const rawPhone = phone.replace(/\D/g, ""); // digits-only from WhatsApp remoteJid
+    const phonesToMatch = [normalizedPhone];
+    if (rawPhone !== normalizedPhone) phonesToMatch.push(rawPhone);
 
     // 0. Check for opt-out keywords FIRST — before any flow logic
     // Only unambiguous opt-out signals. Avoid "cancelar"/"sair" — too ambiguous
@@ -324,11 +331,11 @@ async function triggerFlowReply(
         { onConflict: "phone" }
       );
 
-      // Cancel all active sessions for this phone
+      // Cancel all active sessions for this phone (both normalized and raw)
       await supabase
         .from("whatsapp_flow_sessions")
         .update({ status: "cancelled", completed_at: new Date().toISOString() })
-        .eq("phone", normalizedPhone)
+        .in("phone", phonesToMatch)
         .in("status", ["active", "waiting_delay", "waiting_reply"]);
 
       // Send confirmation message
@@ -341,10 +348,11 @@ async function triggerFlowReply(
     }
 
     // 1. Check for sessions waiting for reply from this phone
+    // Use both normalized and raw phone to handle international numbers correctly
     const { data: waitingSessions } = await supabase
       .from("whatsapp_flow_sessions")
       .select("id")
-      .eq("phone", normalizedPhone)
+      .in("phone", phonesToMatch)
       .eq("status", "waiting_reply")
       .order("last_activity_at", { ascending: false })
       .limit(1);
@@ -406,7 +414,7 @@ async function triggerFlowReply(
               trigger_type: "keyword",
               trigger_data: {
                 event: "keyword_match",
-                phone: normalizedPhone,
+                phone: rawPhone,
                 lead_id: leadId,
                 lead_name: leadName,
                 matched_keyword: normalizedMsg,

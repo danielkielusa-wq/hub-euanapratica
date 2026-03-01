@@ -45,7 +45,7 @@ serve(async (req) => {
       const { data: activeJobs } = await supabase
         .from("whatsapp_batch_jobs")
         .select("*")
-        .in("status", ["queued", "processing"])
+        .in("status", ["queued", "processing", "scheduled"])
         .order("created_at", { ascending: true });
 
       if (!activeJobs || activeJobs.length === 0) {
@@ -98,6 +98,7 @@ serve(async (req) => {
         businessHoursOnly: body.businessHoursOnly,
         createdBy: body.createdBy,
         manualContacts: body.manualContacts,
+        scheduledAt: body.scheduledAt,
       });
 
       if ("error" in result) {
@@ -119,7 +120,7 @@ serve(async (req) => {
         .from("whatsapp_batch_jobs")
         .update({ status: "paused", paused_at: new Date().toISOString() })
         .eq("id", body.jobId)
-        .in("status", ["queued", "processing"]);
+        .in("status", ["queued", "processing", "scheduled"]);
 
       return new Response(
         JSON.stringify({ success: true }),

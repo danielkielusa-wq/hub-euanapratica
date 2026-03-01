@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, Users, FileText, ListChecks,
-  ChevronRight, ChevronLeft, AlertTriangle,
+  ChevronRight, ChevronLeft, AlertTriangle, Calendar,
 } from 'lucide-react';
 import {
   usePreviewBatchContacts,
@@ -41,6 +41,9 @@ export function BatchDispatchDialog({
   const [businessHoursOnly, setBusinessHoursOnly] = useState(true);
   const [manualPhones, setManualPhones] = useState('');
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('09:30');
 
   // Reset on open/close
   useEffect(() => {
@@ -52,6 +55,12 @@ export function BatchDispatchDialog({
       setBusinessHoursOnly(true);
       setManualPhones('');
       setPreviewResult(null);
+      setScheduleEnabled(false);
+      // Default schedule date: tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setScheduleDate(tomorrow.toISOString().slice(0, 10));
+      setScheduleTime('09:30');
     }
   }, [open]);
 
@@ -77,6 +86,16 @@ export function BatchDispatchDialog({
     setStep('preview');
   };
 
+  // Build scheduledAt ISO string from BRT date/time inputs
+  const buildScheduledAt = (): string | undefined => {
+    if (!scheduleEnabled || !scheduleDate || !scheduleTime) return undefined;
+    // BRT is UTC-3. Convert local BRT input to UTC.
+    const [hours, minutes] = scheduleTime.split(':').map(Number);
+    const utcHours = hours + 3; // BRT → UTC
+    const dt = new Date(`${scheduleDate}T${String(utcHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`);
+    return dt.toISOString();
+  };
+
   const handleCreate = () => {
     createBatch.mutate(
       {
@@ -88,6 +107,7 @@ export function BatchDispatchDialog({
         manualContacts: sourceType === 'manual_list'
           ? parsedManualContacts.map((phone) => ({ phone }))
           : undefined,
+        scheduledAt: buildScheduledAt(),
       },
       { onSuccess: () => onOpenChange(false) }
     );
@@ -210,6 +230,57 @@ export function BatchDispatchDialog({
               />
             </div>
 
+            {/* Scheduling */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  Agendar para depois
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Iniciar envio em data/hora futura
+                </p>
+              </div>
+              <Switch
+                checked={scheduleEnabled}
+                onCheckedChange={setScheduleEnabled}
+              />
+            </div>
+
+            {scheduleEnabled && (
+              <div className="flex gap-3 items-end">
+                <div className="space-y-1.5 flex-1">
+                  <Label className="text-xs">Data</Label>
+                  <Input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1.5 w-28">
+                  <Label className="text-xs">Horario (BRT)</Label>
+                  <Input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+            )}
+
+            {scheduleEnabled && scheduleDate && scheduleTime && (
+              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+                O lote iniciara em{' '}
+                <strong>
+                  {new Date(scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                </strong>{' '}
+                as <strong>{scheduleTime}</strong> (horario de Brasilia)
+              </p>
+            )}
+
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
@@ -258,6 +329,14 @@ export function BatchDispatchDialog({
                       {businessHoursOnly ? ' (horario comercial)' : ''}
                     </span>
                   </div>
+                  {scheduleEnabled && scheduleDate && scheduleTime && (
+                    <div className="flex justify-between text-sm">
+                      <span>Inicio agendado:</span>
+                      <span className="text-blue-700 font-medium">
+                        {new Date(scheduleDate + 'T12:00:00').toLocaleDateString('pt-BR')} as {scheduleTime} BRT
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sample contacts */}
@@ -346,7 +425,7 @@ export function BatchDispatchDialog({
                 }
               >
                 {createBatch.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                Confirmar Envio
+                {scheduleEnabled ? 'Agendar Envio' : 'Confirmar Envio'}
               </Button>
             )}
           </div>

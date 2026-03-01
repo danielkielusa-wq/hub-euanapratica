@@ -37,7 +37,7 @@ interface MessageStepConfig {
 
 interface DelayStepConfig {
   duration: number;
-  unit: "minutes" | "hours" | "days";
+  unit: "seconds" | "minutes" | "hours" | "days";
 }
 
 interface WaitReplyStepConfig {
@@ -679,6 +679,7 @@ function resolveNextStep(
  */
 function durationToMs(duration: number, unit: string): number {
   switch (unit) {
+    case "seconds": return duration * 1000;
     case "minutes": return duration * 60 * 1000;
     case "hours": return duration * 60 * 60 * 1000;
     case "days": return duration * 24 * 60 * 60 * 1000;

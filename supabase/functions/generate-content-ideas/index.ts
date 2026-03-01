@@ -100,7 +100,8 @@ O estimated_virality_score é a média ponderada dessas dimensões.
 3. "vaga_da_semana": destaque uma vaga real dos dados.
 4. "myth_busting": contrarie crença comum com dados.
 5. Priorize ideias com score 70+. Pelo menos 50% das ideias devem ser 75+.
-6. Retorne APENAS o objeto JSON. Sem markdown, sem texto fora do JSON.`;
+6. Retorne APENAS o objeto JSON. Sem markdown, sem texto fora do JSON.
+7. Se preferred_content_type for "stories": gere no MÍNIMO 4 ideias de Stories. Cada ideia deve ser uma sequência de 4+ stories (2 vídeos + 1 CTA + 1 engajamento com enquete/quiz/pergunta). A description deve detalhar o arco narrativo da sequência de stories. Hooks para stories = primeira frase do primeiro story (texto grande na tela). Priorize categorias "polemic" e "data_story" que performam melhor em stories.`;
 
 // ── Main Handler ─────────────────────────────────────────────────────────
 
@@ -160,6 +161,9 @@ Deno.serve(async (req) => {
 
     if (content_type) {
       contextData.preferred_content_type = content_type;
+      if (content_type === "stories") {
+        contextData.stories_hint = "Gere no mínimo 4 ideias de Stories. Cada ideia deve descrever uma sequência de 4+ stories (vídeo + CTA + engajamento). Inclua sugestões de enquete/quiz.";
+      }
     }
 
     contextData.requested_count = Math.min(count, 10);

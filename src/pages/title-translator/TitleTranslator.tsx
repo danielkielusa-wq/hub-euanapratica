@@ -1,47 +1,39 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
-  ArrowRight,
-  Briefcase,
-  DollarSign,
-  Building2,
-  CheckCircle2,
-  Copy,
   Sparkles,
-  AlertCircle,
-  Loader2,
-  Globe,
+  Copy,
+  Check,
   TrendingUp,
-  Award,
-  Lock,
+  Briefcase,
   Info,
+  Globe,
+  ChevronDown,
+  History,
+  Lock,
+  AlertCircle,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
-import { useTitleTranslator, type Suggestion, type TranslationResult } from '@/hooks/useTitleTranslator';
-import { TranslationProgress } from './TranslationProgress';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { useTitleTranslator } from '@/hooks/useTitleTranslator';
 
 const AREAS = [
-  'Tecnologia',
-  'Financas',
-  'Marketing',
-  'Operacoes',
-  'Engenharia',
-  'Saude',
-  'Educacao',
-  'Vendas',
-  'Produto',
-  'Design',
-  'Outro',
+  { value: 'Tecnologia', label: 'Tecnologia / TI' },
+  { value: 'Financas', label: 'Finanças' },
+  { value: 'Marketing', label: 'Marketing / Vendas' },
+  { value: 'Operacoes', label: 'Negócios / Gestão' },
+  { value: 'Engenharia', label: 'Engenharia' },
+  { value: 'Saude', label: 'Saúde' },
+  { value: 'Educacao', label: 'Educação' },
+  { value: 'Vendas', label: 'Vendas' },
+  { value: 'Produto', label: 'Produto' },
+  { value: 'Design', label: 'Design' },
+  { value: 'Outro', label: 'Outro' },
 ];
 
 export default function TitleTranslatorPage() {
+  const navigate = useNavigate();
   const {
     status,
     result,
@@ -52,13 +44,13 @@ export default function TitleTranslatorPage() {
     reset,
     quota,
     hasCredits,
-    canTranslate,
   } = useTitleTranslator();
 
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const loading = status === 'loading';
+  const credits = quota?.remaining ?? 0;
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -68,348 +60,307 @@ export default function TitleTranslatorPage() {
 
   const handleTranslate = () => {
     if (!hasCredits) {
-      setShowUpgradeModal(true);
+      navigate('/pricing');
       return;
     }
     translate();
   };
 
-  const credits = quota?.remaining ?? 0;
-
-  const renderForm = () => (
-    <div className="bg-white rounded-[40px] p-8 md:p-10 border border-gray-100 shadow-sm max-w-3xl mx-auto animate-fade-in">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center text-brand-600">
-          <Globe size={24} />
-        </div>
-        <div>
-          <h2 className="text-xl font-black text-gray-900">Nova Traducao</h2>
-          <p className="text-sm text-gray-500">Preencha os dados para analise da IA.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-            Titulo no Brasil *
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" className="inline-flex" aria-label="Informação sobre título no Brasil">
-                  <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                <p>Títulos como "Analista Pleno" ou "Coordenador" não existem no mercado americano. A IA vai mapear o equivalente real usado por empresas dos EUA — incluindo o nível de senioridade correto.</p>
-              </TooltipContent>
-            </Tooltip>
-          </label>
-          <input
-            type="text"
-            placeholder="Ex: Coordenador de TI"
-            value={formData.titleBr}
-            onChange={(e) => updateForm({ titleBr: e.target.value })}
-            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-900 outline-none focus:bg-white focus:ring-2 focus:ring-brand-100 transition-all"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-            Area de Atuacao
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" className="inline-flex" aria-label="Informação sobre área de atuação">
-                  <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                <p>O mesmo cargo tem nomes muito diferentes dependendo da área. Um "Analista" em marketing é chamado de uma forma; em dados ou finanças, de outra. A área garante a tradução certa.</p>
-              </TooltipContent>
-            </Tooltip>
-          </label>
-          <select
-            value={formData.area}
-            onChange={(e) => updateForm({ area: e.target.value })}
-            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-gray-700 outline-none focus:bg-white focus:ring-2 focus:ring-brand-100 transition-all"
-          >
-            <option value="">Selecione...</option>
-            {AREAS.map(area => (
-              <option key={area} value={area}>{area}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="space-y-2 mb-6">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-          Principais Responsabilidades (Opcional)
-        </label>
-        <textarea
-          placeholder="Ex: Lidero equipe de 5 devs, gerencio cronograma, faco code review..."
-          value={formData.responsibilities}
-          onChange={(e) => updateForm({ responsibilities: e.target.value })}
-          className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl font-medium text-gray-700 outline-none focus:bg-white focus:ring-2 focus:ring-brand-100 transition-all h-32 resize-none"
-        />
-      </div>
-
-      <div className="space-y-2 mb-8">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-          Anos de Experiencia
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" className="inline-flex" aria-label="Informação sobre anos de experiência">
-                <Info size={12} className="text-gray-400 hover:text-gray-600 transition-colors" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-              <p>O mercado americano é muito literal com senioridade. 2 anos = Junior, 5 anos = Mid-level, 8+ anos = Senior. Isso muda o título sugerido.</p>
-            </TooltipContent>
-          </Tooltip>
-        </label>
-        <input
-          type="number"
-          placeholder="Ex: 5"
-          min={0}
-          max={50}
-          value={formData.years}
-          onChange={(e) => updateForm({ years: e.target.value })}
-          className="w-32 p-4 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-900 outline-none focus:bg-white focus:ring-2 focus:ring-brand-100 transition-all"
-        />
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold mb-6">
-          <AlertCircle size={18} /> {error}
-        </div>
-      )}
-
-      <button
-        onClick={handleTranslate}
-        disabled={loading || !formData.titleBr.trim()}
-        className="w-full py-5 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl shadow-brand-600/20 transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
-      >
-        {loading ? (
-          <Loader2 className="animate-spin" />
-        ) : !hasCredits ? (
-          <>
-            <Lock size={18} /> Limite Atingido - Faca Upgrade
-          </>
-        ) : (
-          <>
-            <Sparkles size={18} />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>Traduzir Titulo (1 Credito)</span>
-              </TooltipTrigger>
-              <TooltipContent className="text-xs">
-                <p>Cada tradução consome 1 crédito. Créditos não expiram.</p>
-              </TooltipContent>
-            </Tooltip>
-          </>
-        )}
-      </button>
-
-      <div className="mt-3 text-center text-xs text-gray-400 font-medium flex items-center justify-center gap-1.5">
-        <span className="text-brand-500">✦</span>
-        <span>Você receberá: título equivalente em inglês · nível de senioridade · palavras-chave para LinkedIn e currículo</span>
-      </div>
-    </div>
-  );
-
-  const renderResults = () => {
-    if (!result) return null;
-
-    const recommended = result.suggestions.find(s => s.title_us === result.recommended);
-
-    return (
-      <div className="max-w-5xl mx-auto space-y-10 animate-fade-in-up">
-        {/* Recommendation Hero */}
-        {recommended && (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-brand-600 opacity-20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
-
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-500/20 border border-green-500/30 text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
-                <CheckCircle2 size={14} /> Recomendacao da IA
-              </div>
-
-              <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">
-                {recommended.title_us}
-              </h2>
-
-              <div className="flex flex-col md:flex-row gap-8 mb-8">
-                <div className="flex-1">
-                  <p className="text-gray-300 text-lg leading-relaxed font-medium">
-                    {result.reasoning}
-                  </p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/10 min-w-[250px]">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Media Salarial (Ano)
-                      </p>
-                      <p className="text-xl font-black text-white">{recommended.salary_range}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        Confidence Score
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-green-500"
-                            style={{ width: `${recommended.confidence * 10}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-bold text-green-400">
-                          {recommended.confidence}/10
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleCopy(recommended.title_us, 99)}
-                className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-gray-100 transition-all shadow-lg active:scale-95"
-              >
-                {copiedIndex === 99 ? (
-                  <CheckCircle2 size={18} className="text-green-600" />
-                ) : (
-                  <Copy size={18} />
-                )}
-                {copiedIndex === 99 ? 'Copiado!' : 'Copiar Titulo'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Alternatives Grid */}
-        <div>
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <TrendingUp className="text-brand-600" /> Outras Opcoes de Mercado
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {result.suggestions.map((s, idx) => (
-              <div
-                key={idx}
-                className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm flex flex-col h-full hover:border-brand-200 transition-all group"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-brand-50 text-brand-600 rounded-xl">
-                    <Briefcase size={20} />
-                  </div>
-                  <span className="px-3 py-1 bg-gray-50 text-gray-500 text-[10px] font-bold rounded-lg uppercase tracking-wide">
-                    {s.confidence * 10}% Match
-                  </span>
-                </div>
-
-                <h4 className="text-lg font-black text-gray-900 mb-2 leading-tight min-h-[56px]">
-                  {s.title_us}
-                </h4>
-
-                <p className="text-xs text-gray-500 leading-relaxed mb-6 flex-1">
-                  {s.explanation}
-                </p>
-
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                    <DollarSign size={14} className="text-emerald-500" />
-                    {s.salary_range}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
-                    <Building2 size={14} className="text-brand-500" />
-                    {s.example_companies.join(', ')}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-3 rounded-xl mb-6">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Exemplo em JD:</p>
-                  <p className="text-[11px] text-gray-500 italic leading-snug">
-                    "{s.example_jd_snippet}"
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleCopy(s.title_us, idx)}
-                  className="w-full py-3 border border-gray-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 text-gray-600 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
-                >
-                  {copiedIndex === idx ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                  {copiedIndex === idx ? 'Copiado' : 'Copiar Titulo'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center">
-          <button
-            onClick={reset}
-            className="text-gray-400 hover:text-brand-600 font-bold text-sm transition-colors"
-          >
-            Fazer Nova Traducao
-          </button>
-        </div>
-      </div>
-    );
-  };
+  // Map production result to demo display format
+  const recommended = result?.suggestions.find(s => s.title_us === result.recommended);
+  const matchScore = recommended ? recommended.confidence * 10 : 0;
+  const alternatives = result?.suggestions
+    .filter(s => s.title_us !== result.recommended)
+    .map(s => s.title_us) ?? [];
+  const explanation = result?.reasoning || recommended?.explanation || '';
+  const salaryRange = recommended?.salary_range || '';
+  const demandPercent = matchScore;
 
   return (
     <DashboardLayout>
-      <TooltipProvider delayDuration={200}>
-        <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-8">
-          <div className="animate-fade-in pb-20">
-            {/* Top Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 max-w-5xl mx-auto">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-100 mb-3">
-                <Award size={14} /> Beta Tool
-              </div>
-              <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">
-                Experience Translator
-              </h1>
-              <p className="text-gray-500 mt-2 text-lg">
-                Descubra como seu cargo seria chamado nos EUA — e quais palavras-chave usar no currículo e LinkedIn.
-              </p>
-            </div>
+      <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6 relative min-h-screen">
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="bg-white p-2 pr-6 rounded-full border border-gray-100 shadow-sm flex items-center gap-4 cursor-help">
-                  <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-bold">
-                    {credits}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-900">Creditos Disponiveis</span>
-                    <button
-                      onClick={() => setShowUpgradeModal(true)}
-                      className="text-[10px] font-bold text-brand-600 hover:underline text-left"
-                    >
-                      Recarregar agora
-                    </button>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px] text-xs leading-relaxed">
-                <p>Créditos são usados a cada tradução realizada. Você tem {credits} disponíveis. Clique em "Recarregar agora" para adquirir mais.</p>
-              </TooltipContent>
-            </Tooltip>
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-foreground">Title Translator</h1>
+              <span className="bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-bold px-2 py-0.5 rounded border border-blue-200 dark:border-blue-500/20">BETA TOOL</span>
+            </div>
+            <p className="text-gray-500 dark:text-muted-foreground text-sm">
+              Descubra como seu cargo é conhecido no mercado americano e aumente suas chances.
+            </p>
           </div>
 
-            {result ? renderResults() : loading ? (
-              <TranslationProgress titleBr={formData.titleBr} />
-            ) : renderForm()}
+          <div className="flex items-center gap-3">
+            <div className="bg-white dark:bg-card px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-600 dark:text-muted-foreground">
+              Créditos: <span className="text-gray-900 dark:text-foreground font-bold">{credits}</span>
+            </div>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-card border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+              <History className="w-4 h-4" />
+              Histórico
+            </button>
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-card border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            >
+              Recarregar
+            </button>
           </div>
         </div>
 
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          currentPlanId={quota?.planId}
-          reason="limit_reached"
-        />
-      </TooltipProvider>
+        {/* Main Form Container */}
+        <div className="bg-white dark:bg-card p-6 rounded-xl shadow-sm border border-gray-200 dark:border-white/10">
+          <div className="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-white/5">
+            <div className="w-8 h-8 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Globe className="w-4 h-4" />
+            </div>
+            <h2 className="font-bold text-gray-800 dark:text-foreground">Nova Tradução</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider">
+                Título no Brasil <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.titleBr}
+                onChange={(e) => updateForm({ titleBr: e.target.value })}
+                placeholder="Ex: Coordenador de TI"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-lg text-gray-700 dark:text-foreground placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-white/10 transition-all border border-transparent focus:border-blue-200 dark:focus:border-blue-500/30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider">
+                Área de Atuação
+              </label>
+              <div className="relative">
+                <select
+                  value={formData.area}
+                  onChange={(e) => updateForm({ area: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-lg text-gray-700 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-white/10 transition-all border border-transparent focus:border-blue-200 dark:focus:border-blue-500/30 appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Selecione...</option>
+                  {AREAS.map(area => (
+                    <option key={area.value} value={area.value}>{area.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 mb-6">
+            <label className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider">
+              Principais Responsabilidades (Opcional)
+            </label>
+            <textarea
+              value={formData.responsibilities}
+              onChange={(e) => updateForm({ responsibilities: e.target.value })}
+              placeholder="Ex: Lidero equipe de 5 devs, gerencio cronograma, faço code review..."
+              rows={3}
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-lg text-gray-700 dark:text-foreground placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-white/10 transition-all border border-transparent focus:border-blue-200 dark:focus:border-blue-500/30 resize-none"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold mb-6">
+              <AlertCircle size={18} /> {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider">
+                Anos de Experiência
+              </label>
+              <input
+                type="number"
+                value={formData.years}
+                onChange={(e) => updateForm({ years: e.target.value })}
+                placeholder="Ex: 5"
+                min={0}
+                max={50}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-lg text-gray-700 dark:text-foreground placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-white/10 transition-all border border-transparent focus:border-blue-200 dark:focus:border-blue-500/30"
+              />
+            </div>
+
+            <button
+              onClick={handleTranslate}
+              disabled={loading || !formData.titleBr.trim()}
+              className={`
+                w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg
+                ${loading || !formData.titleBr.trim()
+                  ? 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none'
+                  : !hasCredits
+                  ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30 cursor-pointer shadow-none hover:bg-amber-200'
+                  : 'bg-[#2563eb] text-white hover:bg-blue-700 shadow-blue-200 dark:shadow-blue-900/30'
+                }
+              `}
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  PROCESSANDO...
+                </>
+              ) : !hasCredits ? (
+                <>
+                  <Lock className="w-4 h-4" />
+                  SEM CRÉDITOS — VER PLANOS
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  TRADUZIR AGORA
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Results Section */}
+        {result && recommended && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+            {/* Main Result Card */}
+            <div className="md:col-span-2 bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-white/10 shadow-sm p-6 relative">
+              <div className="absolute top-0 right-0 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">
+                MATCH: {matchScore}%
+              </div>
+
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider mb-1">
+                    Título Recomendado
+                  </h3>
+                  <h2 className="text-3xl font-bold text-[#2563eb]">
+                    {recommended.title_us}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => handleCopy(recommended.title_us, 99)}
+                  className="p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  title="Copiar título"
+                >
+                  {copiedIndex === 99 ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                </button>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-500/10 rounded-lg p-4 border border-blue-100 dark:border-blue-500/20 mb-6">
+                <div className="flex gap-3">
+                  <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-blue-800 dark:text-blue-300 text-sm leading-relaxed">
+                    {explanation}
+                  </p>
+                </div>
+              </div>
+
+              {alternatives.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-gray-500 dark:text-muted-foreground uppercase tracking-wider mb-3">
+                    Variações Comuns
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {alternatives.map((alt, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-medium"
+                      >
+                        {alt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stats Card */}
+            <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-white/10 shadow-sm p-6 space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-muted-foreground text-xs font-bold uppercase tracking-wider">
+                  <Briefcase className="w-4 h-4" />
+                  Média Salarial
+                </div>
+                <div className="text-2xl font-bold text-gray-800 dark:text-foreground">
+                  {salaryRange}
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-gray-100 dark:border-white/5">
+                <div className="flex items-center gap-2 mb-2 text-gray-500 dark:text-muted-foreground text-xs font-bold uppercase tracking-wider">
+                  <TrendingUp className="w-4 h-4" />
+                  Demanda
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-700"
+                      style={{ width: `${demandPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                    {demandPercent >= 70 ? 'Alta' : demandPercent >= 40 ? 'Média' : 'Baixa'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-gray-100 dark:border-white/5">
+                <button
+                  onClick={reset}
+                  className="w-full py-2.5 rounded-lg text-sm font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                >
+                  Nova Tradução
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info Cards (Bottom) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <InfoCard
+            icon={<Search className="w-5 h-5 text-blue-500" />}
+            title="SEO Otimizado"
+            desc="Use o título correto para ser encontrado por recrutadores e sistemas de ATS."
+            bgIcon="bg-blue-50 dark:bg-blue-500/10"
+          />
+          <InfoCard
+            icon={<TrendingUp className="w-5 h-5 text-indigo-500" />}
+            title="Nível Senioridade"
+            desc="Entenda se você é Junior, Mid-Level ou Senior no mercado americano."
+            bgIcon="bg-indigo-50 dark:bg-indigo-500/10"
+          />
+          <InfoCard
+            icon={<Briefcase className="w-5 h-5 text-green-500" />}
+            title="Salário Real"
+            desc="Pesquise salários com base no cargo exato usado pelas empresas dos EUA."
+            bgIcon="bg-green-50 dark:bg-green-500/10"
+          />
+        </div>
+      </div>
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        currentPlanId={quota?.planId}
+        reason="limit_reached"
+      />
     </DashboardLayout>
+  );
+}
+
+function InfoCard({ icon, title, desc, bgIcon }: { icon: React.ReactNode; title: string; desc: string; bgIcon: string }) {
+  return (
+    <div className="bg-white dark:bg-card p-5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow">
+      <div className={`w-10 h-10 ${bgIcon} rounded-lg flex items-center justify-center mb-3`}>
+        {icon}
+      </div>
+      <h3 className="font-bold text-gray-800 dark:text-foreground mb-1">{title}</h3>
+      <p className="text-xs text-gray-500 dark:text-muted-foreground leading-relaxed">
+        {desc}
+      </p>
+    </div>
   );
 }

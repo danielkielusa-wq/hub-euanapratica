@@ -1,26 +1,30 @@
 import {
   Navbar,
   HeroSection,
-  TrustLogos,
-  BentoGrid,
-  AIPreview,
-  Testimonials,
-  SuccessPath,
-  WaitlistSection,
+  FeaturesSection,
+  ReviewsSection,
+  TeamSection,
+  PricingSection,
+  FunFactsSection,
+  FAQSection,
+  CTASection,
+  ContactSection,
   Footer,
 } from '@/components/landing';
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" data-bs-spy="scroll">
       <Navbar />
       <HeroSection />
-      <TrustLogos />
-      <BentoGrid />
-      <AIPreview />
-      <Testimonials />
-      <SuccessPath />
-      <WaitlistSection />
+      <FeaturesSection />
+      <ReviewsSection />
+      <TeamSection />
+      <PricingSection />
+      <FunFactsSection />
+      <FAQSection />
+      <CTASection />
+      <ContactSection />
       <Footer />
     </div>
   );

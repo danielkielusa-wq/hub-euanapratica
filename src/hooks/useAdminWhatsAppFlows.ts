@@ -510,11 +510,12 @@ export function useTriggerFlowManually() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ flowId, phone, leadId, leadName }: {
+    mutationFn: async ({ flowId, phone, leadId, leadName, accessToken }: {
       flowId: string;
       phone: string;
       leadId?: string;
       leadName?: string;
+      accessToken?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('execute-whatsapp-flow', {
         body: {
@@ -524,10 +525,19 @@ export function useTriggerFlowManually() {
             phone,
             lead_id: leadId || null,
             lead_name: leadName || null,
+            ...(accessToken ? { access_token: accessToken } : {}),
           },
         },
       });
-      if (error) throw error;
+      if (error) {
+        // Extract actual error message from Edge Function response
+        let msg = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch { /* ignore parse errors */ }
+        throw new Error(msg);
+      }
       return data;
     },
     onSuccess: () => {

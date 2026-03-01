@@ -1,28 +1,18 @@
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { MoreVertical, Video, ClipboardList } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface EspacoStats {
-  id: string;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  status?: string | null;
-  cover_image_url?: string | null;
-  gradient_preset?: string | null;
-  gradient_start?: string | null;
-  gradient_end?: string | null;
-  sessions_count?: number;
-  pending_assignments?: number;
-  completed_sessions?: number;
-  total_assignments?: number;
-}
+import {
+  MoreVertical,
+  Video,
+  FileText,
+  Users,
+  Calendar,
+  MessageSquare,
+  Plus,
+  ArrowRight,
+} from 'lucide-react';
+import type { EspacoWithStats } from '@/hooks/useStudentEspacosWithStats';
 
 interface StudentEspacoCardProps {
-  espaco: EspacoStats;
+  espaco: EspacoWithStats;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -31,14 +21,18 @@ const categoryLabels: Record<string, string> = {
   workshop: 'WORKSHOP',
   bootcamp: 'BOOTCAMP',
   course: 'CURSO',
+  hot_seat: 'HOT SEAT',
+  community: 'COMUNIDADE',
 };
 
 const categoryGradients: Record<string, string> = {
-  immersion: 'from-primary via-primary to-purple-600',
-  group_mentoring: 'from-primary via-primary to-purple-600',
-  workshop: 'from-teal-400 via-teal-500 to-emerald-600',
-  bootcamp: 'from-pink-500 via-pink-600 to-purple-600',
-  course: 'from-amber-400 via-orange-500 to-red-500',
+  immersion: 'from-blue-600 to-indigo-600',
+  group_mentoring: 'from-blue-600 to-indigo-600',
+  workshop: 'from-teal-400 to-emerald-600',
+  bootcamp: 'from-pink-500 to-purple-600',
+  course: 'from-amber-400 to-red-500',
+  hot_seat: 'from-orange-500 to-red-500',
+  community: 'from-emerald-500 to-teal-500',
 };
 
 export function StudentEspacoCard({ espaco }: StudentEspacoCardProps) {
@@ -47,112 +41,126 @@ export function StudentEspacoCard({ espaco }: StudentEspacoCardProps) {
   const category = espaco.category || 'group_mentoring';
   const categoryLabel = categoryLabels[category] || 'ESPAÇO';
   const gradient = categoryGradients[category] || categoryGradients.group_mentoring;
+  const isCommunity = category === 'community';
 
-  // Calculate progress
-  const totalSessions = (espaco.sessions_count || 0);
-  const completedSessions = espaco.completed_sessions || 0;
-  const progressPercent = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
-
-  // Module count (using folders/sessions as proxy)
-  const moduleCount = totalSessions;
-  const activityCount = espaco.total_assignments || espaco.pending_assignments || 0;
+  const moduleCount = espaco.totalSessions;
+  const activityCount = espaco.totalAssignments;
+  const progressPercent = espaco.progressPercent;
 
   return (
-    <Card
-      className={cn(
-        "overflow-hidden cursor-pointer transition-all duration-200",
-        "rounded-[20px] border border-border/50 bg-card",
-        "hover:shadow-lg hover:border-primary/20"
-      )}
+    <div
+      className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col cursor-pointer"
       onClick={() => navigate(`/dashboard/espacos/${espaco.id}`)}
     >
-      {/* Gradient Header Area */}
-      <div className={cn(
-        "relative aspect-[16/9] bg-gradient-to-br",
-        gradient
-      )}>
+      {/* Header */}
+      <div className={`h-32 bg-gradient-to-r ${gradient} p-6 relative`}>
+        <div className="flex justify-between items-start">
+          <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide border border-white/10">
+            {categoryLabel}
+          </span>
+          <button
+            className="text-white/80 hover:text-white transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+        </div>
+
         {/* Cover Image Overlay */}
         {espaco.cover_image_url && (
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ 
+            style={{
               backgroundImage: `url(${espaco.cover_image_url})`,
-              opacity: 0.3
+              opacity: 0.3,
             }}
           />
         )}
-        
-        {/* Category Badge */}
-        <div className="absolute top-4 left-4">
-          <span className="px-3 py-1 text-xs font-semibold tracking-wide text-primary-foreground bg-background/20 backdrop-blur-sm rounded-full">
-            {categoryLabel}
-          </span>
-        </div>
 
-        {/* Menu Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 h-8 w-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-background/20"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Could open a dropdown menu here
-          }}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
+        {/* Decorative Circle */}
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl translate-x-1/2 translate-y-1/2"></div>
       </div>
 
-      {/* Content Section */}
-      <div className="p-4 space-y-3">
-        <h3 className="font-semibold text-foreground line-clamp-2">
+      {/* Body */}
+      <div className="p-6 flex-1 flex flex-col">
+        <h3 className="text-lg font-bold text-gray-800 mb-4 leading-tight group-hover:text-indigo-600 transition-colors">
           {espaco.name}
         </h3>
 
-        {/* Stats Row */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Video className="h-4 w-4" />
-            <span>{moduleCount} Módulos</span>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="flex items-center gap-2 text-gray-500">
+            <Video className="w-4 h-4 text-gray-400" />
+            <span className="text-xs">{moduleCount} Módulos</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <ClipboardList className="h-4 w-4" />
-            <span>{activityCount} Atividades</span>
+          <div className="flex items-center gap-2 text-gray-500">
+            <FileText className="w-4 h-4 text-gray-400" />
+            <span className="text-xs">{activityCount} Atividades</span>
           </div>
+          <div className="flex items-center gap-2 text-gray-500">
+            <Users className="w-4 h-4 text-gray-400" />
+            <span className="text-xs">{espaco.membersCount} Membros</span>
+          </div>
+          {espaco.nextSessionLabel && (
+            <div className="flex items-center gap-2 text-indigo-600 font-medium">
+              <Calendar className="w-4 h-4" />
+              <span className="text-xs">{espaco.nextSessionLabel}</span>
+            </div>
+          )}
         </div>
 
-        {/* Progress Bar */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progresso</span>
-            <span className="font-medium text-foreground">{progressPercent}%</span>
-          </div>
-          <Progress value={progressPercent} className="h-2" />
+        {/* Footer */}
+        <div className="mt-auto">
+          {!isCommunity ? (
+            <div className="space-y-2">
+              <div className="flex justify-between items-end text-xs">
+                <span className="font-bold text-gray-700">Progresso</span>
+                <span className="font-bold text-indigo-600">{progressPercent}%</span>
+              </div>
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${espaco.hasLiveSession ? 'bg-red-500' : 'bg-[#7367F0]'}`}
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+            </div>
+          ) : (
+            <button className="w-full py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Acessar Comunidade
+            </button>
+          )}
+
+          {espaco.hasLiveSession && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-red-600 bg-red-50 py-2 rounded-lg animate-pulse">
+              <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+              Sessão ao vivo em breve
+            </div>
+          )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
 export function ExploreCoursesCard() {
+  const navigate = useNavigate();
+
   return (
-    <Card
-      className={cn(
-        "overflow-hidden cursor-pointer transition-all duration-200",
-        "rounded-[20px] border border-dashed border-border bg-muted/30",
-        "hover:border-primary/40 hover:bg-muted/50",
-        "flex flex-col items-center justify-center min-h-[280px]"
-      )}
+    <div
+      className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-8 text-center hover:bg-gray-100 transition-colors cursor-pointer group min-h-[300px]"
+      onClick={() => navigate('/dashboard/hub')}
     >
-      <div className="text-center p-6">
-        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/10 flex items-center justify-center">
-          <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </div>
-        <h3 className="font-semibold text-foreground mb-1">Explorar Cursos</h3>
-        <p className="text-sm text-muted-foreground">Descubra novos programas</p>
+      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
+        <Plus className="w-8 h-8 text-indigo-600" />
       </div>
-    </Card>
+      <h3 className="text-lg font-bold text-gray-800 mb-2">Explorar Novos Espaços</h3>
+      <p className="text-sm text-gray-500 max-w-xs mb-6">
+        Descubra novas mentorias, grupos de estudo e comunidades para acelerar sua jornada.
+      </p>
+      <button className="text-sm font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+        Ver Catálogo <ArrowRight className="w-4 h-4" />
+      </button>
+    </div>
   );
 }

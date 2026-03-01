@@ -31,6 +31,7 @@ interface BatchJob {
   contacts_skipped: number;
   status: string;
   started_at: string | null;
+  scheduled_at: string | null;
   last_cycle_at: string | null;
   error_rate: number;
   metadata: Record<string, unknown>;
@@ -199,6 +200,7 @@ export async function createBatchJob(
     businessHoursOnly?: boolean;
     createdBy?: string;
     manualContacts?: Array<{ phone: string; lead_name?: string }>;
+    scheduledAt?: string;
   }
 ): Promise<{ jobId: string; totalContacts: number } | { error: string }> {
   const {
@@ -207,6 +209,7 @@ export async function createBatchJob(
     businessHoursOnly = true,
     createdBy,
     manualContacts,
+    scheduledAt,
   } = params;
 
   let contacts: Array<{
@@ -243,6 +246,10 @@ export async function createBatchJob(
     });
   }
 
+  // Determine initial status: scheduled (future) or queued (immediate)
+  const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+  const initialStatus = isScheduled ? "scheduled" : "queued";
+
   // Insert batch job
   const { data: job, error: jobErr } = await supabase
     .from("whatsapp_batch_jobs")
@@ -255,7 +262,8 @@ export async function createBatchJob(
       created_by: createdBy || null,
       total_contacts: contacts.length,
       contacts_queued: contacts.length,
-      status: "queued",
+      status: initialStatus,
+      ...(isScheduled ? { scheduled_at: scheduledAt } : {}),
     })
     .select("id")
     .single();
@@ -320,6 +328,21 @@ export async function processBatchCycle(
     autoPaused: false,
     completed: false,
   };
+
+  // Scheduling check: if job is scheduled for a future time, skip
+  if (job.status === "scheduled") {
+    if (!job.scheduled_at || new Date() < new Date(job.scheduled_at)) {
+      console.log(`[batchService] Job ${job.id}: scheduled for ${job.scheduled_at}, not yet time`);
+      return result;
+    }
+    // Time reached → transition to queued
+    await supabase
+      .from("whatsapp_batch_jobs")
+      .update({ status: "queued" })
+      .eq("id", job.id);
+    job.status = "queued";
+    console.log(`[batchService] Job ${job.id}: scheduled time reached, transitioning to queued`);
+  }
 
   // Business hours check
   if (job.business_hours_only && !isBusinessHours()) {

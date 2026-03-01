@@ -9,7 +9,7 @@ import {
   Lightbulb,
   FileText,
   TrendingUp,
-  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { JobAIEnrichment } from '@/types/jobs';
@@ -28,137 +28,158 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
         ? 'text-amber-600 bg-amber-50 border-amber-100'
         : 'text-red-600 bg-red-50 border-red-100';
 
+  const matchScore = enrichment.timezone_analysis.compatibility_score * 10;
+
   return (
-    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-[40px] p-10 md:p-12 border border-indigo-100 shadow-sm space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-          <Sparkles size={20} />
-        </div>
-        <div>
-          <h2 className="text-xl font-black text-gray-900">Análise ENP para Brasileiros</h2>
-          <p className="text-xs text-gray-500 font-medium">Insights personalizados para profissionais no Brasil</p>
+    <div className="bg-white rounded-3xl border border-purple-100 shadow-sm overflow-hidden">
+      {/* Purple Gradient Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-200" />
+              Análise de Compatibilidade
+            </h2>
+            <p className="text-purple-100 text-sm mt-1">Baseado no seu perfil brasileiro</p>
+          </div>
+          <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
+            <div className="text-3xl font-bold">{matchScore}%</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Match</div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Timezone Compatibility */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock size={16} className="text-indigo-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Fuso Horário</h3>
+      {/* 3-Column Metrics */}
+      <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+        {/* Timezone */}
+        <div className="space-y-3 pt-4 md:pt-0">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <Clock className="w-4 h-4" /> Fuso Horário
           </div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-black border ${timezoneScoreColor}`}>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-gray-900">
               {enrichment.timezone_analysis.compatibility_score}/10
             </span>
-            <span className="text-sm font-bold text-gray-700">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${timezoneScoreColor}`}>
               {enrichment.timezone_analysis.overlap_with_brazil}
             </span>
           </div>
-          <p className="text-xs text-gray-500 font-medium">
+          <p className="text-xs text-gray-500 leading-relaxed">
             {enrichment.timezone_analysis.preferred_hours}
           </p>
         </div>
 
-        {/* English Level */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <Globe size={16} className="text-blue-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Inglês Necessário</h3>
+        {/* English */}
+        <div className="space-y-3 pt-4 md:pt-0 md:pl-8">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <Globe className="w-4 h-4" /> Inglês
           </div>
-          <p className="text-lg font-black text-gray-900 mb-1">
-            {enrichment.english_level_required}
-          </p>
-          <p className="text-xs text-gray-500 font-medium">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-blue-600">
+              {enrichment.english_level_required}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
             {enrichment.english_level_notes}
           </p>
         </div>
 
-        {/* Salary in BRL */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <DollarSign size={16} className="text-green-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Poder de Compra (BRL)</h3>
+        {/* Salary BRL */}
+        <div className="space-y-3 pt-4 md:pt-0 md:pl-8">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <DollarSign className="w-4 h-4" /> Estimativa BRL
           </div>
-          <p className="text-lg font-black text-green-600 mb-1">
-            R$ {enrichment.salary_brl_context.monthly_brl.toLocaleString('pt-BR')}/mês
-          </p>
-          <p className="text-xs text-gray-500 font-medium">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-green-600">
+              R$ {enrichment.salary_brl_context.monthly_brl.toLocaleString('pt-BR')}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
             {enrichment.salary_brl_context.comparison}
           </p>
         </div>
+      </div>
 
+      {/* Insights Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 pb-8">
         {/* Key Skills */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <Target size={16} className="text-purple-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Habilidades-Chave</h3>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
+            <Target className="w-5 h-5 text-blue-500" />
+            Skills Necessárias
           </div>
           <div className="flex flex-wrap gap-2">
             {enrichment.key_skills.map((skill) => (
-              <span key={skill} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100">
+              <span key={skill} className="px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium border border-gray-100">
                 {skill}
               </span>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Skills Gap Hint */}
-      {enrichment.missing_skills_hint && (
-        <div className="bg-white rounded-3xl p-6 border border-amber-100">
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={18} className="text-amber-500 mt-0.5 shrink-0" />
-            <div>
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Dica de Habilidade</h3>
-              <p className="text-sm text-gray-700 font-medium leading-relaxed">
-                {enrichment.missing_skills_hint}
-              </p>
+        {/* Skills Gap / Attention Point */}
+        {enrichment.missing_skills_hint ? (
+          <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-orange-800 mb-4">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              Ponto de Atenção
             </div>
+            <p className="text-sm text-orange-800/80 leading-relaxed">
+              {enrichment.missing_skills_hint}
+            </p>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-green-50 p-6 rounded-3xl border border-green-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-green-800 mb-4">
+              <Target className="w-5 h-5 text-green-600" />
+              Bom Match
+            </div>
+            <p className="text-sm text-green-800/80 leading-relaxed">
+              Seu perfil atende bem aos requisitos desta vaga.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Application Tips */}
       {enrichment.application_tips.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-4">
-            <Lightbulb size={16} className="text-amber-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Dicas para Candidatura</h3>
-          </div>
-          <ul className="space-y-3">
-            {enrichment.application_tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <span className="text-sm text-gray-700 font-medium leading-relaxed">{tip}</span>
-              </li>
+        <div className="mx-8 mb-8 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-yellow-500" />
+            Dicas para Aplicação
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {enrichment.application_tips.map((tip, idx) => (
+              <div key={idx} className="flex gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                <div className="w-6 h-6 bg-white text-gray-900 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-gray-100">
+                  {idx + 1}
+                </div>
+                <p className="text-sm text-gray-600 font-medium">{tip}</p>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {/* ResumePass Keywords + CTA */}
       {enrichment.resume_pass_keywords.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText size={16} className="text-brand-500" />
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Keywords para seu Currículo</h3>
+        <div className="mx-8 mb-8 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+            <FileText className="w-4 h-4" /> Keywords para seu Currículo
           </div>
           <div className="flex flex-wrap gap-2 mb-4">
             {enrichment.resume_pass_keywords.map((keyword) => (
-              <span key={keyword} className="px-3 py-1.5 bg-brand-50 text-brand-700 text-xs font-bold rounded-lg border border-brand-100">
+              <span key={keyword} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100">
                 {keyword}
               </span>
             ))}
           </div>
           <Button
             onClick={() => navigate('/curriculo')}
-            className="bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl"
+            className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold rounded-xl"
             size="sm"
           >
-            <FileText size={14} className="mr-2" />
+            <Sparkles size={14} className="mr-2" />
             Otimizar Currículo com ResumePass
           </Button>
         </div>
@@ -166,11 +187,11 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
 
       {/* Career Path */}
       {enrichment.career_path_insight && (
-        <div className="bg-white rounded-3xl p-6 border border-gray-100">
+        <div className="mx-8 mb-8 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
           <div className="flex items-start gap-3">
-            <TrendingUp size={18} className="text-indigo-500 mt-0.5 shrink-0" />
+            <TrendingUp className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
             <div>
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Perspectiva de Carreira</h3>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Perspectiva de Carreira</h3>
               <p className="text-sm text-gray-700 font-medium leading-relaxed">
                 {enrichment.career_path_insight}
               </p>

@@ -1,10 +1,4 @@
-import { Briefcase, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { FileText } from 'lucide-react';
 
 interface JobDescriptionCardProps {
   value: string;
@@ -13,37 +7,20 @@ interface JobDescriptionCardProps {
 
 export function JobDescriptionCard({ value, onChange }: JobDescriptionCardProps) {
   return (
-    <div className="relative h-80 rounded-[32px] border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[280px] lg:min-h-[400px]">
+      <div className="px-4 py-3 sm:p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
+        <h3 className="font-bold text-gray-700 flex items-center gap-2 text-sm sm:text-base">
+          <FileText className="w-4 h-4 text-gray-500 shrink-0" />
+          Descrição da Vaga
+        </h3>
+        <span className="text-[10px] sm:text-xs font-medium text-gray-400 shrink-0">Cole o texto abaixo</span>
+      </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Cole aqui o texto da vaga (LinkedIn, Indeed, site da empresa)..."
-        className="w-full h-full p-6 text-sm text-gray-900 placeholder:text-gray-400 bg-transparent resize-none outline-none"
+        className="flex-1 w-full p-4 sm:p-6 text-sm text-gray-600 focus:outline-none resize-none placeholder:text-gray-300 leading-relaxed"
+        placeholder={`Ex: Senior Software Engineer @ Google...\n\nCole aqui o texto completo da vaga (LinkedIn, Indeed, site da empresa). Quanto mais detalhes, melhor será a análise.`}
       />
-
-      {/* Info Tooltip - Top Right */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="absolute top-4 right-4 flex items-center justify-center w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-            >
-              <Info className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="max-w-xs">
-            <p className="text-sm">
-              Cole aqui o texto completo da vaga — encontrado no LinkedIn, Indeed ou site da empresa.
-              O ATS compara as palavras da vaga com as do seu currículo, por isso precisa do texto original.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
-      <div className="absolute bottom-4 right-4 flex items-center justify-center w-10 h-10 rounded-xl bg-gray-50">
-        <Briefcase className="w-5 h-5 text-gray-300" />
-      </div>
     </div>
   );
 }

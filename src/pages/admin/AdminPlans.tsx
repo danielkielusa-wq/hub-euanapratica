@@ -1,13 +1,62 @@
-import { RefreshCw, Settings2, Save, Eye, HelpCircle, BookOpen, ChevronRight, Wrench } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw, Settings2, Save, Eye, HelpCircle, BookOpen, ChevronRight, Wrench, Coins, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlanCard } from '@/components/admin/plans/PlanCard';
 import { useAdminPlans } from '@/hooks/useAdminPlans';
+import { useAppConfigs } from '@/hooks/useAppConfigs';
+
+const CREDIT_COST_APPS = [
+  { id: 'curriculo_usa', label: 'ResumePass (Currículo Internacional)', description: 'Geração + análise de currículo para o mercado americano' },
+  { id: 'title_translator', label: 'Tradutor de Cargos', description: 'Tradução e adaptação de cargos para o inglês' },
+  { id: 'prime_jobs', label: 'Prime Jobs (candidatura)', description: 'Candidatura assistida por IA em vagas internacionais' },
+];
+
+const DEFAULT_COSTS: Record<string, number> = {
+  curriculo_usa: 2,
+  title_translator: 1,
+  prime_jobs: 1,
+};
 
 export default function AdminPlans() {
   const { plans, isLoading, isSaving, updatePlan, refetch } = useAdminPlans();
+  const { getConfigValue, updateConfig, isSaving: isSavingCosts } = useAppConfigs();
+
+  const [costs, setCosts] = useState<Record<string, number>>(DEFAULT_COSTS);
+  const [costsLoaded, setCostsLoaded] = useState(false);
+
+  // Sync costs from app_configs once loaded
+  const rawCosts = getConfigValue('credit_costs');
+  useEffect(() => {
+    if (rawCosts && !costsLoaded) {
+      try {
+        const parsed = JSON.parse(rawCosts);
+        setCosts({ ...DEFAULT_COSTS, ...parsed });
+        setCostsLoaded(true);
+      } catch {
+        setCostsLoaded(true);
+      }
+    } else if (!rawCosts && !costsLoaded) {
+      // no config yet, keep defaults
+      setCostsLoaded(true);
+    }
+  }, [rawCosts, costsLoaded]);
+
+  const handleCostChange = (appId: string, value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num) && num >= 0) {
+      setCosts(prev => ({ ...prev, [appId]: num }));
+    }
+  };
+
+  const handleSaveCosts = async () => {
+    await updateConfig('credit_costs', JSON.stringify(costs));
+  };
 
   return (
     <DashboardLayout>
@@ -149,6 +198,76 @@ export default function AdminPlans() {
               ))}
             </div>
           )}
+
+          {/* Credit Costs Config */}
+          <div className="mt-10">
+            <Card className="rounded-2xl border">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Coins className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Custo de Créditos por Ação</CardTitle>
+                      <CardDescription>
+                        Quantos créditos cada funcionalidade consome por execução. Alterações valem imediatamente para novos usos.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSaveCosts}
+                    disabled={isSavingCosts || !costsLoaded}
+                    size="sm"
+                    className="gap-2 rounded-xl"
+                  >
+                    {isSavingCosts ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Salvar custos
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!costsLoaded ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {CREDIT_COST_APPS.map(app => (
+                      <div
+                        key={app.id}
+                        className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{app.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{app.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Label className="text-xs text-muted-foreground whitespace-nowrap">créditos</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={999}
+                            value={costs[app.id] ?? 1}
+                            onChange={e => handleCostChange(app.id, e.target.value)}
+                            className="w-20 text-center rounded-lg h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Chave armazenada em <code className="bg-muted px-1 rounded">app_configs.credit_costs</code>.
+                      Os limites mensais por plano são configurados nos cards acima.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </DashboardLayout>

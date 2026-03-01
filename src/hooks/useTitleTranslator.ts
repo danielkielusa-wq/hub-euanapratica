@@ -53,7 +53,7 @@ export function useTitleTranslator() {
     years: '',
   });
 
-  // Fetch title_translator-specific quota via generic get_app_quota RPC
+  // Fetch unified credit pool
   const fetchQuota = useCallback(async () => {
     if (!user?.id) {
       setQuota(null);
@@ -62,10 +62,10 @@ export function useTitleTranslator() {
 
     try {
       const { data, error: rpcError } = await supabase
-        .rpc('get_app_quota', { p_user_id: user.id, p_app_id: 'title_translator' });
+        .rpc('get_unified_credits', { p_user_id: user.id });
 
       if (rpcError) {
-        console.error('[useTitleTranslator] Error fetching quota:', rpcError);
+        console.error('[useTitleTranslator] Error fetching credits:', rpcError);
         return;
       }
 
@@ -74,21 +74,21 @@ export function useTitleTranslator() {
         setQuota({
           planId: row.plan_id,
           planName: row.plan_name,
-          monthlyLimit: row.monthly_limit,
-          usedThisMonth: row.used_this_month,
-          remaining: row.remaining,
+          monthlyLimit: row.monthly_credits,
+          usedThisMonth: row.used_credits,
+          remaining: row.remaining_credits,
         });
       } else {
         setQuota({
           planId: 'basic',
           planName: 'Básico',
-          monthlyLimit: 1,
+          monthlyLimit: 5,
           usedThisMonth: 0,
-          remaining: 1,
+          remaining: 5,
         });
       }
     } catch (err) {
-      console.error('[useTitleTranslator] Error loading quota:', err);
+      console.error('[useTitleTranslator] Error loading credits:', err);
     }
   }, [user?.id]);
 
@@ -146,15 +146,16 @@ export function useTitleTranslator() {
       let errorBody: any = null;
 
       if (fnError) {
-        // Try to extract the actual error from the response
+        // supabase-js v2: FunctionsHttpError has error.context = Response object
+        // error.message is always "Edge Function returned a non-2xx status code"
         try {
-          // Supabase FunctionsHttpError may have context with the response
-          if ('context' in fnError && (fnError as any).context?.body) {
-            errorBody = JSON.parse(new TextDecoder().decode((fnError as any).context.body));
+          const ctx = (fnError as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            errorBody = await ctx.json();
           }
-        } catch { /* ignore parse errors */ }
+        } catch { /* Response body already consumed or not JSON */ }
 
-        // Also try parsing the error message itself
+        // Fallback: try parsing error.message directly
         if (!errorBody) {
           try {
             errorBody = JSON.parse(fnError.message);
@@ -247,7 +248,7 @@ export function useTitleTranslator() {
     setFormData({ titleBr: '', area: '', responsibilities: '', years: '' });
   }, []);
 
-  const hasCredits = quota ? quota.remaining > 0 : true;
+  const hasCredits = quota ? quota.remaining > 0 : false; // fail-closed when quota unknown
 
   return {
     status,

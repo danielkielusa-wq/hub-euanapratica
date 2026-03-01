@@ -15,7 +15,12 @@ export interface EspacoWithStats {
   end_date: string | null;
   upcomingSessions: number;
   pendingAssignments: number;
+  totalAssignments: number;
+  totalSessions: number;
   progressPercent: number;
+  membersCount: number;
+  nextSessionLabel: string | null;
+  hasLiveSession: boolean;
 }
 
 export function useStudentEspacosWithStats() {
@@ -53,38 +58,75 @@ export function useStudentEspacosWithStats() {
 
       if (!enrollments || enrollments.length === 0) return [];
 
-      // Get stats for each espaco — run all 3 queries in parallel (saves ~1s)
+      // Get stats for each espaco — run all queries in parallel
       const espacoIds = enrollments.map(e => e.espaco_id);
 
-      const [sessionsResult, assignmentsResult, submissionsResult] = await Promise.all([
+      const [futureSessionsResult, allSessionsResult, assignmentsResult, submissionsResult, membersResult] = await Promise.all([
+        // Future sessions (for next session label & live detection)
+        supabase
+          .from('sessions')
+          .select('espaco_id, datetime, status')
+          .in('espaco_id', espacoIds)
+          .gte('datetime', new Date().toISOString())
+          .in('status', ['scheduled', 'live'])
+          .order('datetime', { ascending: true }),
+        // All sessions (for total module count)
         supabase
           .from('sessions')
           .select('espaco_id')
-          .in('espaco_id', espacoIds)
-          .gte('datetime', new Date().toISOString())
-          .in('status', ['scheduled', 'live']),
+          .in('espaco_id', espacoIds),
+        // Published assignments
         supabase
           .from('assignments')
           .select('id, espaco_id')
           .in('espaco_id', espacoIds)
           .eq('status', 'published'),
+        // User submissions
         supabase
           .from('submissions')
           .select('assignment_id, status')
           .eq('user_id', user.id),
+        // Members count per espaco
+        supabase
+          .from('user_espacos')
+          .select('espaco_id')
+          .in('espaco_id', espacoIds)
+          .eq('status', 'active'),
       ]);
 
-      const sessions = sessionsResult.data;
+      const futureSessions = futureSessionsResult.data;
+      const allSessions = allSessionsResult.data;
       const assignments = assignmentsResult.data;
       const submissions = submissionsResult.data;
+      const members = membersResult.data;
       console.timeEnd('[PERF] useStudentEspacosWithStats');
 
       // Calculate stats per espaco
       return enrollments.map(enrollment => {
         const espaco = enrollment.espacos as any;
-        
-        // Count upcoming sessions for this espaco
-        const upcomingSessions = (sessions || []).filter(
+
+        // Future sessions for this espaco
+        const espacoFutureSessions = (futureSessions || []).filter(
+          s => s.espaco_id === espaco.id
+        );
+        const upcomingSessions = espacoFutureSessions.length;
+
+        // Next session label (already ordered by datetime asc)
+        const nextSession = espacoFutureSessions[0];
+        let nextSessionLabel: string | null = null;
+        if (nextSession) {
+          const dt = new Date(nextSession.datetime);
+          const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+          const day = days[dt.getDay()];
+          const time = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          nextSessionLabel = `${day}, ${time}`;
+        }
+
+        // Has live session
+        const hasLiveSession = espacoFutureSessions.some(s => s.status === 'live');
+
+        // Total sessions (modules)
+        const totalSessions = (allSessions || []).filter(
           s => s.espaco_id === espaco.id
         ).length;
 
@@ -99,7 +141,7 @@ export function useStudentEspacosWithStats() {
             .filter(s => s.status === 'submitted' || s.status === 'reviewed')
             .map(s => s.assignment_id)
         );
-        
+
         const pendingAssignments = espacoAssignments.filter(
           a => !submittedAssignmentIds.has(a.id)
         ).length;
@@ -109,9 +151,14 @@ export function useStudentEspacosWithStats() {
         const completedAssignments = espacoAssignments.filter(
           a => submittedAssignmentIds.has(a.id)
         ).length;
-        const progressPercent = totalAssignments > 0 
+        const progressPercent = totalAssignments > 0
           ? Math.round((completedAssignments / totalAssignments) * 100)
           : 0;
+
+        // Members count
+        const membersCount = (members || []).filter(
+          m => m.espaco_id === espaco.id
+        ).length;
 
         return {
           id: espaco.id,
@@ -126,7 +173,12 @@ export function useStudentEspacosWithStats() {
           end_date: espaco.end_date,
           upcomingSessions,
           pendingAssignments,
-          progressPercent
+          totalAssignments,
+          totalSessions,
+          progressPercent,
+          membersCount,
+          nextSessionLabel,
+          hasLiveSession,
         };
       });
     },

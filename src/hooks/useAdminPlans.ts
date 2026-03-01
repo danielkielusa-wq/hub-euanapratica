@@ -39,12 +39,15 @@ export function useAdminPlans() {
           features.discounts = DEFAULT_PLAN_FEATURES.discounts;
         }
 
-        // Sync resume_pass_limit with monthly_limit if not set
+        // Sync monthly_credits with monthly_limit if not set
+        if (!features.monthly_credits) {
+          features.monthly_credits = p.monthly_limit || 5;
+        }
+
+        // Legacy: keep resume_pass_limit and title_translator_limit synced
         if (!features.resume_pass_limit) {
           features.resume_pass_limit = p.monthly_limit;
         }
-
-        // Default title_translator_limit if not set
         if (!features.title_translator_limit) {
           features.title_translator_limit = 1;
         }
@@ -95,7 +98,7 @@ export function useAdminPlans() {
           theme: plan.theme,
           is_active: plan.is_active,
           is_popular: plan.is_popular,
-          monthly_limit: plan.features.resume_pass_limit,
+          monthly_limit: plan.features.monthly_credits || plan.features.resume_pass_limit,
           features: JSON.parse(JSON.stringify(plan.features)),
           display_features: plan.display_features,
           cta_text: plan.cta_text,

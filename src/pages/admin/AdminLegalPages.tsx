@@ -10,16 +10,22 @@ import { useAppConfigs } from '@/hooks/useAppConfigs';
 
 const LEGAL_PAGES = [
   {
+    key: 'legal_termos_uso',
+    label: 'Termos de Uso',
+    description: 'Termos gerais de uso da plataforma.',
+    publicUrl: '/termos-de-uso',
+  },
+  {
     key: 'legal_termos_assinatura',
     label: 'Termos de Assinatura',
-    description: 'Termos que regem a assinatura e uso da plataforma.',
+    description: 'Termos que regem a assinatura e pagamentos.',
     publicUrl: '/termos-assinatura',
   },
   {
     key: 'legal_politica_privacidade',
     label: 'Política de Privacidade',
     description: 'Como coletamos, usamos e protegemos dados pessoais.',
-    publicUrl: '/politica-privacidade',
+    publicUrl: '/privacidade',
   },
   {
     key: 'legal_politica_cancelamento',

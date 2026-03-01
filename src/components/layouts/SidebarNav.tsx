@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStudentEspacosWithStats } from '@/hooks/useStudentEspacosWithStats';
 import {
   Compass,
   Users,
@@ -43,6 +42,7 @@ import {
   Library,
   Layers,
   ChevronRight,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -67,29 +67,39 @@ interface NavItem {
 interface NavGroup {
   label: string;
   items: NavItem[];
+  noHeader?: boolean;
 }
 
 // Student Navigation
 const studentNavGroups: NavGroup[] = [
   {
-    label: 'DISCOVERY',
+    label: 'MEU HUB',
+    noHeader: true,
     items: [
       { label: 'Meu Hub', href: '/dashboard/hub', icon: Compass, menuKey: 'hub', tourId: 'sidebar-meu-hub' },
+    ],
+  },
+  {
+    label: 'COMUNIDADE',
+    noHeader: true,
+    items: [
       { label: 'Comunidade', href: '/comunidade', icon: Users, menuKey: 'comunidade', badge: { text: 'HOT', variant: 'hot' }, tourId: 'sidebar-comunidade' },
+    ],
+  },
+  {
+    label: 'AGENDAMENTOS',
+    noHeader: true,
+    items: [
       { label: 'Agendamentos', href: '/dashboard/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
+    ],
+  },
+  {
+    label: 'DISCOVERY',
+    items: [
       { label: 'Explore', href: '/catalogo', icon: Search, menuKey: 'catalogo', badge: { text: 'NOVO', variant: 'new' }, tourId: 'sidebar-explore' },
       { label: 'Lives', href: '/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, menuKey: 'cursos', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid, menuKey: 'espacos' },
-    ],
-  },
-  {
-    label: 'MENTORIA',
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, menuKey: 'dashboard' },
-      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
-      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library, menuKey: 'biblioteca_global' },
-      { label: 'Tarefas', href: '/dashboard/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
   },
   {
@@ -125,10 +135,16 @@ const studentNavGroups: NavGroup[] = [
   {
     label: 'MINHA CONTA',
     items: [
-      { label: 'Planos', href: '/pricing', icon: CreditCard, menuKey: 'pricing' },
-      { label: 'Assinatura', href: '/dashboard/assinatura', icon: CreditCard, menuKey: 'assinatura' },
       { label: 'Perfil', href: '/perfil', icon: User, menuKey: 'perfil' },
       { label: 'Meus Pedidos', href: '/meus-pedidos', icon: ShoppingBag, menuKey: 'pedidos' },
+      { label: 'Assinatura', href: '/dashboard/assinatura', icon: CreditCard, menuKey: 'assinatura' },
+      { label: 'Planos', href: '/pricing', icon: CreditCard, menuKey: 'pricing' },
+    ],
+  },
+  {
+    label: 'SUPORTE',
+    noHeader: true,
+    items: [
       { label: 'Suporte', href: '/dashboard/suporte', icon: LifeBuoy, menuKey: 'suporte' },
     ],
   },
@@ -226,6 +242,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
       { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
       { label: 'Automacoes N8N', href: '/admin/automacoes', icon: Zap },
+      { label: 'Notificacoes', href: '/admin/notificacoes', icon: Bell },
       { label: 'Fluxos WhatsApp', href: '/admin/whatsapp-flows', icon: Workflow },
       { label: 'Páginas Legais', href: '/admin/paginas-legais', icon: FileText },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
@@ -272,7 +289,6 @@ interface SidebarNavProps {
 export function SidebarNav({ onNavigate }: SidebarNavProps) {
   const location = useLocation();
   const { user } = useAuth();
-  const { data: studentEspacos, isLoading: studentEspacosLoading } = useStudentEspacosWithStats();
   const { hasAccess: canAccessCommunity, isLoading: communityAccessLoading } = useServiceAccess('/comunidade');
   const { planId } = usePlanAccess();
   const { isItemVisible } = useMenuVisibility();
@@ -301,11 +317,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
           .filter(group => group.items.length > 0);
       }
       default: {
-        let groups = studentNavGroups;
-        if (!studentEspacosLoading && (studentEspacos?.length || 0) === 0) {
-          groups = groups.filter(group => group.label !== 'MENTORIA');
-        }
-        return groups
+        return studentNavGroups
           .map(group => ({
             ...group,
             items: group.items.filter(item => !item.menuKey || isItemVisible('student', item.menuKey)),
@@ -313,7 +325,7 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
           .filter(group => group.items.length > 0);
       }
     }
-  }, [user?.role, studentEspacosLoading, studentEspacos, isItemVisible]);
+  }, [user?.role, isItemVisible]);
 
   // Determine which group contains the active link
   const activeGroupLabel = useMemo(() => {
@@ -350,33 +362,35 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
   return (
     <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-hide">
       {navGroups.map((group, groupIdx) => {
-        const isExpanded = expandedGroups.has(group.label);
+        const isExpanded = group.noHeader ? true : expandedGroups.has(group.label);
         const hasActiveItem = group.items.some(item => isActive(item.href));
 
         return (
           <div key={group.label} className={cn(groupIdx > 0 && "mt-2")}>
-            {/* Collapsible Group Header */}
-            <button
-              onClick={() => toggleGroup(group.label)}
-              className={cn(
-                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150",
-                hasActiveItem
-                  ? "text-blue-600"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
-              )}
-            >
-              <span>{group.label}</span>
-              <ChevronRight className={cn(
-                "w-3.5 h-3.5 transition-transform duration-200",
-                isExpanded && "rotate-90"
-              )} />
-            </button>
+            {/* Collapsible Group Header — hidden for standalone (noHeader) items */}
+            {!group.noHeader && (
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150",
+                  hasActiveItem
+                    ? "text-blue-600"
+                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                )}
+              >
+                <span>{group.label}</span>
+                <ChevronRight className={cn(
+                  "w-3.5 h-3.5 transition-transform duration-200",
+                  isExpanded && "rotate-90"
+                )} />
+              </button>
+            )}
 
-            {/* Animated Group Items */}
+            {/* Group Items */}
             <div
               className={cn(
-                "overflow-hidden transition-all duration-200 ease-in-out",
-                isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+                !group.noHeader && "overflow-hidden transition-all duration-200 ease-in-out",
+                !group.noHeader && (isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0")
               )}
             >
               <ul className="space-y-0.5 pb-1">

@@ -1,3 +1,4 @@
+import { MessageSquare, Hash, Users, Calendar, Briefcase } from 'lucide-react';
 import { CommunityCategory } from '@/types/community';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -10,6 +11,19 @@ interface CategorySidebarProps {
   isLoading?: boolean;
 }
 
+// Default icons for categories; falls back to Hash
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  feed: MessageSquare,
+  networking: Users,
+  eventos: Calendar,
+  vagas: Briefcase,
+};
+
+function getCategoryIcon(name: string): React.ElementType {
+  const key = name.toLowerCase().replace(/\s+/g, '');
+  return CATEGORY_ICONS[key] || Hash;
+}
+
 export function CategorySidebar({
   categories,
   selectedCategoryId,
@@ -18,74 +32,87 @@ export function CategorySidebar({
 }: CategorySidebarProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-        <Skeleton className="h-4 w-16 mb-4" />
-        <div className="space-y-4">
+      <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-white/10 p-4">
+        <div className="space-y-1">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="flex items-center gap-3">
-              <Skeleton className="w-8 h-8 rounded-lg" />
-              <Skeleton className="h-4 w-32" />
-            </div>
+            <Skeleton key={i} className="h-10 w-full rounded-lg" />
           ))}
         </div>
       </div>
     );
   }
 
-  const allChannels = [
-    { id: null as string | null, name: 'Todas as Discussoes' },
-    ...categories.map(c => ({ id: c.id as string | null, name: c.name })),
-  ];
-
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Canais</h3>
-        </div>
-        <div className="space-y-4">
-          {allChannels.map((channel) => {
-            const isActive = channel.id === selectedCategoryId;
+      {/* Navigation Menu */}
+      <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-white/10 p-4">
+        <nav className="space-y-1">
+          {/* "All" feed item */}
+          <button
+            onClick={() => onSelectCategory(null)}
+            className={cn(
+              'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              selectedCategoryId === null
+                ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600'
+                : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-white/5'
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-4 h-4" />
+              <span>Feed Principal</span>
+            </div>
+          </button>
+
+          {/* Dynamic categories as menu items */}
+          {categories.map((category) => {
+            const Icon = getCategoryIcon(category.name);
+            const isActive = category.id === selectedCategoryId;
             return (
-              <div
-                key={channel.id ?? 'all'}
-                className="flex items-center justify-between group cursor-pointer"
-                onClick={() => onSelectCategory(channel.id)}
+              <button
+                key={category.id}
+                onClick={() => onSelectCategory(category.id)}
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600'
+                    : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-white/5'
+                )}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center">
-                    <div
-                      className={cn(
-                        'w-1.5 h-1.5 rounded-full bg-brand-600'
-                      )}
-                    />
-                  </div>
-                  <p
-                    className={cn(
-                      'text-sm font-bold transition-colors',
-                      isActive
-                        ? 'text-brand-600'
-                        : 'group-hover:text-brand-600'
-                    )}
-                  >
-                    {channel.name}
-                  </p>
+                  <Icon className="w-4 h-4" />
+                  <span>{category.name}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
+      {/* Popular Tags */}
+      {categories.length > 0 && (
+        <div className="bg-white dark:bg-card rounded-xl shadow-sm border border-gray-100 dark:border-white/10 p-6">
+          <h4 className="text-xs font-bold text-gray-400 dark:text-muted-foreground uppercase tracking-wider mb-4">Topicos Populares</h4>
+          <div className="flex flex-wrap gap-2">
+            {categories.slice(0, 8).map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => onSelectCategory(cat.id)}
+                className="text-xs font-medium px-3 py-1.5 bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-muted-foreground rounded-full hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer transition-colors"
+              >
+                #{cat.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <div className="px-2 text-[10px] text-gray-400 space-y-1">
+      <div className="px-2 text-[10px] text-gray-400 dark:text-muted-foreground space-y-1">
         <div className="flex gap-2">
           <a href="#" className="hover:underline">Privacy</a>
           <a href="#" className="hover:underline">Terms</a>
-          <a href="#" className="hover:underline">Advertising</a>
-          <a href="#" className="hover:underline">Cookies</a>
         </div>
-        <p>EUA na Pratica &copy; 2025</p>
+        <p>EUA na Pratica &copy; {new Date().getFullYear()}</p>
       </div>
     </div>
   );

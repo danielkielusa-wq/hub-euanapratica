@@ -82,7 +82,7 @@ export function GettingStartedChecklist() {
   };
 
   return (
-    <Card className="relative bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden animate-fade-in-up">
+    <Card className="relative bg-white dark:bg-card rounded-xl border border-gray-100 dark:border-white/10 shadow-sm overflow-hidden animate-fade-in-up">
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}

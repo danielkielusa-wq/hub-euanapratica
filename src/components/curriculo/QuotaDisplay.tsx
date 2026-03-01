@@ -64,7 +64,7 @@ export function QuotaDisplay({ className = '' }: QuotaDisplayProps) {
               )}>
                 {quota.remaining}
               </span>
-              /{quota.monthlyLimit} análises
+              /{quota.monthlyLimit} créditos
             </span>
             {/* Mini progress bar */}
             <div className={cn(
@@ -94,7 +94,7 @@ export function QuotaDisplay({ className = '' }: QuotaDisplayProps) {
             <>
               <p className="font-medium">{quota.planName}</p>
               <p className="text-muted-foreground">
-                {quota.usedThisMonth} de {quota.monthlyLimit} análises usadas este mês
+                {quota.usedThisMonth} de {quota.monthlyLimit} créditos usados este mês
               </p>
             </>
           )}

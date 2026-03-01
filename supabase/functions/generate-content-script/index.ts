@@ -75,6 +75,25 @@ Use variações destes cases adaptando ao contexto do roteiro:
 - Prova Social (2min): Cases empilhados (social proof stack)
 - CTA (30s): Chamada que conecta com a dor explorada no hook
 
+**stories (sequência de 4-8 stories):**
+Cada story vira uma "section" no body_sections. Gere no MÍNIMO 4 stories, máximo 8.
+
+Estrutura obrigatória:
+- Story 1 — VÍDEO (15s): Hook forte em texto grande na tela + fala direta na câmera. Pattern interrupt puro. O texto deve PARAR o toque de avançar.
+- Story 2 — VÍDEO (15s): Dado surpreendente ou mini-case. Texto overlay com número em destaque. Câmera close ou B-roll.
+- Story 3 — CTA (15s): Chamada para ação clara e direta. Use link sticker, "responde nos DMs", ou direcione para o perfil/bio. Visual limpo, sem poluição.
+- Story 4 — ENGAJAMENTO (15s): Enquete com 2 opções polêmicas, Quiz de múltipla escolha, ou Caixa de Pergunta. O objetivo é gerar reply e interação.
+- Stories adicionais (opcional): Intercale vídeo + engajamento conforme o tema pedir.
+
+Regras de Stories:
+- O heading de cada section deve indicar o tipo: "STORY 1 — VÍDEO", "STORY 2 — DADO", "STORY 3 — CTA", "STORY 4 — ENQUETE" etc.
+- camera_note DEVE incluir: tipo de story (vídeo/imagem/texto), stickers sugeridos (enquete, quiz, pergunta, countdown, emoji slider), posição do texto na tela
+- Para enquete/quiz: inclua as opções no content com formato "[OPÇÃO A] texto | [OPÇÃO B] texto"
+- duration_estimate_seconds = 15 × número de stories
+- hook = texto do primeiro story (deve funcionar como gancho visual)
+- cta = texto do story de CTA
+- Pense em arco narrativo: abra com impacto → desenvolva → direcione → engaje
+
 ═══ FORMATO DE SAÍDA — JSON ═══
 {
     "title": "Título do vídeo (clickbait inteligente — provoca mas entrega)",
@@ -204,6 +223,7 @@ Deno.serve(async (req) => {
 
     const platform = overridePlatform || PLATFORM_MAP[idea.content_type] || "instagram_reels";
     const isLongFormat = platform === "youtube";
+    const isStories = platform === "stories";
 
     // ── 4. Build context ────────────────────────────────────────────
 
@@ -220,7 +240,8 @@ Deno.serve(async (req) => {
       insight: insightContext,
       platform,
       is_long_format: isLongFormat,
-      target_duration: isLongFormat ? "8-15 minutes" : "30-60 seconds",
+      is_stories: isStories,
+      target_duration: isLongFormat ? "8-15 minutes" : isStories ? "4-8 stories (60-120 seconds total)" : "30-60 seconds",
     };
 
     const userMessage = JSON.stringify(contextData);
@@ -247,7 +268,7 @@ Deno.serve(async (req) => {
       apiKey: llmApiKey,
       systemPrompt,
       userMessage,
-      maxTokens: isLongFormat ? 6000 : 3000,
+      maxTokens: isLongFormat ? 6000 : isStories ? 4000 : 3000,
       timeoutMs: 120_000,
       edgeFunction: "generate-content-script",
       userId: null,

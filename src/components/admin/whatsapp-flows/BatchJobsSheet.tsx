@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/collapsible';
 import {
   Users, Pause, Play, XCircle, ChevronDown,
-  CheckCircle2, AlertCircle, Clock, Ban,
+  CheckCircle2, AlertCircle, Clock, Ban, Calendar,
 } from 'lucide-react';
 import {
   useBatchJobs,
@@ -28,6 +28,7 @@ import {
 // ── Status configs ──────────────────────────────────────────────────
 
 const JOB_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  scheduled: { label: 'Agendado', className: 'bg-indigo-100 text-indigo-700' },
   queued: { label: 'Na Fila', className: 'bg-gray-100 text-gray-700' },
   processing: { label: 'Processando', className: 'bg-blue-100 text-blue-700' },
   paused: { label: 'Pausado', className: 'bg-amber-100 text-amber-700' },
@@ -121,8 +122,9 @@ function BatchJobCard({
   const processed = job.contacts_sent + job.contacts_failed + job.contacts_skipped;
   const progressPct = job.total_contacts > 0 ? (processed / job.total_contacts) * 100 : 0;
 
-  const isActive = ['queued', 'processing'].includes(job.status);
+  const isActive = ['queued', 'processing', 'scheduled'].includes(job.status);
   const isPaused = job.status === 'paused';
+  const isScheduled = job.status === 'scheduled';
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
@@ -142,6 +144,20 @@ function BatchJobCard({
               {statusCfg.label}
             </Badge>
           </div>
+
+          {/* Scheduled info */}
+          {isScheduled && job.scheduled_at && (
+            <div className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-2.5 py-1.5">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              Agendado para{' '}
+              {new Date(job.scheduled_at).toLocaleDateString('pt-BR')}{' '}
+              as{' '}
+              {new Date(job.scheduled_at).toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+              })}{' '}
+              BRT
+            </div>
+          )}
 
           {/* Progress bar */}
           <div className="space-y-1">

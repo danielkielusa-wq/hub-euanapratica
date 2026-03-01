@@ -10,6 +10,7 @@ import {
   SubscriptionStatus,
   BillingCycle,
   DEFAULT_PLAN_FEATURES,
+  DEFAULT_CREDIT_COSTS,
   ROUTE_FEATURE_MAP,
   SERVICE_DISCOUNT_MAP,
   PlanDiscounts
@@ -29,6 +30,9 @@ interface UsePlanAccessReturn {
   getDiscountForCategory: (category: keyof PlanDiscounts) => number;
   getDiscountForServiceType: (serviceType: string) => number;
   getCouponCode: () => string;
+
+  // Unified credit pool
+  creditCosts: Record<string, number>;
 
   // UI helpers
   canAccessRoute: (route: string) => boolean;
@@ -79,6 +83,7 @@ const DEFAULT_PLAN_ACCESS: UserPlanAccess = {
 export function usePlanAccess(): UsePlanAccessReturn {
   const { user } = useAuth();
   const [planAccess, setPlanAccess] = useState<UserPlanAccess | null>(null);
+  const [creditCosts, setCreditCosts] = useState<Record<string, number>>(DEFAULT_CREDIT_COSTS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,15 +98,27 @@ export function usePlanAccess(): UsePlanAccessReturn {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: rpcError } = await supabase
-        .rpc('get_full_plan_access', { p_user_id: user.id });
+      // Fetch plan access and credit costs in parallel
+      const [planResult, costsResult] = await Promise.all([
+        supabase.rpc('get_full_plan_access', { p_user_id: user.id }),
+        supabase.from('app_configs').select('value').eq('key', 'credit_costs').maybeSingle(),
+      ]);
 
-      if (rpcError) {
+      if (planResult.error) {
         setError('Erro ao buscar informações do plano');
         return;
       }
 
-      const row = Array.isArray(data) ? data[0] : data;
+      // Parse credit costs from app_configs
+      if (costsResult.data?.value) {
+        try {
+          setCreditCosts(JSON.parse(costsResult.data.value));
+        } catch {
+          // keep defaults
+        }
+      }
+
+      const row = Array.isArray(planResult.data) ? planResult.data[0] : planResult.data;
 
       if (row) {
         // Parse features with defaults
@@ -126,7 +143,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
           priceAnnual: Number(row.price_annual) || 0,
           features,
           usedThisMonth: row.used_this_month || 0,
-          monthlyLimit: row.monthly_limit || 1,
+          monthlyLimit: row.monthly_limit || 5,
           remaining: row.remaining || 0,
           // Subscription lifecycle fields
           subscriptionStatus: (row.subscription_status as SubscriptionStatus) || 'inactive',
@@ -158,38 +175,20 @@ export function usePlanAccess(): UsePlanAccessReturn {
     return planAccess.features[feature] === true;
   }, [planAccess]);
 
-  const getLimit = useCallback((feature: LimitedFeature): number => {
+  // Unified credit pool: all features share the same pool
+  const getLimit = useCallback((_feature: LimitedFeature): number => {
     if (!planAccess) return 0;
-    if (feature === 'resume_pass') {
-      return planAccess.features.resume_pass_limit || planAccess.monthlyLimit;
-    }
-    if (feature === 'title_translator') {
-      return planAccess.features.title_translator_limit || 1;
-    }
-    if (feature === 'job_concierge') {
-      return planAccess.features.job_concierge_count || 0;
-    }
-    return 0;
+    return planAccess.monthlyLimit; // unified pool total
   }, [planAccess]);
 
-  const getUsage = useCallback((feature: LimitedFeature): number => {
+  const getUsage = useCallback((_feature: LimitedFeature): number => {
     if (!planAccess) return 0;
-    if (feature === 'resume_pass') {
-      return planAccess.usedThisMonth;
-    }
-    // Prime Jobs usage would need separate tracking
-    return 0;
+    return planAccess.usedThisMonth; // unified pool usage
   }, [planAccess]);
 
-  const getRemaining = useCallback((feature: LimitedFeature): number => {
+  const getRemaining = useCallback((_feature: LimitedFeature): number => {
     if (!planAccess) return 0;
-    if (feature === 'resume_pass') {
-      return planAccess.remaining;
-    }
-    if (feature === 'job_concierge') {
-      return planAccess.features.job_concierge_count || 0;
-    }
-    return 0;
+    return planAccess.remaining; // unified pool remaining
   }, [planAccess]);
 
   const getDiscountForCategory = useCallback((category: keyof PlanDiscounts): number => {
@@ -255,6 +254,7 @@ export function usePlanAccess(): UsePlanAccessReturn {
     getDiscountForCategory,
     getDiscountForServiceType,
     getCouponCode,
+    creditCosts,
     canAccessRoute,
     shouldShowUpgrade,
     isPremiumPlan,

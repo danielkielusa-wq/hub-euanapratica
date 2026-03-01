@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Share2, MessageCircle, Linkedin, Twitter, Copy, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import type { LiveStatus } from '@/types/live';
 
 interface LiveShareButtonsProps {
@@ -48,7 +47,7 @@ export function LiveShareButtons({ liveTitle, slug, status }: LiveShareButtonsPr
       label: 'Twitter/X',
       icon: Twitter,
       href: `https://twitter.com/intent/tweet?text=${encodedMessage}&url=${encodedUrl}`,
-      color: 'bg-gray-900 hover:bg-gray-800',
+      color: 'bg-gray-900 hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600',
       onClick: undefined as (() => void) | undefined,
     },
   ];
@@ -60,49 +59,46 @@ export function LiveShareButtons({ liveTitle, slug, status }: LiveShareButtonsPr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cardStyle = isLive
-    ? 'border-red-200 bg-red-50/30'
-    : 'border-indigo-200 bg-indigo-50/30';
-  const iconColor = isLive ? 'text-red-500' : 'text-indigo-500';
   const subtitle = isLive
-    ? 'Divulgue que voce esta ao vivo agora!'
+    ? 'Divulgue que você está ao vivo agora!'
     : 'Compartilhe esta live com sua rede!';
 
   return (
-    <Card className={cardStyle}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Share2 className={`h-4 w-4 ${iconColor}`} />
-          Compartilhar
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-gray-500 mb-3">
-          {subtitle}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {channels.map((ch) => (
-            <Button
-              key={ch.label}
-              size="sm"
-              className={`${ch.color} text-white gap-1.5`}
-              onClick={ch.onClick ?? (() => window.open(ch.href, '_blank'))}
-            >
-              <ch.icon className="h-4 w-4" />
-              {ch.label}
-            </Button>
-          ))}
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5"
-            onClick={handleCopy}
+    <div className={cn(
+      'rounded-2xl p-6 border shadow-sm',
+      isLive
+        ? 'border-red-200 dark:border-red-500/20 bg-red-50/30 dark:bg-red-500/5'
+        : 'border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5'
+    )}>
+      <h3 className="text-base font-bold text-gray-800 dark:text-foreground flex items-center gap-2 mb-2">
+        <Share2 className={cn('h-4 w-4', isLive ? 'text-red-500' : 'text-indigo-500 dark:text-indigo-400')} />
+        Compartilhar
+      </h3>
+      <p className="text-sm text-gray-500 dark:text-muted-foreground mb-4">
+        {subtitle}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {channels.map((ch) => (
+          <button
+            key={ch.label}
+            onClick={ch.onClick ?? (() => window.open(ch.href, '_blank'))}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors',
+              ch.color
+            )}
           >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copiado!' : 'Copiar Texto'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <ch.icon className="h-3.5 w-3.5" />
+            {ch.label}
+          </button>
+        ))}
+        <button
+          onClick={handleCopy}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-white/10 text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? 'Copiado!' : 'Copiar Texto'}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 # Guia de Validação Manual — EUA Na Prática
 
-**Última atualização:** 2026-02-28
+**Última atualização:** 2026-03-02
 **Complementa:** `E2E_DEVELOPER.md` (testes Playwright automatizados)
 **Objetivo:** Validar a aplicação manualmente — fluxos críticos, criação de dados de teste, pré-requisitos.
 
@@ -17,6 +17,7 @@
    - 2.5 Plano e Assinatura
    - 2.6 Serviço de Agendamento
    - 2.7 Fluxo WhatsApp de Teste
+   - 2.8 Leads com Relatório Pronto (Backfill)
 3. [Checklist por Módulo](#3-checklist-por-módulo)
 4. [Fluxos Críticos (Ponta a Ponta)](#4-fluxos-críticos-ponta-a-ponta)
 5. [Variáveis de Ambiente Necessárias](#5-variáveis-de-ambiente-necessárias)
@@ -243,6 +244,71 @@ ON CONFLICT DO NOTHING;
 - A primeira mensagem chega imediatamente no WhatsApp
 - Após ~1 minuto, a segunda mensagem chega (processada pelo cron)
 - Em `/admin/whatsapp-flows` → Ver Sessões → sessão aparece como `completed`
+
+---
+
+### 2.8 Leads com Relatório Pronto (Backfill)
+
+**Objetivo:** Criar leads elegíveis para o teste de Envio em Lote — i.e., com `processing_status = 'completed'`, telefone e `access_token` preenchidos.
+
+**Verificar elegíveis atuais (para um fluxo específico):**
+```sql
+-- Quantos leads já têm relatório completo com telefone?
+SELECT COUNT(*) AS total_com_relatorio
+FROM public.career_evaluations
+WHERE processing_status = 'completed'
+  AND phone IS NOT NULL AND phone != ''
+  AND access_token IS NOT NULL;
+
+-- Destes, quantos JÁ têm sessão no fluxo alvo?
+-- (substitua '<flow_id>' pelo UUID do fluxo)
+SELECT COUNT(DISTINCT ce.id) AS ja_receberam
+FROM public.career_evaluations ce
+JOIN public.whatsapp_flow_sessions wfs
+  ON wfs.phone = ce.phone AND wfs.flow_id = '<flow_id>'
+WHERE ce.processing_status = 'completed';
+
+-- Leads elegíveis (nunca receberam o fluxo, não opted-out, não em lote anterior)
+SELECT ce.id, ce.name, ce.phone, ce.email
+FROM public.career_evaluations ce
+WHERE ce.processing_status = 'completed'
+  AND ce.phone IS NOT NULL AND ce.phone != ''
+  AND ce.access_token IS NOT NULL
+  AND ce.phone NOT IN (
+    SELECT phone FROM public.whatsapp_flow_sessions WHERE flow_id = '<flow_id>'
+  )
+  AND ce.phone NOT IN (SELECT phone FROM public.whatsapp_optouts)
+ORDER BY ce.created_at DESC
+LIMIT 10;
+```
+
+**Criar lead de teste com relatório completo (para testar sem dados reais):**
+```sql
+-- 1. Criar lead
+INSERT INTO public.leads (name, email, phone, source, status, temperature)
+VALUES ('Backfill Teste', 'backfill+test@gmail.com', '5511900000001', 'manual', 'new', 'quente')
+RETURNING id;
+
+-- 2. Criar career_evaluation já completa (substitua <lead_id>)
+INSERT INTO public.career_evaluations (
+  lead_id, lead_email, lead_name, lead_phone,
+  current_role, current_company, target_role,
+  processing_status, access_token,
+  formatted_report
+) VALUES (
+  '<lead_id>',
+  'backfill+test@gmail.com',
+  'Backfill Teste',
+  '5511900000001',
+  'Analista Jr', 'Empresa Teste', 'Gerente',
+  'completed',
+  gen_random_uuid()::text,
+  '{"score": 72, "summary": "Relatório de teste para backfill"}'::jsonb
+)
+RETURNING id, access_token;
+```
+
+**Verificação:** Ir em `/admin/whatsapp-flows` → selecionar fluxo → "Envio em Lote" → "Backfill Relatórios" → Próximo → Visualizar — o lead de teste deve aparecer na amostra.
 
 ---
 
@@ -482,6 +548,197 @@ Use `[x]` ao validar cada item. Marque `[!]` para falhas.
 
 ---
 
+### Módulo 16 — Admin: Envio em Lote (Batch Dispatch)
+
+**Pré-requisito:** Pelo menos um fluxo WhatsApp existente + leads com `processing_status = 'completed'` e telefone preenchido (seção 2.8).
+
+#### 16.1 — Abrir o wizard "Envio em Lote"
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.1.1 | `/admin/whatsapp-flows` → card de qualquer fluxo → menu "..." → **"Envio em Lote"** | Dialog abre com título "Envio em Lote" e subtítulo com nome do fluxo |
+| 16.1.2 | Campo "Nome do lote" pré-preenchido | `Lote DD/MM/AAAA` (data de hoje) |
+| 16.1.3 | Botão "Próximo" desabilitado com nome vazio | Sim, campo obrigatório |
+| 16.1.4 | Selecionar **"Backfill Relatórios"** | Card com borda primária e fundo destacado |
+| 16.1.5 | Selecionar **"Lista Manual"** | Textarea para colar telefones aparece |
+| 16.1.6 | Colar telefones válidos (≥10 chars) | Contador "N telefone(s) detectado(s)" atualiza |
+| 16.1.7 | Telefones separados por vírgula, ponto-e-vírgula e nova linha | Todos parseados corretamente |
+| 16.1.8 | Lista manual vazia → "Próximo" desabilitado | Sim |
+| 16.1.9 | Fechar dialog pelo "Cancelar" | Dialog fecha sem criar nenhum lote |
+
+#### 16.2 — Step de Configuração
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.2.1 | Clicar "Próximo" na step source | Avança para step config |
+| 16.2.2 | Campo "Contatos por ciclo" | Input numérico, min=1, max=3 |
+| 16.2.3 | Digitar `5` no campo | Truncado para `3` (máximo) |
+| 16.2.4 | Rótulo de throughput | "~N×12 contatos/hora" atualiza conforme valor |
+| 16.2.5 | Toggle "Somente horário comercial" ativo por padrão | Sim (9h-20h BRT) |
+| 16.2.6 | Caixa amarela de proteções anti-bloqueio | Visível com lista de 4 (ou 5 com horário) proteções |
+| 16.2.7 | Com horário comercial ligado | Item "Apenas em horário comercial (BRT)" aparece na lista |
+| 16.2.8 | Botão "Voltar" retorna ao step source | Sim, sem perder nome ou tipo de origem |
+
+#### 16.3 — Step de Preview (Backfill)
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.3.1 | Clicar "Visualizar" com Backfill Relatórios | Loading spinner + "Buscando contatos elegíveis..." |
+| 16.3.2 | Preview carregado | Resumo: contatos, velocidade/hora, tempo estimado |
+| 16.3.3 | Tempo estimado com horário comercial | Sufixo "(horário comercial)" aparece |
+| 16.3.4 | Amostra de contatos | Lista com nome + telefone (primeiros 10) |
+| 16.3.5 | Sem contatos elegíveis | Mensagem "Nenhum contato elegível encontrado..." + botão "Confirmar Envio" desabilitado |
+| 16.3.6 | Botão "Voltar" | Retorna ao step config |
+| 16.3.7 | Botão "Confirmar Envio" | Habilitado somente se `contactCount > 0` |
+
+#### 16.4 — Step de Preview (Lista Manual)
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.4.1 | Preview com Lista Manual | NÃO chama API de preview (sem loading), mostra contagem local |
+| 16.4.2 | Contagem de contatos = número de linhas válidas | Sim |
+| 16.4.3 | Sem amostra (manual não tem nome) | Seção de amostra ausente |
+| 16.4.4 | Confirmar Envio | Lote criado com `source_type = 'manual_list'` |
+
+#### 16.5 — Criação do Lote
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.5.1 | Clicar "Confirmar Envio" | Loading spinner no botão, botão "Cancelar" desabilitado |
+| 16.5.2 | Lote criado com sucesso | Toast "Lote criado com sucesso" com "N contatos na fila" |
+| 16.5.3 | Dialog fecha após criação | Sim, automaticamente |
+| 16.5.4 | Verificar banco de dados | `whatsapp_batch_jobs` tem 1 registro com `status = 'queued'` |
+| 16.5.5 | Verificar contatos | `whatsapp_batch_contacts` tem N registros com `status = 'queued'` e `position` sequencial |
+| 16.5.6 | Abrindo "Ver Lotes" imediatamente | Lote novo aparece no topo com status "Na Fila" |
+
+**Verificação SQL:**
+```sql
+-- Verificar job criado
+SELECT id, name, status, source_type, total_contacts,
+       contacts_per_cycle, business_hours_only, created_at
+FROM public.whatsapp_batch_jobs
+ORDER BY created_at DESC LIMIT 3;
+
+-- Verificar primeiros contatos do lote
+SELECT position, phone, lead_name, status
+FROM public.whatsapp_batch_contacts
+WHERE batch_job_id = '<job_id>'
+ORDER BY position
+LIMIT 10;
+```
+
+#### 16.6 — Monitoramento via "Ver Lotes"
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.6.1 | Dropdown → **"Ver Lotes"** | Sheet lateral (max-w-2xl) abre com lista de lotes do fluxo |
+| 16.6.2 | Card de lote exibe | Nome, tipo de origem, data, badge de status |
+| 16.6.3 | Barra de progresso | `processados/total` com porcentagem |
+| 16.6.4 | Contadores detalhados | `X enviados` (verde), `Y falhas` (vermelho), `Z ignorados` (cinza) |
+| 16.6.5 | Auto-refresh a cada 15s | Contadores e status atualizam sem recarregar a página |
+| 16.6.6 | Expandir contatos → clicar "Contatos" | Tabela com #, telefone, nome, status e detalhe |
+| 16.6.7 | Status de contato com ícone | Clock (na fila), pulse (enviando), check verde (enviado), alerta (falhou), ban (ignorado) |
+| 16.6.8 | Coluna "Detalhe" | Mostra `error_message` ou `skip_reason` quando preenchido |
+| 16.6.9 | Sheet com múltiplos lotes | Ordenados por `created_at DESC` — mais recente primeiro |
+| 16.6.10 | Fluxo sem lotes | Ícone + "Nenhum lote criado para este fluxo" |
+
+#### 16.7 — Ações de Controle (Pausar / Retomar / Cancelar)
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.7.1 | Lote `queued` ou `processing` → botão **"Pausar"** visível | Sim |
+| 16.7.2 | Clicar "Pausar" | Toast "Lote pausado", badge muda para "Pausado" |
+| 16.7.3 | Lote `paused` → botão **"Retomar"** visível | Sim (botão Pausar desaparece) |
+| 16.7.4 | Clicar "Retomar" | Toast "Lote retomado", badge volta para "Processando" |
+| 16.7.5 | Retomar reseta contatos travados | Contatos com `status = 'processing'` voltam para `'queued'` |
+| 16.7.6 | Lote `completed` ou `cancelled` → sem botões de ação | Sim, apenas badge informativo |
+| 16.7.7 | Clicar **"Cancelar"** (lote ativo) | Toast "Lote cancelado", badge "Cancelado" |
+| 16.7.8 | Cancelamento marca contatos pendentes | `whatsapp_batch_contacts` pendentes → `status = 'skipped'`, `skip_reason = 'batch_cancelled'` |
+
+**Verificação SQL após cancelamento:**
+```sql
+SELECT status, skip_reason, COUNT(*)
+FROM public.whatsapp_batch_contacts
+WHERE batch_job_id = '<job_id>'
+GROUP BY status, skip_reason;
+-- Esperado: sent (alguns), skipped com reason 'batch_cancelled' (restantes)
+```
+
+#### 16.8 — Processamento pelo Cron (E2E com Evolution API)
+
+> **Pré-requisito:** Evolution API conectada, lote criado com telefone de teste válido, dentro do horário comercial (9h-20h BRT) ou toggle desligado.
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.8.1 | Lote criado com 1 contato (telefone de teste) | `status = 'queued'` |
+| 16.8.2 | Aguardar até 5 minutos (cron interval) | Cron chama `process-whatsapp-batch` com `{ cron: true }` |
+| 16.8.3 | Job muda para `processing` no 1º ciclo | `started_at` preenchido |
+| 16.8.4 | Mensagem recebida no WhatsApp de teste | Primeira mensagem do fluxo entregue |
+| 16.8.5 | Contato marcado como `sent` | `whatsapp_batch_contacts.status = 'sent'`, `session_id` preenchido |
+| 16.8.6 | Job muda para `completed` após último contato | `completed_at` preenchido, `contacts_sent = total_contacts` |
+| 16.8.7 | Sessão criada no flow engine | `whatsapp_flow_sessions` com `trigger_type = 'batch'` |
+
+**Verificação de logs:**
+```
+Supabase Dashboard → Edge Functions → process-whatsapp-batch → Logs
+Filtrar pelo horário esperado. Procurar por:
+  "[process-batch] Cron cycle processed 1 job(s)"
+  "[batchService] Batch job <id> created with N contacts"
+  "[batchService] Job <id> completed"
+```
+
+#### 16.9 — Proteções Anti-Bloqueio
+
+| # | Cenário | Como verificar |
+|---|---------|----------------|
+| 16.9.1 | Horário comercial desligado — criar lote às 21h BRT | Job criado, cron do ciclo seguinte mostra "outside business hours, skipping" nos logs |
+| 16.9.2 | Horário comercial ligado — criar lote às 10h BRT | Job processado normalmente |
+| 16.9.3 | Delay inter-contato (2+ contatos no lote) | Logs mostram ao menos 30s entre processamento dos contatos |
+| 16.9.4 | Contato opted-out incluído na lista manual | Contato marcado `skipped` com `skip_reason = 'opted_out'` |
+| 16.9.5 | Contato com sessão ativa (fluxo não-concorrente) | Contato marcado `skipped` com `skip_reason = 'active_session_exists'` |
+| 16.9.6 | Forçar 5+ falhas (>20% de erro) | Job auto-pausado, badge mostra "Pausado", card exibe aviso "Pausado automaticamente: Error rate X% exceeds 20% threshold" |
+
+**Simular auto-pause (forçar falhas):**
+```sql
+-- Forçar 5 contatos para status 'failed' manualmente
+UPDATE public.whatsapp_batch_contacts
+SET status = 'failed', error_message = 'simulated_failure', processed_at = now()
+WHERE batch_job_id = '<job_id>'
+  AND position IN (1,2,3,4,5);
+
+-- Atualizar contadores do job
+UPDATE public.whatsapp_batch_jobs
+SET contacts_failed = 5, contacts_queued = total_contacts - 5,
+    status = 'processing'
+WHERE id = '<job_id>';
+-- No próximo ciclo do cron, se total_processed >= 5 e error_rate > 20% → auto-pausa
+```
+
+#### 16.10 — Deduplicação e Idempotência
+
+| # | Cenário | Resultado esperado |
+|---|---------|-------------------|
+| 16.10.1 | Criar segundo lote de backfill para o mesmo fluxo | Leads já no 1º lote NÃO aparecem na contagem/amostra do preview |
+| 16.10.2 | Leads que já têm sessão no fluxo | NÃO aparecem no preview do backfill |
+| 16.10.3 | Mesmo telefone duplicado na lista manual | Apenas 1 contato criado (normalização + dedup por phone) |
+| 16.10.4 | Lead opted-out | NÃO aparece no preview do backfill |
+
+**Verificação SQL (idempotência):**
+```sql
+-- Após 2 lotes de backfill criados: nenhum telefone deve aparecer nos dois
+SELECT phone, COUNT(*) as aparicoes
+FROM public.whatsapp_batch_contacts
+WHERE batch_job_id IN ('<job1_id>', '<job2_id>')
+GROUP BY phone
+HAVING COUNT(*) > 1;
+-- Deve retornar 0 linhas
+```
+
+**Pré-requisito 16.8:** Evolution API conectada + número de WhatsApp de teste ativo.
+**Pré-requisito 16.9.4:** Número de teste em `whatsapp_optouts` (executar Fluxo F primeiro).
+
+---
+
 ## 4. Fluxos Críticos (Ponta a Ponta)
 
 Estes fluxos validam a integração entre múltiplos módulos. Execute-os na ordem listada.
@@ -689,6 +946,62 @@ Filtrar pelo horario do disparo. Procurar por:
 
 ---
 
+### Fluxo G — Backfill em Lote: Leads sem Relatório Enviado
+
+**Objetivo:** Validar o ciclo completo de envio em lote para leads que completaram o relatório mas nunca receberam a mensagem WhatsApp — o caso de uso principal do Batch Dispatch.
+
+**Dados necessários:**
+- ≥1 lead com `career_evaluations.processing_status = 'completed'` + telefone de WhatsApp ativo
+- Fluxo WhatsApp com trigger `event: report.generated` (ou qualquer fluxo ativo) sem sessão para esse lead
+- Evolution API conectada
+
+**Passos:**
+
+| # | Ator | Ação | Verificação |
+|---|------|------|-------------|
+| 1 | Admin | Verificar elegíveis: SQL da seção 2.8 | ≥1 lead retornado sem sessão existente |
+| 2 | Admin | `/admin/whatsapp-flows` → card do fluxo → "..." → **"Envio em Lote"** | Dialog abre |
+| 3 | Admin | Selecionar **"Backfill Relatórios"**, nomear o lote (ex: `Backfill Março 2026`) | — |
+| 4 | Admin | Clicar "Próximo" → configurar: `contacts_per_cycle = 1`, horário comercial **desligado** (para testar imediatamente) | Step config exibida |
+| 5 | Admin | Clicar "Visualizar" | Loading → preview com contagem correta + amostra dos leads |
+| 6 | Admin | Verificar que o lead de teste aparece na amostra | Nome e telefone visíveis |
+| 7 | Admin | Clicar **"Confirmar Envio"** | Toast "Lote criado com sucesso — N contatos na fila", dialog fecha |
+| 8 | Admin | Dropdown → **"Ver Lotes"** | Sheet abre, novo lote com status **"Na Fila"** |
+| 9 | Sistema | Aguardar até 5 min (cron `process-whatsapp-batch` roda a cada 5 min) | — |
+| 10 | Sistema | Cron processa 1º contato | Lote muda para **"Processando"**, progress bar avança |
+| 11 | Teste | **WhatsApp recebe a primeira mensagem do fluxo** | Mensagem com `{{leadName}}` substituído pelo nome real |
+| 12 | Admin | "Ver Lotes" → expandir card → tabela de contatos | Contato com status `enviado` (check verde) e `session_id` preenchido |
+| 13 | Admin | Verificar sessão criada no flow engine | `whatsapp_flow_sessions` com `trigger_type = 'batch'` |
+| 14 | Teste | Se fluxo tem `wait_reply`: responder a palavra-chave esperada | Fluxo continua normalmente (link do relatório enviado) |
+| 15 | Sistema | Após todos os contatos processados | Lote muda para **"Concluído"**, barra 100% |
+
+**Verificação de ponta a ponta via SQL:**
+```sql
+-- 1. Job completou?
+SELECT name, status, total_contacts, contacts_sent,
+       contacts_failed, contacts_skipped, started_at, completed_at
+FROM public.whatsapp_batch_jobs
+ORDER BY created_at DESC LIMIT 1;
+
+-- 2. Sessão do flow engine criada pelo batch?
+SELECT id, flow_id, phone, status, trigger_type, started_at
+FROM public.whatsapp_flow_sessions
+WHERE trigger_type = 'batch'
+ORDER BY started_at DESC LIMIT 5;
+
+-- 3. O mesmo lead NÃO aparece mais no preview de backfill
+-- (reabrir wizard → Visualizar → contagem deve ter caído em 1)
+```
+
+**Validação do isolamento (lead não recebe duplicata):**
+```sql
+-- Criar um segundo lote para o mesmo fluxo
+-- O lead que já foi enviado NÃO deve aparecer
+-- Checar via preview no wizard (contagem = total - leads_já_enviados)
+```
+
+---
+
 ## 5. Variáveis de Ambiente Necessárias
 
 ### Edge Functions (via `npx supabase secrets set`)
@@ -879,6 +1192,119 @@ Causas:
 
 ---
 
+### Problema: Preview de backfill mostra 0 contatos
+
+```sql
+-- 1. Há leads com relatório completo e telefone?
+SELECT COUNT(*) FROM public.career_evaluations
+WHERE processing_status = 'completed'
+  AND phone IS NOT NULL AND phone != ''
+  AND access_token IS NOT NULL;
+
+-- 2. Todos já têm sessão no fluxo?
+SELECT COUNT(DISTINCT wfs.phone)
+FROM public.whatsapp_flow_sessions wfs
+JOIN public.career_evaluations ce ON ce.phone = wfs.phone
+WHERE wfs.flow_id = '<flow_id>'
+  AND ce.processing_status = 'completed';
+
+-- 3. Todos estão opted-out?
+SELECT COUNT(*) FROM public.career_evaluations ce
+JOIN public.whatsapp_optouts wo ON wo.phone = ce.phone
+WHERE ce.processing_status = 'completed';
+
+-- 4. Todos já estão em outro lote do mesmo fluxo?
+SELECT COUNT(DISTINCT bc.phone)
+FROM public.whatsapp_batch_contacts bc
+JOIN public.whatsapp_batch_jobs bj ON bj.id = bc.batch_job_id
+WHERE bj.flow_id = '<flow_id>';
+```
+
+Causas comuns:
+- Todos os leads já têm sessão neste fluxo → escolher outro fluxo ou usar "Lista Manual"
+- `access_token` nulo em alguns leads → relatórios incompletos, regenerar
+- Todos opted-out → verificar `whatsapp_optouts`
+
+---
+
+### Problema: Lote criado mas cron não processa
+
+```sql
+-- 1. Verificar que o job está com status correto
+SELECT id, status, last_cycle_at, business_hours_only
+FROM public.whatsapp_batch_jobs
+WHERE status IN ('queued', 'processing')
+ORDER BY created_at DESC;
+
+-- 2. Verificar se o cron está ativo
+SELECT jobname, schedule, active
+FROM cron.job
+WHERE jobname = 'process-whatsapp-batch';
+```
+
+Causas comuns:
+- Horário comercial ativo e fora de 9h-20h BRT (UTC-3) → aguardar ou desligar toggle
+- Cron `process-whatsapp-batch` desativado → reativar via SQL: `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname='process-whatsapp-batch'), active := true)`
+- Edge Function `process-whatsapp-batch` não deployada → `npx supabase functions deploy process-whatsapp-batch`
+- `verify_jwt = false` faltando no `config.toml` → verificar configuração e re-deployar
+- `INTERNAL_FUNCTION_SECRET` inconsistente → verificar `app_configs` e env var da função
+
+---
+
+### Problema: Contatos marcados como `failed` sem motivo claro
+
+```sql
+-- Ver mensagem de erro por contato
+SELECT position, phone, status, error_message, processed_at
+FROM public.whatsapp_batch_contacts
+WHERE batch_job_id = '<job_id>' AND status = 'failed'
+ORDER BY position;
+```
+
+Causas comuns:
+- `Failed to create session` → verificar que o fluxo existe e está ativo (`whatsapp_flows.status = 'active'`)
+- Evolution API desconectada → `/admin/system-health` → reconectar
+- Telefone mal formatado na lista manual (sem código do país `55`) → corrigir no lote manual
+- Timeout do Edge Function (>150s) com `contacts_per_cycle = 3` e delays longos → reduzir para `2`
+
+---
+
+### Problema: Lote auto-pausou inesperadamente
+
+```sql
+-- Ver motivo do auto-pause
+SELECT status, error_rate, metadata->>'auto_paused_reason' AS reason, paused_at
+FROM public.whatsapp_batch_jobs
+WHERE id = '<job_id>';
+```
+
+Causas:
+- Taxa de erro >20% com ≥5 contatos processados → verificar `error_message` dos contatos `failed`
+- Evolution API retornando erros de rate-limit → aguardar e Retomar
+- Fluxo desativado enquanto o lote rodava → reativar fluxo e Retomar o lote
+
+**Para retomar após corrigir a causa raiz:**
+- `/admin/whatsapp-flows` → "Ver Lotes" → botão **"Retomar"** no card do lote
+
+---
+
+### Problema: Mesmo contato aparece em dois lotes
+
+```sql
+-- Verificar duplicatas entre lotes do mesmo fluxo
+SELECT bc.phone, COUNT(*) as lotes
+FROM public.whatsapp_batch_contacts bc
+JOIN public.whatsapp_batch_jobs bj ON bj.id = bc.batch_job_id
+WHERE bj.flow_id = '<flow_id>'
+GROUP BY bc.phone
+HAVING COUNT(*) > 1;
+```
+
+Causa: Lote 1 foi **cancelado** antes de processar → contatos skipped não bloqueiam novo lote.
+O filtro da função `findEligibleReportContacts` exclui telefones em qualquer lote (qualquer status), incluindo `skipped`. Se aparecerem duplicatas, investigar se o `flow_id` dos lotes é realmente o mesmo.
+
+---
+
 ### Problema: Assinatura Ticto não ativa
 
 ```sql
@@ -904,4 +1330,8 @@ Causas comuns:
 | 2026-02-28 | + Módulo 12.16-12.24: Auditoria de conformidade, opt-out PARAR, delay entre mensagens |
 | 2026-02-28 | + Fluxo F: WhatsApp Opt-Out completo (keyword, guard, auditoria, delay) |
 | 2026-02-28 | + Troubleshooting: opt-out acidental, opt-out não funciona, fluxo continua após opt-out, auditoria sem templates |
+| 2026-03-02 | + Seção 2.8: setup de leads elegíveis para backfill (SQL de verificação + criação de dados de teste) |
+| 2026-03-02 | + Módulo 16: Envio em Lote — wizard (16.1-16.4), criação (16.5), monitoramento (16.6), controles (16.7), processamento E2E (16.8), proteções anti-bloqueio (16.9), deduplicação (16.10) |
+| 2026-03-02 | + Fluxo G: Backfill em Lote ponta a ponta com verificação SQL e validação de isolamento |
+| 2026-03-02 | + Troubleshooting: preview 0 contatos, cron não processa, contatos failed, auto-pause, duplicatas entre lotes |
 | — | Atualizar sempre que novos módulos forem adicionados |

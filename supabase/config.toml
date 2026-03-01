@@ -162,3 +162,9 @@ verify_jwt = false
 
 [functions.enrich-jobs]
 verify_jwt = false
+
+[functions.send-contact-form]
+verify_jwt = false
+
+[functions.admin-assistant]
+verify_jwt = false

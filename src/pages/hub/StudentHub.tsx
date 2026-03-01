@@ -1,21 +1,25 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as icons from 'lucide-react';
-import { MoreHorizontal, type LucideIcon } from 'lucide-react';
+import { ArrowRight, type LucideIcon } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useHighlightedService, useSecondaryServices } from '@/hooks/useHighlightedService';
 import { useHubDashboardConfig, isSectionVisible, DEFAULT_CONFIG } from '@/hooks/useHubDashboardConfig';
 import { useCareerInsights } from '@/hooks/useCareerInsights';
+import { useCareerAssessmentStatus } from '@/hooks/useCareerAssessmentStatus';
 import { useCommunityPulse } from '@/hooks/useCommunityPulse';
 import { useSmartNextStep } from '@/hooks/useSmartNextStep';
 import { useMyHub } from '@/hooks/useMyHub';
-import { useChecklistStatus } from '@/hooks/useGuidedTour';
-import { PriceDisplay } from '@/components/hub/PriceDisplay';
+import { useChecklistStatus, useGuidedTourState } from '@/hooks/useGuidedTour';
+import { formatCurrency } from '@/components/hub/PriceDisplay';
 import { DashboardTour } from '@/components/guided-tour/DashboardTour';
 import { GettingStartedChecklist } from '@/components/guided-tour/GettingStartedChecklist';
 import { MyJourneySection } from '@/components/hub/MyJourneySection';
 import { CareerHeroSection } from '@/components/hub/CareerHeroSection';
+import { CareerAssessmentSheet } from '@/components/hub/CareerAssessmentSheet';
 import { SmartNextStepCard } from '@/components/hub/SmartNextStepCard';
 import { CareerDimensionsSection } from '@/components/hub/CareerDimensionsSection';
 import { CommunityPulseSection } from '@/components/hub/CommunityPulseSection';
@@ -32,11 +36,21 @@ export default function StudentHub() {
   const { data: secondaryServices } = useSecondaryServices();
   const { data: myHubSections } = useMyHub();
   const { data: checklistItems } = useChecklistStatus();
+  const { data: tourState } = useGuidedTourState();
+
+  const { hasFeature } = usePlanAccess();
 
   const config = hubConfig ?? DEFAULT_CONFIG;
   const planName = quota?.planName || 'Básico';
   const remainingCredits = quota?.remaining ?? 1;
   const userName = user?.full_name?.split(' ')[0] || 'Usuário';
+
+  // Career assessment funnel
+  const assessmentStatus = useCareerAssessmentStatus({
+    careerInsights: careerInsights ?? null,
+    hasFullReportAccess: hasFeature('full_report_access'),
+  });
+  const [assessmentSheetOpen, setAssessmentSheetOpen] = useState(false);
 
   const { data: communityPulse } = useCommunityPulse(config.community_pulse.trending_period_days);
 
@@ -81,128 +95,130 @@ export default function StudentHub() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in pb-20 max-w-[1200px] mx-auto px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8">
+      <div className="animate-fade-in pb-20 p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
         {/* Guided Tour (headless — triggers driver.js on first visit) */}
         <DashboardTour />
 
-        {/* Vuexy 12-col grid layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Row 1: Hero (8) + NextStep/Checklist (4) */}
-          {isSectionVisible(config, 'career_hero') && (
-            <div className="lg:col-span-8">
-              <CareerHeroSection
-                config={config}
-                insights={careerInsights ?? null}
-                planName={planName}
-                userName={userName}
-              />
-            </div>
-          )}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            {isSectionVisible(config, 'smart_next_step') && (
-              <SmartNextStepCard step={smartStep} />
-            )}
-            {isSectionVisible(config, 'getting_started') && (
-              <GettingStartedChecklist />
-            )}
-          </div>
+        {/* Row 1: Hero + SmartNextStep (optional) + Credits */}
+        {(() => {
+          const hasSmartStep = isSectionVisible(config, 'smart_next_step') && !!smartStep;
+          const hasChecklist = isSectionVisible(config, 'getting_started') && !tourState?.checklist_dismissed && !!checklistItems;
+          const showMiddle = hasSmartStep || hasChecklist;
 
-          {/* Row 2: Journey (7) + Dimensions (5) */}
+          return (
+            <div className={`grid grid-cols-1 ${showMiddle ? 'lg:grid-cols-2 xl:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
+              {isSectionVisible(config, 'career_hero') && (
+                <div className={showMiddle ? 'col-span-1 lg:col-span-2' : 'col-span-1 lg:col-span-2'}>
+                  <CareerHeroSection
+                    config={config}
+                    insights={careerInsights ?? null}
+                    planName={planName}
+                    userName={userName}
+                    assessmentState={assessmentStatus.state}
+                    completionPercent={assessmentStatus.completionPercent}
+                    filledCount={assessmentStatus.filledCount}
+                    onOpenAssessment={() => setAssessmentSheetOpen(true)}
+                  />
+                </div>
+              )}
+
+              {showMiddle && (
+                <div className="flex flex-col gap-6">
+                  {hasSmartStep && (
+                    <SmartNextStepCard step={smartStep!} />
+                  )}
+                  {hasChecklist && (
+                    <GettingStartedChecklist />
+                  )}
+                </div>
+              )}
+
+              {isSectionVisible(config, 'quick_tools') && (
+                <QuickToolsStrip
+                  config={config}
+                  remainingCredits={remainingCredits}
+                />
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Row 2: Journey (1-col) + Community (1-col) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isSectionVisible(config, 'active_items') && (
-            <div className="lg:col-span-7">
-              <MyJourneySection excludeHistory />
-            </div>
+            <MyJourneySection excludeHistory />
           )}
-          {isSectionVisible(config, 'career_dimensions') && careerInsights?.hasReport && (
-            <div className="lg:col-span-5">
-              <CareerDimensionsSection
-                insights={careerInsights}
-                config={config}
-              />
-            </div>
-          )}
-
-          {/* Row 3: Quick Tools (full width) */}
-          {isSectionVisible(config, 'quick_tools') && (
-            <div className="lg:col-span-12">
-              <QuickToolsStrip
-                config={config}
-                remainingCredits={remainingCredits}
-              />
-            </div>
-          )}
-
-          {/* Row 4: Community (5) + Upsell (7) */}
           {isSectionVisible(config, 'community_pulse') && communityPulse && (
-            <div className="lg:col-span-5">
-              <CommunityPulseSection
-                pulse={communityPulse}
-                config={config}
-              />
-            </div>
-          )}
-          {isSectionVisible(config, 'smart_upsell') && (
-            <div className="lg:col-span-7">
-              <SmartUpsellSection
-                insights={careerInsights ?? null}
-                highlightedService={highlightedService ?? null}
-                config={config}
-              />
-            </div>
-          )}
-
-          {/* Row 5: Secondary Services (full width) */}
-          {isSectionVisible(config, 'secondary_services') && secondaryServices && secondaryServices.length > 0 && (
-            <div className="lg:col-span-12">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-medium text-foreground">
-                  Outros Serviços
-                </h3>
-                <button
-                  onClick={() => navigate('/catalogo')}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  Ver todos <MoreHorizontal size={16} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {secondaryServices.map((service) => {
-                  const ServiceIcon = getIcon(service.icon_name);
-                  return (
-                    <div key={service.id} className="bg-card p-6 rounded-md border-0 shadow-md hover:shadow-lg transition-all duration-200 group flex flex-col">
-                      <div className="w-10 h-10 rounded-[4px] flex items-center justify-center mb-4 bg-primary/10 text-primary">
-                        <ServiceIcon size={20} />
-                      </div>
-                      <h4 className="font-medium text-foreground mb-2">{service.name}</h4>
-                      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6 flex-1">{service.description}</p>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-border/30">
-                        {service.price > 0 ? (
-                          <PriceDisplay
-                            price={service.price}
-                            priceDisplay={service.price_display}
-                            anchorPrice={service.anchor_price}
-                            size="sm"
-                          />
-                        ) : (
-                          <span className="text-xs font-medium text-foreground">Grátis</span>
-                        )}
-                        <button
-                          onClick={() => handleServiceAction(service)}
-                          className="text-[11px] font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-md group-hover:bg-[#7367f0] group-hover:text-white transition-all"
-                        >
-                          {service.cta_text || 'CONTRATAR'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <CommunityPulseSection
+              pulse={communityPulse}
+              config={config}
+            />
           )}
         </div>
+
+        {/* Row 3: Career Dimensions (full width, conditional) */}
+        {isSectionVisible(config, 'career_dimensions') && careerInsights?.hasReport && (
+          <CareerDimensionsSection
+            insights={careerInsights}
+            config={config}
+          />
+        )}
+
+        {/* Row 4: Secondary Services (3-col ServiceCard pattern) */}
+        {isSectionVisible(config, 'secondary_services') && secondaryServices && secondaryServices.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {secondaryServices.map((service, idx) => {
+              const ServiceIcon = getIcon(service.icon_name);
+              const isHighlight = idx === 0;
+              const priceLabel = service.price > 0
+                ? (service.price_display || formatCurrency(service.price))
+                : 'Grátis';
+              return (
+                <div
+                  key={service.id}
+                  onClick={() => handleServiceAction(service)}
+                  className={`bg-white dark:bg-card p-6 rounded-xl shadow-sm border transition-all hover:shadow-md cursor-pointer ${
+                    isHighlight ? 'border-indigo-200 ring-1 ring-indigo-100' : 'border-gray-100 dark:border-white/10'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 flex items-center justify-center">
+                      <ServiceIcon className="w-6 h-6" />
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      isHighlight ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-500 dark:bg-white/10 dark:text-gray-400'
+                    }`}>
+                      {priceLabel}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-foreground mb-2">{service.name}</h3>
+                  <p className="text-sm text-gray-500 dark:text-muted-foreground mb-4">{service.description}</p>
+                  <div className="flex items-center text-xs font-bold text-indigo-600 group">
+                    {service.cta_text || 'Saiba mais'} <ArrowRight className="w-3 h-3 ml-1 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Row 5: Upsell (full width) */}
+        {isSectionVisible(config, 'smart_upsell') && (
+          <SmartUpsellSection
+            insights={careerInsights ?? null}
+            highlightedService={highlightedService ?? null}
+            config={config}
+          />
+        )}
       </div>
+
+      {/* Career Assessment Sheet (multi-step form) */}
+      <CareerAssessmentSheet
+        open={assessmentSheetOpen}
+        onOpenChange={setAssessmentSheetOpen}
+        initialData={assessmentStatus.filledFields}
+        onComplete={() => setAssessmentSheetOpen(false)}
+      />
     </DashboardLayout>
   );
 }

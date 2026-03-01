@@ -4,6 +4,7 @@ import { BlobReader, BlobWriter, ZipReader } from "https://deno.land/x/zipjs@v2.
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { getCorsHeaders } from "../_shared/authGuard.ts";
+import { getCreditCosts, checkUnifiedCredits, recordCreditUsage } from "../_shared/creditService.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -49,43 +50,31 @@ serve(async (req) => {
     const userId = claims.user.id;
     console.log(`[analyze-resume] Step 1 OK: Auth passed, userId=${userId}`);
 
-    // ========== SMART GATEKEEPER: Check subscription and quota via RPC ==========
-    // Uses get_user_quota RPC (SECURITY DEFINER) for reliable results regardless of RLS
+    // ========== UNIFIED CREDIT GATEKEEPER ==========
+    const creditCosts = await getCreditCosts(adminSupabase);
+    const actionCost = creditCosts["curriculo_usa"] ?? 3;
 
-    const { data: quotaRows, error: quotaError } = await adminSupabase
-      .rpc('get_user_quota', { p_user_id: userId });
+    const creditCheck = await checkUnifiedCredits(adminSupabase, userId, actionCost);
+    const features = (creditCheck.features as Record<string, boolean>) || {};
 
-    if (quotaError) {
-      console.error("[analyze-resume] Step 2 FAIL: get_user_quota error:", quotaError.code, quotaError.message);
-      return new Response(
-        JSON.stringify({ error: "Falha ao verificar cota do usuário." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    console.log(`[analyze-resume] Step 2: Credits: used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits}, cost=${actionCost}, allowed=${creditCheck.allowed}`);
 
-    const quotaRow = Array.isArray(quotaRows) ? quotaRows[0] : quotaRows;
-    const planId = quotaRow?.plan_id || "basic";
-    const monthlyLimit = quotaRow?.monthly_limit ?? 1;
-    const currentUsage = quotaRow?.used_this_month ?? 0;
-    const features = (quotaRow?.features as Record<string, boolean>) || {};
-
-    // Check if quota exceeded
-    if (currentUsage >= monthlyLimit) {
+    if (!creditCheck.allowed) {
       return new Response(
         JSON.stringify({
           error_code: "LIMIT_REACHED",
-          error: "Limite mensal atingido",
-          error_message: `Você atingiu o limite de ${monthlyLimit} análise(s) do seu plano este mês.`,
-          plan_id: planId,
-          monthly_limit: monthlyLimit,
-          used: currentUsage,
+          error: "Créditos insuficientes",
+          error_message: creditCheck.errorMessage || `Você não tem créditos suficientes. Esta ação requer ${actionCost} crédito(s).`,
+          monthly_credits: creditCheck.monthlyCredits,
+          used_credits: creditCheck.usedCredits,
+          cost: actionCost,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // ========== END GATEKEEPER ==========
-    console.log(`[analyze-resume] Step 2 OK: Quota check passed (used=${currentUsage}/${monthlyLimit})`);
+    console.log(`[analyze-resume] Step 2 OK: Credit check passed (used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits})`);
 
     const { filePath, jobDescription } = await req.json();
     console.log(`[analyze-resume] Step 3 OK: Body parsed, filePath=${filePath}, jobDescLen=${jobDescription?.length || 0}`);
@@ -569,7 +558,7 @@ Responda em português brasileiro de forma clara e direta.`;
         const errorText = await aiResponse.text();
         console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
         return new Response(
-          JSON.stringify({ error: "AI analysis failed" }),
+          JSON.stringify({ error: "AI analysis failed", error_code: "AI_ERROR", error_message: `Anthropic API error ${aiResponse.status}: ${errorText.slice(0, 300)}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -581,7 +570,7 @@ Responda em português brasileiro de forma clara e direta.`;
         console.error("Unexpected Anthropic response:", aiData);
         logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { app_id: 'curriculo_usa' } });
         return new Response(
-          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -596,7 +585,7 @@ Responda em português brasileiro de forma clara e direta.`;
       if (!jsonMatch) {
         console.error("No JSON found in Anthropic response:", text.slice(0, 500));
         return new Response(
-          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -606,7 +595,7 @@ Responda em português brasileiro de forma clara e direta.`;
       } catch (parseError) {
         console.error("Failed to parse Anthropic JSON:", parseError, jsonMatch[0].slice(0, 1000));
         return new Response(
-          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -671,7 +660,7 @@ Responda em português brasileiro de forma clara e direta.`;
         const errorText = await aiResponse.text();
         console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
         return new Response(
-          JSON.stringify({ error: "AI analysis failed" }),
+          JSON.stringify({ error: "AI analysis failed", error_code: "AI_ERROR", error_message: `OpenAI API error ${aiResponse.status}: ${errorText.slice(0, 300)}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -703,7 +692,7 @@ Responda em português brasileiro de forma clara e direta.`;
       if (!outputText) {
         console.error("Unexpected OpenAI response format:", aiData);
         return new Response(
-          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -713,7 +702,7 @@ Responda em português brasileiro de forma clara e direta.`;
       } catch (parseError) {
         console.error("Failed to parse JSON output:", parseError, outputText.slice(0, 1000));
         return new Response(
-          JSON.stringify({ error: "Failed to parse AI analysis" }),
+          JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -724,67 +713,10 @@ Responda em português brasileiro de forma clara e direta.`;
 
     console.log(`[analyze-resume] Step 9 OK: AI analysis complete, score=${result?.header?.score || 'unknown'}`);
 
-    // ========== RECORD USAGE: Reliable recording with retry logic ==========
+    // ========== RECORD USAGE (unified credits) ==========
     // CRITICAL: Usage MUST be recorded BEFORE returning the result
-    // If recording fails after retries, the request fails to prevent abuse
-    
-    const recordUsageWithRetry = async (uid: string, maxRetries = 3): Promise<boolean> => {
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const { error } = await adminSupabase
-            .from('usage_logs')
-            .insert({ user_id: uid, app_id: 'curriculo_usa' });
-          
-          if (!error) {
-            console.log(`Usage recorded successfully for user ${uid} on attempt ${attempt + 1}`);
-            return true;
-          }
-          
-          console.error(`Usage recording attempt ${attempt + 1} failed:`, error);
-        } catch (err) {
-          console.error(`Usage recording attempt ${attempt + 1} threw:`, err);
-        }
-        
-        // Exponential backoff: 200ms, 400ms, 800ms
-        if (attempt < maxRetries - 1) {
-          await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
-        }
-      }
-      return false;
-    };
+    const usageRecorded = await recordCreditUsage(adminSupabase, userId, "curriculo_usa", actionCost);
 
-    const recordAuditWithRetry = async (uid: string, maxRetries = 3): Promise<boolean> => {
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          const { error } = await adminSupabase
-            .from('audit_events')
-            .insert({
-              user_id: uid,
-              actor_id: uid,
-              action: 'usage_recorded',
-              source: 'curriculo_usa',
-              new_values: { app_id: 'curriculo_usa', source: 'analyze_resume' },
-            });
-
-          if (!error) {
-            console.log(`Audit recorded successfully for user ${uid} on attempt ${attempt + 1}`);
-            return true;
-          }
-
-          console.error(`Audit recording attempt ${attempt + 1} failed:`, error);
-        } catch (err) {
-          console.error(`Audit recording attempt ${attempt + 1} threw:`, err);
-        }
-
-        if (attempt < maxRetries - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 200 * Math.pow(2, attempt)));
-        }
-      }
-      return false;
-    };
-
-    const usageRecorded = await recordUsageWithRetry(userId);
-    
     if (!usageRecorded) {
       console.error("CRITICAL: Failed to record usage after all retries for user:", userId);
       return new Response(
@@ -796,10 +728,19 @@ Responda em português brasileiro de forma clara e direta.`;
       );
     }
 
-    // Audit recording is best-effort — don't block the user if it fails
-    recordAuditWithRetry(userId).catch((err) => {
-      console.error("Non-critical: audit recording failed for user:", userId, err);
-    });
+    // Audit recording is best-effort
+    adminSupabase
+      .from('audit_events')
+      .insert({
+        user_id: userId,
+        actor_id: userId,
+        action: 'usage_recorded',
+        source: 'curriculo_usa',
+        new_values: { app_id: 'curriculo_usa', credits_used: actionCost, source: 'analyze_resume' },
+      })
+      .then(({ error: auditErr }) => {
+        if (auditErr) console.error("Non-critical: audit recording failed:", auditErr);
+      });
     // ========== END RECORD USAGE ==========
 
     return new Response(JSON.stringify(result), {
@@ -812,7 +753,7 @@ Responda em português brasileiro de forma clara e direta.`;
     console.error("[analyze-resume] UNHANDLED ERROR:", errMsg);
     if (errStack) console.error("[analyze-resume] Stack:", errStack);
     return new Response(
-      JSON.stringify({ error: "Erro interno do servidor" }),
+      JSON.stringify({ error: "Erro interno do servidor", error_code: "INTERNAL_ERROR", error_message: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

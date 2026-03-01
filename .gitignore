@@ -34,3 +34,9 @@ playwright-report/
 test-results/
 blob-report/
 .vercel
+
+# Template/reference folders (Vuexy)
+full-version/
+html-version/
+newdash/
+vuey/

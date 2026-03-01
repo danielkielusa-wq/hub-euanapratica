@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Lightbulb, Sparkles, FileText, Calendar, Settings2,
   RefreshCw, Loader2, ChevronDown, ChevronRight,
@@ -30,6 +31,7 @@ import {
   useUpdateScript,
   useUpdateInsight,
   useDeleteIdea,
+  useDeleteScript,
   useSavePrompt,
   useAvailableApis,
   useUpdateCronSchedule,
@@ -42,6 +44,8 @@ import {
   type ContentScript,
   type ContentSocialPost,
 } from '@/hooks/useAdminContentStudio';
+import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { ContentPipelineWizard } from '@/components/admin/content-studio/ContentPipelineWizard';
 import { ContentCalendar } from '@/components/admin/content-studio/ContentCalendar';
 
@@ -98,6 +102,20 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   carousel: 'Carrossel',
 };
 
+const PLATFORM_COLORS: Record<string, string> = {
+  youtube: 'bg-red-50 text-red-700 border-red-200',
+  instagram_reels: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  tiktok: 'bg-gray-100 text-gray-700 border-gray-200',
+  stories: 'bg-pink-50 text-pink-700 border-pink-200',
+};
+
+const PLATFORM_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  instagram_reels: 'Reels',
+  tiktok: 'TikTok',
+  stories: 'Stories',
+};
+
 const STATUS_COLORS: Record<string, string> = {
   idea: 'bg-gray-50 text-gray-700 border-gray-200',
   approved: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -112,6 +130,28 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: 'bg-orange-50 text-orange-600',
   urgent: 'bg-red-50 text-red-600',
 };
+
+const PREDEFINED_TOPICS = [
+  // Trump & Politica
+  { icon: '🔥', label: 'Medidas de Trump na imigração', prompt: 'Últimas medidas polêmicas de Trump impactando a imigração: deportações, restrições de visto, mudanças no USCIS. Foco em como isso afeta brasileiros qualificados e o que REALMENTE muda vs. pânico da mídia.' },
+  { icon: '📰', label: 'Notícias quentes de imigração EUA', prompt: 'Últimos acontecimentos impactando imigração nos EUA: mudanças em vistos de trabalho, green card, processos no USCIS, novas regras. Angulo: oportunidades que a maioria não está vendo.' },
+  { icon: '⚡', label: 'Crise no Brasil → êxodo', prompt: 'Últimos acontecimentos no Brasil que fazem profissionais qualificados considerarem sair: economia, impostos, segurança, política. Conectar com a narrativa "a porta está aberta pra quem tem estratégia".' },
+
+  // YouTube & Comunidade brasileira
+  { icon: '🔍', label: 'Polêmicas da comunidade BR nos EUA', prompt: 'Temas mais pesquisados e polêmicos no YouTube sobre brasileiros nos EUA: subemprego vs carreira qualificada, ilegalidade vs visto, custo de vida real, arrependimento de quem voltou.' },
+  { icon: '💣', label: 'Mitos que brasileiros acreditam', prompt: 'Maiores mitos e mentiras que brasileiros acreditam sobre morar nos EUA: "precisa de inglês perfeito", "só consegue subemprego", "green card demora 10 anos", "é impossível sem parente lá". Destruir cada mito com dados.' },
+  { icon: '🤬', label: 'Roast: coaches de imigração fake', prompt: 'Crítica direta a coaches e influencers que vendem sonho americano sem nunca terem morado nos EUA, prometem vida fácil, escondem a realidade. Tom Alex Hormozi: confronto com dados e cases reais.' },
+
+  // Dados & Oportunidades
+  { icon: '📊', label: 'Vagas em alta para brasileiros', prompt: 'Áreas e vagas com mais demanda nos EUA para profissionais brasileiros em 2025-2026: tech, saúde, engenharia, finanças. Dados de salário, sponsorship, e como se posicionar.' },
+  { icon: '💰', label: 'Salários BR vs EUA (choque)', prompt: 'Comparativo brutal de salários Brasil vs EUA por profissão: TI, engenharia, saúde, marketing, finanças. Incluir custo de vida real e poder de compra. Números que chocam.' },
+  { icon: '🛂', label: 'Vistos mais rápidos e fáceis', prompt: 'Caminhos de visto mais acessíveis e rápidos para brasileiros qualificados em 2025-2026: EB-2 NIW, L-1, O-1, E-2. Desmistificar o processo e mostrar que é mais simples do que imaginam.' },
+
+  // Storytelling & Cases
+  { icon: '🏆', label: 'Cases de sucesso reais', prompt: 'Histórias reais de brasileiros que saíram do zero nos EUA e construíram carreiras de sucesso: quanto tempo levou, maiores obstáculos, salário antes vs depois. Social proof que inspira e motiva ação.' },
+  { icon: '😱', label: 'Erros fatais de quem imigrou errado', prompt: 'Maiores erros que brasileiros cometem ao imigrar: ir sem planejamento, aceitar subemprego "temporário" que vira permanente, não validar diploma, ignorar networking. Tom de alerta com dados.' },
+  { icon: '🆚', label: 'Qualificados vs acomodados', prompt: 'Diferença entre brasileiros que prosperam nos EUA vs os que ficam estagnados: mentalidade, preparação, estratégia. "Us vs Them" direto, provocativo. Quem veio com plano vs quem veio com sonho.' },
+];
 
 function formatCreatedAt(dateStr: string) {
   const d = new Date(dateStr);
@@ -390,7 +430,7 @@ export default function AdminContentStudio() {
 
         {/* Tab Content */}
         {activeTab === 'insights' && <InsightsTab />}
-        {activeTab === 'ideas' && <IdeasTab />}
+        {activeTab === 'ideas' && <IdeasTab onNavigateTab={setActiveTab} />}
         {activeTab === 'scripts' && <ScriptsTab />}
         {activeTab === 'social' && <SocialPostsTab />}
         {activeTab === 'calendar' && <CalendarTab />}
@@ -410,7 +450,24 @@ function InsightsTab() {
     typeFilter !== 'all' ? { type: typeFilter } : undefined
   );
   const generateInsights = useGenerateInsights();
-  const generateIdeas = useGenerateIdeas();
+  const { toast } = useToast();
+  const generateIdeas = useGenerateIdeas({
+    onSuccess: (data) => {
+      toast({ title: `${data?.count || 0} ideias geradas`, description: 'Confira na aba Ideias', variant: 'success', duration: 999999999 });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao gerar ideias', description: error.message, variant: 'destructive', duration: 999999999 });
+    },
+  });
+
+  const handleGenerateIdeasFromInsight = (insightId: string) => {
+    toast({
+      title: 'Gerando ideias do insight...',
+      description: 'Processando com IA — pode levar até 2 minutos',
+      duration: 999999999,
+    });
+    generateIdeas.mutate({ insight_ids: [insightId] });
+  };
 
   const insights = sortOrder === 'oldest'
     ? [...rawInsights].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -499,7 +556,7 @@ function InsightsTab() {
           <InsightCard
             key={insight.id}
             insight={insight}
-            onGenerateIdeas={() => generateIdeas.mutate({ insight_ids: [insight.id] })}
+            onGenerateIdeas={() => handleGenerateIdeasFromInsight(insight.id)}
             isGenerating={generateIdeas.isPending}
           />
         ))}
@@ -592,25 +649,105 @@ function InsightCard({ insight, onGenerateIdeas, isGenerating }: {
 
 // ── Ideas Tab ────────────────────────────────────────────────────────────
 
-function IdeasTab() {
+function IdeasTab({ onNavigateTab }: { onNavigateTab: (tab: TabId) => void }) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [contentTypeFilter, setContentTypeFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null);
   const [freeTextDialog, setFreeTextDialog] = useState(false);
   const [freeText, setFreeText] = useState('');
+  const [freeTextContentType, setFreeTextContentType] = useState<string>('');
 
   const filters: any = {};
   if (statusFilter !== 'all') filters.status = statusFilter;
   if (categoryFilter !== 'all') filters.category = categoryFilter;
+  if (contentTypeFilter !== 'all') filters.content_type = contentTypeFilter;
 
   const { data: rawIdeas = [], isLoading, refetch } = useContentIdeas(
     Object.keys(filters).length > 0 ? filters : undefined
   );
-  const generateScript = useGenerateScript();
-  const generateIdeas = useGenerateIdeas();
   const updateIdea = useUpdateIdea();
   const deleteIdea = useDeleteIdea();
+  const { toast } = useToast();
+  const scriptCountRef = useRef({ total: 0, done: 0, failed: 0 });
+
+  const generateIdeas = useGenerateIdeas({
+    onSuccess: (data) => {
+      toast({
+        title: `${data?.count || 0} ideias geradas`,
+        description: 'Suas novas ideias estão prontas',
+        variant: 'success',
+        duration: 999999999,
+        action: <ToastAction altText="Ver ideias" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Ver ideias</ToastAction>,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao gerar ideias',
+        description: error.message,
+        variant: 'destructive',
+        duration: 999999999,
+      });
+    },
+  });
+
+  const generateScript = useGenerateScript({
+    onSuccess: () => {
+      scriptCountRef.current.done++;
+      const { total, done, failed } = scriptCountRef.current;
+      if (done + failed >= total) {
+        toast({
+          title: failed > 0 ? `${done} de ${total} roteiros gerados` : `${done} roteiro(s) gerado(s)`,
+          description: failed > 0 ? `${failed} falharam` : 'Seus roteiros estão prontos',
+          variant: failed > 0 ? 'destructive' : 'success',
+          duration: 999999999,
+          action: done > 0 ? <ToastAction altText="Ver roteiros" onClick={() => onNavigateTab('scripts')}>Ver roteiros</ToastAction> : undefined,
+        });
+      }
+    },
+    onError: () => {
+      scriptCountRef.current.failed++;
+      const { total, done, failed } = scriptCountRef.current;
+      if (done + failed >= total) {
+        toast({
+          title: done > 0 ? `${done} de ${total} roteiros gerados` : 'Erro ao gerar roteiros',
+          description: done > 0 ? `${failed} falharam` : 'Tente novamente',
+          variant: 'destructive',
+          duration: 999999999,
+          action: done > 0 ? <ToastAction altText="Ver roteiros" onClick={() => onNavigateTab('scripts')}>Ver roteiros</ToastAction> : undefined,
+        });
+      }
+    },
+  });
+
+  // ── Generate ideas with persistent processing toast ──
+  const handleGenerateIdeas = (input: Parameters<typeof generateIdeas.mutate>[0]) => {
+    toast({
+      title: 'Gerando ideias...',
+      description: 'Processando com IA — pode levar até 2 minutos',
+      duration: 999999999,
+    });
+    generateIdeas.mutate(input);
+  };
+
+  // ── Generate scripts with persistent processing toast (multi-platform) ──
+  const handleGenerateScripts = (ideaId: string, platforms: string[]) => {
+    scriptCountRef.current = { total: platforms.length, done: 0, failed: 0 };
+    const platformLabel = platforms.length > 1
+      ? `${platforms.length} roteiros`
+      : `roteiro ${PLATFORM_LABELS[platforms[0]] || platforms[0]}`;
+
+    toast({
+      title: `Gerando ${platformLabel}...`,
+      description: 'Processando com IA — pode levar até 2 minutos',
+      duration: 999999999,
+    });
+
+    platforms.forEach((p) => {
+      generateScript.mutate({ idea_id: ideaId, platform: p });
+    });
+  };
 
   const ideas = sortOrder === 'oldest'
     ? [...rawIdeas].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -646,6 +783,18 @@ function IdeasTab() {
               <SelectItem value="myth_busting">Mito</SelectItem>
               <SelectItem value="roast">Roast</SelectItem>
               <SelectItem value="vaga_da_semana">Vaga</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={contentTypeFilter} onValueChange={setContentTypeFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Formato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="vertical_short">Vertical</SelectItem>
+              <SelectItem value="long_youtube">YouTube</SelectItem>
+              <SelectItem value="stories">Stories</SelectItem>
+              <SelectItem value="carousel">Carrossel</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'newest' | 'oldest')}>
@@ -706,7 +855,7 @@ function IdeasTab() {
             idea={idea}
             onSelect={() => setSelectedIdea(idea)}
             onStatusChange={(status) => updateIdea.mutate({ id: idea.id, status })}
-            onGenerateScript={() => generateScript.mutate({ idea_id: idea.id })}
+            onGenerateScript={(platforms) => handleGenerateScripts(idea.id, platforms)}
             onDelete={() => deleteIdea.mutate(idea.id)}
             isGeneratingScript={generateScript.isPending && generateScript.variables?.idea_id === idea.id}
           />
@@ -725,23 +874,61 @@ function IdeasTab() {
 
       {/* Free text dialog */}
       <Dialog open={freeTextDialog} onOpenChange={setFreeTextDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Gerar Ideias de Tópico Livre</DialogTitle>
           </DialogHeader>
+
+          {/* Predefined topic suggestions */}
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tópicos sugeridos</span>
+            <div className="flex flex-wrap gap-1.5">
+              {PREDEFINED_TOPICS.map((topic) => (
+                <button
+                  key={topic.label}
+                  type="button"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border border-border bg-muted/40 hover:bg-primary/10 hover:border-primary/40 transition-colors cursor-pointer text-left"
+                  onClick={() => setFreeText((prev) => prev ? `${prev.trimEnd()}\n${topic.prompt}` : topic.prompt)}
+                >
+                  <span>{topic.icon}</span>
+                  <span>{topic.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Textarea
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
             placeholder="Ex: imigração via EB-2 NIW, diferenças culturais no trabalho, erros de currículo..."
             rows={4}
           />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Formato:</span>
+            <Select value={freeTextContentType} onValueChange={setFreeTextContentType}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Automático (misto)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Automático (misto)</SelectItem>
+                <SelectItem value="vertical_short">Vertical (Reels/TikTok)</SelectItem>
+                <SelectItem value="long_youtube">YouTube (longo)</SelectItem>
+                <SelectItem value="stories">Stories</SelectItem>
+                <SelectItem value="carousel">Carrossel</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFreeTextDialog(false)}>Cancelar</Button>
             <Button
               onClick={() => {
-                generateIdeas.mutate({ free_text: freeText });
+                handleGenerateIdeas({
+                  free_text: freeText,
+                  ...(freeTextContentType && freeTextContentType !== 'auto' ? { content_type: freeTextContentType } : {}),
+                });
                 setFreeTextDialog(false);
                 setFreeText('');
+                setFreeTextContentType('');
               }}
               disabled={!freeText.trim() || generateIdeas.isPending}
             >
@@ -759,11 +946,25 @@ function IdeaCard({ idea, onSelect, onStatusChange, onGenerateScript, onDelete, 
   idea: ContentIdea;
   onSelect: () => void;
   onStatusChange: (status: string) => void;
-  onGenerateScript: () => void;
+  onGenerateScript: (platforms: string[]) => void;
   onDelete: () => void;
   isGeneratingScript: boolean;
 }) {
   const [hooksOpen, setHooksOpen] = useState(false);
+  const [scriptDialog, setScriptDialog] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+
+  const togglePlatform = (platform: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
+    );
+  };
+
+  const handleGenerateScripts = () => {
+    onGenerateScript(selectedPlatforms);
+    setScriptDialog(false);
+    setSelectedPlatforms([]);
+  };
 
   return (
     <Card className="hover:shadow-sm transition-shadow">
@@ -844,9 +1045,9 @@ function IdeaCard({ idea, onSelect, onStatusChange, onGenerateScript, onDelete, 
                   <SelectItem value="discarded">Descartada</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onGenerateScript} disabled={isGeneratingScript}>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setScriptDialog(true)} disabled={isGeneratingScript}>
                 {isGeneratingScript ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <FileText className="w-3 h-3 mr-1" />}
-                Roteiro
+                Gerar Roteiro
               </Button>
               <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500 hover:text-red-700" onClick={onDelete}>
                 <Trash2 className="w-3 h-3" />
@@ -861,6 +1062,42 @@ function IdeaCard({ idea, onSelect, onStatusChange, onGenerateScript, onDelete, 
           </div>
         </div>
       </CardContent>
+
+      {/* Script platform selection dialog */}
+      <Dialog open={scriptDialog} onOpenChange={setScriptDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Gerar Roteiro</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Selecione as plataformas para gerar roteiros:</p>
+          <div className="space-y-3 py-2">
+            {[
+              { value: 'youtube', label: 'YouTube', desc: 'Video longo (8-15 min)' },
+              { value: 'instagram_reels', label: 'Reels / TikTok', desc: 'Video curto (30-60s)' },
+              { value: 'stories', label: 'Stories', desc: 'Sequencia de 4-8 stories' },
+            ].map((opt) => (
+              <label key={opt.value} className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  checked={selectedPlatforms.includes(opt.value)}
+                  onCheckedChange={() => togglePlatform(opt.value)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <span className="text-sm font-medium">{opt.label}</span>
+                  <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScriptDialog(false)}>Cancelar</Button>
+            <Button onClick={handleGenerateScripts} disabled={selectedPlatforms.length === 0}>
+              <FileText className="w-4 h-4 mr-1" />
+              Gerar {selectedPlatforms.length > 0 ? `${selectedPlatforms.length} Roteiro(s)` : 'Roteiro'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -1059,19 +1296,37 @@ function ViralityLegend({ items, type }: { items: Array<{ virality_score: number
 
 function ScriptsTab() {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
   const { data: rawScripts = [], isLoading, refetch } = useContentScripts();
   const updateScript = useUpdateScript();
+  const deleteScript = useDeleteScript();
   const generateSocialPosts = useGenerateSocialPosts();
 
-  const scripts = sortOrder === 'oldest'
+  const sorted = sortOrder === 'oldest'
     ? [...rawScripts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     : rawScripts;
+
+  const scripts = platformFilter === 'all'
+    ? sorted
+    : sorted.filter((s) => s.platform === platformFilter);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground">{scripts.length} roteiro(s)</p>
+          <Select value={platformFilter} onValueChange={setPlatformFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Plataforma" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="instagram_reels">Reels</SelectItem>
+              <SelectItem value="tiktok">TikTok</SelectItem>
+              <SelectItem value="stories">Stories</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'newest' | 'oldest')}>
             <SelectTrigger className="w-40">
               <ArrowUpDown className="w-3 h-3 mr-1" />
@@ -1121,6 +1376,7 @@ function ScriptsTab() {
             script={script}
             onStatusChange={(status) => updateScript.mutate({ id: script.id, status })}
             onGeneratePosts={(scriptId) => generateSocialPosts.mutate({ script_id: scriptId })}
+            onDelete={() => deleteScript.mutate(script.id)}
             isGeneratingPosts={generateSocialPosts.isPending}
             generatingScriptId={(generateSocialPosts.variables as any)?.script_id}
           />
@@ -1130,10 +1386,11 @@ function ScriptsTab() {
   );
 }
 
-function ScriptCard({ script, onStatusChange, onGeneratePosts, isGeneratingPosts, generatingScriptId }: {
+function ScriptCard({ script, onStatusChange, onGeneratePosts, onDelete, isGeneratingPosts, generatingScriptId }: {
   script: ContentScript;
   onStatusChange: (status: string) => void;
   onGeneratePosts?: (scriptId: string) => void;
+  onDelete?: () => void;
   isGeneratingPosts?: boolean;
   generatingScriptId?: string;
 }) {
@@ -1180,8 +1437,8 @@ function ScriptCard({ script, onStatusChange, onGeneratePosts, isGeneratingPosts
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-1.5 mb-1">
               <h3 className="text-sm font-semibold">{script.title}</h3>
-              <Badge variant="outline" className={CONTENT_TYPE_COLORS[script.platform] || ''}>
-                {script.platform}
+              <Badge variant="outline" className={PLATFORM_COLORS[script.platform] || ''}>
+                {PLATFORM_LABELS[script.platform] || script.platform}
               </Badge>
               <Badge variant="outline">{script.tone}</Badge>
               {durationLabel && (
@@ -1229,6 +1486,11 @@ function ScriptCard({ script, onStatusChange, onGeneratePosts, isGeneratingPosts
               {copiedField === 'full' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
               Copiar Tudo
             </Button>
+            {onDelete && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500 hover:text-red-700" onClick={onDelete}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            )}
           </div>
         </div>
 
