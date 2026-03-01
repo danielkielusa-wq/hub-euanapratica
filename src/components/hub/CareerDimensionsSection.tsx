@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ArrowRight, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { getBarColor } from '@/components/report/v2/scoring';
 import { useDimensionService } from '@/hooks/useDimensionService';
 import type { CareerInsights, HubDashboardConfig } from '@/types/hub';
@@ -38,67 +37,74 @@ export function CareerDimensionsSection({ insights, config }: CareerDimensionsSe
   };
 
   return (
-    <div className="mb-10">
-      <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-xl font-black text-gray-900">Suas Dimensões</h2>
-        <span className="text-xs text-gray-400 font-medium">— do seu diagnóstico de carreira</span>
+    <div className="bg-card rounded-md shadow-md p-6">
+      {/* Header with big score */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-medium text-foreground">Suas Dimensões</h2>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Do seu diagnóstico de carreira</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[38px] font-medium leading-none text-foreground">{insights.score}</p>
+          <div className="flex items-center gap-1 mt-1 justify-end">
+            <TrendingUp size={12} className="text-[#28c76f]" />
+            <span className="text-xs font-medium text-[#28c76f]">/ 100</span>
+          </div>
+        </div>
       </div>
 
-      <Card className="rounded-[24px] shadow-sm border-gray-100">
-        <CardContent className="p-5 md:p-8">
-          <div className="space-y-4">
-            {displayed.map((dim, i) => {
-              const isWeakest = dim.key === insights.weakest?.key;
-              const isStrongest = dim.key === insights.strongest?.key;
-              const barColor = getBarColor(dim.percent);
+      {/* Dimension bars */}
+      <div className="space-y-3.5">
+        {displayed.map((dim, i) => {
+          const isWeakest = dim.key === insights.weakest?.key;
+          const isStrongest = dim.key === insights.strongest?.key;
+          const barColor = getBarColor(dim.percent);
 
-              return (
-                <div key={dim.key} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-medium text-gray-700 truncate">{dim.label}</span>
-                      {isWeakest && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                          <AlertTriangle size={10} /> Maior Gap
-                        </span>
-                      )}
-                      {isStrongest && (
-                        <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-sm font-bold text-gray-700 tabular-nums shrink-0">
-                      {dim.score}/{dim.maxScore}
+          return (
+            <div key={dim.key} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[13px] font-medium text-foreground truncate">{dim.label}</span>
+                  {isWeakest && (
+                    <span className="vuexy-badge-danger text-[10px] gap-1">
+                      <AlertTriangle size={10} /> Gap
                     </span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${barColor} transition-all ease-out`}
-                      style={{ width: `${dim.percent}%`, transitionDuration: '800ms', transitionDelay: `${i * 60}ms` }}
-                    />
-                  </div>
+                  )}
+                  {isStrongest && (
+                    <CheckCircle2 size={14} className="text-[#28c76f] flex-shrink-0" />
+                  )}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Social proof + CTA */}
-          {(socialProofText || weakestService) && (
-            <div className="mt-6 pt-5 border-t border-gray-100">
-              {socialProofText && (
-                <p className="text-sm text-gray-500 italic mb-3">{socialProofText}</p>
-              )}
-              {weakestService && (
-                <button
-                  onClick={handleServiceClick}
-                  className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:gap-3 transition-all"
-                >
-                  Melhorar {insights.weakest?.label} <ArrowRight size={16} />
-                </button>
-              )}
+                <span className="text-[13px] font-medium text-muted-foreground tabular-nums shrink-0">
+                  {dim.score}/{dim.maxScore}
+                </span>
+              </div>
+              <div className="h-[6px] rounded-sm bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-sm ${barColor} transition-all ease-out`}
+                  style={{ width: `${dim.percent}%`, transitionDuration: '800ms', transitionDelay: `${i * 60}ms` }}
+                />
+              </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* Social proof + CTA */}
+      {(socialProofText || weakestService) && (
+        <div className="mt-6 pt-5 border-t border-border/30">
+          {socialProofText && (
+            <p className="text-[13px] text-muted-foreground italic mb-3">{socialProofText}</p>
           )}
-        </CardContent>
-      </Card>
+          {weakestService && (
+            <button
+              onClick={handleServiceClick}
+              className="inline-flex items-center gap-2 text-[13px] font-medium text-[#7367f0] hover:text-[#7367f0]/80 hover:gap-3 transition-all"
+            >
+              Melhorar {insights.weakest?.label} <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
