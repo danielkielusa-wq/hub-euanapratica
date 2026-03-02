@@ -79,6 +79,9 @@ verify_jwt = false
 [functions.send-welcome-email]
 verify_jwt = false
 
+[functions.send-daily-agenda]
+verify_jwt = false
+
 [functions.send-test-email]
 verify_jwt = false
 
@@ -164,6 +167,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-contact-form]
+verify_jwt = false
+
+[functions.generate-daily-analytics]
 verify_jwt = false
 
 [functions.admin-assistant]

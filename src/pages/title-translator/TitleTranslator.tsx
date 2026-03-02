@@ -15,7 +15,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useTitleTranslator } from '@/hooks/useTitleTranslator';
 
 const AREAS = [
@@ -42,15 +41,12 @@ export default function TitleTranslatorPage() {
     updateForm,
     translate,
     reset,
-    quota,
     hasCredits,
   } = useTitleTranslator();
 
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const loading = status === 'loading';
-  const credits = quota?.remaining ?? 0;
 
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -93,18 +89,9 @@ export default function TitleTranslatorPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="bg-white dark:bg-card px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-600 dark:text-muted-foreground">
-              Créditos: <span className="text-gray-900 dark:text-foreground font-bold">{credits}</span>
-            </div>
             <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-card border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
               <History className="w-4 h-4" />
               Histórico
-            </button>
-            <button
-              onClick={() => setShowUpgradeModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-card border border-gray-200 dark:border-white/10 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-            >
-              Recarregar
             </button>
           </div>
         </div>
@@ -341,12 +328,6 @@ export default function TitleTranslatorPage() {
         </div>
       </div>
 
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        currentPlanId={quota?.planId}
-        reason="limit_reached"
-      />
     </DashboardLayout>
   );
 }

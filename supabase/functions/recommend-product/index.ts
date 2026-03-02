@@ -16,7 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM } from "../_shared/llmService.ts";
-import { getCorsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 // Minimal fallback — the real prompt lives in app_configs (key: llm_product_recommendation_prompt)
 // and is editable by the admin at /admin/configuracoes → Prompts IA tab.
@@ -40,12 +40,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: Allow authenticated users, internal calls, AND anonymous calls.
-  // Anonymous access is safe here because:
-  //  - evaluationId (UUID) is hard to guess
-  //  - Idempotency: completed recommendations are returned from cache (no LLM cost)
-  //  - Concurrency guard: concurrent calls are rejected
-  //  - The function only reads/writes the caller's evaluation record
+  const authError = await requireAuthOrInternal(req);
+  if (authError) return authError;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

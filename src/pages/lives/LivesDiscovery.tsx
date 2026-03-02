@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, isThisWeek, getDay } from 'date-fns';
+import { format, parseISO, isPast, isThisWeek, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +16,7 @@ import type { LiveWithMentor } from '@/types/live';
 
 const DAY_SHORT: Record<number, string> = { 0: 'DOM', 1: 'SEG', 2: 'TER', 3: 'QUA', 4: 'QUI', 5: 'SEX', 6: 'SÁB' };
 
-type TabKey = 'upcoming' | 'recorded';
+type TabKey = 'upcoming' | 'recorded' | 'past';
 
 export default function LivesDiscovery() {
   const [search, setSearch] = useState('');
@@ -25,16 +25,37 @@ export default function LivesDiscovery() {
 
   const { data: lives, isLoading } = useLives();
 
-  // Separate featured (first live/scheduled), upcoming, and recorded
-  const { featured, upcoming, recorded } = useMemo(() => {
+  // Separate featured, upcoming, recorded (with recording), and past (no recording)
+  const { featured, upcoming, recorded, past } = useMemo(() => {
     const all = lives || [];
-    const liveLive = all.find(l => l.status === 'live');
-    const feat = liveLive || all[0] || null;
-    const rest = all.filter(l => l.id !== feat?.id);
+
+    // Upcoming = currently live OR scheduled in the future
+    const isUpcoming = (l: LiveWithMentor) =>
+      l.status === 'live' || (l.status === 'scheduled' && !isPast(parseISO(l.scheduled_at)));
+
+    // Recorded = completed with a recording URL
+    const isRecorded = (l: LiveWithMentor) =>
+      l.status === 'completed' && !!l.recording_url;
+
+    // Past = completed without recording OR scheduled whose date already passed
+    const isPastLive = (l: LiveWithMentor) =>
+      (l.status === 'completed' && !l.recording_url) ||
+      (l.status === 'scheduled' && isPast(parseISO(l.scheduled_at)));
+
+    // Featured: prefer a live one, then first upcoming
+    const upcomingAll = all.filter(isUpcoming);
+    const liveLive = upcomingAll.find(l => l.status === 'live');
+    const feat = liveLive || upcomingAll[0] || null;
+
     return {
       featured: feat,
-      upcoming: rest.filter(l => l.status === 'scheduled' || l.status === 'live'),
-      recorded: rest.filter(l => l.status === 'completed'),
+      upcoming: upcomingAll.filter(l => l.id !== feat?.id),
+      recorded: all.filter(isRecorded).sort((a, b) =>
+        new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
+      ),
+      past: all.filter(isPastLive).sort((a, b) =>
+        new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
+      ),
     };
   }, [lives]);
 
@@ -62,14 +83,14 @@ export default function LivesDiscovery() {
 
   // Filter by search + tab
   const filteredList = useMemo(() => {
-    const source = activeTab === 'recorded' ? recorded : upcoming;
+    const source = activeTab === 'recorded' ? recorded : activeTab === 'past' ? past : upcoming;
     if (!search.trim()) return source;
     const q = search.toLowerCase();
     return source.filter(l =>
       l.title.toLowerCase().includes(q) ||
       (l.description || '').toLowerCase().includes(q)
     );
-  }, [activeTab, upcoming, recorded, search]);
+  }, [activeTab, upcoming, recorded, past, search]);
 
   const handleCardClick = (live: LiveWithMentor) => {
     navigate(`/live/${live.slug}`);
@@ -120,12 +141,14 @@ export default function LivesDiscovery() {
           />
         </div>
 
-        {/* Featured Live (Hero) */}
-        {isLoading ? (
-          <Skeleton className="h-[300px] w-full rounded-2xl" />
-        ) : featured ? (
-          <FeaturedHero live={featured} onClick={() => handleCardClick(featured)} />
-        ) : null}
+        {/* Featured Live (Hero) — only on Próximas tab */}
+        {activeTab === 'upcoming' && (
+          isLoading ? (
+            <Skeleton className="h-[300px] w-full rounded-2xl" />
+          ) : featured ? (
+            <FeaturedHero live={featured} onClick={() => handleCardClick(featured)} />
+          ) : null
+        )}
 
         {/* Content Tabs + Sidebar */}
         <div className="flex flex-col lg:flex-row gap-8">
@@ -134,8 +157,9 @@ export default function LivesDiscovery() {
           <div className="flex-1 space-y-6 min-w-0">
             {/* Tabs */}
             <div className="flex items-center gap-6 border-b border-gray-200 dark:border-white/10">
-              <TabButton label="Próximas" active={activeTab === 'upcoming'} onClick={() => setActiveTab('upcoming')} />
-              <TabButton label="Gravadas" active={activeTab === 'recorded'} onClick={() => setActiveTab('recorded')} />
+              <TabButton label="Próximas" count={upcoming.length + (featured ? 1 : 0)} active={activeTab === 'upcoming'} onClick={() => setActiveTab('upcoming')} />
+              <TabButton label="Gravadas" count={recorded.length} active={activeTab === 'recorded'} onClick={() => setActiveTab('recorded')} />
+              <TabButton label="Realizadas" count={past.length} active={activeTab === 'past'} onClick={() => setActiveTab('past')} />
             </div>
 
             {/* Grid */}
@@ -151,10 +175,18 @@ export default function LivesDiscovery() {
                   <Video className="h-7 w-7 text-gray-300 dark:text-muted-foreground" />
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-foreground text-lg mb-2">
-                  Nenhuma live disponível
+                  {activeTab === 'upcoming' && 'Nenhuma live agendada'}
+                  {activeTab === 'recorded' && 'Nenhuma gravação disponível'}
+                  {activeTab === 'past' && 'Nenhuma live realizada'}
                 </h3>
                 <p className="text-gray-500 dark:text-muted-foreground text-sm">
-                  {search ? 'Tente ajustar sua busca.' : 'Novas lives serão publicadas em breve!'}
+                  {search
+                    ? 'Tente ajustar sua busca.'
+                    : activeTab === 'upcoming'
+                      ? 'Novas lives serão publicadas em breve!'
+                      : activeTab === 'recorded'
+                        ? 'As gravações aparecerão aqui quando disponíveis.'
+                        : 'Lives realizadas aparecerão aqui.'}
                 </p>
               </div>
             ) : (
@@ -363,18 +395,28 @@ function FeaturedHero({ live, onClick }: { live: LiveWithMentor; onClick: () => 
 }
 
 /* ─── Tab Button ─── */
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function TabButton({ label, count, active, onClick }: { label: string; count?: number; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'pb-3 text-sm font-bold border-b-2 transition-colors',
+        'pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-1.5',
         active
           ? 'border-[#7367F0] text-[#7367F0]'
           : 'border-transparent text-gray-500 dark:text-muted-foreground hover:text-gray-700 dark:hover:text-foreground'
       )}
     >
       {label}
+      {count != null && count > 0 && (
+        <span className={cn(
+          'text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1',
+          active
+            ? 'bg-[#7367F0]/10 text-[#7367F0]'
+            : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-muted-foreground'
+        )}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }

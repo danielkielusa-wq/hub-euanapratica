@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, Plus, Radio, Calendar, Users, ExternalLink, MoreVertical, Pencil, Trash2, Copy } from 'lucide-react';
+import { Loader2, Search, Plus, Radio, Calendar, Users, ExternalLink, MoreVertical, Pencil, Trash2, Copy, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -14,8 +14,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ACCESS_TYPE_LABELS, ACCESS_TYPE_COLORS, STATUS_LABELS, STATUS_COLORS } from '@/types/live';
 import type { Live, LiveStatus } from '@/types/live';
 
@@ -27,6 +38,7 @@ export default function MentorLives() {
   const { data: lives, isLoading } = useMentorLives();
   const deleteLive = useDeleteLive();
   const updateLive = useUpdateLive();
+  const [cancelTarget, setCancelTarget] = useState<Live | null>(null);
 
   const filteredLives = (lives || []).filter(live => {
     const matchesSearch = live.title.toLowerCase().includes(search.toLowerCase());
@@ -204,6 +216,18 @@ export default function MentorLives() {
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Ver Landing Page
                         </DropdownMenuItem>
+                        {!['completed', 'cancelled'].includes(live.status) && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => setCancelTarget(live)}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Cancelar Live
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {live.status === 'draft' && (
                           <DropdownMenuItem
                             className="text-red-600"
@@ -222,6 +246,31 @@ export default function MentorLives() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar live?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A live <strong>"{cancelTarget?.title}"</strong> será marcada como cancelada e não aparecerá mais como disponível para os inscritos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (cancelTarget) {
+                  handleStatusChange(cancelTarget, 'cancelled');
+                  setCancelTarget(null);
+                }
+              }}
+            >
+              Sim, cancelar live
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

@@ -19,6 +19,7 @@ import {
   type WhatsAppFlow,
   type FlowFormInput,
 } from '@/hooks/useAdminWhatsAppFlows';
+import { InfoTooltip } from './InfoTooltip';
 
 const KNOWN_EVENTS = [
   'report.generated',
@@ -171,7 +172,10 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
 
           {/* Trigger Type */}
           <div className="space-y-2">
-            <Label>Tipo de disparo</Label>
+            <Label className="flex items-center">
+              Tipo de disparo
+              <InfoTooltip content={<><strong>Evento:</strong> disparado automaticamente pelo sistema (ex: relatório gerado, assinatura ativada). <strong>Palavra-chave:</strong> quando o lead envia uma mensagem que corresponde a uma palavra. <strong>Manual:</strong> só o admin pode iniciar via "Disparar Teste".</>} />
+            </Label>
             <div className="grid grid-cols-3 gap-2">
               {([
                 { type: 'event' as const, label: 'Evento', icon: Zap, desc: 'Evento do sistema' },
@@ -199,7 +203,10 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
           {/* Event Config */}
           {triggerType === 'event' && (
             <div className="space-y-2">
-              <Label>Eventos que disparam o fluxo</Label>
+              <Label className="flex items-center">
+                Eventos que disparam o fluxo
+                <InfoTooltip content={<>Clique para selecionar um ou mais eventos. Quando o evento ocorrer no sistema, este fluxo será iniciado automaticamente para o lead envolvido.</>} />
+              </Label>
               <div className="flex flex-wrap gap-2">
                 {KNOWN_EVENTS.map((event) => (
                   <Badge
@@ -244,7 +251,10 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Label className="text-sm">Tipo de match:</Label>
+                <Label className="text-sm flex items-center">
+                  Tipo de match:
+                  <InfoTooltip content={<><strong>Exato:</strong> a mensagem do lead precisa ser exatamente a palavra-chave (ex: "sim"). <strong>Contém:</strong> basta a mensagem conter a palavra em qualquer posição (ex: "sim, quero").</>} />
+                </Label>
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -272,7 +282,10 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
           {/* Options */}
           <div className="flex items-center justify-between">
             <div>
-              <Label>Permitir sessoes simultanâeas</Label>
+              <Label className="flex items-center">
+                Permitir sessoes simultanâeas
+                <InfoTooltip content="Se desativado, um lead que já está neste fluxo não receberá uma nova sessão até a atual ser concluída ou expirar. Recomendado: desativado para fluxos de boas-vindas e onboarding." />
+              </Label>
               <p className="text-xs text-muted-foreground">
                 Contato pode estar no mesmo fluxo mais de uma vez
               </p>
@@ -281,7 +294,10 @@ export function FlowFormDialog({ open, onOpenChange, flow }: FlowFormDialogProps
           </div>
 
           <div className="space-y-2">
-            <Label>Timeout da sessão (horas)</Label>
+            <Label className="flex items-center">
+              Timeout da sessão (horas)
+              <InfoTooltip content="Sessões paradas em 'aguardando resposta' são encerradas automaticamente após este período. 24h = 1 dia, 168h = 7 dias. A sessão é marcada como 'expirada' e o lead pode iniciar um novo fluxo." />
+            </Label>
             <Input
               type="number"
               value={sessionTimeout}

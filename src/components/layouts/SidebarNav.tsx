@@ -28,6 +28,7 @@ import {
   Link2,
   Globe,
   Activity,
+  BarChart2,
   Mail,
   DollarSign,
   ListTodo,
@@ -43,6 +44,7 @@ import {
   Layers,
   ChevronRight,
   Bell,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -184,8 +186,15 @@ const mentorNavGroups: NavGroup[] = [
 // Admin Navigation
 const adminNavGroups: NavGroup[] = [
   {
+    label: 'PLANEJAMENTO',
+    items: [
+      { label: 'Agenda Semanal', href: '/admin/agenda-semanal', icon: CalendarDays },
+    ],
+  },
+  {
     label: 'ANALYTICS',
     items: [
+      { label: 'Analytics Geral', href: '/admin/analytics', icon: BarChart2 },
       { label: 'Saúde do Sistema', href: '/admin/saude-sistema', icon: Activity },
       { label: 'Leads Dashboard', href: '/admin/leads-dashboard', icon: BarChart3 },
       { label: 'Atividades', href: '/admin/atividades', icon: ListTodo },

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,19 +18,28 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   useAutomations,
   useWebhookLogs,
   useToggleAutomation,
   useUpdateAutomation,
   useTestAutomation,
+  useCronSchedule,
+  useUpdateCronSchedule,
 } from '@/hooks/useAdminAutomations';
 import type { N8NAutomation, N8NWebhookLog } from '@/hooks/useAdminAutomations';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { getTimezoneAbbr, TIMEZONE_OPTIONS } from '@/lib/timezone';
 
 const CATEGORY_LABELS: Record<string, string> = {
   subscription: 'Assinatura',
   lead: 'Lead',
   notification: 'Notificacao',
   campaign: 'Campanha',
+  analytics: 'Analytics',
+  intelligence: 'Inteligencia',
   general: 'Geral',
 };
 
@@ -39,6 +48,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   lead: 'bg-blue-50 text-blue-700 border-blue-200',
   notification: 'bg-amber-50 text-amber-700 border-amber-200',
   campaign: 'bg-purple-50 text-purple-700 border-purple-200',
+  analytics: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  intelligence: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   general: 'bg-gray-50 text-gray-600 border-gray-200',
 };
 
@@ -61,6 +72,154 @@ function formatRelativeTime(dateStr: string | null): string {
   const days = Math.floor(hours / 24);
   return `${days}d atras`;
 }
+
+/** Get UTC offset in hours for a given IANA timezone at the current moment */
+function getUtcOffsetHours(tz: string): number {
+  const now = new Date();
+  // Format the timezone offset using Intl to get the actual offset
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    timeZoneName: 'shortOffset',
+  }).formatToParts(now);
+  const offsetPart = parts.find(p => p.type === 'timeZoneName')?.value || '';
+  // offsetPart is like "GMT-3", "GMT+1", "GMT+5:30", "GMT"
+  const match = offsetPart.match(/GMT([+-]?)(\d+)(?::(\d+))?/);
+  if (!match) return -3; // fallback to BRT
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = parseInt(match[2]) || 0;
+  const mins = parseInt(match[3]) || 0;
+  return sign * (hours + mins / 60);
+}
+
+/** Convert a cron expression to human-readable time in the user's timezone */
+function cronToHumanTz(cron: string, tz: string): string {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length < 5) return cron;
+  const minute = parseInt(parts[0]);
+  const hour = parseInt(parts[1]);
+  if (isNaN(minute) || isNaN(hour)) return cron;
+
+  const offset = getUtcOffsetHours(tz);
+  let localHour = hour + offset;
+  if (localHour < 0) localHour += 24;
+  if (localHour >= 24) localHour -= 24;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const abbr = getTimezoneAbbr(tz);
+  return `${pad(Math.floor(localHour))}:${pad(minute)} ${abbr}`;
+}
+
+/** Build cron expression from local hour:minute (daily) in the user's timezone */
+function localToCron(localHour: number, localMinute: number, tz: string): string {
+  const offset = getUtcOffsetHours(tz);
+  let utcHour = localHour - offset;
+  if (utcHour < 0) utcHour += 24;
+  if (utcHour >= 24) utcHour -= 24;
+  return `${localMinute} ${Math.floor(utcHour)} * * *`;
+}
+
+// ── Cron Schedule Badge (shown on card) ──────────────────────────────
+function CronBadge({ jobName }: { jobName: string }) {
+  const { data: schedule } = useCronSchedule(jobName);
+  const tz = useUserTimezone();
+  if (!schedule) return null;
+
+  return (
+    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 gap-1">
+      <Timer className="w-3 h-3" />
+      {cronToHumanTz(schedule.schedule, tz)}
+    </Badge>
+  );
+}
+
+// ── Cron Schedule Editor (shown in edit dialog) ──────────────────────
+function CronScheduleEditor({ jobName }: { jobName: string }) {
+  const { data: schedule, isLoading } = useCronSchedule(jobName);
+  const updateSchedule = useUpdateCronSchedule();
+  const tz = useUserTimezone();
+  const tzAbbr = getTimezoneAbbr(tz);
+  const [hour, setHour] = useState('23');
+  const [minute, setMinute] = useState('00');
+
+  useEffect(() => {
+    if (schedule) {
+      const parts = schedule.schedule.trim().split(/\s+/);
+      if (parts.length >= 5) {
+        const utcMin = parseInt(parts[0]);
+        const utcHr = parseInt(parts[1]);
+        if (!isNaN(utcMin) && !isNaN(utcHr)) {
+          const offset = getUtcOffsetHours(tz);
+          let localHr = utcHr + offset;
+          if (localHr < 0) localHr += 24;
+          if (localHr >= 24) localHr -= 24;
+          setHour(String(Math.floor(localHr)).padStart(2, '0'));
+          setMinute(String(utcMin).padStart(2, '0'));
+        }
+      }
+    }
+  }, [schedule, tz]);
+
+  if (isLoading) return <div className="text-xs text-gray-400">Carregando horario...</div>;
+  if (!schedule) return <div className="text-xs text-gray-400">Cron job nao encontrado no banco.</div>;
+
+  const handleSave = () => {
+    const cronExpr = localToCron(parseInt(hour), parseInt(minute), tz);
+    updateSchedule.mutate({ jobName, schedule: cronExpr });
+  };
+
+  const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const minutes = ['00', '15', '30', '45'];
+
+  return (
+    <div className="space-y-3 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+      <div className="flex items-center gap-2">
+        <Timer className="w-4 h-4 text-indigo-600" />
+        <Label className="text-sm font-semibold text-indigo-900">Horario do Cron ({tzAbbr})</Label>
+      </div>
+      <p className="text-xs text-indigo-700">
+        Este webhook e disparado automaticamente todo dia no horario abaixo. Altere para reagendar.
+      </p>
+      <div className="flex items-center gap-2">
+        <Select value={hour} onValueChange={setHour}>
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {hours.map(h => (
+              <SelectItem key={h} value={h}>{h}h</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-lg font-bold text-indigo-600">:</span>
+        <Select value={minute} onValueChange={setMinute}>
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {minutes.map(m => (
+              <SelectItem key={m} value={m}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-indigo-600 font-medium">{tzAbbr}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-auto text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+          onClick={handleSave}
+          disabled={updateSchedule.isPending}
+        >
+          {updateSchedule.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+          Salvar Horario
+        </Button>
+      </div>
+      <p className="text-[10px] text-indigo-500">
+        Cron atual: <code className="font-mono">{schedule.schedule}</code> (UTC)
+      </p>
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────
 
 export default function AdminAutomations() {
   const { data: automations = [], isLoading, refetch } = useAutomations();
@@ -146,6 +305,7 @@ export default function AdminAutomations() {
                       <Badge variant="outline" className="font-mono text-xs">
                         {auto.trigger_event}
                       </Badge>
+                      {auto.cron_job_name && <CronBadge jobName={auto.cron_job_name} />}
                     </div>
                   </div>
                   <Switch
@@ -210,11 +370,16 @@ export default function AdminAutomations() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingAutomation} onOpenChange={(open) => !open && setEditingAutomation(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Configurar: {editingAutomation?.display_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Cron Schedule (only shown if automation has cron_job_name) */}
+            {editingAutomation?.cron_job_name && (
+              <CronScheduleEditor jobName={editingAutomation.cron_job_name} />
+            )}
+
             <div>
               <Label>Webhook URL (N8N)</Label>
               <Input
@@ -393,6 +558,19 @@ function DocsContent() {
       </section>
 
       <section>
+        <h3 className="font-semibold text-gray-900 mb-2">Agendamento (Cron)</h3>
+        <p>
+          Automacoes com o badge de horario sao disparadas automaticamente por cron.
+          Clique em "Configurar" para alterar o horario — o sistema converte automaticamente
+          para UTC e reagenda o job.
+        </p>
+        <p className="mt-1">
+          O horario exibido reflete o fuso configurado no seu perfil. Para alterar,
+          va em <strong>Minha Conta → Perfil → Fuso Horario</strong>. Minutos disponiveis: 00, 15, 30, 45.
+        </p>
+      </section>
+
+      <section>
         <h3 className="font-semibold text-gray-900 mb-2">Autenticacao N8N → Supabase</h3>
         <p>
           Quando o N8N precisa chamar Edge Functions (send-whatsapp, send-lead-email),
@@ -422,8 +600,18 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
           </TableHeader>
           <TableBody>
             <TableRow>
+              <TableCell className="font-mono text-xs">analytics.daily</TableCell>
+              <TableCell className="text-xs">generate-daily-analytics</TableCell>
+              <TableCell className="text-xs">Resumo diario com metricas + texto IA + link do dashboard</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">intelligence.weekly_report</TableCell>
+              <TableCell className="text-xs">generate-weekly-report</TableCell>
+              <TableCell className="text-xs">Relatorio semanal de inteligencia de vendas</TableCell>
+            </TableRow>
+            <TableRow>
               <TableCell className="font-mono text-xs">report.generated</TableCell>
-              <TableCell className="text-xs">format-lead-report</TableCell>
+              <TableCell className="text-xs">dispatch-report-webhook</TableCell>
               <TableCell className="text-xs">Relatorio de diagnostico gerado com sucesso</TableCell>
             </TableRow>
             <TableRow>
@@ -446,6 +634,32 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
       </section>
 
       <section>
+        <h3 className="font-semibold text-gray-900 mb-2">Payload do Analytics Diario</h3>
+        <p>O webhook <code>analytics.daily</code> envia:</p>
+        <pre className="bg-gray-100 p-2 rounded mt-1 text-xs font-mono overflow-auto max-h-48">
+{`{
+  "event": "analytics.daily",
+  "snapshot_date": "2026-03-01",
+  "ai_summary": "Texto do analista IA...",
+  "dashboard_url": "https://hub.euanapratica.com/admin/analytics",
+  "metrics": {
+    "new_leads": 15,
+    "new_signups": 3,
+    "active_subscriptions": 42,
+    "mrr_estimate": 8400,
+    "churn_percent_30d": 2.5,
+    "total_credits_used": 28,
+    "bookings_today": 5,
+    "community_posts": 8,
+    "whatsapp_outbound": 120,
+    "email_sent": 45,
+    "api_cost_usd": 1.23
+  }
+}`}
+        </pre>
+      </section>
+
+      <section>
         <h3 className="font-semibold text-gray-900 mb-2">Troubleshooting</h3>
         <ul className="list-disc list-inside space-y-1.5">
           <li><strong>Status "skipped"</strong>: Webhook URL nao configurada</li>
@@ -453,6 +667,7 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
           <li><strong>Status "error"</strong>: N8N retornou erro HTTP — verifique os logs no N8N</li>
           <li><strong>Automacao nunca dispara</strong>: Verifique se esta ativa (toggle) e se o evento correspondente ocorreu</li>
           <li><strong>N8N nao recebe webhook</strong>: Verifique firewall, HTTPS/SSL, e se a URL esta correta</li>
+          <li><strong>Cron nao dispara</strong>: Verifique se <code>invoke_edge_function</code> e <code>app_configs</code> (supabase_edge_url, internal_function_secret) estao configurados</li>
         </ul>
       </section>
     </div>

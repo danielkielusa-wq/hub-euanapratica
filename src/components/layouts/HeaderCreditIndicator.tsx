@@ -133,16 +133,20 @@ export function HeaderCreditIndicator({
                   <>{remaining}<span className="text-gray-400 dark:text-gray-500 font-normal">/{monthlyLimit}</span></>
                 )}
               </span>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">créditos</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">disponíveis</span>
             </div>
 
-            {/* Mobile: just show number */}
-            <span className={cn(
-              'md:hidden text-xs font-bold tabular-nums',
-              getAccentColor(),
-            )}>
-              {isUnlimited ? <Infinity className="w-3.5 h-3.5" /> : remaining}
-            </span>
+            {/* Mobile */}
+            <div className="md:hidden flex flex-col items-start leading-none">
+              <span className={cn('text-xs font-bold tabular-nums', getAccentColor())}>
+                {isUnlimited ? (
+                  <Infinity className="w-3.5 h-3.5" />
+                ) : (
+                  <>{remaining}<span className="text-gray-400 dark:text-gray-500 font-normal">/{monthlyLimit}</span></>
+                )}
+              </span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">disponíveis</span>
+            </div>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-[220px]">

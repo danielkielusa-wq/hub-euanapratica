@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu, Image, Upload, Loader2, X } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu, Image, Upload, Loader2, X, BarChart2 } from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { WhatsAppConnectionStatus } from '@/components/admin/whatsapp/WhatsAppConnectionStatus';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
@@ -124,6 +124,12 @@ export default function AdminSettings() {
   const [waCountryCode, setWaCountryCode] = useState('55');
   const [hasWaChanges, setHasWaChanges] = useState(false);
 
+  // Daily Analytics config
+  const [daPrompt, setDaPrompt] = useState('');
+  const [daApiConfig, setDaApiConfig] = useState('openai_api');
+  const [daModel, setDaModel] = useState('');
+  const [hasDaChanges, setHasDaChanges] = useState(false);
+
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
     if (resumeValue) setResumePrompt(resumeValue);
@@ -199,6 +205,14 @@ export default function AdminSettings() {
     if (waSecretValue) setWaWebhookSecret(waSecretValue);
     const waCodeValue = getConfigValue('whatsapp_default_country_code');
     if (waCodeValue) setWaCountryCode(waCodeValue);
+
+    // Load Daily Analytics configs
+    const daPromptValue = getConfigValue('daily_analytics_prompt');
+    if (daPromptValue) setDaPrompt(daPromptValue);
+    const daApiValue = getConfigValue('daily_analytics_api_key');
+    if (daApiValue) setDaApiConfig(daApiValue);
+    const daModelValue = getConfigValue('daily_analytics_model');
+    if (daModelValue) setDaModel(daModelValue);
   }, [configs]);
 
   useEffect(() => {
@@ -320,6 +334,26 @@ export default function AdminSettings() {
     setHasWaChanges(false);
   };
 
+  useEffect(() => {
+    const originalPrompt = getConfigValue('daily_analytics_prompt');
+    const originalApi = getConfigValue('daily_analytics_api_key') || 'openai_api';
+    const originalModel = getConfigValue('daily_analytics_model') || '';
+    setHasDaChanges(
+      (daPrompt !== originalPrompt && daPrompt !== '') ||
+      daApiConfig !== originalApi ||
+      daModel !== originalModel
+    );
+  }, [daPrompt, daApiConfig, daModel, configs]);
+
+  const handleSaveDailyAnalytics = async () => {
+    await Promise.all([
+      updateConfig('daily_analytics_prompt', daPrompt),
+      updateConfig('daily_analytics_api_key', daApiConfig),
+      updateConfig('daily_analytics_model', daModel),
+    ]);
+    setHasDaChanges(false);
+  };
+
   const handleSaveResume = async () => {
     await Promise.all([
       updateConfig('resume_analyzer_prompt', resumePrompt),
@@ -436,6 +470,7 @@ export default function AdminSettings() {
             <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg"><ListTodo className="h-4 w-4" />Sugestão de Tarefas</TabsTrigger>
             <TabsTrigger value="suggest-whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />Sugestão WhatsApp</TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />WhatsApp</TabsTrigger>
+            <TabsTrigger value="daily-analytics" className="gap-2 rounded-lg"><BarChart2 className="h-4 w-4" />Analytics Diario</TabsTrigger>
             <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
             <TabsTrigger value="branding" className="gap-2 rounded-lg"><Image className="h-4 w-4" />Identidade Visual</TabsTrigger>
           </TabsList>
@@ -1616,6 +1651,95 @@ export default function AdminSettings() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="daily-analytics" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <div className="flex items-center gap-2"><BarChart2 className="w-5 h-5 text-indigo-600" /><CardTitle>Analytics Diario - IA</CardTitle></div>
+                <CardDescription>Configure a API, modelo e prompt usados para gerar o resumo diario de analytics. O resumo e enviado via webhook (N8N) no horario agendado em /admin/automacoes.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>API Provider</Label>
+                      {apisLoading ? (
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                      ) : (
+                        <Select value={daApiConfig} onValueChange={setDaApiConfig}>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Selecione uma API..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apis.filter(api => api.is_active).length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nenhuma API ativa configurada
+                              </div>
+                            ) : (
+                              apis
+                                .filter(api => api.is_active)
+                                .map(api => (
+                                  <SelectItem key={api.api_key} value={api.api_key}>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span>{api.name}</span>
+                                      {api.parameters?.model && (
+                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        A API selecionada sera usada para chamar o LLM. Configure credenciais e URL em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Modelo (override)</Label>
+                      <Input
+                        value={daModel}
+                        onChange={(e) => setDaModel(e.target.value)}
+                        placeholder="ex: google/gemini-2.0-flash (vazio = usa modelo padrao da API)"
+                        className="font-mono text-sm rounded-xl"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Se preenchido, sobrescreve o modelo configurado na API. Use nomes do OpenRouter (ex: google/gemini-2.0-flash, openai/gpt-4.1-mini). Deixe vazio para usar o modelo padrao.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Prompt do Analista</Label>
+                      <Textarea
+                        value={daPrompt}
+                        onChange={(e) => setDaPrompt(e.target.value)}
+                        className="min-h-[200px] font-mono text-sm rounded-xl"
+                        placeholder="Prompt do sistema para gerar o resumo diario..."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        O LLM recebe este prompt como instrucao do sistema + os dados do dia em JSON como mensagem do usuario. Escreva em portugues, tom analitico. Max 250 palavras de saida.
+                      </p>
+                    </div>
+
+                    {configs.find(c => c.key === 'daily_analytics_prompt')?.updated_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Ultima atualizacao: {format(new Date(configs.find(c => c.key === 'daily_analytics_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm")}
+                      </p>
+                    )}
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button onClick={handleSaveDailyAnalytics} disabled={!hasDaChanges || isSaving} className="rounded-[12px] gap-2">
+                        <Save className="w-4 h-4" />
+                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="branding" className="space-y-6">

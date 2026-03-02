@@ -11,7 +11,7 @@ import {
 import { ReportHistory } from '@/components/curriculo/ReportHistory';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useCurriculoAnalysis } from '@/hooks/useCurriculoAnalysis';
-import { useSubscription } from '@/hooks/useSubscription';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
 export default function CurriculoUSA() {
@@ -27,7 +27,10 @@ export default function CurriculoUSA() {
     canAnalyze,
   } = useCurriculoAnalysis();
 
-  const { quota, isLoading: quotaLoading } = useSubscription();
+  const { planAccess, creditCosts, isLoading: quotaLoading, planId } = usePlanAccess();
+  const remaining = planAccess?.remaining ?? 0;
+  const monthlyLimit = planAccess?.monthlyLimit ?? 5;
+  const resumeCostFromConfig = creditCosts['curriculo_usa'] ?? 3;
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAtsInfo, setShowAtsInfo] = useState(false);
 
@@ -47,8 +50,7 @@ export default function CurriculoUSA() {
   };
 
   const isAnalyzing = status === 'uploading' || status === 'analyzing';
-  const resumeCost = 3; // credits per analysis (from unified pool)
-  const hasCredits = quota ? quota.remaining >= resumeCost : false; // fail-closed when quota unknown
+  const hasCredits = remaining >= resumeCostFromConfig;
   const hasRequiredFields = !!uploadedFile && !!jobDescription.trim();
 
   const handleAnalyze = async () => {
@@ -81,8 +83,8 @@ export default function CurriculoUSA() {
     logEvent({
       event_type: 'curriculo_upgrade_click',
       metadata: {
-        plan_id: quota?.planId || null,
-        monthly_limit: quota?.monthlyLimit || null
+        plan_id: planId || null,
+        monthly_limit: monthlyLimit || null
       }
     });
     navigate('/pricing');
@@ -185,7 +187,7 @@ export default function CurriculoUSA() {
       <UpgradeModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
-        currentPlanId={quota?.planId}
+        currentPlanId={planId}
         reason="limit_reached"
       />
     </DashboardLayout>

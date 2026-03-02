@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,7 +146,7 @@ export default function AdminLegalPages() {
                     <div className="border rounded-lg p-6 min-h-[500px] bg-white">
                       <div
                         className="prose prose-sm max-w-none text-muted-foreground [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-8 [&_h2]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_p]:leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: values[page.key] || '' }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(values[page.key] || '') }}
                       />
                     </div>
                   ) : (

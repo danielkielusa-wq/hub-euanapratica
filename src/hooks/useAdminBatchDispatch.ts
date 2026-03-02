@@ -125,6 +125,8 @@ export function useCreateBatchJob() {
       sourceType: 'report_backfill' | 'manual_list';
       contactsPerCycle?: number;
       businessHoursOnly?: boolean;
+      maxContacts?: number;
+      notifyOnComplete?: boolean;
       manualContacts?: Array<{ phone: string; lead_name?: string }>;
       scheduledAt?: string;
     }) => {

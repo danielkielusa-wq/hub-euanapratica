@@ -4,8 +4,6 @@ import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 
 interface SidebarUserCardProps {
   onLogout: () => void;
@@ -16,7 +14,6 @@ export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
   const { data: profile } = useProfile();
   const { planName, isVipPlan, isPremiumPlan, planId, theme } = usePlanAccess();
   const navigate = useNavigate();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   if (!user) return null;
 
@@ -93,20 +90,12 @@ export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
       {/* Upgrade Button - Only show if not VIP */}
       {!isVipPlan && (
         <button
-          onClick={() => setShowUpgradeModal(true)}
+          onClick={() => navigate('/pricing')}
           className="w-full py-2.5 px-4 border-2 border-blue-600 text-blue-600 text-xs font-bold uppercase tracking-wide rounded-xl hover:bg-blue-50 transition-colors"
         >
           Upgrade para VIP
         </button>
       )}
-
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        currentPlanId={planId}
-        reason="upgrade"
-      />
     </div>
   );
 }

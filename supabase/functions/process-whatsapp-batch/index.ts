@@ -97,6 +97,8 @@ serve(async (req) => {
         contactsPerCycle: body.contactsPerCycle,
         businessHoursOnly: body.businessHoursOnly,
         createdBy: body.createdBy,
+        maxContacts: body.maxContacts,
+        notifyOnComplete: body.notifyOnComplete,
         manualContacts: body.manualContacts,
         scheduledAt: body.scheduledAt,
       });

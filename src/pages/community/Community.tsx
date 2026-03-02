@@ -24,7 +24,7 @@ const SORT_OPTIONS: { value: PostFilter; label: string }[] = [
 
 export default function Community() {
   const { user } = useAuth();
-  const { hasFeature } = usePlanAccess();
+  const { hasFeature, isLoading: planLoading } = usePlanAccess();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<PostFilter>('popular');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -37,8 +37,8 @@ export default function Community() {
   });
   const { userStats, ranking, isLoading: gamificationLoading } = useGamification();
 
-  // Check community access
-  if (!hasFeature('community')) {
+  // Check community access — wait for plan data before showing upgrade prompt
+  if (!planLoading && !hasFeature('community')) {
     return (
       <DashboardLayout>
         <div className="p-6 md:p-8">

@@ -2,28 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM, LLMError } from "../_shared/llmService.ts";
 import { getCreditCosts, checkUnifiedCredits, recordCreditUsage } from "../_shared/creditService.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const authError = await requireAuthOrInternal(req);
+  if (authError) return authError;
+
   console.log("[translate-title] Request received");
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.warn("[translate-title] Missing or invalid Authorization header");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const authHeader = req.headers.get("Authorization")!;
 
     // User client (respects RLS)
     const supabase = createClient(

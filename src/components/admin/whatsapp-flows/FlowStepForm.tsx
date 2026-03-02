@@ -25,6 +25,7 @@ import {
   type WhatsAppFlowStep,
   type StepFormInput,
 } from '@/hooks/useAdminWhatsAppFlows';
+import { InfoTooltip } from './InfoTooltip';
 
 interface StepAction {
   type: 'next' | 'end' | 'goto';
@@ -276,7 +277,10 @@ export function FlowStepForm({
           {/* Common: step_key + display_name */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Chave</Label>
+              <Label className="text-xs flex items-center">
+                Chave
+                <InfoTooltip content="Identificador único desta etapa. Usado na ação 'Ir para' de outras etapas. Só letras minúsculas, números e underscores. Não pode ser alterado após criação." side="right" />
+              </Label>
               <Input
                 value={stepKey}
                 onChange={(e) => setStepKey(e.target.value.replace(/\s/g, '_').toLowerCase())}
@@ -298,7 +302,7 @@ export function FlowStepForm({
           {/* ── Message Config ── */}
           {stepType === 'message' && (
             <div className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -317,6 +321,7 @@ export function FlowStepForm({
                 >
                   Template existente
                 </Button>
+                <InfoTooltip content={<><strong>Texto direto:</strong> escreva a mensagem aqui, suporta variáveis como {'{{'+'leadName'+'}}'}. <strong>Template:</strong> use um template pré-configurado na seção "Templates WhatsApp". Útil para mensagens padronizadas reutilizadas em vários fluxos.</>} />
               </div>
 
               {contentType === 'inline' ? (
@@ -373,7 +378,10 @@ export function FlowStepForm({
             <div className="space-y-4">
               <div className="flex gap-3 items-end">
                 <div className="space-y-1.5">
-                  <Label>Duracao</Label>
+                  <Label className="flex items-center">
+                    Duracao
+                    <InfoTooltip content="O sistema verifica sessões pausadas a cada minuto, portanto o delay real pode ser alguns segundos a mais. Para delays em segundos, a resolução mínima é ~1 minuto." />
+                  </Label>
                   <Input
                     type="number"
                     value={delayDuration}
@@ -419,7 +427,10 @@ export function FlowStepForm({
               {/* Timeout */}
               <div className="flex gap-3 items-end">
                 <div className="space-y-1.5">
-                  <Label>Timeout (minutos)</Label>
+                  <Label className="flex items-center">
+                    Timeout (minutos)
+                    <InfoTooltip content="Tempo máximo aguardando resposta. Após este período, a ação 'Se não responder' é executada. 1440 min = 24h. Mínimo recomendado: 60 minutos." />
+                  </Label>
                   <Input
                     type="number"
                     value={timeoutMinutes}
@@ -436,7 +447,10 @@ export function FlowStepForm({
 
               {/* Keyword matches */}
               <div className="space-y-3">
-                <Label>Respostas esperadas</Label>
+                <Label className="flex items-center">
+                  Respostas esperadas
+                  <InfoTooltip content="Cada grupo contém palavras-chave e uma ação. Quando o lead responde, sua mensagem é comparada a todas as palavras sem distinção de maiúsculas. Você pode ter múltiplos grupos (ex: 'Sim' → próxima, 'Não' → encerrar)." />
+                </Label>
                 {matches.map((match, matchIdx) => (
                   <div key={matchIdx} className="border rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
@@ -503,7 +517,10 @@ export function FlowStepForm({
 
                     {/* Action */}
                     <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Acao:</span>
+                      <span className="text-xs text-muted-foreground flex items-center">
+                        Acao:
+                        <InfoTooltip content={<><strong>Próxima:</strong> avança para a etapa seguinte do fluxo. <strong>Encerrar:</strong> finaliza o fluxo para este lead. <strong>Ir para:</strong> pula para uma etapa específica pelo campo "Chave" (útil para loops ou branches).</>} />
+                      </span>
                       <ActionSelect
                         value={match.action}
                         onChange={(action) => updateMatchAction(matchIdx, action)}
@@ -526,7 +543,10 @@ export function FlowStepForm({
 
               {/* Default action */}
               <div className="space-y-1.5">
-                <Label>Resposta padrao (qualquer outra)</Label>
+                <Label className="flex items-center">
+                  Resposta padrao (qualquer outra)
+                  <InfoTooltip content="Ação executada quando o lead envia qualquer mensagem que não corresponde a nenhuma palavra-chave dos grupos acima. Ex: encerrar o fluxo ou enviar uma mensagem de esclarecimento." />
+                </Label>
                 <ActionSelect value={defaultAction} onChange={setDefaultAction} />
               </div>
             </div>

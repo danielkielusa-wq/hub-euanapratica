@@ -89,7 +89,7 @@ const JobCard: React.FC<JobCardProps> = ({
         </div>
       )}
 
-      <div className="flex gap-5">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
         {/* Left: Main Content */}
         <div className="flex-1 min-w-0">
           {/* Title */}
@@ -167,9 +167,9 @@ const JobCard: React.FC<JobCardProps> = ({
         </div>
 
         {/* Right: Salary + Action + Bookmark */}
-        <div className="flex flex-col items-end justify-between shrink-0 w-44">
-          {/* Bookmark */}
-          <div className="flex items-center gap-2">
+        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-between shrink-0 sm:w-40">
+          {/* Bookmark — hidden on mobile (moved to top-right via absolute) */}
+          <div className="hidden sm:flex items-center gap-2">
             {!showLocked && onBookmark && (
               <button
                 onClick={handleBookmarkClick}
@@ -190,7 +190,7 @@ const JobCard: React.FC<JobCardProps> = ({
           </div>
 
           {/* Salary */}
-          <div className="text-right mb-3">
+          <div className="text-left sm:text-right sm:mb-3">
             <div className="text-[10px] text-gray-400 font-medium mb-0.5">Salário</div>
             <div className={`font-bold text-sm ${
               showLocked ? 'text-gray-300 blur-[2px]' : 'text-gray-800'
@@ -206,7 +206,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 e.stopPropagation();
                 onUpgrade?.();
               }}
-              className="w-full py-2 bg-gray-100 text-gray-400 font-bold rounded-lg text-[11px] flex items-center justify-center gap-1.5 hover:bg-gray-200 transition-colors"
+              className="px-4 sm:px-0 sm:w-full py-2 bg-gray-100 text-gray-400 font-bold rounded-lg text-[11px] flex items-center justify-center gap-1.5 hover:bg-gray-200 transition-colors"
             >
               <Lock className="w-3 h-3" /> VER PLANOS
             </button>
@@ -216,7 +216,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 e.stopPropagation();
                 onViewDetails();
               }}
-              className="w-full py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 font-bold text-[11px] flex items-center justify-center gap-1.5 hover:bg-green-100 transition-colors"
+              className="px-4 sm:px-0 sm:w-full py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 font-bold text-[11px] flex items-center justify-center gap-1.5 hover:bg-green-100 transition-colors"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               VISITADO
@@ -227,7 +227,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 e.stopPropagation();
                 onViewDetails();
               }}
-              className="w-full py-2 rounded-lg bg-[#1e1e2d] text-white font-bold text-[11px] flex items-center justify-center gap-1.5 group-hover:bg-[#2b2b40] transition-colors shadow-md shadow-gray-200"
+              className="px-4 sm:px-0 sm:w-full py-2 rounded-lg bg-[#1e1e2d] text-white font-bold text-[11px] flex items-center justify-center gap-1.5 group-hover:bg-[#2b2b40] transition-colors shadow-md shadow-gray-200"
             >
               Ver Detalhes
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

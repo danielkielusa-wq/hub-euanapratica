@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { handleSubscriptionEvent } from "../_shared/subscriptionHandlers.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
+import { timingSafeEqual } from "../_shared/authGuard.ts";
 import type { TictoSubscriptionPayload, MatchedPlan } from "../_shared/subscriptionHandlers.ts";
 
 const corsHeaders = {
@@ -48,7 +49,7 @@ serve(async (req) => {
       });
     }
 
-    if (!receivedToken || receivedToken !== expectedToken) {
+    if (!receivedToken || !timingSafeEqual(receivedToken, expectedToken)) {
       console.error("Token mismatch: received token does not match expected token");
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -121,15 +122,19 @@ serve(async (req) => {
           const emailType = emailTypeMap[result.action];
           if (emailType) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-            fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-internal-secret": internalSecret,
-              },
-              body: JSON.stringify({ type: emailType, user_id: emailUserId }),
-            }).catch(err => console.error("Subscription email trigger error:", err));
+            const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+            if (!internalSecret) {
+              console.error("[ticto-webhook] INTERNAL_FUNCTION_SECRET not set — skipping subscription email trigger");
+            } else {
+              fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-internal-secret": internalSecret,
+                },
+                body: JSON.stringify({ type: emailType, user_id: emailUserId }),
+              }).catch(err => console.error("Subscription email trigger error:", err));
+            }
           }
         }
 

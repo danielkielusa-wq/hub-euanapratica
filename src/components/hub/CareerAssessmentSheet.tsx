@@ -427,7 +427,7 @@ export function CareerAssessmentSheet({ open, onOpenChange, initialData, onCompl
         if (status === 'already_exists') {
           toast.info('Voce ja possui um diagnostico gerado!');
         } else {
-          toast.success('Seu relatorio esta sendo gerado! Isso leva cerca de 2 minutos.');
+          toast.success('Seu relatorio esta sendo gerado! Voce sera notificado quando estiver pronto.');
         }
 
         queryClient.invalidateQueries({ queryKey: ['career-assessment-profile'] });
@@ -450,22 +450,24 @@ export function CareerAssessmentSheet({ open, onOpenChange, initialData, onCompl
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <SheetTitle className="text-lg font-bold">{stepConfig.title}</SheetTitle>
-          <p className="text-sm text-muted-foreground">{stepConfig.subtitle}</p>
-        </SheetHeader>
+      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0 gap-0">
+        <div className="flex-shrink-0 px-6 pt-6 pb-2">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-lg font-bold">{stepConfig.title}</SheetTitle>
+            <p className="text-sm text-muted-foreground">{stepConfig.subtitle}</p>
+          </SheetHeader>
 
-        <StepProgress currentStep={currentStep} />
+          <StepProgress currentStep={currentStep} />
+        </div>
 
-        <div className="pb-24">
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
           {currentStep === 1 && <Step1 data={formData} onChange={handleChange} errors={errors} />}
           {currentStep === 2 && <Step2 data={formData} onChange={handleChange} errors={errors} />}
           {currentStep === 3 && <Step3 data={formData} onChange={handleChange} errors={errors} />}
         </div>
 
-        {/* Fixed bottom nav */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t flex items-center gap-3">
+        {/* Sticky bottom nav */}
+        <div className="flex-shrink-0 p-4 bg-white dark:bg-card border-t flex items-center gap-3">
           {currentStep > 1 && (
             <Button variant="ghost" onClick={handleBack} disabled={isSaving}>
               <ArrowLeft className="w-4 h-4 mr-1" />

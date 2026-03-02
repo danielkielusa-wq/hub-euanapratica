@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -14,10 +14,8 @@ import {
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import JobCard from '@/components/jobSearch/JobCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useJobs, usePrimeJobsStats, useJobCategories } from '@/hooks/useJobs';
 import { useToggleBookmark } from '@/hooks/useJobBookmarks';
-import { usePrimeJobsQuota } from '@/hooks/useJobApplications';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
@@ -30,7 +28,6 @@ export default function PrimeJobs() {
   const { planId, isPremiumPlan, isVipPlan } = usePlanAccess();
   const [filters, setFilters] = useState<JobFilters>({});
   const [searchInput, setSearchInput] = useState('');
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Determine user plan for UI
@@ -48,9 +45,6 @@ export default function PrimeJobs() {
 
   // Fetch categories
   const { data: categories } = useJobCategories();
-
-  // Quota
-  const { data: quota } = usePrimeJobsQuota();
 
   // Bookmark mutation
   const toggleBookmark = useToggleBookmark();
@@ -115,7 +109,7 @@ export default function PrimeJobs() {
       event_type: 'prime_jobs_upgrade_click',
       metadata: { plan_id: planId || null }
     });
-    setShowUpgradeModal(true);
+    navigate('/pricing');
   };
 
   // Stats data (all sourced from get_prime_jobs_stats RPC)
@@ -148,13 +142,6 @@ export default function PrimeJobs() {
           </div>
 
           <div className="flex items-center gap-3">
-            {quota && quota.monthlyLimit > 0 && (
-              <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600">
-                Créditos: <span className={`font-bold ${quota.remaining <= 0 ? 'text-amber-600' : quota.remaining <= 3 ? 'text-amber-500' : 'text-gray-900'}`}>
-                  {quota.remaining} restantes
-                </span>
-              </div>
-            )}
             <button
               onClick={() => {
                 logEvent({ event_type: 'prime_jobs_open_history' });
@@ -381,13 +368,6 @@ export default function PrimeJobs() {
           </>
         )}
 
-        {/* Upgrade Modal */}
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          currentPlanId={planId}
-          reason="upgrade"
-        />
       </div>
     </DashboardLayout>
   );

@@ -75,8 +75,8 @@ export function QuickToolsStrip(props: QuickToolsStripProps) {
   if (tools.length === 0) return null;
 
   return (
-    <div className="bg-white dark:bg-card rounded-xl p-6 shadow-sm border border-gray-100 dark:border-white/10">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white dark:bg-card rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 dark:border-white/10">
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
         <h3 className="text-gray-700 dark:text-foreground font-semibold">Créditos</h3>
       </div>
 

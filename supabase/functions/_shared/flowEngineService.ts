@@ -15,6 +15,7 @@ import {
   sendWhatsAppMessage,
   substituteVariables,
 } from "./whatsappService.ts";
+import { dispatchN8NWebhook } from "./n8nService.ts";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -276,6 +277,22 @@ export async function executeSession(
       })
       .eq("id", sessionId);
 
+    // Log inbound reply as CRM interaction (fire-and-forget)
+    if (session.lead_id) {
+      logCrmInteraction(supabase, {
+        leadId: session.lead_id,
+        type: "whatsapp_received",
+        content: replyText,
+        direction: "inbound",
+        channel: "whatsapp",
+        metadata: {
+          flow_id: session.flow_id,
+          session_id: sessionId,
+          step_key: currentStep.step_key,
+        },
+      });
+    }
+
     // Match reply to action
     const config = currentStep.config as unknown as WaitReplyStepConfig;
     const action = matchReplyToAction(replyText, config);
@@ -368,6 +385,24 @@ export async function executeSession(
           .eq("id", sessionId);
 
         session.messages_sent = (session.messages_sent || 0) + 1;
+
+        // Log CRM interaction (fire-and-forget)
+        if (session.lead_id) {
+          logCrmInteraction(supabase, {
+            leadId: session.lead_id,
+            type: "whatsapp_sent",
+            content: messageText,
+            direction: "outbound",
+            channel: "whatsapp",
+            metadata: {
+              flow_id: session.flow_id,
+              session_id: sessionId,
+              step_key: step.step_key,
+              template_name: config.template_name || null,
+              trigger_type: session.trigger_type,
+            },
+          });
+        }
 
         // Anti-block: human-like delay between consecutive message sends (3-5s with jitter)
         await new Promise((r) => setTimeout(r, 3000 + Math.random() * 2000));
@@ -688,7 +723,7 @@ function durationToMs(duration: number, unit: string): number {
 }
 
 /**
- * Marks a session as completed.
+ * Marks a session as completed and dispatches webhook if configured.
  */
 async function completeSession(supabase: SupabaseClient, sessionId: string): Promise<void> {
   await supabase
@@ -700,10 +735,13 @@ async function completeSession(supabase: SupabaseClient, sessionId: string): Pro
     })
     .eq("id", sessionId);
   console.log(`[flowEngine] Session ${sessionId} completed`);
+
+  // Dispatch webhook if notify_on_complete is set
+  dispatchSessionWebhook(supabase, sessionId, "completed");
 }
 
 /**
- * Marks a session as error.
+ * Marks a session as error and dispatches webhook if configured.
  */
 async function markSessionError(supabase: SupabaseClient, sessionId: string, message: string): Promise<void> {
   await supabase
@@ -715,4 +753,88 @@ async function markSessionError(supabase: SupabaseClient, sessionId: string, mes
     })
     .eq("id", sessionId);
   console.error(`[flowEngine] Session ${sessionId} error: ${message}`);
+
+  // Dispatch webhook if notify_on_complete is set
+  dispatchSessionWebhook(supabase, sessionId, "error");
+}
+
+/**
+ * Logs a CRM interaction in lead_interactions. Fire-and-forget — never throws.
+ */
+function logCrmInteraction(
+  supabase: SupabaseClient,
+  params: {
+    leadId: string;
+    type: string;
+    content: string;
+    direction: string;
+    channel: string;
+    metadata?: Record<string, unknown>;
+  }
+): void {
+  supabase
+    .from("lead_interactions")
+    .insert({
+      lead_id: params.leadId,
+      type: params.type,
+      content: params.content,
+      direction: params.direction,
+      channel: params.channel,
+      metadata: params.metadata || {},
+    })
+    .then(({ error }) => {
+      if (error) {
+        console.warn("[flowEngine] Failed to log CRM interaction:", error.message);
+      }
+    });
+}
+
+/**
+ * Dispatches a flow_session.completed webhook if notify_on_complete is set in trigger_data.
+ * Fire-and-forget — never throws.
+ */
+function dispatchSessionWebhook(
+  supabase: SupabaseClient,
+  sessionId: string,
+  status: "completed" | "error"
+): void {
+  (async () => {
+    try {
+      const { data: session } = await supabase
+        .from("whatsapp_flow_sessions")
+        .select("id, flow_id, phone, lead_id, trigger_type, trigger_data, messages_sent, messages_received, error_message, started_at, completed_at, last_activity_at")
+        .eq("id", sessionId)
+        .single();
+
+      if (!session) return;
+
+      const triggerData = session.trigger_data as Record<string, unknown> || {};
+      if (!triggerData.notify_on_complete) return;
+
+      // Fetch flow name
+      const { data: flow } = await supabase
+        .from("whatsapp_flows")
+        .select("name, display_name")
+        .eq("id", session.flow_id)
+        .single();
+
+      await dispatchN8NWebhook("flow_session.completed", {
+        session_id: session.id,
+        flow_id: session.flow_id,
+        flow_name: flow?.display_name || flow?.name || "Unknown",
+        phone: session.phone,
+        lead_id: session.lead_id,
+        lead_name: triggerData.lead_name || null,
+        trigger_type: session.trigger_type,
+        status,
+        messages_sent: session.messages_sent,
+        messages_received: session.messages_received,
+        error_message: session.error_message || null,
+        started_at: session.started_at,
+        completed_at: session.completed_at || new Date().toISOString(),
+      }, supabase);
+    } catch (err) {
+      console.warn("[flowEngine] Failed to dispatch session webhook:", err);
+    }
+  })();
 }

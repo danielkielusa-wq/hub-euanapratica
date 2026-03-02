@@ -12,8 +12,8 @@ import type { BillingCycle } from '@/types/plans';
 
 // UPDATE THESE AS FOUNDER SPOTS ARE FILLED
 const FOUNDER_SPOTS: Record<string, { total: number; remaining: number }> = {
-  blue:   { total: 100, remaining: 73 }, // Pro
-  purple: { total: 50,  remaining: 38 }, // VIP
+  blue:   { total: 100, remaining: 27 }, // Pro  (73 vendidas)
+  purple: { total: 50,  remaining: 12 }, // VIP (38 vendidas)
 };
 
 // Future regular prices shown as crossed-out anchor

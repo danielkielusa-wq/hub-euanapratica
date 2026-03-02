@@ -52,6 +52,8 @@ export function useAdminUsers(filters: UserFilters = {}) {
         query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
       }
 
+      query = query.limit(200);
+
       const { data, error } = await query;
 
       if (error) {

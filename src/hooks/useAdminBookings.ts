@@ -32,7 +32,8 @@ export function useAdminBookings(filters?: AdminBookingFilters) {
       let query = supabase
         .from('bookings')
         .select('*')
-        .order('scheduled_start', { ascending: false });
+        .order('scheduled_start', { ascending: false })
+        .limit(200);
 
       if (filters?.status && filters.status !== 'all') {
         query = query.eq('status', filters.status);

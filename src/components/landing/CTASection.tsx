@@ -18,7 +18,7 @@ export default function CTASection() {
             <h5 className="text-gray-600 text-base md:text-lg mb-8">
               Comece com acesso gratuito ao Hub
             </h5>
-            <Link to="/register">
+            <Link to="/cadastro">
               <Button
                 size="lg"
                 className="bg-landing-primary hover:bg-landing-primary-dark text-white px-8 py-6 text-base rounded-md"

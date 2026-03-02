@@ -14,7 +14,7 @@ import {
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-white" data-bs-spy="scroll">
+    <div className="min-h-screen bg-white overflow-x-hidden" data-bs-spy="scroll">
       <Navbar />
       <HeroSection />
       <FeaturesSection />

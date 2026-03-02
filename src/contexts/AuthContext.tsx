@@ -17,15 +17,17 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const isDev = import.meta.env.DEV;
+
 async function fetchUserWithRole(supabaseUser: SupabaseUser): Promise<UserWithRole | null> {
   try {
-    console.time('[PERF] fetchUserWithRole');
+    if (isDev) console.time('[PERF] fetchUserWithRole');
     // Run profile and role queries in parallel (saves ~300-500ms)
     const [profileResult, roleResult] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', supabaseUser.id).single(),
       supabase.from('user_roles').select('role').eq('user_id', supabaseUser.id).single(),
     ]);
-    console.timeEnd('[PERF] fetchUserWithRole');
+    if (isDev) console.timeEnd('[PERF] fetchUserWithRole');
 
     if (profileResult.error || !profileResult.data) return null;
     if (roleResult.error || !roleResult.data) return null;
@@ -87,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resolvedRef = useRef(false);
 
   useEffect(() => {
-    console.time('[PERF] Auth total (mount → user ready)');
+    if (isDev) console.time('[PERF] Auth total (mount → user ready)');
 
     const resolveAuth = async (user: SupabaseUser) => {
       // Skip if already resolved by the other path
@@ -95,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resolvedRef.current = true;
 
       const userWithRole = await fetchUserWithRole(user);
-      console.timeEnd('[PERF] Auth total (mount → user ready)');
+      if (isDev) console.timeEnd('[PERF] Auth total (mount → user ready)');
       setAuthState({
         user: userWithRole,
         isAuthenticated: !!userWithRole,
@@ -108,10 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setImpersonatedUser(null);
     };
 
-    console.time('[PERF] getSession()');
+    if (isDev) console.time('[PERF] getSession()');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('[PERF] onAuthStateChange fired:', event);
+        if (isDev) console.log('[PERF] onAuthStateChange fired:', event);
         if (session?.user) {
           // setTimeout(0) avoids Supabase deadlock with async state changes
           setTimeout(() => resolveAuth(session.user), 0);
@@ -123,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.timeEnd('[PERF] getSession()');
+      if (isDev) console.timeEnd('[PERF] getSession()');
       if (session?.user) {
         resolveAuth(session.user);
       } else if (!resolvedRef.current) {

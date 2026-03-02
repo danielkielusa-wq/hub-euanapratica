@@ -10,7 +10,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
-import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { requireAuthOrInternal, validateInternalCall, validateUserAuth, getCorsHeaders } from "../_shared/authGuard.ts";
 import { generateICS, getGoogleCalendarUrl, utf8ToBase64 } from "../_shared/calendarService.ts";
 
 // --- Request types ---
@@ -56,6 +56,18 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "user_id is required for registration notifications" }),
         { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
+    }
+
+    // For registration notifications from authenticated (non-internal) callers,
+    // verify user_id matches the authenticated user unless they are admin/mentor.
+    if (notification_type === "registration" && user_id && !validateInternalCall(req)) {
+      const auth = await validateUserAuth(req);
+      if (auth.authenticated && auth.role === "student" && auth.userId !== user_id) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: cannot send notification for another user" }),
+          { status: 403, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // 1. Fetch live details

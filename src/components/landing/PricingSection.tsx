@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils';
 
 // UPDATE THESE AS FOUNDER SPOTS ARE FILLED
 const FOUNDER_SPOTS = {
-  pro: { total: 100, remaining: 73 },
-  vip: { total: 50, remaining: 38 },
+  pro: { total: 100, remaining: 27 },
+  vip: { total: 50, remaining: 12 },
 } as const;
 
 const plans = [
@@ -256,7 +256,7 @@ export default function PricingSection() {
                       </li>
                     ))}
                   </ul>
-                  <Link to="/register" className="block">
+                  <Link to="/cadastro" className="block">
                     <Button
                       className={cn(
                         'w-full',

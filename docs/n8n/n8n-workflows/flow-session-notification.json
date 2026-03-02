@@ -1,0 +1,185 @@
+{
+  "name": "ENP - Flow Session Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flow-session",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "flow-session"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compatível com N8N v1 (.body) e v2 (raiz)\nconst raw = $input.first().json;\nconst payload = (raw.body && raw.body.event) ? raw.body : raw;\n\nconst status   = payload.status;\nconst isError  = status === 'error';\nconst emoji    = isError ? '❌' : '✅';\nconst phone    = payload.phone    || '—';\nconst leadName = payload.lead_name || '(sem nome)';\n\nconst fmt = (iso) => iso\n  ? new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })\n  : '—';\n\nconst tgText = [\n  `${emoji} *Sessao de Fluxo ${isError ? 'com Erro' : 'Concluida'}*`,\n  ``,\n  `📋 Fluxo: ${payload.flow_name || '—'}`,\n  `👤 Lead: ${leadName}`,\n  `📱 Telefone: \\`${phone}\\``,\n  `🔄 Tipo: ${payload.trigger_type || '—'}`,\n  ``,\n  `📤 Msgs enviadas: ${payload.messages_sent ?? 0}`,\n  `📥 Msgs recebidas: ${payload.messages_received ?? 0}`,\n  ``,\n  `🕐 Início: ${fmt(payload.started_at)}`,\n  `🏁 Fim: ${fmt(payload.completed_at)}`,\n  payload.error_message\n    ? `\\n❌ Erro: ${payload.error_message}`\n    : '',\n].filter(Boolean).join('\\n');\n\nconst statusColor  = isError ? '#dc2626' : '#16a34a';\nconst statusLabel  = isError ? 'ERRO' : 'CONCLUIDA';\nconst emailSubject = `${emoji} Sessao WhatsApp — ${leadName} — ${statusLabel}`;\nconst emailHtml = `\n<div style=\"font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto\">\n  <h2 style=\"color:${statusColor}\">${emoji} Sessao ${statusLabel}</h2>\n  <table style=\"width:100%;border-collapse:collapse;margin:16px 0\">\n    <tr style=\"background:#f3f4f6\"><td style=\"padding:8px;border:1px solid #e5e7eb\">Fluxo</td><td style=\"padding:8px;border:1px solid #e5e7eb;font-weight:bold\">${payload.flow_name || '—'}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">Lead</td><td style=\"padding:8px;border:1px solid #e5e7eb\">${leadName}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">Telefone</td><td style=\"padding:8px;border:1px solid #e5e7eb;font-family:monospace\">${phone}</td></tr>\n    <tr style=\"background:#f3f4f6\"><td style=\"padding:8px;border:1px solid #e5e7eb\">Tipo</td><td style=\"padding:8px;border:1px solid #e5e7eb\">${payload.trigger_type || '—'}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">Msgs enviadas</td><td style=\"padding:8px;border:1px solid #e5e7eb\">${payload.messages_sent ?? 0}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">Msgs recebidas</td><td style=\"padding:8px;border:1px solid #e5e7eb\">${payload.messages_received ?? 0}</td></tr>\n  </table>\n  <p style=\"font-size:13px;color:#6b7280\">Início: ${fmt(payload.started_at)} · Fim: ${fmt(payload.completed_at)}</p>\n  ${payload.error_message ? `<p style=\"background:#fee2e2;padding:8px 12px;border-radius:8px;font-size:13px;color:#991b1b\">❌ ${payload.error_message}</p>` : ''}\n</div>`;\n\nreturn [{\n  json: {\n    telegram_text: tgText,\n    telegram_parse_mode: 'Markdown',\n    email_subject: emailSubject,\n    email_html: emailHtml,\n    email_to: 'admin@euanapratica.com',\n    is_error: isError,\n    event: payload.event,\n    session_id: payload.session_id,\n    phone,\n    lead_name: leadName,\n  }\n}];"
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000002",
+      "name": "Preparar Notificacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-is-error",
+              "leftValue": "={{ $json.is_error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000003",
+      "name": "E erro?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.telegram_text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000004",
+      "name": "Telegram — Confirmacao",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 450],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "ENP Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "=🚨 *ERRO na Sessao de Fluxo*\n\n{{ $json.telegram_text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000005",
+      "name": "Telegram — Erro",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 150],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "ENP Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@euanapratica.com",
+        "toEmail": "={{ $json.email_to }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailType": "html",
+        "message": "={{ $json.email_html }}"
+      },
+      "id": "c1a2c3d4-0007-4000-8000-000000000006",
+      "name": "Email — Alerta Erro",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 150],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred",
+          "name": "ENP SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar Notificacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Notificacao": {
+      "main": [
+        [
+          {
+            "node": "E erro?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E erro?": {
+      "main": [
+        [
+          {
+            "node": "Telegram — Erro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram — Confirmacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram — Erro": {
+      "main": [
+        [
+          {
+            "node": "Email — Alerta Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "whatsapp" },
+    { "name": "flow-session" },
+    { "name": "notification" }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-03T00:00:00.000Z",
+  "versionId": "enp-flow-session-v1"
+}

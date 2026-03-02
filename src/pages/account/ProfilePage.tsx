@@ -364,7 +364,7 @@ export default function ProfilePage() {
               )}
 
               {!isPremiumPlan && (
-                <Button className="w-full mt-4" onClick={() => navigate('/assinar')}>Fazer Upgrade</Button>
+                <Button className="w-full mt-4" onClick={() => navigate('/pricing')}>Fazer Upgrade</Button>
               )}
             </CardContent>
           </Card>
@@ -564,8 +564,8 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                    {!isPremiumPlan && <Button onClick={() => navigate('/assinar')}>Fazer Upgrade</Button>}
-                    {isPremiumPlan && subscriptionStatus === 'active' && <Button variant="outline" onClick={() => navigate('/assinar')}>Alterar Plano</Button>}
+                    {!isPremiumPlan && <Button onClick={() => navigate('/pricing')}>Fazer Upgrade</Button>}
+                    {isPremiumPlan && subscriptionStatus === 'active' && <Button variant="outline" onClick={() => navigate('/pricing')}>Alterar Plano</Button>}
                   </div>
                 </CardContent>
               </Card>

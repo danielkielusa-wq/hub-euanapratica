@@ -98,14 +98,32 @@ export function validateInternalCall(req: Request): boolean {
   if (!internalSecret) return false;
 
   const dedicatedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
-  if (dedicatedSecret) {
-    return internalSecret === dedicatedSecret;
+  if (!dedicatedSecret) {
+    console.error("[authGuard] INTERNAL_FUNCTION_SECRET not set — rejecting internal call. Set it via: npx supabase secrets set INTERNAL_FUNCTION_SECRET=<value>");
+    return false;
   }
 
-  // LOW-3: Fallback to service role key (log warning so ops sets INTERNAL_FUNCTION_SECRET)
-  console.warn("[authGuard] INTERNAL_FUNCTION_SECRET not set — falling back to SUPABASE_SERVICE_ROLE_KEY. Set INTERNAL_FUNCTION_SECRET for better security.");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  return !!serviceKey && internalSecret === serviceKey;
+  return timingSafeEqual(internalSecret, dedicatedSecret);
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Even if lengths differ, iterates through the full expected string.
+ */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+
+  // XOR each byte; if lengths differ, the extra bytes will mismatch against 0
+  const maxLen = Math.max(bufA.length, bufB.length);
+  let mismatch = bufA.length !== bufB.length ? 1 : 0;
+
+  for (let i = 0; i < maxLen; i++) {
+    mismatch |= (bufA[i] ?? 0) ^ (bufB[i] ?? 0);
+  }
+
+  return mismatch === 0;
 }
 
 /**

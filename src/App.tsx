@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,36 +32,36 @@ import CreateSession from "./pages/mentor/CreateSession";
 import EditSession from "./pages/mentor/EditSession";
 import SessionAttendance from "./pages/mentor/SessionAttendance";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
-import AdminEspacos from "./pages/admin/AdminEspacos";
-import AdminEspacoDetail from "./pages/admin/AdminEspacoDetail";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminEnrollments from "./pages/admin/AdminEnrollments";
-import AdminHubServices from "./pages/admin/AdminHubServices";
-import AdminReports from "./pages/admin/AdminReports";
-import AdminFeedback from "./pages/admin/AdminFeedback";
+const AdminEspacos = lazy(() => import("./pages/admin/AdminEspacos"));
+const AdminEspacoDetail = lazy(() => import("./pages/admin/AdminEspacoDetail"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminEnrollments = lazy(() => import("./pages/admin/AdminEnrollments"));
+const AdminHubServices = lazy(() => import("./pages/admin/AdminHubServices"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
+const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
 import StudentLibrary from "./pages/library/StudentLibrary";
 import UploadMaterials from "./pages/admin/UploadMaterials";
-import AdminGlobalLibrary from "./pages/admin/AdminGlobalLibrary";
+const AdminGlobalLibrary = lazy(() => import("./pages/admin/AdminGlobalLibrary"));
 import GlobalLibrary from "./pages/library/GlobalLibrary";
-import AdminE2ETests from "./pages/admin/AdminE2ETests";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminApis from "./pages/admin/AdminApis";
-import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
-import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
-import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
-import AdminPlans from "./pages/admin/AdminPlans";
-import AdminTictoSimulator from "./pages/admin/AdminTictoSimulator";
-import CurriculoUSA from "./pages/curriculo/CurriculoUSA";
-import CurriculoReport from "./pages/curriculo/CurriculoReport";
-import SavedReportPage from "./pages/curriculo/SavedReportPage";
+const AdminE2ETests = lazy(() => import("./pages/admin/AdminE2ETests"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminApis = lazy(() => import("./pages/admin/AdminApis"));
+const AdminEmailTemplates = lazy(() => import("./pages/admin/AdminEmailTemplates"));
+const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
+const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
+const AdminTictoSimulator = lazy(() => import("./pages/admin/AdminTictoSimulator"));
+const CurriculoUSA = lazy(() => import("./pages/curriculo/CurriculoUSA"));
+const CurriculoReport = lazy(() => import("./pages/curriculo/CurriculoReport"));
+const SavedReportPage = lazy(() => import("./pages/curriculo/SavedReportPage"));
 import Onboarding from "./pages/Onboarding";
 import StudentHub from "./pages/hub/StudentHub";
 import StudentHubGlass from "./pages/hub/StudentHubGlass";
 import ServiceCatalog from "./pages/hub/ServiceCatalog";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import MyOrders from "./pages/orders/MyOrders";
-import AdminOrders from "./pages/admin/AdminOrders";
-import AdminLeadsImport from "./pages/admin/AdminLeadsImport";
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
+const AdminLeadsImport = lazy(() => import("./pages/admin/AdminLeadsImport"));
 import PublicReport from "./pages/report/PublicReport";
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
@@ -78,46 +79,48 @@ import JobAccessHistory from "./pages/jobs/JobAccessHistory";
 import { AnalyticsTracker } from "./components/analytics/AnalyticsTracker";
 import ServiceDetail from "./pages/services/ServiceDetail";
 import ThankYouDetail from "./pages/services/ThankYouDetail";
-import TitleTranslator from "./pages/title-translator/TitleTranslator";
+const TitleTranslator = lazy(() => import("./pages/title-translator/TitleTranslator"));
 import LeadFormPage from "./pages/lead-form/LeadFormPage";
 import PricingPage from "./pages/pricing/PricingPage";
 import SubscriptionSuccess from "./pages/pricing/SubscriptionSuccess";
 import SubscriptionPage from "./pages/account/SubscriptionPage";
 import LegalPage from "./pages/legal/LegalPage";
-import AdminLegalPages from "./pages/admin/AdminLegalPages";
-import AdminSubscriptionHealth from "./pages/admin/AdminSubscriptionHealth";
-import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
-import AdminLeadsDashboard from "./pages/admin/AdminLeadsDashboard";
-import AdminCustosApi from "./pages/admin/AdminCustosApi";
-import AdminWeeklyReport from "./pages/admin/AdminWeeklyReport";
-import AdminIdeaKanban from "./pages/admin/AdminIdeaKanban";
-import AdminLeadDetail from "./pages/admin/AdminLeadDetail";
-import AdminAtividades from "./pages/admin/AdminAtividades";
-import AdminWhatsAppTemplates from "./pages/admin/AdminWhatsAppTemplates";
-import AdminAutomations from "./pages/admin/AdminAutomations";
-import AdminNotifications from "./pages/admin/AdminNotifications";
-import AdminPrimeJobs from "./pages/admin/AdminPrimeJobs";
-import AdminWhatsAppFlows from "./pages/admin/AdminWhatsAppFlows";
-import AdminWhatsAppFlowEditor from "./pages/admin/AdminWhatsAppFlowEditor";
-import AdminCourses from "./pages/admin/AdminCourses";
-import AdminCourseBuilder from "./pages/admin/AdminCourseBuilder";
-import AdminAgendamentos from "./pages/admin/AdminAgendamentos";
-import AdminMenuConfig from "./pages/admin/AdminMenuConfig";
-import AdminHubConfig from "./pages/admin/AdminHubConfig";
-import AdminContentStudio from "./pages/admin/AdminContentStudio";
-import MentorDisponibilidade from "./pages/mentor/MentorDisponibilidade";
-import MentorAgendamentos from "./pages/mentor/MentorAgendamentos";
-import MentorLives from "./pages/mentor/MentorLives";
-import MentorCreateLive from "./pages/mentor/MentorCreateLive";
-import MentorLiveDetail from "./pages/mentor/MentorLiveDetail";
+const AdminLegalPages = lazy(() => import("./pages/admin/AdminLegalPages"));
+const AdminSubscriptionHealth = lazy(() => import("./pages/admin/AdminSubscriptionHealth"));
+const AdminSystemHealth = lazy(() => import("./pages/admin/AdminSystemHealth"));
+const AdminLeadsDashboard = lazy(() => import("./pages/admin/AdminLeadsDashboard"));
+const AdminCustosApi = lazy(() => import("./pages/admin/AdminCustosApi"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
+const AdminWeeklyReport = lazy(() => import("./pages/admin/AdminWeeklyReport"));
+const AdminAgendaSemanal = lazy(() => import("./pages/admin/AdminAgendaSemanal"));
+const AdminIdeaKanban = lazy(() => import("./pages/admin/AdminIdeaKanban"));
+const AdminLeadDetail = lazy(() => import("./pages/admin/AdminLeadDetail"));
+const AdminAtividades = lazy(() => import("./pages/admin/AdminAtividades"));
+const AdminWhatsAppTemplates = lazy(() => import("./pages/admin/AdminWhatsAppTemplates"));
+const AdminAutomations = lazy(() => import("./pages/admin/AdminAutomations"));
+const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
+const AdminPrimeJobs = lazy(() => import("./pages/admin/AdminPrimeJobs"));
+const AdminWhatsAppFlows = lazy(() => import("./pages/admin/AdminWhatsAppFlows"));
+const AdminWhatsAppFlowEditor = lazy(() => import("./pages/admin/AdminWhatsAppFlowEditor"));
+const AdminCourses = lazy(() => import("./pages/admin/AdminCourses"));
+const AdminCourseBuilder = lazy(() => import("./pages/admin/AdminCourseBuilder"));
+const AdminAgendamentos = lazy(() => import("./pages/admin/AdminAgendamentos"));
+const AdminMenuConfig = lazy(() => import("./pages/admin/AdminMenuConfig"));
+const AdminHubConfig = lazy(() => import("./pages/admin/AdminHubConfig"));
+const AdminContentStudio = lazy(() => import("./pages/admin/AdminContentStudio"));
+const MentorDisponibilidade = lazy(() => import("./pages/mentor/MentorDisponibilidade"));
+const MentorAgendamentos = lazy(() => import("./pages/mentor/MentorAgendamentos"));
+const MentorLives = lazy(() => import("./pages/mentor/MentorLives"));
+const MentorCreateLive = lazy(() => import("./pages/mentor/MentorCreateLive"));
+const MentorLiveDetail = lazy(() => import("./pages/mentor/MentorLiveDetail"));
 import StudentCourses from "./pages/student/StudentCourses";
 import CoursePlayer from "./pages/student/CoursePlayer";
 import LivesDiscovery from "./pages/lives/LivesDiscovery";
 import LiveLandingPage from "./pages/lives/LiveLandingPage";
-import AssistantLeadsDashboard from "./pages/assistant/AssistantLeadsDashboard";
-import AssistantLeadDetail from "./pages/assistant/AssistantLeadDetail";
-import AssistantAtividades from "./pages/assistant/AssistantAtividades";
-import AssistantWeeklyReport from "./pages/assistant/AssistantWeeklyReport";
+const AssistantLeadsDashboard = lazy(() => import("./pages/assistant/AssistantLeadsDashboard"));
+const AssistantLeadDetail = lazy(() => import("./pages/assistant/AssistantLeadDetail"));
+const AssistantAtividades = lazy(() => import("./pages/assistant/AssistantAtividades"));
+const AssistantWeeklyReport = lazy(() => import("./pages/assistant/AssistantWeeklyReport"));
 
 
 const queryClient = new QueryClient();
@@ -187,6 +190,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Index />} />
@@ -590,6 +598,16 @@ function AppRoutes() {
           <AdminCustosApi />
         </ProtectedRoute>
       } />
+      <Route path="/admin/analytics" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAnalytics />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/agenda-semanal" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAgendaSemanal />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/inteligencia-semanal" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminWeeklyReport />
@@ -793,6 +811,7 @@ function AppRoutes() {
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 }
 

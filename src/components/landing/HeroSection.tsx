@@ -27,10 +27,10 @@ export default function HeroSection() {
     <section id="hero-animation">
       <div
         id="landingHero"
-        className="relative pt-40 pb-24 lg:pb-32"
+        className="relative pt-28 md:pt-40 pb-16 md:pb-24 lg:pb-32 overflow-hidden"
         style={{
           background: 'linear-gradient(138.18deg, #eae8fd 0%, #fce5e6 94.44%)',
-          borderRadius: '0 0 3.5rem 3.5rem',
+          borderRadius: '0 0 2rem 2rem',
         }}
       >
         <img
@@ -41,7 +41,7 @@ export default function HeroSection() {
         <div className="container mx-auto max-w-7xl px-4 relative">
           <div className="text-center relative">
             <h1
-              className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4"
               style={{
                 background: 'linear-gradient(to right, #28c76f 0%, #5a4aff 47.92%, #ff3739 100%)',
                 backgroundSize: '200% auto',
@@ -69,7 +69,7 @@ export default function HeroSection() {
                   className="h-8"
                 />
               </span>
-              <Link to="/register">
+              <Link to="/cadastro">
                 <Button
                   size="lg"
                   className="bg-landing-primary hover:bg-landing-primary-dark text-white px-8 py-6 text-base rounded-md shadow-lg"
@@ -97,7 +97,7 @@ export default function HeroSection() {
             </a>
           </div>
         </div>
-        <div className="h-16 lg:h-24" />
+        <div className="h-8 md:h-16 lg:h-24" />
       </div>
     </section>
   );

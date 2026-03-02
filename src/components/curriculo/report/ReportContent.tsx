@@ -39,30 +39,30 @@ export function ReportContent({ result, features, onUpgrade }: ReportContentProp
       <ReportHeader result={result} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full justify-start bg-background border border-border rounded-2xl p-1.5 h-auto">
+        <TabsList className="w-full justify-start bg-background border border-border rounded-2xl p-1.5 h-auto overflow-x-auto flex-nowrap">
           <TabsTrigger
             value="overview"
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             <Eye className="w-4 h-4" />
-            <span className="font-medium">Visão Geral</span>
+            <span className="font-medium text-sm">Visão Geral</span>
           </TabsTrigger>
           <TabsTrigger
             value="optimization"
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             <Wrench className="w-4 h-4" />
-            <span className="font-medium">Otimização</span>
+            <span className="font-medium text-sm">Otimização</span>
             {!features.show_improvements && (
               <Lock className="w-3 h-3 ml-1 opacity-60" />
             )}
           </TabsTrigger>
           <TabsTrigger
             value="preparation"
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             <GraduationCap className="w-4 h-4" />
-            <span className="font-medium">Preparação</span>
+            <span className="font-medium text-sm">Preparação</span>
             {!features.show_cheat_sheet && (
               <Lock className="w-3 h-3 ml-1 opacity-60" />
             )}

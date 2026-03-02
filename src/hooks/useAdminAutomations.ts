@@ -23,8 +23,15 @@ export interface N8NAutomation {
   last_triggered_at: string | null;
   last_status: string | null;
   metadata: Record<string, unknown>;
+  cron_job_name: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CronSchedule {
+  jobname: string;
+  schedule: string;
+  command: string;
 }
 
 export interface N8NWebhookLog {
@@ -181,6 +188,25 @@ export function useTestAutomation() {
           product_name: 'ENP Hub Pro',
           paid_amount: 97.00,
         });
+      } else if (automation.trigger_event === 'analytics.daily') {
+        Object.assign(testPayload, {
+          snapshot_date: new Date().toISOString().slice(0, 10),
+          ai_summary: 'Hoje a plataforma registrou 15 novos leads de diagnostico, dos quais 3 se cadastraram no hub. A taxa de conversao de 20% esta dentro da media. O MRR estimado e de R$8.400 com 42 assinaturas ativas e churn de 2,4% nos ultimos 30 dias. As ferramentas mais utilizadas foram ResumePass AI (12 usos) e Tradutor de Titulos (8 usos), consumindo 28 creditos no total. Foram realizados 5 agendamentos e 120 mensagens WhatsApp enviadas. O custo total de API no dia foi de $1,23.',
+          dashboard_url: 'https://hub.euanapratica.com/admin/analytics',
+          metrics: {
+            new_leads: 15,
+            new_signups: 3,
+            active_subscriptions: 42,
+            mrr_estimate: 8400,
+            churn_percent_30d: 2.4,
+            total_credits_used: 28,
+            bookings_today: 5,
+            community_posts: 8,
+            whatsapp_outbound: 120,
+            email_sent: 45,
+            api_cost_usd: 1.23,
+          },
+        });
       } else if (automation.trigger_event === 'whatsapp.inbound') {
         Object.assign(testPayload, {
           message_text: 'SIM',
@@ -210,6 +236,46 @@ export function useTestAutomation() {
     },
     onError: (error: any) => {
       toast({ title: 'Erro no teste', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+// ── Query: Cron schedule for a job ────────────────────────────────────
+export function useCronSchedule(jobName: string | null) {
+  return useQuery<CronSchedule | null>({
+    queryKey: ['cron-schedule', jobName],
+    enabled: !!jobName,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_get_cron_schedule', {
+        p_job_name: jobName!,
+      });
+      if (error) throw error;
+      const rows = data as CronSchedule[];
+      return rows?.[0] ?? null;
+    },
+    staleTime: 60_000,
+  });
+}
+
+// ── Mutation: Update cron schedule ────────────────────────────────────
+export function useUpdateCronSchedule() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ jobName, schedule }: { jobName: string; schedule: string }) => {
+      const { error } = await supabase.rpc('admin_update_cron_schedule', {
+        p_job_name: jobName,
+        p_new_schedule: schedule,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, { jobName }) => {
+      queryClient.invalidateQueries({ queryKey: ['cron-schedule', jobName] });
+      toast({ title: 'Horario atualizado', description: 'O cron foi reagendado com sucesso.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao atualizar horario', description: error.message, variant: 'destructive' });
     },
   });
 }

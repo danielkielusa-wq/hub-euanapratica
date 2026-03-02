@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -8,6 +9,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   ArrowLeft,
   Calendar,
   Clock,
@@ -16,6 +27,7 @@ import {
   Pencil,
   Radio,
   Users,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMentorLiveById, useLiveRegistrations, useToggleAttended, useUpdateLive } from '@/hooks/useMentorLives';
@@ -30,6 +42,7 @@ export default function MentorLiveDetail() {
   const { data: registrations, isLoading: loadingRegs } = useLiveRegistrations(id);
   const toggleAttended = useToggleAttended();
   const updateLive = useUpdateLive();
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const handleCopyUrl = () => {
     if (!live) return;
@@ -154,6 +167,17 @@ export default function MentorLiveDetail() {
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Landing Page
                 </Button>
+                {!['completed', 'cancelled'].includes(live.status) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => setShowCancelDialog(true)}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Cancelar
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -225,6 +249,29 @@ export default function MentorLiveDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar live?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A live <strong>"{live.title}"</strong> será marcada como cancelada e não aparecerá mais como disponível para os inscritos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                updateLive.mutate({ id: live.id, status: 'cancelled' });
+                setShowCancelDialog(false);
+              }}
+            >
+              Sim, cancelar live
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

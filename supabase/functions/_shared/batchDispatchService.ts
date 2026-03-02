@@ -13,6 +13,7 @@ import {
   createSession,
   executeSession,
 } from "./flowEngineService.ts";
+import { dispatchN8NWebhook } from "./n8nService.ts";
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -199,6 +200,8 @@ export async function createBatchJob(
     contactsPerCycle?: number;
     businessHoursOnly?: boolean;
     createdBy?: string;
+    maxContacts?: number;
+    notifyOnComplete?: boolean;
     manualContacts?: Array<{ phone: string; lead_name?: string }>;
     scheduledAt?: string;
   }
@@ -208,6 +211,8 @@ export async function createBatchJob(
     contactsPerCycle = 2,
     businessHoursOnly = true,
     createdBy,
+    maxContacts,
+    notifyOnComplete,
     manualContacts,
     scheduledAt,
   } = params;
@@ -225,13 +230,16 @@ export async function createBatchJob(
     if (eligible.length === 0) {
       return { error: "Nenhum contato elegível encontrado para backfill" };
     }
-    contacts = eligible;
+    // Apply maxContacts limit if set
+    contacts = maxContacts && maxContacts > 0
+      ? eligible.slice(0, maxContacts)
+      : eligible;
   } else {
     // manual_list
     if (!manualContacts || manualContacts.length === 0) {
       return { error: "Lista de contatos vazia" };
     }
-    contacts = manualContacts.map((c) => {
+    const allManual = manualContacts.map((c) => {
       const phone = normalizePhone(c.phone);
       return {
         phone,
@@ -244,6 +252,10 @@ export async function createBatchJob(
         },
       };
     });
+    // Apply maxContacts limit if set
+    contacts = maxContacts && maxContacts > 0
+      ? allManual.slice(0, maxContacts)
+      : allManual;
   }
 
   // Determine initial status: scheduled (future) or queued (immediate)
@@ -264,6 +276,7 @@ export async function createBatchJob(
       contacts_queued: contacts.length,
       status: initialStatus,
       ...(isScheduled ? { scheduled_at: scheduledAt } : {}),
+      ...(notifyOnComplete ? { metadata: { notify_on_complete: true } } : {}),
     })
     .select("id")
     .single();
@@ -499,6 +512,9 @@ export async function processBatchCycle(
           .eq("id", job.id);
         result.autoPaused = true;
         console.warn(`[batchService] Job ${job.id} auto-paused: error rate ${errorRate.toFixed(1)}%`);
+
+        // Dispatch webhook for auto-pause
+        await dispatchBatchWebhook(supabase, job.id, "batch.paused");
       }
     }
 
@@ -591,6 +607,9 @@ async function markJobCompleted(
     })
     .eq("id", jobId);
   console.log(`[batchService] Job ${jobId} completed`);
+
+  // Dispatch webhook if notify_on_complete
+  await dispatchBatchWebhook(supabase, jobId, "batch.completed");
 }
 
 async function getJobById(
@@ -603,4 +622,44 @@ async function getJobById(
     .eq("id", jobId)
     .single();
   return data as BatchJob | null;
+}
+
+/**
+ * Dispatches a batch webhook event if notify_on_complete is set in job metadata.
+ * Fire-and-forget — never throws.
+ */
+async function dispatchBatchWebhook(
+  supabase: SupabaseClient,
+  jobId: string,
+  event: string
+): Promise<void> {
+  try {
+    const job = await getJobById(supabase, jobId);
+    if (!job || !job.metadata?.notify_on_complete) return;
+
+    // Fetch flow name for context
+    const { data: flow } = await supabase
+      .from("whatsapp_flows")
+      .select("name, display_name")
+      .eq("id", job.flow_id)
+      .single();
+
+    await dispatchN8NWebhook(event, {
+      job_id: job.id,
+      job_name: job.name,
+      flow_id: job.flow_id,
+      flow_name: flow?.display_name || flow?.name || "Unknown",
+      status: job.status,
+      total_contacts: job.total_contacts,
+      contacts_sent: job.contacts_sent,
+      contacts_failed: job.contacts_failed,
+      contacts_skipped: job.contacts_skipped,
+      error_rate: job.error_rate,
+      started_at: job.started_at,
+      completed_at: job.completed_at || new Date().toISOString(),
+      auto_paused_reason: job.metadata?.auto_paused_reason || null,
+    }, supabase);
+  } catch (err) {
+    console.warn("[batchService] Failed to dispatch batch webhook:", err);
+  }
 }

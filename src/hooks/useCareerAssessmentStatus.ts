@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { CareerInsights } from '@/types/hub';
@@ -51,6 +52,7 @@ export function useCareerAssessmentStatus({
   hasFullReportAccess,
 }: UseCareerAssessmentStatusParams): CareerAssessmentStatus {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Query 1: Profile career fields
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -89,9 +91,10 @@ export function useCareerAssessmentStatus({
   const totalRequired = REQUIRED_CAREER_FIELDS.length;
   const completionPercent = totalRequired > 0 ? Math.round((filledCount / totalRequired) * 100) : 0;
 
-  // Query 2: Evaluation processing status (only when all fields are filled and no report yet)
+  // Evaluation status: polling (reliable) + Realtime (instant when available)
   const hasReport = careerInsights?.hasReport ?? false;
 
+  // Polling backbone — guaranteed to detect completion within 10s
   const { data: evalStatus, isLoading: evalLoading } = useQuery({
     queryKey: ['career-evaluation-status', user?.id],
     queryFn: async () => {
@@ -107,9 +110,44 @@ export function useCareerAssessmentStatus({
     enabled: !!user?.id && allFieldsFilled && !hasReport,
     refetchInterval: (query) => {
       const status = query.state.data;
-      return status === 'pending' || status === 'processing' ? 5000 : false;
+      return status === 'pending' || status === 'processing' ? 10000 : false;
     },
   });
+
+  // Realtime accelerator — instantly updates query cache when edge function finishes
+  useEffect(() => {
+    if (!user?.id || !allFieldsFilled || hasReport) return;
+
+    const channel = supabase
+      .channel(`career-eval-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'career_evaluations',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as Record<string, unknown>)?.processing_status as string | undefined;
+          if (newStatus) {
+            queryClient.setQueryData(['career-evaluation-status', user.id], newStatus);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, allFieldsFilled, hasReport, queryClient]);
+
+  // When evaluation completes, refetch career-insights to get the actual report
+  useEffect(() => {
+    if (evalStatus === 'completed' && !hasReport) {
+      queryClient.invalidateQueries({ queryKey: ['career-insights'] });
+    }
+  }, [evalStatus, hasReport, queryClient]);
 
   // Determine state
   let state: CareerAssessmentState;
@@ -119,12 +157,10 @@ export function useCareerAssessmentStatus({
   } else if (!hasReport) {
     // All fields filled but no completed report
     const isProcessing = evalStatus === 'pending' || evalStatus === 'processing';
-    state = isProcessing || evalLoading ? 'generating' : 'incomplete_data';
+    // evalStatus 'completed' but hasReport still false → cache is refreshing, treat as generating
+    const isCompletedButCacheStale = evalStatus === 'completed';
+    state = isProcessing || evalLoading || isCompletedButCacheStale ? 'generating' : 'incomplete_data';
     // Edge case: allFieldsFilled but no evaluation record yet → still incomplete_data
-    // (user filled profile but didn't trigger RPC yet... but they would have on form completion)
-    // If evalStatus is null (no record) and allFieldsFilled, show generating briefly until
-    // the report creation kicks in, or show incomplete_data if they somehow filled fields
-    // without triggering the RPC (shouldn't happen in normal flow)
     if (evalStatus === null && !evalLoading) {
       state = 'incomplete_data';
     }

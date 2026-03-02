@@ -8,20 +8,38 @@ import type {
   SmartNextStepType,
 } from '@/types/hub';
 import type { ChecklistItemStatus } from '@/types/guidedTour';
+import type { CareerAssessmentState } from '@/hooks/useCareerAssessmentStatus';
 
 interface SmartNextStepInput {
   insights: CareerInsights | null;
   sections: HubSection[] | null;
   checklistItems: ChecklistItemStatus[] | null;
   communityPulse: CommunityPulse | null;
+  assessmentState: CareerAssessmentState | null;
   config: HubDashboardConfig;
 }
 
 function tryMatch(
   type: SmartNextStepType,
-  { insights, sections, checklistItems, communityPulse }: Omit<SmartNextStepInput, 'config'>,
+  { insights, sections, checklistItems, communityPulse, assessmentState }: Omit<SmartNextStepInput, 'config'>,
 ): SmartNextStep | null {
   switch (type) {
+    case 'complete_assessment': {
+      if (assessmentState !== 'incomplete_data') return null;
+      // Only suggest if user has no report yet (incomplete data + no report = came without form)
+      if (insights?.hasReport) return null;
+      return {
+        type,
+        title: 'Finalize seu cadastro',
+        description:
+          'Complete suas informações profissionais para receber seu diagnóstico de carreira personalizado.',
+        actionLabel: 'Completar Agora',
+        actionHref: '#open-assessment',
+        icon: 'ClipboardCheck',
+        urgencyLevel: 'medium',
+      };
+    }
+
     case 'unscheduled_consultation': {
       const needsAction = sections?.find((s) => s.id === 'needs_action');
       const consulting = needsAction?.items.find(
@@ -143,13 +161,14 @@ export function useSmartNextStep({
   sections,
   checklistItems,
   communityPulse,
+  assessmentState,
   config,
 }: SmartNextStepInput): SmartNextStep | null {
   return useMemo(() => {
     for (const type of config.smart_next_step_priority) {
-      const match = tryMatch(type, { insights, sections, checklistItems, communityPulse });
+      const match = tryMatch(type, { insights, sections, checklistItems, communityPulse, assessmentState });
       if (match) return match;
     }
     return null;
-  }, [insights, sections, checklistItems, communityPulse, config.smart_next_step_priority]);
+  }, [insights, sections, checklistItems, communityPulse, assessmentState, config.smart_next_step_priority]);
 }

@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
-import { usePlanAccess } from '@/hooks/usePlanAccess';
-import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { Button } from '@/components/ui/button';
 
 interface ServiceGuardProps {
@@ -14,14 +11,6 @@ interface ServiceGuardProps {
 export function ServiceGuard({ serviceRoute, children }: ServiceGuardProps) {
   const { hasAccess, isLoading } = useServiceAccess(serviceRoute);
   const navigate = useNavigate();
-  const { planId } = usePlanAccess();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !hasAccess) {
-      setShowUpgradeModal(true);
-    }
-  }, [hasAccess, isLoading]);
 
   if (isLoading) {
     return (
@@ -34,12 +23,6 @@ export function ServiceGuard({ serviceRoute, children }: ServiceGuardProps) {
   if (!hasAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          currentPlanId={planId}
-          reason="upgrade"
-        />
         <div className="max-w-lg w-full text-center bg-card border border-border rounded-2xl p-8 shadow-sm">
           <h1 className="text-xl font-bold text-foreground mb-2">
             Recurso indisponível no seu plano

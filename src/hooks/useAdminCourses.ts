@@ -14,7 +14,8 @@ export function useAdminCourses() {
         .from('espacos')
         .select('*, user_espacos(id)')
         .eq('category', 'course')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
 

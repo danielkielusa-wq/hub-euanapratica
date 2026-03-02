@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { LiveWithMentor, LiveAccessCheck } from '@/types/live';
 
 /**
- * Fetch upcoming lives for discovery page (status: scheduled | live)
+ * Fetch all visible lives for discovery page (excludes draft and cancelled)
  */
 export function useLives() {
   return useQuery({
@@ -13,7 +13,7 @@ export function useLives() {
       const { data, error } = await supabase
         .from('lives')
         .select('*')
-        .in('status', ['scheduled', 'live'])
+        .in('status', ['scheduled', 'live', 'completed'])
         .order('scheduled_at', { ascending: true });
 
       if (error) throw error;

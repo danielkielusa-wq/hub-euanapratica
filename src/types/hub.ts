@@ -233,6 +233,7 @@ export type HubDashboardSectionId =
   | 'secondary_services';
 
 export type SmartNextStepType =
+  | 'complete_assessment'
   | 'unscheduled_consultation'
   | 'upcoming_event_24h'
   | 'report_first_action'

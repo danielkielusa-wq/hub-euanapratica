@@ -33,26 +33,26 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
   return (
     <div className="bg-white rounded-3xl border border-purple-100 shadow-sm overflow-hidden">
       {/* Purple Gradient Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-200" />
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 sm:p-6 text-white">
+        <div className="flex justify-between items-center gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-200 shrink-0" />
               Análise de Compatibilidade
             </h2>
             <p className="text-purple-100 text-sm mt-1">Baseado no seu perfil brasileiro</p>
           </div>
-          <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-            <div className="text-3xl font-bold">{matchScore}%</div>
+          <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-2.5 sm:p-3 border border-white/20 shrink-0">
+            <div className="text-2xl sm:text-3xl font-bold">{matchScore}%</div>
             <div className="text-[10px] font-bold uppercase tracking-wider opacity-80">Match</div>
           </div>
         </div>
       </div>
 
       {/* 3-Column Metrics */}
-      <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+      <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
         {/* Timezone */}
-        <div className="space-y-3 pt-4 md:pt-0">
+        <div className="space-y-3 pt-4 sm:pt-0">
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
             <Clock className="w-4 h-4" /> Fuso Horário
           </div>
@@ -70,7 +70,7 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
         </div>
 
         {/* English */}
-        <div className="space-y-3 pt-4 md:pt-0 md:pl-8">
+        <div className="space-y-3 pt-4 sm:pt-0 sm:pl-6 lg:pl-8">
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
             <Globe className="w-4 h-4" /> Inglês
           </div>
@@ -85,7 +85,7 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
         </div>
 
         {/* Salary BRL */}
-        <div className="space-y-3 pt-4 md:pt-0 md:pl-8">
+        <div className="space-y-3 pt-4 sm:pt-4 lg:pt-0 sm:pl-0 lg:pl-8 sm:col-span-2 lg:col-span-1 sm:border-t lg:border-t-0 sm:border-l-0 lg:border-l lg:divide-x divide-gray-100">
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
             <DollarSign className="w-4 h-4" /> Estimativa BRL
           </div>
@@ -101,7 +101,7 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
       </div>
 
       {/* Insights Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 pb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
         {/* Key Skills */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
@@ -143,8 +143,8 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
 
       {/* Application Tips */}
       {enrichment.application_tips.length > 0 && (
-        <div className="mx-8 mb-8 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+        <div className="mx-4 sm:mx-6 lg:mx-8 mb-4 sm:mb-6 lg:mb-8 bg-white rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-100 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-yellow-500" />
             Dicas para Aplicação
           </h2>
@@ -163,7 +163,7 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
 
       {/* ResumePass Keywords + CTA */}
       {enrichment.resume_pass_keywords.length > 0 && (
-        <div className="mx-8 mb-8 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+        <div className="mx-4 sm:mx-6 lg:mx-8 mb-4 sm:mb-6 lg:mb-8 bg-white rounded-3xl p-4 sm:p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
             <FileText className="w-4 h-4" /> Keywords para seu Currículo
           </div>
@@ -187,7 +187,7 @@ export default function JobAIInsights({ enrichment }: JobAIInsightsProps) {
 
       {/* Career Path */}
       {enrichment.career_path_insight && (
-        <div className="mx-8 mb-8 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+        <div className="mx-4 sm:mx-6 lg:mx-8 mb-4 sm:mb-6 lg:mb-8 bg-white rounded-3xl p-4 sm:p-6 border border-gray-100 shadow-sm">
           <div className="flex items-start gap-3">
             <TrendingUp className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
             <div>

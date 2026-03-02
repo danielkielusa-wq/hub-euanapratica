@@ -24,7 +24,6 @@ import { SmartNextStepCard } from '@/components/hub/SmartNextStepCard';
 import { CareerDimensionsSection } from '@/components/hub/CareerDimensionsSection';
 import { CommunityPulseSection } from '@/components/hub/CommunityPulseSection';
 import { SmartUpsellSection } from '@/components/hub/SmartUpsellSection';
-import { QuickToolsStrip } from '@/components/hub/QuickToolsStrip';
 
 export default function StudentHub() {
   const navigate = useNavigate();
@@ -42,7 +41,6 @@ export default function StudentHub() {
 
   const config = hubConfig ?? DEFAULT_CONFIG;
   const planName = quota?.planName || 'Básico';
-  const remainingCredits = quota?.remaining ?? 1;
   const userName = user?.full_name?.split(' ')[0] || 'Usuário';
 
   // Career assessment funnel
@@ -59,6 +57,7 @@ export default function StudentHub() {
     sections: myHubSections ?? null,
     checklistItems: checklistItems ?? null,
     communityPulse: communityPulse ?? null,
+    assessmentState: assessmentStatus.state,
     config,
   });
 
@@ -97,49 +96,53 @@ export default function StudentHub() {
     <DashboardLayout>
       <div className="animate-fade-in pb-20 p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
         {/* Guided Tour (headless — triggers driver.js on first visit) */}
-        <DashboardTour />
+        <DashboardTour
+          assessmentIncomplete={assessmentStatus.state === 'incomplete_data'}
+          onOpenAssessment={() => setAssessmentSheetOpen(true)}
+        />
 
-        {/* Row 1: Hero + SmartNextStep (optional) + Credits */}
+        {/* Row 1: Hero + SmartNextStep sidebar (optional) */}
         {(() => {
           const hasSmartStep = isSectionVisible(config, 'smart_next_step') && !!smartStep;
           const hasChecklist = isSectionVisible(config, 'getting_started') && !tourState?.checklist_dismissed && !!checklistItems;
-          const showMiddle = hasSmartStep || hasChecklist;
+          const showSidebar = hasSmartStep && !hasChecklist;
 
           return (
-            <div className={`grid grid-cols-1 ${showMiddle ? 'lg:grid-cols-2 xl:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
-              {isSectionVisible(config, 'career_hero') && (
-                <div className={showMiddle ? 'col-span-1 lg:col-span-2' : 'col-span-1 lg:col-span-2'}>
-                  <CareerHeroSection
-                    config={config}
-                    insights={careerInsights ?? null}
-                    planName={planName}
-                    userName={userName}
-                    assessmentState={assessmentStatus.state}
-                    completionPercent={assessmentStatus.completionPercent}
-                    filledCount={assessmentStatus.filledCount}
-                    onOpenAssessment={() => setAssessmentSheetOpen(true)}
+            <>
+              <div className={`grid grid-cols-1 ${showSidebar ? 'lg:grid-cols-3' : ''} gap-6`}>
+                {isSectionVisible(config, 'career_hero') && (
+                  <div className={showSidebar ? 'col-span-1 lg:col-span-2' : ''}>
+                    <CareerHeroSection
+                      config={config}
+                      insights={careerInsights ?? null}
+                      planName={planName}
+                      userName={userName}
+                      assessmentState={assessmentStatus.state}
+                      completionPercent={assessmentStatus.completionPercent}
+                      filledCount={assessmentStatus.filledCount}
+                      onOpenAssessment={() => setAssessmentSheetOpen(true)}
+                    />
+                  </div>
+                )}
+
+                {showSidebar && (
+                  <SmartNextStepCard
+                    step={smartStep!}
+                    onAction={smartStep?.type === 'complete_assessment' ? () => setAssessmentSheetOpen(true) : undefined}
                   />
-                </div>
-              )}
+                )}
+              </div>
 
-              {showMiddle && (
-                <div className="flex flex-col gap-6">
-                  {hasSmartStep && (
-                    <SmartNextStepCard step={smartStep!} />
-                  )}
-                  {hasChecklist && (
-                    <GettingStartedChecklist />
-                  )}
-                </div>
-              )}
-
-              {isSectionVisible(config, 'quick_tools') && (
-                <QuickToolsStrip
-                  config={config}
-                  remainingCredits={remainingCredits}
+              {/* Getting Started Checklist — full width below hero */}
+              {hasChecklist && (
+                <GettingStartedChecklist
+                  assessmentIncomplete={assessmentStatus.state === 'incomplete_data'}
+                  onOpenAssessment={() => setAssessmentSheetOpen(true)}
+                  smartStep={hasSmartStep ? smartStep! : undefined}
+                  onSmartStepAction={smartStep?.type === 'complete_assessment' ? () => setAssessmentSheetOpen(true) : undefined}
                 />
               )}
-            </div>
+            </>
           );
         })()}
 

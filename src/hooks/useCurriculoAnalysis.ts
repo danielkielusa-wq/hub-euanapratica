@@ -145,6 +145,7 @@ export function useCurriculoAnalysis() {
               variant: 'destructive',
             });
             await refetchQuota();
+            window.dispatchEvent(new Event('credits-changed'));
             return;
           }
 
@@ -181,6 +182,7 @@ export function useCurriculoAnalysis() {
           variant: 'destructive',
         });
         await refetchQuota();
+        window.dispatchEvent(new Event('credits-changed'));
         return;
       }
 
@@ -224,7 +226,8 @@ export function useCurriculoAnalysis() {
 
       // Usage is now recorded in the edge function, just refetch quota
       await refetchQuota();
-      
+      window.dispatchEvent(new Event('credits-changed'));
+
       setState(prev => ({
         ...prev,
         status: 'complete',
@@ -249,6 +252,7 @@ export function useCurriculoAnalysis() {
       
       // Always refetch quota on error to sync state with server
       await refetchQuota();
+      window.dispatchEvent(new Event('credits-changed'));
       
       toast({
         title: 'Erro na análise',

@@ -34,6 +34,8 @@ export interface CallLLMOptions {
   metadata?: Record<string, unknown>;
   /** Request timeout in ms (default: 55000) */
   timeoutMs?: number;
+  /** Override the model from api_configs.parameters.model (optional) */
+  modelOverride?: string;
 }
 
 export interface CallLLMResult {
@@ -74,7 +76,8 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
   // 1. Get primary config
   const primaryConfig = await getApiConfig(options.apiKey);
   const primaryProvider = detectProviderFromUrl(primaryConfig.base_url || "");
-  const primaryModel = primaryConfig.parameters?.model ||
+  const primaryModel = options.modelOverride ||
+    primaryConfig.parameters?.model ||
     (primaryProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
   console.log(`[llmService] Primary: ${primaryProvider}/${primaryModel} (${options.apiKey})`);

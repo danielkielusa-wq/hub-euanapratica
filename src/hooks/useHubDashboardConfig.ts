@@ -32,6 +32,7 @@ const DEFAULT_CONFIG: HubDashboardConfig = {
     no_report: 'Olá {name}! Comece sua jornada com suas ferramentas gratuitas.',
   },
   smart_next_step_priority: [
+    'complete_assessment',
     'unscheduled_consultation',
     'upcoming_event_24h',
     'report_first_action',

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Flame, Loader2, Lock, Snowflake, Sun, Zap, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, ClipboardCheck } from 'lucide-react';
 import type { CareerInsights, HubDashboardConfig } from '@/types/hub';
 import type { CareerAssessmentState } from '@/hooks/useCareerAssessmentStatus';
 import { getGreeting } from '@/hooks/useHubDashboardConfig';
@@ -15,15 +15,15 @@ interface CareerHeroSectionProps {
   onOpenAssessment: () => void;
 }
 
-const TEMP_CONFIG: Record<string, { label: string; icon: typeof Flame }> = {
-  'muito-quente': { label: 'Muito Quente', icon: Flame },
-  quente: { label: 'Quente', icon: Flame },
-  morno: { label: 'Morno', icon: Sun },
-  frio: { label: 'Frio', icon: Snowflake },
+const TEMP_CONFIG: Record<string, { label: string }> = {
+  'muito-quente': { label: 'Muito Quente' },
+  quente: { label: 'Quente' },
+  morno: { label: 'Morno' },
+  frio: { label: 'Frio' },
 };
 
-const CTA_CLASS = 'mt-6 inline-flex items-center gap-2 bg-white text-[#7367F0] text-sm font-bold px-5 py-2.5 rounded-lg shadow-sm hover:bg-indigo-50 transition-colors';
-const CTA_DISABLED_CLASS = 'mt-6 inline-flex items-center gap-2 bg-white/60 text-[#7367F0]/70 text-sm font-bold px-5 py-2.5 rounded-lg cursor-not-allowed';
+const CTA_CLASS = 'mt-4 sm:mt-6 inline-flex items-center gap-2 bg-white text-[#7367F0] text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg shadow-sm hover:bg-indigo-50 transition-colors';
+const CTA_DISABLED_CLASS = 'mt-4 sm:mt-6 inline-flex items-center gap-2 bg-white/60 text-[#7367F0]/70 text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg cursor-not-allowed';
 
 export function CareerHeroSection({
   config,
@@ -37,7 +37,6 @@ export function CareerHeroSection({
 }: CareerHeroSectionProps) {
   const hasReport = insights?.hasReport ?? false;
   const temp = hasReport && insights?.temperature ? TEMP_CONFIG[insights.temperature] : null;
-  const TempIcon = temp?.icon ?? Zap;
 
   // ─── State-dependent content ──────────────────────────────────────────
 
@@ -45,8 +44,10 @@ export function CareerHeroSection({
   let subtitle: string;
   let stat1Value: React.ReactNode;
   let stat1Label: string;
+  let stat1Helper: string;
   let stat2Value: React.ReactNode;
   let stat2Label: string;
+  let stat2Helper: string;
   let ctaContent: React.ReactNode;
 
   switch (assessmentState) {
@@ -55,6 +56,7 @@ export function CareerHeroSection({
       subtitle = 'Responda algumas perguntas e receba seu relatorio de prontidao.';
       stat1Value = `${filledCount}/12`;
       stat1Label = 'Dados preenchidos';
+      stat1Helper = 'Campos necessarios para o diagnostico';
       stat2Value = (
         <span className="flex items-center gap-1">
           <ClipboardCheck size={18} />
@@ -62,6 +64,7 @@ export function CareerHeroSection({
         </span>
       );
       stat2Label = 'Completar agora';
+      stat2Helper = 'Receba sua analise personalizada';
       ctaContent = (
         <button onClick={onOpenAssessment} className={`${CTA_CLASS} relative group`}>
           {/* Animated glow ring */}
@@ -77,15 +80,19 @@ export function CareerHeroSection({
 
     case 'generating': {
       greeting = getGreeting(config, userName, false);
-      subtitle = 'Estamos analisando seus dados com IA. Isso leva cerca de 2 minutos.';
-      stat1Value = <Loader2 className="w-6 h-6 animate-spin" />;
-      stat1Label = 'Gerando...';
-      stat2Value = '~2 min';
-      stat2Label = 'Tempo estimado';
+      subtitle = 'Nossa IA esta analisando seus dados e gerando seu diagnostico personalizado. Tempo medio: ~90 segundos.';
+      stat1Value = (
+        <Loader2 className="w-7 h-7 sm:w-8 sm:h-8 animate-spin" />
+      );
+      stat1Label = 'Processando';
+      stat1Helper = 'IA analisando seus dados';
+      stat2Value = 'Gerando...';
+      stat2Label = 'Diagnostico';
+      stat2Helper = 'Atualiza automaticamente quando pronto';
       ctaContent = (
         <span className={CTA_DISABLED_CLASS}>
           <Loader2 className="w-4 h-4 animate-spin" />
-          Gerando seu relatorio...
+          Gerando seu diagnostico...
         </span>
       );
       break;
@@ -96,12 +103,14 @@ export function CareerHeroSection({
       subtitle = 'Seu diagnostico esta pronto! Assine para ver todas as recomendacoes.';
       stat1Value = insights ? `${insights.score}/100` : '—';
       stat1Label = 'Prontidao';
+      stat1Helper = 'Indice de preparo para o mercado internacional';
       stat2Value = insights?.phase
-        ? <span className="flex items-center gap-1">{insights.phase.emoji} {insights.phase.name}</span>
+        ? insights.phase.name
         : temp
-        ? <span className="flex items-center gap-1"><TempIcon size={18} /> {temp.label}</span>
+        ? temp.label
         : '—';
       stat2Label = insights?.phase ? 'Fase Atual' : temp ? 'Temperatura' : '—';
+      stat2Helper = insights?.phase ? 'Estagio da sua jornada' : temp ? 'Nivel de urgencia do seu perfil' : '';
       ctaContent = (
         <div className="flex flex-col gap-2 mt-6">
           <Link to="/pricing" className={CTA_CLASS}>
@@ -129,16 +138,22 @@ export function CareerHeroSection({
         : `Voce esta no plano ${planName}. Explore suas ferramentas!`;
       stat1Value = hasReport && insights ? `${insights.score}/100` : planName;
       stat1Label = hasReport ? 'Prontidao' : 'Seu Plano';
+      stat1Helper = hasReport ? 'Indice de preparo para o mercado internacional' : 'Plano ativo na plataforma';
       stat2Value = hasReport && insights?.phase
-        ? <span className="flex items-center gap-1">{insights.phase.emoji} {insights.phase.name}</span>
+        ? insights.phase.name
         : hasReport && temp
-        ? <span className="flex items-center gap-1"><TempIcon size={18} /> {temp.label}</span>
+        ? temp.label
         : 'Diagnostico';
       stat2Label = hasReport && insights?.phase
         ? 'Fase Atual'
         : hasReport && temp
         ? 'Temperatura'
         : 'Comecar agora';
+      stat2Helper = hasReport && insights?.phase
+        ? 'Estagio da sua jornada'
+        : hasReport && temp
+        ? 'Nivel de urgencia do seu perfil'
+        : 'Descubra seu potencial';
 
       if (hasReport && insights?.reportToken) {
         ctaContent = (
@@ -160,21 +175,23 @@ export function CareerHeroSection({
   }
 
   return (
-    <div className="bg-[#7367F0] rounded-xl p-6 text-white relative overflow-hidden shadow-lg shadow-indigo-200">
+    <div className="bg-[#7367F0] rounded-xl p-4 sm:p-6 text-white relative overflow-hidden shadow-lg shadow-indigo-200">
       <div className="relative z-10">
-        <h2 className="text-xl font-bold mb-1">{greeting}</h2>
-        <p className="text-indigo-100 text-sm mb-6 max-w-xs">{subtitle}</p>
+        <h2 className="text-lg sm:text-xl font-bold mb-1">{greeting}</h2>
+        <p className="text-indigo-100 text-sm mb-4 sm:mb-6">{subtitle}</p>
 
-        <div className="flex gap-4">
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 min-w-[100px]">
-            <div className="text-2xl font-bold mb-1">{stat1Value}</div>
-            <div className="text-xs text-indigo-100">{stat1Label}</div>
+        <div className="flex gap-3 sm:gap-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 flex-1 min-w-0">
+            <div className="text-xl sm:text-2xl font-bold mb-1 truncate">{stat1Value}</div>
+            <div className="text-[11px] sm:text-xs font-medium text-indigo-100">{stat1Label}</div>
+            <div className="text-[9px] sm:text-[10px] text-indigo-200/70 mt-0.5 leading-tight">{stat1Helper}</div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 min-w-[100px]">
-            <div className="text-2xl font-bold mb-1 flex items-center gap-1">
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2.5 sm:p-3 flex-1 min-w-0">
+            <div className="text-base sm:text-xl font-bold mb-1 leading-tight break-words">
               {stat2Value}
             </div>
-            <div className="text-xs text-indigo-100">{stat2Label}</div>
+            <div className="text-[11px] sm:text-xs font-medium text-indigo-100">{stat2Label}</div>
+            <div className="text-[9px] sm:text-[10px] text-indigo-200/70 mt-0.5 leading-tight">{stat2Helper}</div>
           </div>
         </div>
 

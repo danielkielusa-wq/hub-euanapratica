@@ -11,13 +11,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, Users, FileText, ListChecks,
-  ChevronRight, ChevronLeft, AlertTriangle, Calendar,
+  ChevronRight, ChevronLeft, AlertTriangle, Calendar, Bell,
 } from 'lucide-react';
 import {
   usePreviewBatchContacts,
   useCreateBatchJob,
   type PreviewResult,
 } from '@/hooks/useAdminBatchDispatch';
+import { InfoTooltip } from './InfoTooltip';
 
 interface BatchDispatchDialogProps {
   open: boolean;
@@ -38,12 +39,14 @@ export function BatchDispatchDialog({
   const [batchName, setBatchName] = useState('');
   const [sourceType, setSourceType] = useState<'report_backfill' | 'manual_list'>('report_backfill');
   const [contactsPerCycle, setContactsPerCycle] = useState(2);
+  const [maxContacts, setMaxContacts] = useState<number | ''>('');
   const [businessHoursOnly, setBusinessHoursOnly] = useState(true);
   const [manualPhones, setManualPhones] = useState('');
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('09:30');
+  const [notifyOnComplete, setNotifyOnComplete] = useState(true);
 
   // Reset on open/close
   useEffect(() => {
@@ -52,6 +55,7 @@ export function BatchDispatchDialog({
       setBatchName(`Lote ${new Date().toLocaleDateString('pt-BR')}`);
       setSourceType('report_backfill');
       setContactsPerCycle(2);
+      setMaxContacts('');
       setBusinessHoursOnly(true);
       setManualPhones('');
       setPreviewResult(null);
@@ -61,6 +65,7 @@ export function BatchDispatchDialog({
       tomorrow.setDate(tomorrow.getDate() + 1);
       setScheduleDate(tomorrow.toISOString().slice(0, 10));
       setScheduleTime('09:30');
+      setNotifyOnComplete(true);
     }
   }, [open]);
 
@@ -70,9 +75,14 @@ export function BatchDispatchDialog({
     .map((line) => line.trim())
     .filter((line) => line.length >= 10);
 
-  const contactCount = sourceType === 'report_backfill'
+  const totalEligible = sourceType === 'report_backfill'
     ? (previewResult?.eligible_count ?? '?')
     : parsedManualContacts.length;
+
+  const effectiveMax = typeof maxContacts === 'number' && maxContacts > 0 ? maxContacts : undefined;
+  const contactCount = typeof totalEligible === 'number' && effectiveMax
+    ? Math.min(totalEligible, effectiveMax)
+    : totalEligible;
 
   const estimatedHours = typeof contactCount === 'number'
     ? Math.ceil(contactCount / (contactsPerCycle * 12)) || 1
@@ -103,11 +113,13 @@ export function BatchDispatchDialog({
         name: batchName.trim(),
         sourceType,
         contactsPerCycle,
+        maxContacts: typeof maxContacts === 'number' && maxContacts > 0 ? maxContacts : undefined,
         businessHoursOnly,
         manualContacts: sourceType === 'manual_list'
           ? parsedManualContacts.map((phone) => ({ phone }))
           : undefined,
         scheduledAt: buildScheduledAt(),
+        notifyOnComplete,
       },
       { onSuccess: () => onOpenChange(false) }
     );
@@ -203,7 +215,10 @@ export function BatchDispatchDialog({
         {step === 'config' && (
           <div className="space-y-5 py-2">
             <div className="space-y-2">
-              <Label>Contatos por ciclo (a cada 5 min)</Label>
+              <Label className="flex items-center">
+              Contatos por ciclo (a cada 5 min)
+              <InfoTooltip content="O cron roda a cada 5 minutos. Com delay de 30-60s entre contatos, use no máximo 2-3 para evitar bloqueio. 2 × 12 ciclos/hora = ~24 contatos/hora." />
+            </Label>
               <Input
                 type="number"
                 value={contactsPerCycle}
@@ -217,9 +232,32 @@ export function BatchDispatchDialog({
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label className="flex items-center">
+                Limite de contatos
+                <InfoTooltip content="Limita o numero total de contatos neste lote. Util para testes graduais: envie primeiro para 30, valide, depois aumente. Deixe vazio para enviar a todos os elegiveis." />
+              </Label>
+              <Input
+                type="number"
+                value={maxContacts}
+                onChange={(e) => setMaxContacts(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                className="rounded-xl w-32"
+                min={1}
+                placeholder="Todos"
+              />
+              <p className="text-xs text-muted-foreground">
+                {typeof maxContacts === 'number' && maxContacts > 0
+                  ? `Apenas os primeiros ${maxContacts} contatos serao incluidos`
+                  : 'Todos os contatos elegiveis serao incluidos'}
+              </p>
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
-                <Label>Somente horario comercial</Label>
+                <Label className="flex items-center">
+                  Somente horario comercial
+                  <InfoTooltip content="Processa apenas entre 9h-20h horário de Brasília (BRT = UTC-3). Fora deste horário o cron pula o lote até o próximo dia útil. Recomendado para evitar mensagens em horários inapropriados." />
+                </Label>
                 <p className="text-xs text-muted-foreground">
                   Processar apenas entre 9h-20h (BRT)
                 </p>
@@ -236,6 +274,7 @@ export function BatchDispatchDialog({
                 <Label className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   Agendar para depois
+                  <InfoTooltip content="O lote ficará com status 'Agendado' até a data/hora escolhida. O cron verificará a cada 5 minutos se chegou a hora. Você pode cancelar o lote antes do início em 'Ver Lotes'." />
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Iniciar envio em data/hora futura
@@ -281,6 +320,24 @@ export function BatchDispatchDialog({
               </p>
             )}
 
+            {/* Webhook notification */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="flex items-center gap-1.5">
+                  <Bell className="w-4 h-4" />
+                  Notificar ao concluir
+                  <InfoTooltip content="Dispara um webhook N8N quando o lote finalizar (sucesso, erro ou pausa automatica). Configure a automacao em /admin/automacoes com o evento 'batch.completed'." />
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Webhook N8N com resumo do lote
+                </p>
+              </div>
+              <Switch
+                checked={notifyOnComplete}
+                onCheckedChange={setNotifyOnComplete}
+              />
+            </div>
+
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
@@ -310,10 +367,16 @@ export function BatchDispatchDialog({
             ) : (
               <>
                 <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+                  {effectiveMax && typeof totalEligible === 'number' && totalEligible > effectiveMax && (
+                    <div className="flex justify-between text-sm">
+                      <span>Contatos elegiveis:</span>
+                      <span className="text-muted-foreground font-mono">{totalEligible}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span>Contatos a enviar:</span>
                     <Badge variant="outline" className="font-mono">
-                      {contactCount}
+                      {contactCount}{effectiveMax ? ` (limite: ${effectiveMax})` : ''}
                     </Badge>
                   </div>
                   <div className="flex justify-between text-sm">

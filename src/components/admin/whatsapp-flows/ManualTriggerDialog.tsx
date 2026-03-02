@@ -10,8 +10,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Play, Search, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Play, Search, CheckCircle2, AlertCircle, X, Bell } from 'lucide-react';
 import { useTriggerFlowManually } from '@/hooks/useAdminWhatsAppFlows';
+import { InfoTooltip } from './InfoTooltip';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ManualTriggerDialogProps {
@@ -36,6 +38,7 @@ export function ManualTriggerDialog({ open, onOpenChange, flowId, flowName }: Ma
   const [searching, setSearching] = useState(false);
   const [foundLead, setFoundLead] = useState<FoundLead | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [notifyOnComplete, setNotifyOnComplete] = useState(true);
   const trigger = useTriggerFlowManually();
 
   const handleEmailSearch = async () => {
@@ -104,6 +107,7 @@ export function ManualTriggerDialog({ open, onOpenChange, flowId, flowName }: Ma
         phone: phone.trim(),
         leadName: leadName.trim() || undefined,
         accessToken: foundLead?.access_token || undefined,
+        notifyOnComplete,
       },
       {
         onSuccess: () => {
@@ -237,6 +241,24 @@ export function ManualTriggerDialog({ open, onOpenChange, flowId, flowName }: Ma
               value={leadName}
               onChange={(e) => setLeadName(e.target.value)}
               className="rounded-xl"
+            />
+          </div>
+
+          {/* Webhook notification */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="flex items-center gap-1.5">
+                <Bell className="w-4 h-4" />
+                Notificar ao concluir
+                <InfoTooltip content="Dispara webhook N8N quando o fluxo finalizar (sucesso ou erro). Configure a automacao com o evento 'flow_session.completed'." />
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Webhook com resultado da execucao
+              </p>
+            </div>
+            <Switch
+              checked={notifyOnComplete}
+              onCheckedChange={setNotifyOnComplete}
             />
           </div>
         </div>

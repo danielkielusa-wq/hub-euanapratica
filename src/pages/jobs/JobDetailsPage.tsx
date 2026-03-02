@@ -25,7 +25,6 @@ import {
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useJob } from '@/hooks/useJob';
 import { useToggleBookmark } from '@/hooks/useJobBookmarks';
 import { useApplyToJob, usePrimeJobsQuota } from '@/hooks/useJobApplications';
@@ -51,7 +50,6 @@ export default function JobDetailsPage() {
   const navigate = useNavigate();
   const { logEvent } = useAnalytics();
   const { planId, isPremiumPlan, isVipPlan } = usePlanAccess();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPostApplyModal, setShowPostApplyModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
   const upsellConfig = useJobUpsellConfig();
@@ -192,7 +190,7 @@ export default function JobDetailsPage() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h5 className="text-lg font-semibold text-foreground mb-0 truncate max-w-[500px]">
+              <h5 className="text-base sm:text-lg font-semibold text-foreground mb-0 truncate max-w-[200px] sm:max-w-[350px] md:max-w-[500px]">
                 {job.title}
               </h5>
               {job.is_applied && (
@@ -234,14 +232,14 @@ export default function JobDetailsPage() {
 
         {/* FREE User Banner — Vuexy alert style */}
         {!canApply && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="bg-amber-100 text-amber-600 p-2 rounded-lg">
+              <span className="bg-primary/10 text-primary p-2 rounded-lg">
                 <Lock className="w-5 h-5" />
               </span>
               <div>
-                <h6 className="font-semibold text-amber-900 mb-0">Oportunidade exclusiva Prime Jobs</h6>
-                <p className="text-sm text-amber-700 mb-0">Faça upgrade para ter acesso direto ao recrutador.</p>
+                <h6 className="font-semibold text-foreground mb-0">Oportunidade exclusiva Prime Jobs</h6>
+                <p className="text-sm text-muted-foreground mb-0">Faça upgrade para ter acesso direto ao recrutador.</p>
               </div>
             </div>
             <button
@@ -250,9 +248,9 @@ export default function JobDetailsPage() {
                   event_type: 'prime_jobs_upgrade_click',
                   metadata: { plan_id: planId || null, source: 'job_banner' }
                 });
-                setShowUpgradeModal(true);
+                navigate('/pricing');
               }}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-colors text-sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-4 py-2 rounded-lg shrink-0 flex items-center gap-2 transition-colors text-sm"
             >
               Ver Planos <ArrowRight className="w-4 h-4" />
             </button>
@@ -260,9 +258,9 @@ export default function JobDetailsPage() {
         )}
 
         {/* Two-Column Layout — Vuexy 8-4 ratio */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
           {/* Left Column — Main Content */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="md:col-span-7 lg:col-span-8 space-y-6">
 
             {/* Job Header Card */}
             <div className="bg-card border border-border rounded-lg">
@@ -474,7 +472,7 @@ export default function JobDetailsPage() {
           </div>
 
           {/* Right Column — Sidebar */}
-          <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+          <aside className="md:col-span-5 lg:col-span-4 space-y-6 md:sticky md:top-8">
             {/* Action Card — Vuexy card style */}
             <div className="bg-card border border-border rounded-lg">
               <div className="px-5 py-4 border-b border-border">
@@ -660,14 +658,6 @@ export default function JobDetailsPage() {
             </div>
           </aside>
         </div>
-
-        {/* Upgrade Modal */}
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          currentPlanId={planId}
-          reason="upgrade"
-        />
 
         {/* Post-apply upsell modal */}
         <JobPostApplyModal

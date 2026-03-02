@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Crown, Sparkles } from 'lucide-react';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { PlanFeatureKey } from '@/types/plans';
@@ -49,12 +50,12 @@ const FEATURE_PLANS: Record<PlanFeatureKey, string> = {
 };
 
 export function UpgradePrompt({ feature, className }: UpgradePromptProps) {
+  const navigate = useNavigate();
   const featureName = FEATURE_NAMES[feature];
   const requiredPlan = FEATURE_PLANS[feature];
 
   const handleUpgrade = () => {
-    // Navigate to pricing/upgrade page or open modal
-    window.open('https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg', '_blank');
+    navigate('/pricing');
   };
 
   return (
@@ -86,10 +87,11 @@ interface LockedOverlayProps {
 }
 
 export function LockedOverlay({ feature, children, className }: LockedOverlayProps) {
+  const navigate = useNavigate();
   const requiredPlan = FEATURE_PLANS[feature];
 
   const handleUpgrade = () => {
-    window.open('https://chat.whatsapp.com/I7Drkh80c1b9ULOmnwPOwg', '_blank');
+    navigate('/pricing');
   };
 
   return (

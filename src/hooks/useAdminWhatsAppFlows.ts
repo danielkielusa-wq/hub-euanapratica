@@ -92,19 +92,27 @@ export function useWhatsAppFlows() {
       const { data: flows, error } = await supabase
         .from('whatsapp_flows')
         .select('*')
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
 
-      // Fetch step counts per flow
-      const { data: stepCounts } = await supabase
-        .from('whatsapp_flow_steps')
-        .select('flow_id');
+      // Fetch step counts per flow (scoped to fetched flows)
+      const flowIds = (flows || []).map((f) => f.id);
+      const { data: stepCounts } = flowIds.length > 0
+        ? await supabase
+            .from('whatsapp_flow_steps')
+            .select('flow_id')
+            .in('flow_id', flowIds)
+        : { data: [] };
 
-      // Fetch active session counts per flow
-      const { data: sessionCounts } = await supabase
-        .from('whatsapp_flow_sessions')
-        .select('flow_id')
-        .in('status', ['active', 'waiting_delay', 'waiting_reply']);
+      // Fetch active session counts per flow (scoped to fetched flows)
+      const { data: sessionCounts } = flowIds.length > 0
+        ? await supabase
+            .from('whatsapp_flow_sessions')
+            .select('flow_id')
+            .in('flow_id', flowIds)
+            .in('status', ['active', 'waiting_delay', 'waiting_reply'])
+        : { data: [] };
 
       const stepCountMap: Record<string, number> = {};
       for (const s of stepCounts || []) {
@@ -510,12 +518,13 @@ export function useTriggerFlowManually() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ flowId, phone, leadId, leadName, accessToken }: {
+    mutationFn: async ({ flowId, phone, leadId, leadName, accessToken, notifyOnComplete }: {
       flowId: string;
       phone: string;
       leadId?: string;
       leadName?: string;
       accessToken?: string;
+      notifyOnComplete?: boolean;
     }) => {
       const { data, error } = await supabase.functions.invoke('execute-whatsapp-flow', {
         body: {
@@ -526,6 +535,7 @@ export function useTriggerFlowManually() {
             lead_id: leadId || null,
             lead_name: leadName || null,
             ...(accessToken ? { access_token: accessToken } : {}),
+            ...(notifyOnComplete ? { notify_on_complete: true } : {}),
           },
         },
       });

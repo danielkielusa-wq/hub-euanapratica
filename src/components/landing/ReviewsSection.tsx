@@ -272,13 +272,13 @@ export default function ReviewsSection() {
 
       {/* Brand Logo Slider */}
       <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="flex items-center justify-center gap-10 lg:gap-16 overflow-hidden">
+        <div className="flex items-center justify-center gap-6 sm:gap-10 lg:gap-16 flex-wrap overflow-hidden">
           {brandLogos.map((logo, i) => (
             <img
               key={i}
               src={logo}
               alt=""
-              className="h-7 md:h-8 object-contain opacity-60 hover:opacity-100 transition-opacity"
+              className="h-6 sm:h-7 md:h-8 object-contain opacity-60 hover:opacity-100 transition-opacity"
             />
           ))}
         </div>

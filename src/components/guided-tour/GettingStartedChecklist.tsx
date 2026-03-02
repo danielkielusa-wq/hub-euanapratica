@@ -10,17 +10,40 @@ import {
   useUpdateGuidedTourState,
   useChecklistStatus,
 } from '@/hooks/useGuidedTour';
-import type { GuidedTourState, ChecklistItemStatus } from '@/types/guidedTour';
+import { SmartNextStepCard } from '@/components/hub/SmartNextStepCard';
+import type { GuidedTourState, ChecklistItemKey, ChecklistItemStatus } from '@/types/guidedTour';
+import type { SmartNextStep } from '@/types/hub';
 
-export function GettingStartedChecklist() {
+interface GettingStartedChecklistProps {
+  assessmentIncomplete?: boolean;
+  onOpenAssessment?: () => void;
+  /** When provided, renders the SmartNextStep card inline (left side on desktop) */
+  smartStep?: SmartNextStep;
+  onSmartStepAction?: () => void;
+}
+
+export function GettingStartedChecklist({ assessmentIncomplete = false, onOpenAssessment, smartStep, onSmartStepAction }: GettingStartedChecklistProps) {
   const navigate = useNavigate();
   const { data: tourState, isLoading: tourLoading } = useGuidedTourState();
   const { data: items, isLoading: itemsLoading } = useChecklistStatus();
   const updateTourState = useUpdateGuidedTourState();
   const confettiFiredRef = useRef(false);
 
-  const completedCount = items?.filter((i) => i.completed).length || 0;
-  const totalCount = items?.length || 4;
+  // Prepend "Finalize seu cadastro" when assessment is incomplete
+  const allItems: ChecklistItemStatus[] = [];
+  if (assessmentIncomplete) {
+    allItems.push({
+      key: 'complete_assessment' as ChecklistItemKey,
+      label: 'Finalize seu cadastro',
+      description: 'Complete seus dados para receber seu diagnóstico de carreira',
+      href: '#open-assessment',
+      completed: false,
+    });
+  }
+  if (items) allItems.push(...items);
+
+  const completedCount = allItems.filter((i) => i.completed).length;
+  const totalCount = allItems.length || 4;
   const allCompleted = completedCount === totalCount && totalCount > 0;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
@@ -30,8 +53,7 @@ export function GettingStartedChecklist() {
       allCompleted &&
       !confettiFiredRef.current &&
       !tourState?.confetti_shown &&
-      items &&
-      items.length > 0
+      allItems.length > 0
     ) {
       confettiFiredRef.current = true;
       // Persist immediately so confetti never fires again, even if component unmounts
@@ -67,7 +89,7 @@ export function GettingStartedChecklist() {
 
   if (tourLoading || itemsLoading) return null;
   if (tourState?.checklist_dismissed) return null;
-  if (!items) return null;
+  if (allItems.length === 0) return null;
 
   const handleDismiss = () => {
     updateTourState.mutate({ checklist_dismissed: true });
@@ -75,13 +97,18 @@ export function GettingStartedChecklist() {
 
   const handleItemClick = (item: ChecklistItemStatus) => {
     if (item.completed) return;
+    // Special case: open assessment sheet instead of navigating
+    if (item.key === 'complete_assessment' && onOpenAssessment) {
+      onOpenAssessment();
+      return;
+    }
     // Mark step as completed immediately, then navigate
     const stepKey = `step_${item.key}` as keyof GuidedTourState;
     updateTourState.mutate({ [stepKey]: true } as Partial<GuidedTourState>);
     navigate(item.href);
   };
 
-  return (
+  const checklistCard = (
     <Card className="relative bg-white dark:bg-card rounded-xl border border-gray-100 dark:border-white/10 shadow-sm overflow-hidden animate-fade-in-up">
       {/* Dismiss button */}
       <button
@@ -95,7 +122,7 @@ export function GettingStartedChecklist() {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-indigo-600" />
-          <CardTitle className="text-lg font-bold text-gray-900">
+          <CardTitle className="text-lg font-bold text-gray-900 dark:text-foreground">
             {allCompleted ? 'Parabéns! Tudo completo!' : 'Primeiros Passos'}
           </CardTitle>
         </div>
@@ -107,41 +134,57 @@ export function GettingStartedChecklist() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-1">
-        {items.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => handleItemClick(item)}
-            disabled={item.completed}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all group',
-              item.completed
-                ? 'bg-green-50/50 cursor-default'
-                : 'hover:bg-gray-50 cursor-pointer'
-            )}
-          >
-            {item.completed ? (
-              <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-            ) : (
-              <Circle className="w-5 h-5 text-gray-300 flex-shrink-0 group-hover:text-indigo-400 transition-colors" />
-            )}
-            <div className="flex-1 min-w-0">
-              <span
-                className={cn(
-                  'text-sm font-medium block',
-                  item.completed ? 'text-green-700 line-through' : 'text-gray-700'
-                )}
-              >
-                {item.label}
-              </span>
-              <span className="text-xs text-gray-400">{item.description}</span>
-            </div>
-            {!item.completed && (
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
-            )}
-          </button>
-        ))}
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+          {allItems.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => handleItemClick(item)}
+              disabled={item.completed}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all group',
+                item.completed
+                  ? 'bg-green-50/50 cursor-default'
+                  : 'hover:bg-gray-50 cursor-pointer'
+              )}
+            >
+              {item.completed ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+              ) : (
+                <Circle className="w-5 h-5 text-gray-300 flex-shrink-0 group-hover:text-indigo-400 transition-colors" />
+              )}
+              <div className="flex-1 min-w-0">
+                <span
+                  className={cn(
+                    'text-sm font-medium block',
+                    item.completed ? 'text-green-700 line-through' : 'text-gray-700 dark:text-foreground'
+                  )}
+                >
+                  {item.label}
+                </span>
+                <span className="text-xs text-gray-400 dark:text-muted-foreground">{item.description}</span>
+              </div>
+              {!item.completed && (
+                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
+              )}
+            </button>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
+
+  // When smartStep is provided, render side-by-side on desktop
+  if (smartStep) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {checklistCard}
+        </div>
+        <SmartNextStepCard step={smartStep} onAction={onSmartStepAction} />
+      </div>
+    );
+  }
+
+  return checklistCard;
 }

@@ -249,9 +249,30 @@ export default function PublicReport() {
             return;
           }
         }
+
+        // Authenticated non-admin: auto-verify with their email (skip email gate)
+        if (user.email) {
+          const { data: autoData, error: autoError } = await supabase.functions.invoke('verify-report-access', {
+            body: { token, email: user.email, action: 'verify' },
+          });
+
+          if (!autoError && autoData?.success) {
+            setAccessLevel(autoData.access_level ?? 'limited');
+            setEvaluation(autoData.evaluation);
+            if (autoData.evaluation.formatted_report) {
+              setFormattedContent(autoData.evaluation.formatted_report);
+            } else if (autoData.evaluation.processing_status === 'processing') {
+              startPolling(autoData.evaluation.id);
+            } else {
+              triggerOnDemand(autoData.evaluation.id, false);
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
       }
     } catch {
-      // Non-blocking: continue with normal flow if admin check fails
+      // Non-blocking: continue with normal flow if auth check fails
     }
 
     try {

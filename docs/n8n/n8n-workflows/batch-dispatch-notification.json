@@ -1,0 +1,185 @@
+{
+  "name": "ENP - Batch Dispatch Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "batch-dispatch",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "batch-dispatch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compatível com N8N v1 (.body) e v2 (raiz)\nconst raw = $input.first().json;\nconst payload = (raw.body && raw.body.event) ? raw.body : raw;\n\nconst status   = payload.status;\nconst isError  = status === 'paused' || (payload.error_rate ?? 0) > 10;\nconst emoji    = status === 'completed' ? '✅' : status === 'paused' ? '⚠️' : '❌';\n\nconst sent    = payload.contacts_sent     ?? 0;\nconst failed  = payload.contacts_failed   ?? 0;\nconst skipped = payload.contacts_skipped  ?? 0;\nconst total   = payload.total_contacts    ?? 0;\nconst errorRate = payload.error_rate != null\n  ? `${Number(payload.error_rate).toFixed(1)}%`\n  : '0%';\n\nconst fmt = (iso) => iso\n  ? new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })\n  : '—';\n\nconst tgText = [\n  `${emoji} *Lote WhatsApp: ${payload.job_name || 'Sem nome'}*`,\n  ``,\n  `📋 Fluxo: ${payload.flow_name || '—'}`,\n  `📊 Status: *${(status || '').toUpperCase()}*`,\n  ``,\n  `👥 Total: ${total}`,\n  `✅ Enviados: ${sent}`,\n  `❌ Falhas: ${failed}`,\n  `⏭️ Pulados: ${skipped}`,\n  `📉 Taxa de erro: ${errorRate}`,\n  ``,\n  `🕐 Início: ${fmt(payload.started_at)}`,\n  `🏁 Fim: ${fmt(payload.completed_at)}`,\n  payload.auto_paused_reason\n    ? `\\n⚠️ Motivo da pausa: ${payload.auto_paused_reason}`\n    : '',\n].filter(Boolean).join('\\n');\n\nconst statusColor  = isError ? '#d97706' : '#16a34a';\nconst emailSubject = `${emoji} Lote WhatsApp \"${payload.job_name}\" — ${status}`;\nconst emailHtml = `\n<div style=\"font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto\">\n  <h2 style=\"color:${statusColor}\">${emoji} ${payload.job_name || 'Lote WhatsApp'}</h2>\n  <p><strong>Fluxo:</strong> ${payload.flow_name || '—'}</p>\n  <p><strong>Status:</strong> <span style=\"color:${statusColor};font-weight:bold\">${(status || '').toUpperCase()}</span></p>\n  <table style=\"width:100%;border-collapse:collapse;margin:16px 0\">\n    <tr style=\"background:#f3f4f6\"><td style=\"padding:8px;border:1px solid #e5e7eb\">Total</td><td style=\"padding:8px;border:1px solid #e5e7eb;font-weight:bold\">${total}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">✅ Enviados</td><td style=\"padding:8px;border:1px solid #e5e7eb;color:#16a34a\">${sent}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">❌ Falhas</td><td style=\"padding:8px;border:1px solid #e5e7eb;color:#dc2626\">${failed}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb\">⏭️ Pulados</td><td style=\"padding:8px;border:1px solid #e5e7eb\">${skipped}</td></tr>\n    <tr style=\"background:#f3f4f6\"><td style=\"padding:8px;border:1px solid #e5e7eb\">Taxa de erro</td><td style=\"padding:8px;border:1px solid #e5e7eb;font-weight:bold\">${errorRate}</td></tr>\n  </table>\n  <p style=\"font-size:13px;color:#6b7280\">Início: ${fmt(payload.started_at)} · Fim: ${fmt(payload.completed_at)}</p>\n  ${payload.auto_paused_reason ? `<p style=\"background:#fef3c7;padding:8px 12px;border-radius:8px;font-size:13px\">⚠️ ${payload.auto_paused_reason}</p>` : ''}\n</div>`;\n\nreturn [{\n  json: {\n    telegram_text: tgText,\n    telegram_parse_mode: 'Markdown',\n    email_subject: emailSubject,\n    email_html: emailHtml,\n    email_to: 'admin@euanapratica.com',\n    is_error: isError,\n    event: payload.event,\n    job_id: payload.job_id,\n  }\n}];"
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000002",
+      "name": "Preparar Notificacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-is-error",
+              "leftValue": "={{ $json.is_error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000003",
+      "name": "E erro?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.telegram_text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000004",
+      "name": "Telegram — Resumo Normal",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 450],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "ENP Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $vars.TELEGRAM_CHAT_ID }}",
+        "text": "=🚨 *ACAO NECESSARIA — Lote com Problema*\n\n{{ $json.telegram_text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000005",
+      "name": "Telegram — Urgente",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1000, 150],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-bot-cred",
+          "name": "ENP Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@euanapratica.com",
+        "toEmail": "={{ $json.email_to }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailType": "html",
+        "message": "={{ $json.email_html }}"
+      },
+      "id": "b1a2c3d4-0006-4000-8000-000000000006",
+      "name": "Email — Alerta Erro",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 150],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred",
+          "name": "ENP SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar Notificacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Notificacao": {
+      "main": [
+        [
+          {
+            "node": "E erro?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E erro?": {
+      "main": [
+        [
+          {
+            "node": "Telegram — Urgente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram — Resumo Normal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram — Urgente": {
+      "main": [
+        [
+          {
+            "node": "Email — Alerta Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "whatsapp" },
+    { "name": "batch" },
+    { "name": "notification" }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-03T00:00:00.000Z",
+  "versionId": "enp-batch-dispatch-v1"
+}

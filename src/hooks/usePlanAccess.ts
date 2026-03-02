@@ -169,6 +169,13 @@ export function usePlanAccess(): UsePlanAccessReturn {
     fetchPlanAccess();
   }, [fetchPlanAccess]);
 
+  // Re-fetch when credits change elsewhere (e.g. after analysis in useCurriculoAnalysis)
+  useEffect(() => {
+    const handler = () => { fetchPlanAccess(); };
+    window.addEventListener('credits-changed', handler);
+    return () => window.removeEventListener('credits-changed', handler);
+  }, [fetchPlanAccess]);
+
   // Memoized access methods
   const hasFeature = useCallback((feature: PlanFeatureKey): boolean => {
     if (!planAccess) return false;

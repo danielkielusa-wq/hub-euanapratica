@@ -53,7 +53,8 @@ export function useAdminIdeas() {
       const { data, error } = await (supabase
         .from('business_ideas' as any)
         .select('*')
-        .order('created_at', { ascending: false }) as any);
+        .order('created_at', { ascending: false })
+        .limit(200) as any);
 
       if (error) throw error;
       return (data || []) as BusinessIdea[];
