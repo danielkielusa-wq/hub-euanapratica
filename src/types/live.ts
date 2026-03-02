@@ -1,5 +1,5 @@
 export type LiveAccessType = 'free' | 'paid' | 'subscribers' | 'pro' | 'vip';
-export type LiveStatus = 'draft' | 'scheduled' | 'live' | 'completed' | 'cancelled';
+export type LiveStatus = 'draft' | 'scheduled' | 'live' | 'completed' | 'cancelled' | 'expired';
 
 export interface Live {
   id: string;
@@ -20,6 +20,7 @@ export interface Live {
   status: LiveStatus;
   recording_url: string | null;
   og_image_url: string | null;
+  mentor_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +76,8 @@ export interface CreateLiveInput {
   max_attendees?: number | null;
   status?: LiveStatus;
   og_image_url?: string;
+  recording_url?: string;
+  mentor_notes?: string;
 }
 
 export type UpdateLiveInput = Partial<CreateLiveInput> & { id: string };
@@ -101,6 +104,7 @@ export const STATUS_LABELS: Record<LiveStatus, string> = {
   live: 'Ao Vivo',
   completed: 'Concluída',
   cancelled: 'Cancelada',
+  expired: 'Expirada',
 };
 
 export const STATUS_COLORS: Record<LiveStatus, string> = {
@@ -109,4 +113,5 @@ export const STATUS_COLORS: Record<LiveStatus, string> = {
   live: 'bg-red-100 text-red-700',
   completed: 'bg-gray-100 text-gray-500',
   cancelled: 'bg-gray-100 text-gray-400',
+  expired: 'bg-orange-100 text-orange-700',
 };

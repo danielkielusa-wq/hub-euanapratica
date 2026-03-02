@@ -9,6 +9,7 @@ import {
   ChevronRight, Video,
 } from 'lucide-react';
 import { useLives } from '@/hooks/useLives';
+import { useMyLives } from '@/hooks/useMyLives';
 import { LiveCard } from '@/components/lives/LiveCard';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -16,7 +17,7 @@ import type { LiveWithMentor } from '@/types/live';
 
 const DAY_SHORT: Record<number, string> = { 0: 'DOM', 1: 'SEG', 2: 'TER', 3: 'QUA', 4: 'QUI', 5: 'SEX', 6: 'SÁB' };
 
-type TabKey = 'upcoming' | 'recorded' | 'past';
+type TabKey = 'upcoming' | 'attended' | 'recorded';
 
 export default function LivesDiscovery() {
   const [search, setSearch] = useState('');
@@ -24,23 +25,24 @@ export default function LivesDiscovery() {
   const navigate = useNavigate();
 
   const { data: lives, isLoading } = useLives();
+  const { data: myLives } = useMyLives();
 
-  // Separate featured, upcoming, recorded (with recording), and past (no recording)
-  const { featured, upcoming, recorded, past } = useMemo(() => {
+  // Separate featured, upcoming, attended (user was present), recorded (all with recording)
+  const { featured, upcoming, attended, recorded } = useMemo(() => {
     const all = lives || [];
+
+    // IDs of lives the user actually attended
+    const attendedIds = new Set(
+      (myLives || []).filter(ml => ml.attended).map(ml => ml.live.id)
+    );
 
     // Upcoming = currently live OR scheduled in the future
     const isUpcoming = (l: LiveWithMentor) =>
       l.status === 'live' || (l.status === 'scheduled' && !isPast(parseISO(l.scheduled_at)));
 
-    // Recorded = completed with a recording URL
+    // Recorded = completed with a recording URL (all, not just user's)
     const isRecorded = (l: LiveWithMentor) =>
       l.status === 'completed' && !!l.recording_url;
-
-    // Past = completed without recording OR scheduled whose date already passed
-    const isPastLive = (l: LiveWithMentor) =>
-      (l.status === 'completed' && !l.recording_url) ||
-      (l.status === 'scheduled' && isPast(parseISO(l.scheduled_at)));
 
     // Featured: prefer a live one, then first upcoming
     const upcomingAll = all.filter(isUpcoming);
@@ -50,14 +52,14 @@ export default function LivesDiscovery() {
     return {
       featured: feat,
       upcoming: upcomingAll.filter(l => l.id !== feat?.id),
+      attended: all
+        .filter(l => attendedIds.has(l.id))
+        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()),
       recorded: all.filter(isRecorded).sort((a, b) =>
         new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
       ),
-      past: all.filter(isPastLive).sort((a, b) =>
-        new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
-      ),
     };
-  }, [lives]);
+  }, [lives, myLives]);
 
   // Weekly schedule (lives this week)
   const weeklySchedule = useMemo(() => {
@@ -83,14 +85,14 @@ export default function LivesDiscovery() {
 
   // Filter by search + tab
   const filteredList = useMemo(() => {
-    const source = activeTab === 'recorded' ? recorded : activeTab === 'past' ? past : upcoming;
+    const source = activeTab === 'attended' ? attended : activeTab === 'recorded' ? recorded : upcoming;
     if (!search.trim()) return source;
     const q = search.toLowerCase();
     return source.filter(l =>
       l.title.toLowerCase().includes(q) ||
       (l.description || '').toLowerCase().includes(q)
     );
-  }, [activeTab, upcoming, recorded, past, search]);
+  }, [activeTab, upcoming, attended, recorded, search]);
 
   const handleCardClick = (live: LiveWithMentor) => {
     navigate(`/live/${live.slug}`);
@@ -158,8 +160,8 @@ export default function LivesDiscovery() {
             {/* Tabs */}
             <div className="flex items-center gap-6 border-b border-gray-200 dark:border-white/10">
               <TabButton label="Próximas" count={upcoming.length + (featured ? 1 : 0)} active={activeTab === 'upcoming'} onClick={() => setActiveTab('upcoming')} />
+              <TabButton label="Participadas" count={attended.length} active={activeTab === 'attended'} onClick={() => setActiveTab('attended')} />
               <TabButton label="Gravadas" count={recorded.length} active={activeTab === 'recorded'} onClick={() => setActiveTab('recorded')} />
-              <TabButton label="Realizadas" count={past.length} active={activeTab === 'past'} onClick={() => setActiveTab('past')} />
             </div>
 
             {/* Grid */}
@@ -176,17 +178,17 @@ export default function LivesDiscovery() {
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-foreground text-lg mb-2">
                   {activeTab === 'upcoming' && 'Nenhuma live agendada'}
+                  {activeTab === 'attended' && 'Nenhuma live participada'}
                   {activeTab === 'recorded' && 'Nenhuma gravação disponível'}
-                  {activeTab === 'past' && 'Nenhuma live realizada'}
                 </h3>
                 <p className="text-gray-500 dark:text-muted-foreground text-sm">
                   {search
                     ? 'Tente ajustar sua busca.'
                     : activeTab === 'upcoming'
                       ? 'Novas lives serão publicadas em breve!'
-                      : activeTab === 'recorded'
-                        ? 'As gravações aparecerão aqui quando disponíveis.'
-                        : 'Lives realizadas aparecerão aqui.'}
+                      : activeTab === 'attended'
+                        ? 'As lives em que você participou aparecerão aqui.'
+                        : 'As gravações aparecerão aqui quando disponíveis.'}
                 </p>
               </div>
             ) : (

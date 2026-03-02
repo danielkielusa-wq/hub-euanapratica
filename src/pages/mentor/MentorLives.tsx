@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, Plus, Radio, Calendar, Users, ExternalLink, MoreVertical, Pencil, Trash2, Copy, XCircle } from 'lucide-react';
+import { Loader2, Search, Plus, Radio, Calendar, Users, ExternalLink, MoreVertical, Pencil, Trash2, Copy, XCircle, CalendarClock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { useMentorLives, useDeleteLive, useUpdateLive } from '@/hooks/useMentorLives';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -39,6 +42,8 @@ export default function MentorLives() {
   const deleteLive = useDeleteLive();
   const updateLive = useUpdateLive();
   const [cancelTarget, setCancelTarget] = useState<Live | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const filteredLives = (lives || []).filter(live => {
     const matchesSearch = live.title.toLowerCase().includes(search.toLowerCase());
@@ -95,6 +100,7 @@ export default function MentorLives() {
               <SelectItem value="live">Ao Vivo</SelectItem>
               <SelectItem value="completed">Concluída</SelectItem>
               <SelectItem value="cancelled">Cancelada</SelectItem>
+              <SelectItem value="expired">Expirada</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -216,7 +222,18 @@ export default function MentorLives() {
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Ver Landing Page
                         </DropdownMenuItem>
-                        {!['completed', 'cancelled'].includes(live.status) && (
+                        {live.status === 'expired' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/mentor/lives/${live.id}/editar`)}
+                            >
+                              <CalendarClock className="h-4 w-4 mr-2" />
+                              Reagendar
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {!['completed', 'cancelled', 'expired'].includes(live.status) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -247,26 +264,72 @@ export default function MentorLives() {
         )}
       </div>
 
-      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null); }}>
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open && !isCancelling) { setCancelTarget(null); setCancelReason(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar live?</AlertDialogTitle>
             <AlertDialogDescription>
-              A live <strong>"{cancelTarget?.title}"</strong> será marcada como cancelada e não aparecerá mais como disponível para os inscritos. Esta ação não pode ser desfeita.
+              A live <strong>"{cancelTarget?.title}"</strong> será marcada como cancelada e os inscritos serão notificados por email. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label htmlFor="cancel-reason" className="text-sm font-medium">
+              Motivo do cancelamento <span className="text-muted-foreground font-normal">(opcional)</span>
+            </Label>
+            <Textarea
+              id="cancel-reason"
+              placeholder="Ex: Problema de agenda, será reagendada para a próxima semana..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="mt-2"
+              rows={3}
+              disabled={isCancelling}
+            />
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isCancelling}>Voltar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={() => {
-                if (cancelTarget) {
+              disabled={isCancelling}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!cancelTarget) return;
+                setIsCancelling(true);
+                try {
+                  // 1. Update status to cancelled
                   handleStatusChange(cancelTarget, 'cancelled');
+
+                  // 2. Send cancellation emails (fire-and-forget with error logging)
+                  supabase.functions
+                    .invoke('send-live-cancelled', {
+                      body: {
+                        live_id: cancelTarget.id,
+                        cancellation_reason: cancelReason.trim() || undefined,
+                      },
+                    })
+                    .then(({ error }) => {
+                      if (error) console.error('Live cancellation email error:', error);
+                    });
+
+                  toast({
+                    title: 'Live cancelada',
+                    description: 'Os inscritos serão notificados por email.',
+                  });
+                } finally {
+                  setIsCancelling(false);
                   setCancelTarget(null);
+                  setCancelReason('');
                 }
               }}
             >
-              Sim, cancelar live
+              {isCancelling ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                'Sim, cancelar live'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

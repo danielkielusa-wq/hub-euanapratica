@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,10 +28,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, ArrowLeft, Loader2, Radio } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, Loader2, Radio, StickyNote, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreateLive, useUpdateLive, useMentorLiveById } from '@/hooks/useMentorLives';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import type { LiveAccessType, LiveStatus } from '@/types/live';
+import { LiveThumbnailUpload } from '@/components/lives/LiveThumbnailUpload';
 
 function slugify(text: string): string {
   return text
@@ -56,8 +59,10 @@ const liveSchema = z.object({
   ticto_product_id: z.string().optional(),
   ticto_checkout_url: z.string().url('URL inválida').optional().or(z.literal('')),
   max_attendees: z.number().int().min(0).optional(),
-  thumbnail_url: z.string().url('URL inválida').optional().or(z.literal('')),
+  thumbnail_url: z.string().optional(),
   og_image_url: z.string().url('URL inválida').optional().or(z.literal('')),
+  recording_url: z.string().url('URL inválida').optional().or(z.literal('')),
+  mentor_notes: z.string().max(2000).optional(),
   status: z.enum(['draft', 'scheduled']),
 });
 
@@ -71,6 +76,8 @@ export default function MentorCreateLive() {
   const { data: existingLive, isLoading: loadingLive } = useMentorLiveById(id);
   const createLive = useCreateLive();
   const updateLive = useUpdateLive();
+  const { toast } = useToast();
+  const [sendPromotion, setSendPromotion] = useState(false);
 
   const form = useForm<LiveFormValues>({
     resolver: zodResolver(liveSchema),
@@ -90,6 +97,8 @@ export default function MentorCreateLive() {
       max_attendees: 0,
       thumbnail_url: '',
       og_image_url: '',
+      recording_url: '',
+      mentor_notes: '',
       status: 'scheduled',
     },
   });
@@ -128,6 +137,8 @@ export default function MentorCreateLive() {
         max_attendees: existingLive.max_attendees || 0,
         thumbnail_url: existingLive.thumbnail_url || '',
         og_image_url: existingLive.og_image_url || '',
+        recording_url: existingLive.recording_url || '',
+        mentor_notes: existingLive.mentor_notes || '',
         status: existingLive.status === 'draft' ? 'draft' : 'scheduled',
       });
     }
@@ -153,17 +164,31 @@ export default function MentorCreateLive() {
       max_attendees: values.max_attendees && values.max_attendees > 0 ? values.max_attendees : null,
       thumbnail_url: values.thumbnail_url || undefined,
       og_image_url: values.og_image_url || undefined,
+      recording_url: values.recording_url || undefined,
+      mentor_notes: values.mentor_notes || undefined,
       status: values.status as LiveStatus,
     };
 
+    const onSuccess = async (data: { id: string }) => {
+      if (sendPromotion && values.status === 'scheduled') {
+        toast({ title: 'Enviando email de divulgação...' });
+        const { error } = await supabase.functions.invoke('send-live-promotion', {
+          body: { live_id: data.id },
+        });
+        if (error) {
+          console.error('Promotion email error:', error);
+          toast({ title: 'Erro ao enviar divulgação', description: error.message, variant: 'destructive' });
+        } else {
+          toast({ title: 'Email de divulgação enviado!' });
+        }
+      }
+      navigate('/mentor/lives');
+    };
+
     if (isEditing) {
-      updateLive.mutate({ id, ...payload }, {
-        onSuccess: () => navigate('/mentor/lives'),
-      });
+      updateLive.mutate({ id, ...payload }, { onSuccess: () => onSuccess({ id }) });
     } else {
-      createLive.mutate(payload, {
-        onSuccess: () => navigate('/mentor/lives'),
-      });
+      createLive.mutate(payload, { onSuccess: (data) => onSuccess(data) });
     }
   };
 
@@ -388,13 +413,17 @@ export default function MentorCreateLive() {
 
             {/* Media */}
             <Card>
-              <CardHeader><CardTitle className="text-base">Imagens (opcional)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Mídia (opcional)</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <FormField control={form.control} name="thumbnail_url" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Thumbnail URL</FormLabel>
-                    <FormControl><Input placeholder="https://..." {...field} /></FormControl>
-                    <FormDescription>Imagem exibida nos cards (recomendado: 16:9)</FormDescription>
+                    <FormLabel>Thumbnail</FormLabel>
+                    <LiveThumbnailUpload
+                      currentImage={field.value || null}
+                      onUpload={(url) => form.setValue('thumbnail_url', url)}
+                      onRemove={() => form.setValue('thumbnail_url', '')}
+                      liveId={id}
+                    />
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -407,12 +436,46 @@ export default function MentorCreateLive() {
                     <FormMessage />
                   </FormItem>
                 )} />
+
+                <FormField control={form.control} name="recording_url" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Link da Gravação</FormLabel>
+                    <FormControl><Input placeholder="https://youtube.com/watch?v=..." {...field} /></FormControl>
+                    <FormDescription>URL da gravação (YouTube, Vimeo, etc). Ao preencher, a live aparece na aba "Gravadas".</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            {/* Mentor Notes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <StickyNote className="h-4 w-4" />
+                  Notas do Mentor
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FormField control={form.control} name="mentor_notes" render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Anotações internas para organização da live (tópicos, links de referência, lembretes...)"
+                        className="min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>Visível apenas para você. Não aparece para os participantes.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </CardContent>
             </Card>
 
             {/* Status + Submit */}
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <FormField control={form.control} name="status" render={({ field }) => (
                     <FormItem>
@@ -441,6 +504,26 @@ export default function MentorCreateLive() {
                     {isEditing ? 'Salvar Alterações' : 'Criar Live'}
                   </Button>
                 </div>
+
+                {form.watch('status') === 'scheduled' && (
+                  <label className="flex items-start gap-3 p-3 rounded-lg border border-indigo-200 bg-indigo-50 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={sendPromotion}
+                      onChange={(e) => setSendPromotion(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-sm font-medium text-indigo-900">
+                        <Mail className="h-4 w-4" />
+                        Divulgar por email
+                      </div>
+                      <p className="text-xs text-indigo-600 mt-0.5">
+                        Envia um email promocional para todos os usuários cadastrados na plataforma.
+                      </p>
+                    </div>
+                  </label>
+                )}
               </CardContent>
             </Card>
           </form>

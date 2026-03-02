@@ -145,7 +145,13 @@ verify_jwt = false
 [functions.send-live-notification]
 verify_jwt = false
 
+[functions.send-live-cancelled]
+verify_jwt = false
+
 [functions.check-unfinished-lives]
+verify_jwt = false
+
+[functions.send-live-promotion]
 verify_jwt = false
 
 [functions.generate-weekly-report]

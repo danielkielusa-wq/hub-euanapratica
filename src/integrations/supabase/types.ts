@@ -1825,6 +1825,57 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_analytics_snapshots: {
+        Row: {
+          ai_summary: string | null
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          error_message: string | null
+          generation_method: string
+          id: string
+          model_used: string | null
+          raw_metrics: Json | null
+          snapshot_date: string
+          status: string
+          tokens_used: number | null
+          webhook_dispatched: boolean | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_method?: string
+          id?: string
+          model_used?: string | null
+          raw_metrics?: Json | null
+          snapshot_date: string
+          status?: string
+          tokens_used?: number | null
+          webhook_dispatched?: boolean | null
+        }
+        Update: {
+          ai_summary?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          generation_method?: string
+          id?: string
+          model_used?: string | null
+          raw_metrics?: Json | null
+          snapshot_date?: string
+          status?: string
+          tokens_used?: number | null
+          webhook_dispatched?: boolean | null
+        }
+        Relationships: []
+      }
       e2e_test_results: {
         Row: {
           created_at: string | null
@@ -3082,6 +3133,7 @@ export type Database = {
           max_attendees: number | null
           meeting_link: string | null
           mentor_id: string
+          mentor_notes: string | null
           og_image_url: string | null
           price: number
           recording_url: string | null
@@ -3104,6 +3156,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_link?: string | null
           mentor_id: string
+          mentor_notes?: string | null
           og_image_url?: string | null
           price?: number
           recording_url?: string | null
@@ -3126,6 +3179,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_link?: string | null
           mentor_id?: string
+          mentor_notes?: string | null
           og_image_url?: string | null
           price?: number
           recording_url?: string | null
@@ -3359,6 +3413,7 @@ export type Database = {
           category: string | null
           created_at: string | null
           created_by: string | null
+          cron_job_name: string | null
           description: string | null
           display_name: string
           enabled: boolean | null
@@ -3380,6 +3435,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           created_by?: string | null
+          cron_job_name?: string | null
           description?: string | null
           display_name: string
           enabled?: boolean | null
@@ -3401,6 +3457,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           created_by?: string | null
+          cron_job_name?: string | null
           description?: string | null
           display_name?: string
           enabled?: boolean | null
@@ -4572,18 +4629,21 @@ export type Database = {
         Row: {
           app_id: string
           created_at: string
+          credits_used: number
           id: string
           user_id: string
         }
         Insert: {
           app_id?: string
           created_at?: string
+          credits_used?: number
           id?: string
           user_id: string
         }
         Update: {
           app_id?: string
           created_at?: string
+          credits_used?: number
           id?: string
           user_id?: string
         }
@@ -5196,6 +5256,7 @@ export type Database = {
           metadata: Json | null
           name: string
           paused_at: string | null
+          scheduled_at: string | null
           source_config: Json | null
           source_type: string
           started_at: string | null
@@ -5220,6 +5281,7 @@ export type Database = {
           metadata?: Json | null
           name: string
           paused_at?: string | null
+          scheduled_at?: string | null
           source_config?: Json | null
           source_type: string
           started_at?: string | null
@@ -5244,6 +5306,7 @@ export type Database = {
           metadata?: Json | null
           name?: string
           paused_at?: string | null
+          scheduled_at?: string | null
           source_config?: Json | null
           source_type?: string
           started_at?: string | null
@@ -5611,6 +5674,14 @@ export type Database = {
         Args: { p_new_plan_id: string; p_user_id: string }
         Returns: boolean
       }
+      admin_get_cron_schedule: {
+        Args: { p_job_name: string }
+        Returns: {
+          command: string
+          jobname: string
+          schedule: string
+        }[]
+      }
       admin_get_users_with_usage: {
         Args: never
         Returns: {
@@ -5629,6 +5700,10 @@ export type Database = {
       admin_update_api_credentials: {
         Args: { p_api_key: string; p_credentials_json: Json }
         Returns: undefined
+      }
+      admin_update_cron_schedule: {
+        Args: { p_job_name: string; p_new_schedule: string }
+        Returns: boolean
       }
       award_course_points: {
         Args: { p_action_type: string; p_context?: Json; p_user_id: string }
@@ -5970,6 +6045,17 @@ export type Database = {
           upcoming_bookings: number
         }[]
       }
+      get_unified_credits: {
+        Args: { p_user_id: string }
+        Returns: {
+          features: Json
+          monthly_credits: number
+          plan_id: string
+          plan_name: string
+          remaining_credits: number
+          used_credits: number
+        }[]
+      }
       get_unread_notification_count: { Args: never; Returns: number }
       get_user_access_history: {
         Args: { p_user_id: string }
@@ -6170,7 +6256,13 @@ export type Database = {
         | "link"
       invitation_status: "pending" | "accepted" | "expired" | "cancelled"
       live_access_type: "free" | "paid" | "subscribers" | "pro" | "vip"
-      live_status: "draft" | "scheduled" | "live" | "completed" | "cancelled"
+      live_status:
+        | "draft"
+        | "scheduled"
+        | "live"
+        | "completed"
+        | "cancelled"
+        | "expired"
       material_type: "pdf" | "link" | "video" | "other"
       notification_type:
         | "reminder_24h"
@@ -6376,7 +6468,14 @@ export const Constants = {
       file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
       invitation_status: ["pending", "accepted", "expired", "cancelled"],
       live_access_type: ["free", "paid", "subscribers", "pro", "vip"],
-      live_status: ["draft", "scheduled", "live", "completed", "cancelled"],
+      live_status: [
+        "draft",
+        "scheduled",
+        "live",
+        "completed",
+        "cancelled",
+        "expired",
+      ],
       material_type: ["pdf", "link", "video", "other"],
       notification_type: [
         "reminder_24h",

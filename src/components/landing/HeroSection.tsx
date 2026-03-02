@@ -69,7 +69,7 @@ export default function HeroSection() {
                   className="h-8"
                 />
               </span>
-              <Link to="/cadastro">
+              <Link to="/login">
                 <Button
                   size="lg"
                   className="bg-landing-primary hover:bg-landing-primary-dark text-white px-8 py-6 text-base rounded-md shadow-lg"

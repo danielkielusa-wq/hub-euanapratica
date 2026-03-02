@@ -21,6 +21,7 @@ import {
 import {
   ArrowLeft,
   Calendar,
+  CalendarClock,
   Clock,
   Copy,
   ExternalLink,
@@ -167,7 +168,18 @@ export default function MentorLiveDetail() {
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Landing Page
                 </Button>
-                {!['completed', 'cancelled'].includes(live.status) && (
+                {live.status === 'expired' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                    onClick={() => navigate(`/mentor/lives/${id}/editar`)}
+                  >
+                    <CalendarClock className="h-3 w-3 mr-1" />
+                    Reagendar
+                  </Button>
+                )}
+                {!['completed', 'cancelled', 'expired'].includes(live.status) && (
                   <Button
                     size="sm"
                     variant="outline"
