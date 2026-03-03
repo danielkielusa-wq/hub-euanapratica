@@ -24,6 +24,9 @@ const PUBLIC_EVALUATION_COLUMNS = [
   "formatted_at",
   "created_at",
   "updated_at",
+  "referral_code",
+  "referral_count",
+  "referral_unlocked",
 ].join(", ");
 
 // Rate limiting: max attempts per token (CRIT-4)
@@ -74,6 +77,17 @@ async function determineAccessLevel(
     .maybeSingle();
 
   if (hubData) return "full";
+
+  // Check referral unlock (5th criterion)
+  const { data: referralData } = await supabase
+    .from("career_evaluations")
+    .select("referral_unlocked")
+    .eq("user_id", userId)
+    .eq("referral_unlocked", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (referralData) return "full";
 
   return "limited";
 }

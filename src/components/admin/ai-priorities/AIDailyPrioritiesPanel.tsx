@@ -93,14 +93,15 @@ interface AIDailyPrioritiesPanelProps {
 export function AIDailyPrioritiesPanel({ open, onOpenChange }: AIDailyPrioritiesPanelProps) {
   const {
     data, isGenerating, progressPhase, completedItems, generatePriorities, markAsDone,
+    remainingUses, isLimitReached, isAssistant,
   } = useAIDailyPriorities();
 
-  // Auto-generate on first open
+  // Auto-generate on first open (skip if limit already reached)
   useEffect(() => {
-    if (open && !data && !isGenerating) {
+    if (open && !data && !isGenerating && !isLimitReached) {
       generatePriorities();
     }
-  }, [open, data, isGenerating, generatePriorities]);
+  }, [open, data, isGenerating, isLimitReached, generatePriorities]);
 
   // Count non-empty categories
   const nonEmptyCategories = data?.categories?.filter(c => c.items?.length > 0) || [];
@@ -126,18 +127,32 @@ export function AIDailyPrioritiesPanel({ open, onOpenChange }: AIDailyPriorities
             </SheetDescription>
           </SheetHeader>
 
-          {/* Regenerate button */}
+          {/* Regenerate button + limit info */}
           <div className="flex items-center gap-3 mt-3">
             <Button
               variant="outline"
               size="sm"
               className="h-8 text-xs rounded-xl gap-1.5"
               onClick={generatePriorities}
-              disabled={isGenerating}
+              disabled={isGenerating || !!isLimitReached}
             >
               <RefreshCw className={cn('w-3.5 h-3.5', isGenerating && 'animate-spin')} />
-              Regenerar
+              {isLimitReached ? 'Limite atingido' : 'Regenerar'}
             </Button>
+
+            {isAssistant && remainingUses !== null && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] rounded-full',
+                  remainingUses > 0
+                    ? 'bg-blue-50 text-blue-600 border-blue-200'
+                    : 'bg-red-50 text-red-600 border-red-200'
+                )}
+              >
+                {remainingUses > 0 ? `${remainingUses} restante${remainingUses > 1 ? 's' : ''}` : 'Limite diário atingido'}
+              </Badge>
+            )}
 
             {data && !isGenerating && (
               <span className="text-[10px] text-gray-400">
@@ -224,19 +239,32 @@ export function AIDailyPrioritiesPanel({ open, onOpenChange }: AIDailyPriorities
             </>
           )}
 
-          {/* Empty state (before first generation) */}
+          {/* Empty state (before first generation or limit reached) */}
           {!data && !isGenerating && (
             <div className="py-16 text-center space-y-4">
               <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
                 <Brain className="w-8 h-8 text-indigo-500" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-600">
-                  Clique em "Regenerar" para gerar as prioridades do dia
-                </p>
-                <p className="text-xs text-gray-400">
-                  A IA vai analisar seus leads e sugerir ações prioritárias
-                </p>
+                {isLimitReached ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-600">
+                      Limite diário atingido
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Você já usou todas as gerações disponíveis hoje. Tente novamente amanhã.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-600">
+                      Clique em "Regenerar" para gerar as prioridades do dia
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      A IA vai analisar seus leads e sugerir ações prioritárias
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

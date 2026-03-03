@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   User, Briefcase, Target, DollarSign, CheckCircle, Play,
   ArrowLeft, ArrowRight, Sparkles, Loader2, Check, X,
@@ -718,6 +719,8 @@ function Step6Confirmation() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LeadFormPage() {
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get('ref') || '';
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<LeadFormData>(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -778,6 +781,12 @@ export default function LeadFormPage() {
         submitted_at: new Date().toISOString(),
         completion_time_seconds: Math.round((Date.now() - startTime.current) / 1000),
         device: window.innerWidth < 768 ? 'mobile' : 'desktop',
+        ref_code: refCode,
+        utm_source: searchParams.get('utm_source') || (refCode ? 'referral' : ''),
+        utm_medium: searchParams.get('utm_medium') || (refCode ? 'share' : ''),
+        utm_campaign: searchParams.get('utm_campaign') || (refCode ? 'report_share' : ''),
+        utm_content: searchParams.get('utm_content') || '',
+        utm_term: searchParams.get('utm_term') || '',
       };
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(payload)) {

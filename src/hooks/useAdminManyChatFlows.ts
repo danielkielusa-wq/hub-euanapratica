@@ -63,11 +63,15 @@ export function useUpdateManyChatFlow() {
 
   return useMutation({
     mutationFn: async ({ id, ...fields }: UpdateFlowInput) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('manychat_flows' as any)
         .update({ ...fields, updated_at: new Date().toISOString() } as any)
-        .eq('id', id);
+        .eq('id', id)
+        .select('id') as any;
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Update não aplicado — verifique permissões de admin');
+      }
     },
     onSuccess: () => {
       toast({ title: 'Flow atualizado' });

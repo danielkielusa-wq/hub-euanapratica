@@ -123,6 +123,49 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Extract userId and role from JWT for rate limiting + cost tracking
+    let userId: string | null = null;
+    let userRole: string | null = null;
+    try {
+      const authHeader = req.headers.get("authorization") || "";
+      const token = authHeader.substring(7);
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      userId = payload.sub || null;
+      if (userId) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .single();
+        userRole = roleData?.role || null;
+      }
+    } catch { /* internal call or malformed — skip limit */ }
+
+    console.log(`[generate-daily-priorities] User: ${userId}, role: ${userRole}`);
+
+    // ── Rate limit for assistant role ────────────────────────────
+    if (userRole === "assistant" && userId) {
+      const { data: limitRows, error: limitErr } = await supabase
+        .rpc("check_daily_priorities_limit", { p_user_id: userId });
+
+      const limitData = limitRows?.[0] || limitRows;
+      if (limitErr) {
+        console.warn("[generate-daily-priorities] Rate limit check failed:", limitErr.message);
+      } else if (limitData && !limitData.allowed) {
+        console.log(`[generate-daily-priorities] Rate limited: ${limitData.used}/${limitData.max_limit}`);
+        return new Response(
+          JSON.stringify({
+            error: "Limite diário atingido",
+            message: `Você já gerou prioridades ${limitData.used}x hoje. O limite é ${limitData.max_limit} por dia.`,
+            used: limitData.used,
+            max: limitData.max_limit,
+            remaining_uses: 0,
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     console.log("[generate-daily-priorities] Starting...");
 
     // ── 0. Load config from app_configs ─────────────────────────────
@@ -364,7 +407,7 @@ Deno.serve(async (req) => {
         const stopReason = aiData.stop_reason || "unknown";
         console.log(`[generate-daily-priorities] Anthropic stop_reason: ${stopReason}, tokens: ${inputTokens}/${outputTokens}`);
         if (stopReason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
-        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
+        logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.content?.[0]?.text || "";
 
       } else {
@@ -401,7 +444,7 @@ Deno.serve(async (req) => {
         const finishReason = aiData.choices?.[0]?.finish_reason || "unknown";
         console.log(`[generate-daily-priorities] OpenAI finish_reason: ${finishReason}, tokens: ${oaiIn}/${oaiOut}`);
         if (finishReason === "length") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
-        logApiCost({ edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
+        logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.choices?.[0]?.message?.content || "";
       }
 
@@ -481,7 +524,19 @@ Deno.serve(async (req) => {
         `${priorities.total_actionable_leads || "?"} actionable leads`
       );
 
-      return new Response(JSON.stringify(priorities), {
+      // Calculate remaining uses for assistant (after this successful call)
+      let remainingUses: number | null = null;
+      if (userRole === "assistant" && userId) {
+        const { data: postRows } = await supabase
+          .rpc("check_daily_priorities_limit", { p_user_id: userId });
+        const postData = postRows?.[0] || postRows;
+        // used won't include THIS call yet (logApiCost is fire-and-forget), so +1
+        remainingUses = postData ? Math.max(0, postData.max_limit - postData.used - 1) : null;
+      }
+
+      const responseBody = { ...priorities, ...(remainingUses !== null ? { remaining_uses: remainingUses } : {}) };
+
+      return new Response(JSON.stringify(responseBody), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (fetchError) {

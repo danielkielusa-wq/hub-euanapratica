@@ -1,0 +1,304 @@
+{
+  "name": "[ManyChat] - Disparo de Flow via CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manychat-trigger-flow",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1200, 400],
+      "id": "webhook-trigger",
+      "name": "CRM Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst s = (val) => (val == null ? '' : String(val).trim());\n\nconst leadPhone = s(body.lead_phone).replace(/[^0-9]/g, '');\nconst hsmParams = Array.isArray(body.hsm_template_params) ? body.hsm_template_params : [];\n\nreturn [{\n  json: {\n    lead_phone: leadPhone,\n    lead_email: s(body.lead_email),\n    lead_name: s(body.lead_name),\n    first_name: s(body.lead_name).split(' ')[0] || s(body.lead_name),\n    lead_id: s(body.lead_id),\n    flow_name: s(body.flow_name),\n    flow_display_name: s(body.flow_display_name),\n    mc_flow_ns: s(body.mc_flow_ns),\n    hsm_template_name: s(body.hsm_template_name),\n    hsm_template_language: s(body.hsm_template_language) || 'pt_BR',\n    hsm_template_params: hsmParams,\n    variables: body.variables || {},\n    trigger_source: s(body.trigger_source) || 'manual',\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 400],
+      "id": "normalize-data",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.manychat.com/fb/subscriber/findBySystemField",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "email", "value": "={{ $('Normalize Data').item.json.lead_email }}" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-720, 400],
+      "id": "find-subscriber",
+      "name": "Busca no ManyChat (Email)",
+      "credentials": { "httpHeaderAuth": { "id": "bqxn4Lv8OoDJZBHB", "name": "ManyChat API" } },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+                "conditions": [{ "id": "not-found", "leftValue": "={{ Array.isArray($json.data) && $json.data.length > 0 }}", "rightValue": "", "operator": { "type": "boolean", "operation": "false", "singleValue": true } }],
+                "combinator": "and"
+              },
+              "renameOutput": true, "outputKey": "Não existe"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+                "conditions": [{ "id": "found", "leftValue": "={{ Array.isArray($json.data) && $json.data.length > 0 }}", "rightValue": "", "operator": { "type": "boolean", "operation": "true", "singleValue": true } }],
+                "combinator": "and"
+              },
+              "renameOutput": true, "outputKey": "Já existe"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-480, 400],
+      "id": "subscriber-exists-switch",
+      "name": "Contato existe?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/createSubscriber",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"first_name\": \"{{ $('Normalize Data').item.json.first_name }}\",\n  \"whatsapp_phone\": \"{{ $('Normalize Data').item.json.lead_phone }}\",\n  \"consent_phrase\": \"CRM flow trigger on hub.euanapratica.com\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 300],
+      "id": "create-subscriber",
+      "name": "Cria Contato ManyChat",
+      "credentials": { "httpHeaderAuth": { "id": "bqxn4Lv8OoDJZBHB", "name": "ManyChat API" } },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "get-new-subscriber-id", "name": "subscriber_id", "value": "={{ $json.data.id }}", "type": "string" }]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [40, 300],
+      "id": "new-subscriber-id",
+      "name": "Pega ID (novo)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "get-existing-subscriber-id", "name": "subscriber_id", "value": "={{ $node[\"Busca no ManyChat (Email)\"].json.data[0].id }}", "type": "string" }]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-200, 520],
+      "id": "existing-subscriber-id",
+      "name": "Pega ID (existente)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// subscriber_id vem direto do input (Pega ID novo OU existente)\n// Não referenciamos esses nodes por nome — evita bug do N8N 2.6.3\n// onde $('NodeName') lança erro não-capturável se o node não executou.\nconst subscriberId = $input.item.json.subscriber_id;\nif (!subscriberId) {\n  throw new Error('subscriber_id não encontrado');\n}\n\n// Normalize Data SEMPRE executa, seguro referenciar\nconst normalize = $('Normalize Data').item.json;\n\nreturn [{\n  json: {\n    subscriber_id: subscriberId,\n    lead_phone: normalize.lead_phone || '',\n    lead_email: normalize.lead_email || '',\n    lead_name: normalize.lead_name || '',\n    hsm_template_name: normalize.hsm_template_name || '',\n    hsm_template_language: normalize.hsm_template_language || 'pt_BR',\n    hsm_template_params: normalize.hsm_template_params || [],\n    mc_flow_ns: normalize.mc_flow_ns || '',\n    flow_name: normalize.flow_name || '',\n    flow_display_name: normalize.flow_display_name || '',\n    trigger_source: normalize.trigger_source || 'manual',\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 400],
+      "id": "prepare-send",
+      "name": "Prepara Envio"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/setCustomFields",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $json.subscriber_id }}\",\n  \"fields\": [\n    { \"field_id\": 14227294, \"field_name\": \"email_lead\", \"field_value\": \"{{ $json.lead_email }}\" },\n    { \"field_id\": 14227232, \"field_name\": \"WPP_ID\", \"field_value\": \"{{ $json.lead_phone }}\" }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 280],
+      "id": "set-custom-fields",
+      "name": "Atualiza Custom Fields",
+      "credentials": { "httpHeaderAuth": { "id": "bqxn4Lv8OoDJZBHB", "name": "ManyChat API" } },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+                "conditions": [{ "id": "has-hsm", "leftValue": "={{ $json.hsm_template_name }}", "rightValue": "", "operator": { "type": "string", "operation": "isNotEmpty" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true, "outputKey": "HSM Template"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+                "conditions": [{ "id": "has-flow-ns", "leftValue": "={{ $json.mc_flow_ns }}", "rightValue": "", "operator": { "type": "string", "operation": "isNotEmpty" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true, "outputKey": "Flow Livre"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+                "conditions": [
+                  { "id": "no-hsm", "leftValue": "={{ $json.hsm_template_name }}", "rightValue": "", "operator": { "type": "string", "operation": "isEmpty" } },
+                  { "id": "no-flow", "leftValue": "={{ $json.mc_flow_ns }}", "rightValue": "", "operator": { "type": "string", "operation": "isEmpty" } }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true, "outputKey": "Sem config"
+            }
+          ]
+        },
+        "options": { "allMatchingOutputs": false }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [560, 500],
+      "id": "dispatch-type-switch",
+      "name": "Tipo de envio?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/sending/sendFlow",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": {{ $json.subscriber_id }},\n  \"flow_ns\": \"{{ $json.mc_flow_ns }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 380],
+      "id": "send-hsm-template",
+      "name": "Envia HSM Template (via sendFlow)",
+      "credentials": { "httpHeaderAuth": { "id": "bqxn4Lv8OoDJZBHB", "name": "ManyChat API" } },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/sending/sendFlow",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": {{ $json.subscriber_id }},\n  \"flow_ns\": \"{{ $json.mc_flow_ns }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 520],
+      "id": "send-flow",
+      "name": "Envia Flow Livre",
+      "credentials": { "httpHeaderAuth": { "id": "bqxn4Lv8OoDJZBHB", "name": "ManyChat API" } },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\nreturn [{\n  json: {\n    error: true,\n    message: `Flow '${data.flow_name}' não tem hsm_template_name nem mc_flow_ns configurado. Configure no admin /admin/manychat-flows`,\n    flow_name: data.flow_name,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 660],
+      "id": "error-no-config",
+      "name": "Erro: Sem Config"
+    },
+    {
+      "parameters": {
+        "content": "## [ManyChat] - Disparo de Flow via CRM\n\n**Trigger**: Webhook do Edge Function `trigger-manychat-flow`\n\n**Fluxo:**\n1. Recebe payload com dados do lead + flow config\n2. Busca contato no ManyChat por **email** (system field)\n   - `findBySystemField` so aceita `email` ou `phone`, NAO `whatsapp_phone`\n3. Se nao existe → `createSubscriber` com `whatsapp_phone` (NAO wa_id!)\n   - `whatsapp_phone` eh o parametro oficial que popula o system field WhatsApp ID\n4. **Prepara Envio**: consolida subscriber_id + dados do Normalize Data\n5. Em paralelo:\n   - Atualiza custom fields (email_lead, WPP_ID) — dead end\n   - Decide tipo de envio → HSM Template / Flow Livre / Erro\n\n**Fix N8N 2.6.3**: Prepara Envio usa `$input.item.json` em vez de\n`$('Pega ID (novo)')` — evita bug onde $() lança erro\nnao-capturavel quando o node referenciado nao executou."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1240, 160],
+      "typeVersion": 1,
+      "id": "sticky-note-docs",
+      "name": "Documentacao"
+    }
+  ],
+  "connections": {
+    "CRM Webhook": {
+      "main": [[{ "node": "Normalize Data", "type": "main", "index": 0 }]]
+    },
+    "Normalize Data": {
+      "main": [[{ "node": "Busca no ManyChat (Email)", "type": "main", "index": 0 }]]
+    },
+    "Busca no ManyChat (Email)": {
+      "main": [[{ "node": "Contato existe?", "type": "main", "index": 0 }]]
+    },
+    "Contato existe?": {
+      "main": [
+        [{ "node": "Cria Contato ManyChat", "type": "main", "index": 0 }],
+        [{ "node": "Pega ID (existente)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cria Contato ManyChat": {
+      "main": [[{ "node": "Pega ID (novo)", "type": "main", "index": 0 }]]
+    },
+    "Pega ID (novo)": {
+      "main": [[{ "node": "Prepara Envio", "type": "main", "index": 0 }]]
+    },
+    "Pega ID (existente)": {
+      "main": [[{ "node": "Prepara Envio", "type": "main", "index": 0 }]]
+    },
+    "Prepara Envio": {
+      "main": [[
+        { "node": "Atualiza Custom Fields", "type": "main", "index": 0 },
+        { "node": "Tipo de envio?", "type": "main", "index": 0 }
+      ]]
+    },
+    "Tipo de envio?": {
+      "main": [
+        [{ "node": "Envia HSM Template", "type": "main", "index": 0 }],
+        [{ "node": "Envia Flow Livre", "type": "main", "index": 0 }],
+        [{ "node": "Erro: Sem Config", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1", "binaryMode": "separate", "availableInMCP": false },
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

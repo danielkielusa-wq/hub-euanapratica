@@ -37,7 +37,7 @@
 
 3. Create a profile entry (if the user hasn't gone through onboarding):
    ```sql
-   INSERT INTO public.profiles (id, full_name, onboarding_completed)
+   INSERT INTO public.profiles (id, full_name, has_completed_onboarding)
    VALUES ('<USER_ID_FROM_STEP_1>', 'Assistente Teste', true);
    ```
 
@@ -73,7 +73,7 @@ Use **Chrome** + **Incognito/Private window** (or different browser) to maintain
 
 | Field | Value |
 |-------|-------|
-| **Input** | Login with `assistente.teste@enp.com` / password |
+| **Input** | Login with `crm@euanapratica.com` / !Teste123 |
 | **Action** | Submit login form |
 | **Expected** | Redirects to `/assistant/leads` (Leads Dashboard) |
 | **Verify** | Browser URL bar shows `/assistant/leads` |
@@ -188,14 +188,15 @@ MINHA CONTA
 | **Expected** | Each row has a "Ver Lead" (eye icon) button but NO trash/delete icon |
 | **How to compare** | Login as admin — admin sees both "Ver" and "Excluir" buttons per row |
 
-### TEST 4.5: "AI Prioridades do Dia" button works
+### TEST 4.5: "AI Prioridades do Dia" button works (rate-limited for assistant)
 
 | Field | Value |
 |-------|-------|
 | **Input** | Click the "IA Prioridades do Dia" button (or similar) on the dashboard |
-| **Expected** | A dialog or panel opens showing AI-generated daily priorities, listing leads in recommended contact order |
+| **Expected** | A panel opens showing AI-generated daily priorities, listing leads in recommended contact order |
 | **Verify** | No error toast. Leads are listed with temperature, reason for priority, and suggested action |
-| **Backend** | Calls `generate-daily-priorities` Edge Function (which now accepts `assistant` role) |
+| **Rate limit** | Assistant role is limited to **2 generations/day** (configurable via `app_configs` key `daily_priorities_assistant_limit`). A badge shows remaining uses (e.g. "1 restante"). When limit is reached, button shows "Limite atingido" and is disabled. Admin is unlimited. |
+| **Backend** | Calls `generate-daily-priorities` Edge Function (accepts `assistant` role, enforces rate limit server-side via `check_daily_priorities_limit` RPC, returns 429 when exceeded) |
 
 ### TEST 4.6: Clicking a lead row navigates to assistant lead detail
 
@@ -299,13 +300,13 @@ MINHA CONTA
 
 ## 6. Activities Page (Atividades)
 
-### TEST 6.1: Page loads with pending tasks
+### TEST 6.1: Page loads with pending tasks and clickable filter tiles
 
 | Field | Value |
 |-------|-------|
 | **Input** | Navigate to `/assistant/atividades` |
-| **Expected** | Shows all pending tasks grouped by urgency: Atrasadas (red), Hoje (amber), Esta semana (blue), Futuras (green), Sem prazo (gray) |
-| **Verify** | Task count matches what admin sees |
+| **Expected** | Shows clickable filter tiles at the top (Atrasadas, Hoje, Esta semana, Futuras, Sem prazo) with counts. Below, pending tasks grouped by urgency with color-coded sections: Atrasadas (red), Hoje (amber), Esta semana (blue), Futuras (green), Sem prazo (gray) |
+| **Verify** | Task count matches what admin sees. Clicking a tile filters the list to that urgency group only. Clicking the active tile again clears the filter. |
 
 ### TEST 6.2: Filter by priority
 
@@ -339,6 +340,14 @@ MINHA CONTA
 | **Action** | Click "Ver Lead" button on any task card |
 | **Expected** | Navigates to `/assistant/leads/<lead-id>` (NOT `/admin/leads/<lead-id>`) |
 | **Verify** | URL bar shows `/assistant/leads/...` |
+
+### TEST 6.6: "Concluidas" tab shows completed tasks
+
+| Field | Value |
+|-------|-------|
+| **Action** | Click the "Concluidas" tab at the top of the Atividades page |
+| **Expected** | Shows completed tasks with completion date and who completed them |
+| **Verify** | Tasks marked as done in TEST 6.4 appear here |
 
 ---
 
@@ -545,12 +554,14 @@ These tests verify that the assistant role can call the 5 Edge Functions that we
 | **Action** | As assistant, open a lead > Tarefas tab > click "IA Sugerir Tarefas" |
 | **Expected** | AI generates task suggestions. No auth error |
 
-### TEST 9.4: generate-daily-priorities (assistant can use AI)
+### TEST 9.4: generate-daily-priorities (assistant can use AI, rate-limited)
 
 | Field | Value |
 |-------|-------|
 | **Action** | As assistant, on leads dashboard > click "IA Prioridades do Dia" |
-| **Expected** | AI generates prioritized lead list. No auth error |
+| **Expected** | AI generates prioritized lead list. No auth error. Badge shows remaining uses. |
+| **Rate limit** | After exceeding daily limit (default 2), returns 429 with "Limite diario atingido". Button disables. Admin has no limit. |
+| **Server-side** | `check_daily_priorities_limit` RPC counts today's calls in `api_cost_logs`. Limit configurable via `app_configs` key `daily_priorities_assistant_limit`. |
 
 ### TEST 9.5: check-whatsapp-status (assistant can check)
 
@@ -682,17 +693,17 @@ ORDER BY created_at DESC;
 
 ### Edge Functions
 
-| Function | Admin | Assistant | Internal |
-|----------|-------|-----------|----------|
-| send-whatsapp | YES | YES | YES |
-| check-whatsapp-status | YES | YES | YES |
-| suggest-whatsapp-messages | YES | YES | YES |
-| suggest-lead-tasks | YES | YES | YES |
-| generate-daily-priorities | YES | YES | YES |
-| generate-weekly-report | YES | NO | YES |
-| delete-user | YES | NO | — |
-| cancel-subscription | YES | NO | — |
-| All other admin functions | YES | NO | varies |
+| Function | Admin | Assistant | Internal | Notes |
+|----------|-------|-----------|----------|-------|
+| send-whatsapp | YES | YES | YES | |
+| check-whatsapp-status | YES | YES | YES | |
+| suggest-whatsapp-messages | YES | YES | YES | |
+| suggest-lead-tasks | YES | YES | YES | |
+| generate-daily-priorities | YES | YES (rate-limited) | YES | Assistant: 2/day default, configurable via `app_configs` |
+| generate-weekly-report | YES | NO | YES | |
+| delete-user | YES | NO | — | |
+| cancel-subscription | YES | NO | — | |
+| All other admin functions | YES | NO | varies | |
 
 ---
 
@@ -700,63 +711,84 @@ ORDER BY created_at DESC;
 
 Use this checklist to track test progress:
 
-- [ ] **2.1** Assistant login → redirects to `/assistant/leads`
-- [ ] **2.2** Assistant blocked from admin routes (test 6 URLs)
-- [ ] **2.3** Assistant can access `/perfil`
-- [ ] **2.4** Admin routes unaffected (regression check)
-- [ ] **3.1** Sidebar shows 4 items only
-- [ ] **3.2** All sidebar links navigate correctly
-- [ ] **4.1** Leads dashboard loads with data
-- [ ] **4.2** LTV card hidden
-- [ ] **4.3** Financial columns hidden in table
-- [ ] **4.4** Delete button hidden
-- [ ] **4.5** AI daily priorities works
-- [ ] **4.6** Lead row click → `/assistant/leads/:id`
-- [ ] **5.1** Lead detail loads
-- [ ] **5.2** LTV stat card hidden
-- [ ] **5.3** Overview tab hides financial/UTM data
-- [ ] **5.4** WhatsApp send works
-- [ ] **5.5** AI suggest WhatsApp works
-- [ ] **5.6** Tasks: create, complete, skip
-- [ ] **5.7** AI suggest tasks works
-- [ ] **5.8** Interactions: add, edit, delete
-- [ ] **5.9** Back button → `/assistant/leads`
-- [ ] **6.1** Atividades loads with grouped tasks
-- [ ] **6.2** Priority filter works
-- [ ] **6.3** Type filter works
-- [ ] **6.4** Complete task from activities page
-- [ ] **6.5** "Ver Lead" → `/assistant/leads/:id`
-- [ ] **7.1** Empty state when no approved report
-- [ ] **7.2** Admin generates + approves report
-- [ ] **7.3** Assistant sees approved report with all sections
-- [ ] **7.4** Directives card shows prominently
-- [ ] **7.5** Directives card hidden when empty
-- [ ] **7.6** Hot leads link to `/assistant/leads/:id`
-- [ ] **7.7** Copy button works on talking points
-- [ ] **7.8** Report history navigation
-- [ ] **7.9** Unapproved reports not visible
-- [ ] **7.10** No "Gerar Agora" button
-- [ ] **7.11** Revoked approval removes access
-- [ ] **8.1** Help: Leads Dashboard
-- [ ] **8.2** Help: Lead Detail
-- [ ] **8.3** Help: Atividades
-- [ ] **8.4** Help: Weekly Report
-- [ ] **8.5** Help buttons not shown to admin
-- [ ] **9.1** send-whatsapp authorized
-- [ ] **9.2** suggest-whatsapp-messages authorized
-- [ ] **9.3** suggest-lead-tasks authorized
-- [ ] **9.4** generate-daily-priorities authorized
-- [ ] **9.5** check-whatsapp-status authorized
-- [ ] **9.6** Admin-only functions reject assistant
-- [ ] **10.1** RLS: SELECT career_evaluations
-- [ ] **10.2** RLS: UPDATE career_evaluations
-- [ ] **10.3** RLS: DELETE blocked
-- [ ] **10.4** RLS: CRUD lead_interactions
-- [ ] **10.5** RLS: CRUD lead_tasks
-- [ ] **10.6** RLS: Only approved reports visible
-- [ ] **10.7** Network: financial data exposure noted
+> **Last full test run: 2026-03-03 — ALL PASSED**
+> Test credentials: `crm@euanapratica.com` / `!Teste123`
+
+- [x] **2.1** Assistant login → redirects to `/assistant/leads`
+- [x] **2.2** Assistant blocked from admin routes (test 6 URLs)
+- [x] **2.3** Assistant can access `/perfil`
+- [x] **2.4** Admin routes unaffected (regression check)
+- [x] **3.1** Sidebar shows 4 items only
+- [x] **3.2** All sidebar links navigate correctly
+- [x] **4.1** Leads dashboard loads with data
+- [x] **4.2** LTV card hidden
+- [x] **4.3** Financial columns hidden in table
+- [x] **4.4** Delete button hidden
+- [x] **4.5** AI daily priorities works (rate-limited: 2/day for assistant)
+- [x] **4.6** Lead row click → `/assistant/leads/:id`
+- [x] **5.1** Lead detail loads
+- [x] **5.2** LTV stat card hidden
+- [x] **5.3** Overview tab hides financial/UTM data
+- [x] **5.4** WhatsApp send works
+- [x] **5.5** AI suggest WhatsApp works
+- [x] **5.6** Tasks: create, complete, skip
+- [x] **5.7** AI suggest tasks works
+- [x] **5.8** Interactions: add, edit, delete
+- [x] **5.9** Back button → `/assistant/leads`
+- [x] **6.1** Atividades loads with grouped tasks + clickable filter tiles
+- [x] **6.2** Priority filter works
+- [x] **6.3** Type filter works
+- [x] **6.4** Complete task from activities page
+- [x] **6.5** "Ver Lead" → `/assistant/leads/:id`
+- [x] **6.6** "Concluidas" tab shows completed tasks
+- [x] **7.1** Empty state when no approved report
+- [x] **7.2** Admin generates + approves report
+- [x] **7.3** Assistant sees approved report with all sections
+- [x] **7.4** Directives card shows prominently
+- [x] **7.5** Directives card hidden when empty
+- [x] **7.6** Hot leads link to `/assistant/leads/:id`
+- [x] **7.7** Copy button works on talking points
+- [x] **7.8** Report history navigation
+- [x] **7.9** Unapproved reports not visible
+- [x] **7.10** No "Gerar Agora" button
+- [x] **7.11** Revoked approval removes access
+- [x] **8.1** Help: Leads Dashboard
+- [x] **8.2** Help: Lead Detail
+- [x] **8.3** Help: Atividades
+- [x] **8.4** Help: Weekly Report
+- [x] **8.5** Help buttons not shown to admin
+- [x] **9.1** send-whatsapp authorized
+- [x] **9.2** suggest-whatsapp-messages authorized
+- [x] **9.3** suggest-lead-tasks authorized
+- [x] **9.4** generate-daily-priorities authorized (rate-limited for assistant)
+- [x] **9.5** check-whatsapp-status authorized
+- [x] **9.6** Admin-only functions reject assistant
+- [x] **10.1** RLS: SELECT career_evaluations
+- [x] **10.2** RLS: UPDATE career_evaluations
+- [x] **10.3** RLS: DELETE blocked
+- [x] **10.4** RLS: CRUD lead_interactions
+- [x] **10.5** RLS: CRUD lead_tasks
+- [x] **10.6** RLS: Only approved reports visible
+- [x] **10.7** Network: financial data exposure noted
 
 ---
+
+## Bugs Found & Fixed During Testing (2026-03-03)
+
+| # | Bug | Root Cause | Fix Applied |
+|---|-----|-----------|-------------|
+| 1 | Weekly Report page (`/assistant/inteligencia-semanal`) crashed in a loop | `ai_analysis.executive_summary` from the DB was an array/object (LLM JSON output), but `ExecutiveSummary` component called `text.split('\n')` on it — `TypeError: text.split is not a function` caused React to crash and re-render infinitely | Modified `ExecutiveSummary` to accept `string \| string[] \| unknown` and normalize to string. Added safety coercion for `directives`, `hot_leads_briefing`, and `weekly_comparison` fields. File: `src/pages/assistant/AssistantWeeklyReport.tsx` |
+| 2 | Assistant login redirected to `/admin/leads-dashboard` instead of `/assistant/leads` | `ProtectedRoute` in `App.tsx` did not handle `assistant` role in the redirect logic | Fixed redirect logic to route assistant → `/assistant/leads` |
+| 3 | Admin UI `/admin/usuarios` didn't show `assistant` as a role option | `AdminUsersPage` role dropdown only had `admin` and `student` | Added `assistant` option to the role dropdown |
+| 4 | `suggest-lead-tasks` Edge Function returned generic tasks instead of lead-specific | System prompt didn't include enough lead context | Updated prompt to include lead profile data (temperature, score, phase, interactions) |
+
+## Features Added During Testing (2026-03-03)
+
+| # | Feature | Description | Files Modified |
+|---|---------|-------------|----------------|
+| 1 | Daily priorities rate limit | Assistant limited to 2 generations/day (configurable via `app_configs` key `daily_priorities_assistant_limit`). Server-side enforcement via `check_daily_priorities_limit` RPC + 429 response. Frontend shows remaining uses badge and disables button when exhausted. Admin unlimited. | `supabase/migrations/20260310200000_daily_priorities_assistant_limit.sql`, `supabase/functions/generate-daily-priorities/index.ts`, `src/hooks/useAIDailyPriorities.ts`, `src/components/admin/ai-priorities/AIDailyPrioritiesPanel.tsx` |
+| 2 | Atividades clickable filter tiles | Urgency group tiles (Atrasadas, Hoje, Esta semana, etc.) are now clickable to filter the task list. Clicking the active tile clears the filter. | `src/pages/assistant/AssistantAtividades.tsx` |
+| 3 | Atividades "Concluidas" tab | New tab showing completed tasks with completion date | `src/pages/assistant/AssistantAtividades.tsx` |
 
 ## Known Limitations & Future Improvements
 
@@ -766,3 +798,4 @@ Use this checklist to track test progress:
 | 2 | Financial data (`estimated_ltv`, `income_range`, etc.) is returned in API responses but hidden in UI | Low (hidden in UI, visible in DevTools) | Use column-specific SELECT or RPC to exclude sensitive fields |
 | 3 | `whatsapp_logs` missing SELECT policy for assistant | Low (doesn't affect core functionality) | Add RLS SELECT policy |
 | 4 | `profiles` SELECT is too broad (no column restriction) | Low | Restrict to `id, full_name` for assistant |
+| 5 | WhatsApp direct message via API not working | Medium (assistant can't send WhatsApp from lead detail) | Waiting for ManyChat support — API integration issue, not a code bug |

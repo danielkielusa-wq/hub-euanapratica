@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { supabase } from '@/integrations/supabase/client';
+import { ReportShareBlock } from './ReportShareBlock';
 import type { V2ProductRecommendation } from '@/types/leads';
 
 interface LlmRecommendation {
@@ -16,9 +17,12 @@ interface V2CTAFinalProps {
   recommendation?: V2ProductRecommendation | null;
   llmRecommendation?: LlmRecommendation;
   isLimited?: boolean;
+  referralCode?: string;
+  referralCount?: number;
+  referralUnlocked?: boolean;
 }
 
-export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimited = false }: V2CTAFinalProps) {
+export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimited = false, referralCode, referralCount = 0, referralUnlocked = false }: V2CTAFinalProps) {
   const { logEvent } = useAnalytics();
   const navigate = useNavigate();
   const firstName = userName.split(' ')[0];
@@ -138,6 +142,17 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimi
             </div>
           </div>
         </section>
+
+        {/* Referral Share Block */}
+        {referralCode && (
+          <ReportShareBlock
+            referralCode={referralCode}
+            referralCount={referralCount}
+            isUnlocked={referralUnlocked}
+            userName={userName}
+            isLimited={true}
+          />
+        )}
 
         {/* Explorer invite */}
         <div className="rounded-xl sm:rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:p-6 md:p-8 text-center space-y-2 sm:space-y-3">
@@ -260,6 +275,17 @@ export function V2CTAFinal({ userName, recommendation, llmRecommendation, isLimi
           </div>
         </div>
       </section>
+
+      {/* Referral Share Block (compact for full-access users) */}
+      {referralCode && (
+        <ReportShareBlock
+          referralCode={referralCode}
+          referralCount={referralCount}
+          isUnlocked={referralUnlocked}
+          userName={userName}
+          isLimited={false}
+        />
+      )}
 
       {/* Explorer invite */}
       <div className="rounded-xl sm:rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:p-6 md:p-8 text-center space-y-2 sm:space-y-3">

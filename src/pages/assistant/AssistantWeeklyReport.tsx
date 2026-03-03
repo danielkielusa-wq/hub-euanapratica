@@ -80,8 +80,9 @@ function DirectivesCard({ directives }: { directives: string }) {
   );
 }
 
-function ExecutiveSummary({ text }: { text: string }) {
-  const lines = text.split('\n').filter(Boolean);
+function ExecutiveSummary({ text }: { text: string | string[] | unknown }) {
+  const raw = Array.isArray(text) ? text.join('\n') : typeof text === 'string' ? text : String(text ?? '');
+  const lines = raw.split('\n').filter(Boolean);
   return (
     <Card className="border-indigo-200 bg-indigo-50/30">
       <CardHeader className="pb-2">
@@ -427,15 +428,15 @@ export default function AssistantWeeklyReport() {
         {/* Report Content */}
         {displayReport?.status === 'completed' && (
           <div className="space-y-4">
-            {directives && <DirectivesCard directives={directives} />}
+            {directives && <DirectivesCard directives={typeof directives === 'string' ? directives : String(directives)} />}
             {ai?.executive_summary && <ExecutiveSummary text={ai.executive_summary} />}
-            <HotLeadsBriefing briefing={ai?.hot_leads_briefing || ''} leads={hotLeads} />
+            <HotLeadsBriefing briefing={typeof ai?.hot_leads_briefing === 'string' ? ai.hot_leads_briefing : ''} leads={hotLeads} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <OpportunitiesList items={ai?.opportunities} />
               <AlertsList items={ai?.alerts} />
             </div>
             <SalesTalkingPoints items={ai?.sales_talking_points} />
-            <WeeklyComparison text={ai?.weekly_comparison || ''} />
+            <WeeklyComparison text={typeof ai?.weekly_comparison === 'string' ? ai.weekly_comparison : ''} />
           </div>
         )}
 

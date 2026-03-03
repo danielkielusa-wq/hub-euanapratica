@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Mail, Phone, StickyNote, ListTodo, Pencil, Check, X, ChevronDown, ExternalLink, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Mail, Phone, StickyNote, ListTodo, Pencil, Check, X, ChevronDown, ExternalLink, Send, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUpdateLeadPhone } from '@/hooks/useAdminLeadDetail';
 import { SendManyChatFlowDialog } from './SendManyChatFlowDialog';
+import { CopyTemplateDialog } from './CopyTemplateDialog';
 import type { CareerEvaluation } from '@/types/leads';
 
 interface LeadDetailHeaderProps {
@@ -39,6 +40,7 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
   const [phoneEditOpen, setPhoneEditOpen] = useState(false);
   const [editPhone, setEditPhone] = useState(lead.phone || '');
   const [manyChatOpen, setManyChatOpen] = useState(false);
+  const [copyTemplateOpen, setCopyTemplateOpen] = useState(false);
 
   const cleanPhone = (lead.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 10;
@@ -144,11 +146,15 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {hasPhone && (
-              <DropdownMenuItem onClick={() => window.open(`https://wa.me/${cleanPhone}`, '_blank')}>
+              <DropdownMenuItem onClick={() => window.open(`https://api.whatsapp.com/send/?phone=${cleanPhone}&text&type=phone_number&app_absent=0`, '_blank')}>
                 <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                Abrir wa.me
+                Abrir WhatsApp Web
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem onClick={() => setCopyTemplateOpen(true)}>
+              <Copy className="w-3.5 h-3.5 mr-2" />
+              Copiar Template
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setManyChatOpen(true)}>
               <Send className="w-3.5 h-3.5 mr-2" />
               Enviar Flow ManyChat
@@ -198,6 +204,11 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
       <SendManyChatFlowDialog
         open={manyChatOpen}
         onOpenChange={setManyChatOpen}
+        lead={lead}
+      />
+      <CopyTemplateDialog
+        open={copyTemplateOpen}
+        onOpenChange={setCopyTemplateOpen}
         lead={lead}
       />
     </div>

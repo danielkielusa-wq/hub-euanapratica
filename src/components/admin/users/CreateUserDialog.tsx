@@ -34,7 +34,7 @@ const formSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('E-mail inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-  role: z.enum(['admin', 'mentor', 'student']),
+  role: z.enum(['admin', 'mentor', 'student', 'assistant']),
   status: z.enum(['active', 'inactive']),
 });
 
@@ -148,6 +148,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                       <SelectItem value="student">Aluno</SelectItem>
                       <SelectItem value="mentor">Mentor</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="assistant">Assistente</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

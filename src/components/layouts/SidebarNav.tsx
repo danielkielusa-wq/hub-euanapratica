@@ -42,6 +42,7 @@ import {
   ChevronRight,
   Bell,
   CalendarDays,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -203,6 +204,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
       { label: 'Content Studio', href: '/admin/content-studio', icon: Video, badge: { text: 'AI', variant: 'ai' as const } },
+      { label: 'AI SDR', href: '/admin/sdr', icon: Target, badge: { text: 'AI', variant: 'ai' as const } },
     ],
   },
   {

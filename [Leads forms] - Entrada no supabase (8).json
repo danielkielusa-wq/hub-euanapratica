@@ -1,0 +1,1793 @@
+{
+  "name": "[Leads forms] - Entrada no supabase",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        448,
+        2176
+      ],
+      "typeVersion": 1,
+      "id": "140812be-02e1-4a03-aabe-9664decb4524",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_data.name }}:\n\n{{ JSON.stringify($json, (key, value) => key === '_debug' ? undefined : value) }}\n\n═══════════════════════════════════════════════\nSUA TAREFA\n═══════════════════════════════════════════════\n\nRetorne APENAS este JSON válido. Copie todos os campos do input SEM MODIFICAR.\nPreencha somente os campos marcados com [ESCREVER].\n\n{\n  \"report_metadata\": {{ JSON.stringify($json.report_metadata) }},\n  \"user_data\": {{ JSON.stringify($json.user_data) }},\n  \"scoring\": {{ JSON.stringify($json.scoring) }},\n\n  \"phase_classification\": {\n    \"phase_id\": {{ $json.phase_classification.phase_id }},\n    \"phase_name\": \"{{ $json.phase_classification.phase_name }}\",\n    \"phase_emoji\": \"{{ $json.phase_classification.phase_emoji }}\",\n    \"phase_color\": \"{{ $json.phase_classification.phase_color }}\",\n    \"rota_letter\": \"{{ $json.phase_classification.rota_letter }}\",\n    \"urgency_level\": \"{{ $json.phase_classification.urgency_level }}\",\n    \"can_apply_jobs\": {{ $json.phase_classification.can_apply_jobs }},\n    \"estimated_preparation_months\": {{ $json.phase_classification.estimated_preparation_months }},\n\n    \"short_diagnosis\": \"[ESCREVER] 1 frase. Onde esta pessoa está hoje, sem rodeios.\n                        Use nome, cargo real e maior gap identificado.\",\n\n    \"full_diagnosis\": \"[ESCREVER] 3-4 frases. O que está travando, o que precisa mudar \n                       e em que ordem. Use dados concretos do perfil.\n                       Termine com o que é possível alcançar se agir certo.\n                       NÃO explique como resolver — apenas o que precisa mudar.\"\n  },\n\n  \"barriers_analysis\": {\n    \"has_english_barrier\": {{ $json.barriers_analysis.has_english_barrier }},\n    \"has_experience_barrier\": {{ $json.barriers_analysis.has_experience_barrier }},\n    \"has_financial_barrier\": {{ $json.barriers_analysis.has_financial_barrier }},\n    \"has_family_barrier\": {{ $json.barriers_analysis.has_family_barrier }},\n    \"has_visa_barrier\": {{ $json.barriers_analysis.has_visa_barrier }},\n    \"has_time_barrier\": {{ $json.barriers_analysis.has_time_barrier }},\n    \"has_clarity_barrier\": {{ $json.barriers_analysis.has_clarity_barrier }},\n\n    \"critical_blockers\": \"[ESCREVER] Array com as 3 barreiras mais graves em ordem de impacto.\n                          Específico para este perfil — não genérico.\",\n\n    \"recommended_first_action\": \"[ESCREVER] A ação #1 mais urgente.\n                                 Se for tema interno (currículo, LinkedIn, entrevista, vagas): \n                                 aponte O QUÊ sem explicar o COMO.\n                                 Se for externo (inglês, financeiro): pode dar direção prática.\"\n  },\n\n  \"detailed_analysis\": {\n    \"english\": {\n      \"current_level\": \"{{ $json.user_data.english_level }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_english }},\n      \"score_max\": 25,\n      \"assessment\": \"[ESCREVER] 3 frases. Impacto real do nível de inglês no objetivo \n                     '{{ $json.user_data.objetivo }}' para esta área específica.\n                     Pode ser específico — inglês é tema externo.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_english_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] Direção prática de estudo: apps, rotina, horas/semana \n                         viável para alguém com '{{ $json.user_data.family_status }}'.\n                         Pode detalhar — é tema externo ao programa.\"\n    },\n\n    \"experience\": {\n      \"current_level\": \"{{ $json.user_data.experiencia }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_experience }},\n      \"score_max\": 20,\n      \"assessment\": \"[ESCREVER] 3 frases. O que {{ $json.user_data.experiencia }} como \n                     '{{ $json.user_data.current_role }}' em {{ $json.user_data.area }} \n                     significa para o mercado americano. O que falta em posicionamento.\n                     NÃO explique como reposicionar — isso é entregue no programa.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_experience_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] O QUÊ precisa ser feito no posicionamento, \n                         sem explicar o COMO. Ex: 'Seu currículo e LinkedIn precisam \n                         ser adaptados para o padrão americano — isso vai além de tradução.'\"\n    },\n\n    \"objective\": {\n      \"current_level\": \"{{ $json.user_data.objetivo }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_objective }},\n      \"score_max\": 10,\n      \"assessment\": \"[ESCREVER] 2-3 frases. O objetivo é viável para este perfil? \n                     Em que prazo realista? O que ainda falta para chegar lá?\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_clarity_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] O que define um objetivo claro e acionável neste perfil.\n                         Direção geral — sem revelar estratégia de busca.\"\n    },\n\n    \"timeline\": {\n      \"current_level\": \"{{ $json.user_data.timeline }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_timeline }},\n      \"score_max\": 10,\n      \"assessment\": \"[ESCREVER] 2 frases. O que '{{ $json.user_data.timeline }}' \n                     combinado com score {{ $json.scoring.readiness_score }}/100 \n                     significa na prática para este lead.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_time_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] Expectativa calibrada e prazo realista \n                         dado o perfil atual.\"\n    },\n\n    \"visa_immigration\": {\n      \"current_level\": \"{{ $json.user_data.visa_status }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_visa }},\n      \"score_max\": 10,\n      \"assessment\": \"[ESCREVER] 2 frases. O que o status atual significa para o \n                     objetivo '{{ $json.user_data.objetivo }}'. \n                     É bloqueador agora ou pode ser resolvido depois?\n                     NÃO explique estratégia ou passos do processo.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_visa_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] Apenas se é urgente agir agora ou não. \n                         Sem detalhar processo ou estratégia de visto.\"\n    },\n\n    \"financial_context\": {\n      \"current_level\": \"{{ $json.user_data.income_range }}\",\n      \"score_contribution\": 0,\n      \"assessment\": \"[ESCREVER] 2 frases. O que a situação financeira permite \n                     e o que limita na preparação. Direto sem ser cruel.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_financial_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] Caminho financeiro realista: o que fazer \n                         gratuitamente agora vs quando investir. \n                         Pode detalhar — é tema externo.\"\n    },\n\n    \"mental_readiness\": {\n      \"current_level\": \"{{ $json.user_data.impediment }}\",\n      \"score_contribution\": {{ $json.scoring.score_breakdown.score_readiness }},\n      \"score_max\": 10,\n      \"assessment\": \"[ESCREVER] 2 frases. O impedimento '{{ $json.user_data.impediment }}' \n                     é real ou percepção? O que está por baixo disso neste perfil.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_clarity_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] Como superar de forma prática. \n                         Foco em ação concreta, não motivação.\"\n    },\n\n    \"family_context\": {\n      \"current_level\": \"{{ $json.user_data.family_status }}\",\n      \"score_contribution\": 0,\n      \"assessment\": \"[ESCREVER] 1-2 frases. Como '{{ $json.user_data.family_status }}' \n                     impacta disponibilidade e motivação para a transição.\",\n      \"is_barrier\": {{ $json.barriers_analysis.has_family_barrier }},\n      \"priority\": \"[ESCREVER] critica|alta|media|baixa\",\n      \"recommendation\": \"[ESCREVER] O que planejar especificamente para este \n                         contexto familiar. Tempo disponível realista.\"\n    }\n  },\n\n  \"lead_qualification\": {\n    \"lead_temperature\": \"{{ $json.lead_qualification.lead_temperature }}\",\n    \"lead_priority_score\": {{ $json.lead_qualification.lead_priority_score }},\n    \"recommended_product_tier\": \"{{ $json.lead_qualification.recommended_product_tier }}\",\n    \"is_tech_professional\": {{ $json.lead_qualification.is_tech_professional }},\n    \"is_senior_level\": {{ $json.lead_qualification.is_senior_level }},\n    \"works_remotely\": {{ $json.lead_qualification.works_remotely }},\n    \"has_family\": {{ $json.lead_qualification.has_family }},\n    \"is_high_income\": {{ $json.lead_qualification.is_high_income }},\n    \"preferred_communication\": \"{{ $json.lead_qualification.preferred_communication }}\",\n    \"best_contact_time\": \"[ESCREVER] Inferir pelo perfil. \n                          Família + trabalho formal = 'Noites e fins de semana'. \n                          Flexível = 'Flexível'.\",\n    \"financial_fit\": {{ JSON.stringify($json.lead_qualification.financial_fit) }}\n  },\n\n  \"timeline_milestones\": {{ JSON.stringify($json.timeline_milestones) }},\n\n  \"action_plan\": {\n    \"next_30_days\": [\n      {\n        \"step_number\": 1,\n        \"title\": \"[ESCREVER] Título da ação mais urgente para este perfil\",\n        \"description\": \"[ESCREVER] 2 frases. O QUÊ fazer e POR QUÊ é prioritário.\n                        Se for tema interno (posicionamento, vagas, entrevistas): \n                        aponte a direção sem explicar o método.\n                        Se for externo (inglês, financeiro): pode ser mais específico.\",\n        \"priority\": \"critica\",\n        \"estimated_hours_week\": \"[ESCREVER] número realista com família + trabalho\"\n      },\n      {\n        \"step_number\": 2,\n        \"title\": \"[ESCREVER]\",\n        \"description\": \"[ESCREVER] 2 frases. Mesmo critério: direção sem método.\",\n        \"priority\": \"alta\",\n        \"estimated_hours_week\": \"[ESCREVER]\"\n      },\n      {\n        \"step_number\": 3,\n        \"title\": \"[ESCREVER]\",\n        \"description\": \"[ESCREVER] 2 frases.\",\n        \"priority\": \"media\",\n        \"estimated_hours_week\": \"[ESCREVER]\"\n      }\n    ],\n\n    \"next_90_days\": [\n      {\n        \"step_number\": 1,\n        \"title\": \"[ESCREVER]\",\n        \"description\": \"[ESCREVER] 2 frases para fase {{ $json.phase_classification.phase_id }}.\n                        Temas internos: direção, não método.\",\n        \"priority\": \"critica\",\n        \"milestone\": \"[ESCREVER] Marco concreto e mensurável\"\n      },\n      { \"step_number\": 2, \"title\": \"[ESCREVER]\", \"description\": \"[ESCREVER]\", \"priority\": \"alta\",  \"milestone\": \"[ESCREVER]\" },\n      { \"step_number\": 3, \"title\": \"[ESCREVER]\", \"description\": \"[ESCREVER]\", \"priority\": \"media\", \"milestone\": \"[ESCREVER]\" }\n    ],\n\n    \"next_6_months\": [\n      {\n        \"step_number\": 1,\n        \"title\": \"[ESCREVER]\",\n        \"description\": \"[ESCREVER] Visão estratégica em 6 meses para score {{ $json.scoring.readiness_score }}.\n                        Temas internos: aponte o destino, não o caminho detalhado.\",\n        \"priority\": \"critica\",\n        \"milestone\": \"[ESCREVER] Marco estratégico realista\"\n      },\n      { \"step_number\": 2, \"title\": \"[ESCREVER]\", \"description\": \"[ESCREVER]\", \"priority\": \"alta\",  \"milestone\": \"[ESCREVER]\" },\n      { \"step_number\": 3, \"title\": \"[ESCREVER]\", \"description\": \"[ESCREVER]\", \"priority\": \"media\", \"milestone\": \"[ESCREVER]\" }\n    ]\n  },\n\n  \"web_report_data\": {\n    \"hero_section\": {\n      \"headline\": \"Seu Diagnóstico de Prontidão para Carreira Internacional\",\n      \"subheadline\": \"[ESCREVER] 1 frase com cargo e objetivo desta pessoa. Não genérico.\",\n      \"score_display\": \"{{ $json.scoring.readiness_score }}/100 pontos\",\n      \"phase_badge\": \"{{ $json.phase_classification.phase_emoji }} {{ $json.phase_classification.phase_name }}\"\n    },\n\n    \"rota_framework_progress\": {\n  \"current_phase\": \"{{ $json.phase_classification.rota_letter }}\",\n  \"phases\": [\n    {\n      \"letter\": \"R\", \"name\": \"Realidade & Direção\",\n      \"status\": \"{{ $json.phase_classification.phase_id > 0 ? 'concluido' : 'atual' }}\",\n      \"completion_percentage\": {{ $json.phase_classification.phase_id > 0 ? 100 : Math.round(($json.scoring.readiness_score / 35) * 100) }}\n    },\n    {\n      \"letter\": \"O\", \"name\": \"Organização\",\n      \"status\": \"{{ $json.phase_classification.phase_id > 1 ? 'concluido' : $json.phase_classification.phase_id === 1 ? 'atual' : 'futuro' }}\",\n      \"completion_percentage\": {{ $json.phase_classification.phase_id > 1 ? 100 : $json.phase_classification.phase_id === 1 ? Math.round((($json.scoring.readiness_score - 36) / 24) * 100) : 0 }}\n    },\n    {\n      \"letter\": \"T\", \"name\": \"Tração\",\n      \"status\": \"{{ $json.phase_classification.phase_id > 2 ? 'concluido' : $json.phase_classification.phase_id === 2 ? 'atual' : 'futuro' }}\",\n      \"completion_percentage\": {{ $json.phase_classification.phase_id > 2 ? 100 : $json.phase_classification.phase_id === 2 ? Math.round((($json.scoring.readiness_score - 61) / 24) * 100) : 0 }}\n    },\n    {\n      \"letter\": \"A\", \"name\": \"Aceleração\",\n      \"status\": \"{{ $json.phase_classification.phase_id === 3 ? 'atual' : 'futuro' }}\",\n      \"completion_percentage\": {{ $json.phase_classification.phase_id === 3 ? Math.min(Math.round((($json.scoring.readiness_score - 86) / 14) * 100), 100) : 0 }}\n    }\n  ]\n},\n\n\n    \"key_metrics\": {\n      \"strengths\": \"[ESCREVER] Array com 3 pontos fortes reais baseados nos dados. Fatos, não elogios.\",\n      \"critical_gaps\": \"[ESCREVER] Array com 3 gaps reais e específicos para este perfil.\",\n      \"estimated_timeline_months\": {{ $json.phase_classification.estimated_preparation_months }},\n      \"can_start_applying\": {{ $json.phase_classification.can_apply_jobs }}\n    },\n\n    \"resources\": [\n      { \"type\": \"video\",  \"title\": \"Canal YouTube EUA na Prática\", \"url\": \"https://www.youtube.com/@eua_na_pratica\" },\n      { \"type\": \"social\", \"title\": \"Instagram @danielkielusa\",      \"url\": \"https://instagram.com/danielkielusa\" },\n      { \"type\": \"ebook\",  \"title\": \"Guia de Carreira Internacional\", \"url\": \"https://ebook.euanapratica.com/\" }\n    ]\n  },\n\n  \"database_fields\": {\n    \"processing_status\": \"completed\",\n    \"processing_error\": null,\n    \"formatted_at\": \"[ESCREVER] ISO8601 timestamp atual\"\n  }\n}",
+        "options": {
+          "systemMessage": "=Você é o analista de carreira internacional da equipe \"EUA Na Prática\", liderada por Daniel Kiel.\n\nSeu trabalho é escrever o diagnóstico de prontidão de um profissional brasileiro que quer trabalhar \nremotamente em dólar ou imigrar para os EUA — e direcioná-lo para o próximo passo certo.\n\n═══════════════════════════════════════════════\nTOM E ESTILO\n═══════════════════════════════════════════════\n\n- \"Tough love\": realista, direto, sem motivação vazia\n- Fale com a pessoa pelo nome\n- Use os dados reais do perfil em cada parágrafo\n- PROIBIDO: frases genéricas que se aplicariam a qualquer lead\n- PROIBIDO: elogios vazios\n- PROIBIDO: suavizar a realidade\n\nTESTE: \"Este texto poderia ser colado no diagnóstico de outro lead sem mudar nada?\"\nSe sim, reescreva.\n\n═══════════════════════════════════════════════\nREGRA CRÍTICA: O QUE VOCÊ PODE E NÃO PODE DIZER\n═══════════════════════════════════════════════\n\nPODE detalhar — são externos ao programa:\n✅ Estratégia de aprendizado de inglês (apps, plataformas, rotina de estudo)\n✅ Organização financeira pessoal (como criar margem para investir)\n✅ Mindset e gestão de tempo com família\n\nNÃO PODE detalhar — são entregues dentro dos produtos EUA na Prática:\n🚫 Como montar ou adaptar currículo para o mercado americano\n🚫 Como otimizar LinkedIn para recrutadores americanos\n🚫 Estratégias de networking com profissionais nos EUA\n🚫 Onde e como buscar vagas remotas americanas\n🚫 Como se preparar e se comportar em entrevistas\n🚫 Como negociar salário e benefícios\n🚫 Processo de visto e imigração (estratégia e passos)\n🚫 Como avaliar e comparar ofertas de emprego\n\nPara esses temas: aponte O QUÊ precisa ser feito e POR QUÊ é importante.\nNunca explique o COMO. O COMO é o que os produtos entregam.\n\nExemplo correto:\n\"Seu LinkedIn precisa ser reposicionado para o padrão americano — isso envolve \nmuito mais do que traduzir o que está lá hoje. Esse é um dos pilares do método ROTA.\"\n\nExemplo ERRADO (não faça isso):\n\"Mude seu headline para 'Administrative Analyst | Remote-ready', adicione bullet points \ncom resultados quantificáveis, conecte com 30 recrutadores por semana...\"\n\nNÃO mencione nem recomende: concorrentes, outros programas de carreira internacional, \ncoaches brasileiros de carreira nos EUA, plataformas pagas de coaching de carreira.\n\n═══════════════════════════════════════════════\nMÉTODO ROTA EUA™\n═══════════════════════════════════════════════\n\nR → Realidade & Direção\nO → Organização da Marca Profissional\nT → Tração no Mercado Americano\nA → Aceleração & Adaptação\n\n═══════════════════════════════════════════════\nPRODUTOS (NÃO ALTERE O QUE VEIO NO INPUT)\n═══════════════════════════════════════════════\n\nO produto já foi calculado. Sua função é explicar por que faz sentido para este perfil.\n\nFREE  → entregue valor imediato. Sem pressão de venda. Mostre o que os recursos gratuitos \n        resolvem agora e qual é o próximo passo natural.\nLOW   → mostre o que o curso estrutura que ele não conseguiria montar sozinho, sem revelar \n        o conteúdo interno.\nMED   → mostre o que o grupo acelera e o que a comunidade entrega, sem revelar metodologia.\nHIGH  → foque em resultado, velocidade e acesso direto ao Daniel. ROI claro."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2768,
+        1728
+      ],
+      "id": "6a144d96-2575-46a1-8ff2-dd7d8949a276",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-haiku-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        1920
+      ],
+      "id": "1a78949d-ce04-4ec0-b962-ad4f903a474b",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "WqRAMztC5HsztEjH",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "career_evaluations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $json.email }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2256,
+        1728
+      ],
+      "id": "99ef1700-b578-47a3-8658-ed6ed795ff6b",
+      "name": "Check if Exists1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "89614aa0-e6d0-4327-9352-d505fdce6937",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2048,
+        1728
+      ],
+      "id": "ee01a512-959e-4a5f-998f-484f68008cc2",
+      "name": "Lead Novo ou Existente1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE 1 — CALCULADORA DE SCORE (regras comerciais revisadas)\n// Tipo: Code (JavaScript) no n8n\n// Input: $json.body.lead\n// Lógica: nenhum lead com intenção fica sem produto\n// ============================================================\n\nconst lead = $json.body.lead;\n\n// ── NORMALIZAÇÃO ────────────────────────────────────────────\n\nfunction normalizeEnglish(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"fluente\") || v.includes(\"nativo\") || v.includes(\"native\"))                        return \"Fluente\";\n  if (v.includes(\"avançado\") || v.includes(\"avancado\") || v.includes(\"advanced\"))                   return \"Avançado\";\n  if (v.includes(\"intermediário\") || v.includes(\"intermediario\") || v.includes(\"intermediate\"))     return \"Intermediário\";\n  return \"Básico\";\n}\n\nfunction normalizeExperience(val = \"\") {\n  const v = val.toLowerCase().replace(/\\s/g, \"\");\n  if (v.includes(\"+10\") || v.includes(\"10+\") || v.includes(\"maisde10\") || v.includes(\"acimade10\")) return \"+10 anos\";\n  if (v.includes(\"5-10\") || v.includes(\"5a10\") || v.includes(\"5e10\"))                              return \"5-10 anos\";\n  if (v.includes(\"2-5\")  || v.includes(\"2a5\")  || v.includes(\"2e5\"))                               return \"2-5 anos\";\n  return \"Menos de 2 anos\";\n}\n\nfunction normalizeArea(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"sap\") || v.includes(\"erp\"))                                                                        return \"SAP/ERP\";\n  if (v.includes(\"tecnologia\") || v.includes(\" ti\") || v.includes(\"/ti\") || v.includes(\"/it\") || v.includes(\" it\")) return \"Tecnologia/IT\";\n  if (v.includes(\"gestão\") || v.includes(\"gestao\") || v.includes(\"business\") || v.includes(\"negócio\"))              return \"Gestão/Business\";\n  if (v.includes(\"engenharia\") || v.includes(\"engineering\"))                                                         return \"Engenharia\";\n  return \"Outros\";\n}\n\nfunction normalizeObjective(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"green card\") || v.includes(\"imigrar\") || v.includes(\"imigração\")) return \"Imigrar/Green Card trabalhando na minha área\";\n  if (v.includes(\"remoto\") || v.includes(\"dólar\") || v.includes(\"dolar\"))           return \"Emprego remoto em dólar\";\n  if (v.includes(\"estudar\") || v.includes(\"estudo\") || v.includes(\"faculdade\"))     return \"Estudar nos EUA como porta de entrada\";\n  return \"Ainda não tenho clareza, quero entender minhas opções\";\n}\n\nfunction normalizeVisa(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"green card\") || (v.includes(\"trabalho\") && v.includes(\"aprovado\"))) return \"Já tenho visto de trabalho ou Green Card aprovado\";\n  if (v.includes(\"andamento\") || v.includes(\"em processo\") || v.includes(\"em curso\")) return \"Processo de visto/imigração em andamento\";\n  if (v.includes(\"turista\") || v.includes(\"tourist\") || v.includes(\"b1\") || v.includes(\"b2\")) return \"Tenho/tive apenas visto de turista\";\n  return \"Ainda não iniciei nada\";\n}\n\nfunction normalizeTimeline(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"movimento\") || (v.includes(\"3 meses\") && v.includes(\"próximo\"))) return \"Já estou em movimento / próximos 3 meses\";\n  if (v.includes(\"3\") && v.includes(\"6\"))                                           return \"Entre 3 e 6 meses\";\n  if (v.includes(\"6\") && v.includes(\"12\"))                                          return \"Entre 6 e 12 meses\";\n  return \"Ainda não tenho prazo definido\";\n}\n\nfunction normalizeFamilyStatus(val = \"\") {\n  const v = val.toLowerCase();\n  if (v.includes(\"filho\"))                                                                                  return \"Com família e filhos\";\n  if (v.includes(\"cônjuge\") || v.includes(\"conjuge\") || v.includes(\"companheiro\") || v.includes(\"casado\")) return \"Com cônjuge/companheiro(a)\";\n  if (v.includes(\"sozinho\") || v.includes(\"sozinha\") || v.includes(\"solteiro\"))                            return \"Sozinho(a)\";\n  return \"Ainda não pensei sobre isso\";\n}\n\nfunction normalizeIncome(val = \"\") {\n  const v = val.toLowerCase().replace(/\\s/g, \"\");\n  if (v.includes(\"prefiro\") || v.includes(\"nãoresponder\"))                               return \"Prefiro não responder\";\n  if (v.includes(\"acimade20\") || (v.includes(\"20\") && v.includes(\"acima\")))              return \"Acima de R$ 20 mil\";\n  if (v.includes(\"10\") && v.includes(\"20\"))                                              return \"De R$ 10 mil a R$ 20 mil\";\n  if (v.includes(\"5\") && v.includes(\"10\"))                                               return \"De R$ 5 mil a R$ 10 mil\";\n  if (v.includes(\"até5mil\") || v.includes(\"ate5mil\") || v.includes(\"5mil\") || v.includes(\"5.000\")) return \"Até R$ 5 mil\";\n  return \"Prefiro não responder\";\n}\n\nfunction normalizeInvestment(val = \"\") {\n  const v = val.toLowerCase().replace(/\\s/g, \"\");\n  if (v.includes(\"nãosei\") || v.includes(\"naose\") || v.includes(\"organizar\"))                         return \"Ainda não sei/preciso me organizar primeiro\";\n  if (v.includes(\"acimade5\") || (v.includes(\"5mil\") && v.includes(\"acima\")))                          return \"Acima de R$ 5 mil\";\n  if ((v.includes(\"3mil\") || v.includes(\"3.000\")) && v.includes(\"5\"))                                 return \"De R$ 3 mil a R$ 5 mil\";\n  if ((v.includes(\"1.500\") || v.includes(\"1500\")) && (v.includes(\"3\") || v.includes(\"3.000\")))        return \"De R$ 1.500 a R$ 3.000\";\n  if (v.includes(\"até1.500\") || v.includes(\"ate1500\") || (v.includes(\"1.500\") && v.includes(\"até\"))) return \"Até R$ 1.500\";\n  return \"Ainda não sei/preciso me organizar primeiro\";\n}\n\nfunction normalizeImpediment(val = \"\") {\n  const v = (val || \"\").toLowerCase();\n  if (v.includes(\"pronto\") || v.includes(\"nenhum\"))                                                   return \"Nenhum, pois estou pronto(a)\";\n  if (v.includes(\"financeiro\") || v.includes(\"dinheiro\") || v.includes(\"custo\"))                     return \"Financeiro\";\n  if (v.includes(\"tempo\") || v.includes(\"rotina\") || v.includes(\"agenda\"))                           return \"Tempo ou rotina\";\n  if (v.includes(\"inglês\") || v.includes(\"ingles\") || v.includes(\"idioma\"))                          return \"Inglês\";\n  if (v.includes(\"medo\") || v.includes(\"decisão\") || v.includes(\"decisao\") || v.includes(\"errada\")) return \"Medo de tomar uma decisão errada\";\n  if (v.includes(\"família\") || v.includes(\"familia\") || v.includes(\"cônjuge\") || v.includes(\"apoio\")) return \"Falta de apoio do cônjuge ou família\";\n  return \"Outro\";\n}\n\nfunction normalizeWorksInternational(val = \"\") {\n  const v = (val || \"\").toLowerCase().trim();\n  return (v === \"sim\" || v === \"yes\" || v === \"s\" || v === \"true\") ? \"Sim\" : \"Não\";\n}\n\nfunction normalizePhone(ddd = \"\", number = \"\") {\n  // Remove tudo que não é dígito\n  const raw = (ddd + number).replace(/\\D/g, \"\");\n  if (!raw) return \"\";\n  // Já tem DDI 55 (ex: \"5511999999999\")\n  if (raw.startsWith(\"55\") && raw.length >= 12) return \"+\" + raw;\n  // Apenas DDD + número (ex: \"11999999999\")\n  return \"+55\" + raw;\n}\n\n// ── DADOS NORMALIZADOS ──────────────────────────────────────\n\nconst input = {\n  name:                   lead.fullName    || \"\",\n  email:                  lead.email       || \"\",\n  phone:                  normalizePhone(lead.ddd || \"\", lead.whatsapp || \"\"),\n  area:                   normalizeArea(lead.area),\n  raw_area:               lead.area        || \"\",\n  atuacao:                lead.currentRole || \"\",\n  current_role:           lead.currentRole || \"\",\n  trabalha_internacional: normalizeWorksInternational(lead.worksInternational),\n  experiencia:            normalizeExperience(lead.experience),\n  english_level:          normalizeEnglish(lead.englishLevel),\n  raw_english_level:      lead.englishLevel || \"\",\n  objetivo:               normalizeObjective(lead.goal),\n  visa_status:            normalizeVisa(lead.visaStatus),\n  timeline:               normalizeTimeline(lead.timeline),\n  family_status:          normalizeFamilyStatus(lead.familyStatus),\n  income_range:           normalizeIncome(lead.incomeRange),\n  investment_range:       normalizeInvestment(lead.investmentRange),\n  impediment:             normalizeImpediment(lead.impediment),\n  main_concern:           lead.mainConcern || \"\",\n};\n\n// ── SCORE ───────────────────────────────────────────────────\n\nconst score_english            = { \"Básico\": 0, \"Intermediário\": 12, \"Avançado\": 20, \"Fluente\": 25 }[input.english_level] ?? 0;\nconst score_experience         = { \"Menos de 2 anos\": 5, \"2-5 anos\": 12, \"5-10 anos\": 17, \"+10 anos\": 20 }[input.experiencia] ?? 0;\nconst score_international_work = input.trabalha_internacional === \"Sim\" ? 15 : 5;\nconst score_timeline           = { \"Já estou em movimento / próximos 3 meses\": 10, \"Entre 3 e 6 meses\": 8, \"Entre 6 e 12 meses\": 5, \"Ainda não tenho prazo definido\": 2 }[input.timeline] ?? 0;\nconst score_objective          = { \"Imigrar/Green Card trabalhando na minha área\": 10, \"Emprego remoto em dólar\": 8, \"Estudar nos EUA como porta de entrada\": 6, \"Ainda não tenho clareza, quero entender minhas opções\": 0 }[input.objetivo] ?? 0;\nconst score_visa               = { \"Já tenho visto de trabalho ou Green Card aprovado\": 10, \"Processo de visto/imigração em andamento\": 7, \"Tenho/tive apenas visto de turista\": 3, \"Ainda não iniciei nada\": 0 }[input.visa_status] ?? 0;\nconst score_readiness          = { \"Nenhum, pois estou pronto(a)\": 10, \"Tempo ou rotina\": 6, \"Medo de tomar uma decisão errada\": 4, \"Financeiro\": 3, \"Inglês\": 2, \"Falta de apoio do cônjuge ou família\": 1, \"Outro\": 3 }[input.impediment] ?? 3;\nconst score_area_bonus         = 0;\n\nconst readiness_score = Math.min(\n  score_english + score_experience + score_international_work +\n  score_timeline + score_objective + score_visa + score_readiness + score_area_bonus,\n  100\n);\n\n// ── FASE ────────────────────────────────────────────────────\n\nlet phase;\nif      (readiness_score <= 35) phase = { phase_id: 0, phase_name: \"BASE INSUFICIENTE\",      phase_emoji: \"❌\", phase_color: \"#DC2626\", rota_letter: \"Pré-R\", urgency_level: \"BAIXA\",   can_apply_jobs: false, estimated_preparation_months: 24 };\nelse if (readiness_score <= 60) phase = { phase_id: 1, phase_name: \"PREPARAÇÃO ESTRUTURADA\", phase_emoji: \"🟡\", phase_color: \"#F59E0B\", rota_letter: \"R-O\",   urgency_level: \"MÉDIA\",   can_apply_jobs: false, estimated_preparation_months: 15 };\nelse if (readiness_score <= 85) phase = { phase_id: 2, phase_name: \"TRAÇÃO ATIVA\",           phase_emoji: \"🟢\", phase_color: \"#10B981\", rota_letter: \"O-T\",   urgency_level: \"ALTA\",    can_apply_jobs: true,  estimated_preparation_months: 9  };\nelse                            phase = { phase_id: 3, phase_name: \"ACELERAÇÃO\",             phase_emoji: \"🚀\", phase_color: \"#8B5CF6\", rota_letter: \"T-A\",   urgency_level: \"CRÍTICA\", can_apply_jobs: true,  estimated_preparation_months: 3  };\n\n// ── BARREIRAS ───────────────────────────────────────────────\n\nconst barriers = {\n  has_english_barrier:    [\"Básico\", \"Intermediário\"].includes(input.english_level),\n  has_experience_barrier: [\"Menos de 2 anos\", \"2-5 anos\"].includes(input.experiencia),\n  has_financial_barrier:  input.income_range === \"Até R$ 5 mil\" || input.impediment === \"Financeiro\",\n  has_family_barrier:     input.family_status === \"Com família e filhos\" || input.impediment === \"Falta de apoio do cônjuge ou família\",\n  has_visa_barrier:       input.visa_status === \"Ainda não iniciei nada\",\n  has_time_barrier:       input.impediment === \"Tempo ou rotina\",\n  has_clarity_barrier:    input.objetivo === \"Ainda não tenho clareza, quero entender minhas opções\",\n};\n\n// ── CLASSIFICAÇÃO COMERCIAL ─────────────────────────────────\n//\n// FILOSOFIA: nenhum lead com intenção fica sem produto.\n// A pergunta não é \"você qualifica?\" mas \"onde você entra agora?\"\n//\n// FREE  → incapacidade financeira confirmada por dados concretos (não por declaração de medo)\n// LOW   → piso de quem tem intenção mas não encaixa em MED/HIGH\n// MED   → budget disponível + inglês mínimo (impedimento não é veto)\n// HIGH  → score alto + renda alta + budget alto + urgência real\n//\n// Ordem de avaliação: HIGH → MED → FREE → LOW (LOW é sempre o fallback)\n\n// HIGH: critério rigoroso — precisa de tudo alinhado\nconst isHighTicket =\n  readiness_score >= 65 &&\n  [\"De R$ 3 mil a R$ 5 mil\", \"Acima de R$ 5 mil\"].includes(input.investment_range) &&\n  [\"De R$ 10 mil a R$ 20 mil\", \"Acima de R$ 20 mil\"].includes(input.income_range) &&\n  input.english_level !== \"Básico\" &&\n  [\"Já estou em movimento / próximos 3 meses\", \"Entre 3 e 6 meses\", \"Entre 6 e 12 meses\"].includes(input.timeline);\n\n// MED: flexível — budget disponível + inglês mínimo são suficientes\n// impediment e income_range não bloqueiam mais\nconst isMedTicket =\n  !isHighTicket &&\n  readiness_score >= 40 &&\n  [\"De R$ 1.500 a R$ 3.000\", \"De R$ 3 mil a R$ 5 mil\", \"Acima de R$ 5 mil\"].includes(input.investment_range) &&\n  [\"Intermediário\", \"Avançado\", \"Fluente\"].includes(input.english_level);\n\n// FREE: apenas quando incapacidade financeira é confirmada por dados concretos\n// impediment === \"Financeiro\" sozinho NÃO é suficiente\nconst isFree =\n  readiness_score < 25 ||\n  (\n    input.income_range === \"Até R$ 5 mil\" &&\n    [\"Até R$ 1.500\", \"Ainda não sei/preciso me organizar primeiro\"].includes(input.investment_range)\n  );\n\n// LOW: fallback — qualquer lead com intenção que não se encaixa nos outros\n// inclui: inglês básico, pouca experiência, sem prazo, investment baixo\nconst isLowTicket = !isHighTicket && !isMedTicket && !isFree;\n\n// ── PRODUTO & FIT SCORE ─────────────────────────────────────\n\nlet product, fit_score, estimated_ltv;\n\nif (isHighTicket) {\n  product = {\n    recommended_product_tier:  \"HIGH_TICKET\",\n    recommended_product_name:  \"Mentoria Individual com Daniel Kiel\",\n    recommended_product_price: \"12x R$ 997 ou R$ 10.000 à vista\",\n    recommended_product_url:   \"https://mentoria.euanapratica.com/\",\n  };\n  fit_score     = Math.min(85 + Math.round((readiness_score - 65) / 2), 100);\n  estimated_ltv = 10000;\n\n} else if (isMedTicket) {\n  product = {\n    recommended_product_tier:  \"MED_TICKET\",\n    recommended_product_name:  \"Mentoria em Grupo ROTA EUA™\",\n    recommended_product_price: \"12x R$ 247 ou R$ 2.497 à vista\",\n    recommended_product_url:   \"https://imersao.euanapratica.com\",\n  };\n  // fit_score penalizado se impedimento financeiro — ainda é MED, mas vendedor sabe que precisa trabalhar objeção\n  const impediment_penalty = input.impediment === \"Financeiro\" ? 8 : 0;\n  fit_score     = Math.min(70 + Math.round((readiness_score - 40) / 2.5) - impediment_penalty, 85);\n  estimated_ltv = 2500;\n\n} else if (isFree) {\n  product = {\n    recommended_product_tier:  \"FREE\",\n    recommended_product_name:  \"Recursos Gratuitos EUA na Prática\",\n    recommended_product_price: \"Gratuito\",\n    recommended_product_url:   \"https://hub.euanapratica.com/\",\n  };\n  fit_score     = Math.min(30 + Math.round(readiness_score / 2), 50);\n  estimated_ltv = 0;\n\n} else {\n  // LOW_TICKET — fallback universal\n  product = {\n    recommended_product_tier:  \"LOW_TICKET\",\n    recommended_product_name:  \"Curso ROTA Internacional\",\n    recommended_product_price: \"12x R$ 67 ou R$ 697 à vista\",\n    recommended_product_url:   \"https://rota.euanapratica.com\",\n  };\n  fit_score     = Math.min(50 + Math.round(readiness_score / 5), 70);\n  estimated_ltv = 700;\n}\n\nconst has_budget = product.recommended_product_tier !== \"FREE\";\nconst budget_gap =\n  isHighTicket ? \"Compatível\" :\n  isMedTicket  ? input.impediment === \"Financeiro\" ? \"Tem budget mas precisa superar objeção financeira\" : \"Compatível com parcelamento\" :\n  isFree       ? \"Sem orçamento no momento\" :\n                 \"Acessível\";\n\n// ── TEMPERATURA & PRIORITY ──────────────────────────────────\n\nconst lead_temperature =\n  readiness_score >= 80 && has_budget ? \"SUPER_QUENTE\" :\n  readiness_score >= 65 && has_budget ? \"QUENTE\" :\n  readiness_score >= 40               ? \"MORNO\" :   // baixado de 45 para 40 alinhado com MED\n                                        \"FRIO\";\n\nconst urgency_bonus       = phase.urgency_level === \"CRÍTICA\" ? 10 : phase.urgency_level === \"ALTA\" ? 5 : 0;\nconst lead_priority_score = Math.round(\n  (readiness_score * 0.4) + (fit_score * 0.3) + (has_budget ? 20 : 0) + urgency_bonus\n);\n\n// ── ENRICHMENT ──────────────────────────────────────────────\n\nconst enrichment = {\n  is_tech_professional: input.area === \"Tecnologia/IT\",\n  is_senior_level:      [\"5-10 anos\", \"+10 anos\"].includes(input.experiencia),\n  works_remotely:       input.trabalha_internacional === \"Sim\",\n  has_family:           input.family_status === \"Com família e filhos\",\n  is_high_income:       [\"De R$ 10 mil a R$ 20 mil\", \"Acima de R$ 20 mil\"].includes(input.income_range),\n};\n\n// ── UPSELL PATH ─────────────────────────────────────────────\n// Define o caminho natural de evolução deste lead\n\nconst upsell_path =\n  isHighTicket ? \"Manter em HIGH → Alumni/Indicações\" :\n  isMedTicket  ? \"MED → oferta HIGH após 60-90 dias se score evoluir\" :\n  isFree       ? \"FREE → oferta LOW após 30-60 dias quando organizar financeiro\" :\n                 \"LOW → oferta MED após completar módulos iniciais\";\n\n// ── DATAS ───────────────────────────────────────────────────\n\nconst today     = new Date();\nconst addDays   = (d, n) => new Date(d.getTime() + n * 86400000).toISOString().split(\"T\")[0];\nconst addMonths = (d, n) => { const r = new Date(d); r.setMonth(r.getMonth() + n); return r.toISOString().split(\"T\")[0]; };\n\nconst milestone = {\n  0: { action: \"Atingir inglês B2 e ganhar 2+ anos de experiência internacional\",   months: 24, recheck: 6 },\n  1: { action: \"Elevar inglês para C1 e otimizar LinkedIn para o mercado americano\", months: 15, recheck: 4 },\n  2: { action: \"Aplicar para 20+ vagas estratégicas e conseguir 3+ entrevistas\",    months: 9,  recheck: 2 },\n  3: { action: \"Negociar ofertas simultaneamente e iniciar processo de visto\",       months: 3,  recheck: 1 },\n}[phase.phase_id];\n\n// ── NURTURE SEQUENCE ────────────────────────────────────────\n// Sequência específica considerando o produto E as barreiras\n\nlet auto_nurture_sequence;\nif (isFree && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Free_FinancialBarrier_Nurture\";   // novo — nutre para LOW quando organizar $\n} else if (isFree) {\n  auto_nurture_sequence = \"Free_Content_Engagement\";\n} else if (phase.phase_id === 0 && barriers.has_english_barrier) {\n  auto_nurture_sequence = \"Fase0_Ingles_Basico\";\n} else if (phase.phase_id === 0 && barriers.has_experience_barrier) {\n  auto_nurture_sequence = \"Fase0_Sem_Experiencia\";\n} else if (isMedTicket && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_FinancialObjection\"; // novo — MED com objeção financeira\n} else if (isMedTicket) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_Nurture\";\n} else if (isLowTicket && phase.phase_id === 1) {\n  auto_nurture_sequence = \"Fase1_Low_Ticket_Education\";\n} else if (phase.phase_id === 2) {\n  auto_nurture_sequence = \"Fase2_Traction_Active\";\n} else {\n  auto_nurture_sequence = \"Fase3_Acceleration_VIP\";\n}\n\n// ── RETORNO ─────────────────────────────────────────────────\n\nreturn [{\n  json: {\n    user_data: {\n      name:                   input.name,\n      email:                  input.email,\n      phone:                  input.phone,\n      area:                   input.area,\n      raw_area:               input.raw_area,\n      atuacao:                input.atuacao,\n      current_role:           input.current_role,\n      trabalha_internacional: input.trabalha_internacional,\n      experiencia:            input.experiencia,\n      english_level:          input.english_level,\n      raw_english_level:      input.raw_english_level,\n      objetivo:               input.objetivo,\n      visa_status:            input.visa_status,\n      timeline:               input.timeline,\n      family_status:          input.family_status,\n      income_range:           input.income_range,\n      investment_range:       input.investment_range,\n      impediment:             input.impediment,\n      main_concern:           input.main_concern,\n    },\n\n    scoring: {\n      readiness_score,\n      readiness_percentual: Math.round(readiness_score),\n      max_score: 100,\n      score_breakdown: {\n        score_english,\n        score_experience,\n        score_international_work,\n        score_timeline,\n        score_objective,\n        score_visa,\n        score_readiness,\n        score_area_bonus,\n      },\n    },\n\n    phase_classification: phase,\n    barriers_analysis:    barriers,\n\n    product_recommendation: {\n      primary_offer: { ...product, fit_score },\n      financial_fit: { has_budget, budget_gap, estimated_ltv },\n      upsell_path,\n    },\n\n    lead_qualification: {\n      lead_temperature,\n      lead_priority_score,\n      ...enrichment,\n      preferred_communication: \"WhatsApp\",\n    },\n\n    timeline_milestones: {\n      next_milestone_action:   milestone.action,\n      next_milestone_deadline: addMonths(today, milestone.months),\n      recheck_recommended_at:  addMonths(today, milestone.recheck),\n      scheduled_follow_up_1:   addDays(today, 7),\n      scheduled_follow_up_2:   addDays(today, 30),\n      scheduled_follow_up_3:   addDays(today, 90),\n      auto_nurture_sequence,\n    },\n\n    tracking: lead.tracking || {},\n\n    report_metadata: {\n      generated_at:   today.toISOString(),\n      report_version: \"2.1\",\n      prompt_version: \"v2.1\",\n      ai_model_used:  \"claude-sonnet-4-5\",\n    },\n\n    // remover em produção\n    _debug: {\n      english:    `\"${lead.englishLevel}\" → \"${input.english_level}\" → ${score_english}pts`,\n      experience: `\"${lead.experience}\" → \"${input.experiencia}\" → ${score_experience}pts`,\n      area:       `\"${lead.area}\" → \"${input.area}\"`,\n      investment: `\"${lead.investmentRange}\" → \"${input.investment_range}\"`,\n      income:     `\"${lead.incomeRange}\" → \"${input.income_range}\"`,\n      impediment: `\"${lead.impediment}\" → \"${input.impediment}\" → ${score_readiness}pts`,\n      flags:      { isHighTicket, isMedTicket, isFree, isLowTicket },\n      total:      `${readiness_score}/100 → Fase ${phase.phase_id} → ${product.recommended_product_tier}`,\n      upsell_path,\n    },\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2976,
+        1728
+      ],
+      "id": "1c661d42-9659-4a33-9b6e-bc51e62ad9d1",
+      "name": "Prepara Dados1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "career_evaluations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "condition": "eq",
+              "keyValue": "={{ $json.email }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.name }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phone }}"
+            },
+            {
+              "fieldId": "area",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.area }}"
+            },
+            {
+              "fieldId": "atuacao",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.atuacao }}"
+            },
+            {
+              "fieldId": "trabalha_internacional",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.trabalha_internacional }}"
+            },
+            {
+              "fieldId": "experiencia",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.experiencia }}"
+            },
+            {
+              "fieldId": "english_level",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.english_level }}"
+            },
+            {
+              "fieldId": "objetivo",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.objetivo }}"
+            },
+            {
+              "fieldId": "visa_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.visa_status }}"
+            },
+            {
+              "fieldId": "timeline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.timeline }}"
+            },
+            {
+              "fieldId": "family_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.family_status }}"
+            },
+            {
+              "fieldId": "income_range",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.income_range }}"
+            },
+            {
+              "fieldId": "investment_range",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.investment_range }}"
+            },
+            {
+              "fieldId": "impediment",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.impediment }}"
+            },
+            {
+              "fieldId": "impediment_other",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.impediment_other }}"
+            },
+            {
+              "fieldId": "main_concern",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.main_concern }}"
+            },
+            {
+              "fieldId": "report_content",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.report_content }}"
+            },
+            {
+              "fieldId": "formatted_report",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_report }}"
+            },
+            {
+              "fieldId": "formatted_at",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_at }}"
+            },
+            {
+              "fieldId": "readiness_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.readiness_score }}"
+            },
+            {
+              "fieldId": "readiness_percentual",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.readiness_percentual }}"
+            },
+            {
+              "fieldId": "phase_id",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_id }}"
+            },
+            {
+              "fieldId": "phase_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_name }}"
+            },
+            {
+              "fieldId": "phase_emoji",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_emoji }}"
+            },
+            {
+              "fieldId": "rota_letter",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.rota_letter }}"
+            },
+            {
+              "fieldId": "urgency_level",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.urgency_level }}"
+            },
+            {
+              "fieldId": "can_apply_jobs",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.can_apply_jobs }}"
+            },
+            {
+              "fieldId": "score_english",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_english }}"
+            },
+            {
+              "fieldId": "score_experience",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_experience }}"
+            },
+            {
+              "fieldId": "score_international_work",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_international_work }}"
+            },
+            {
+              "fieldId": "score_timeline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_timeline }}"
+            },
+            {
+              "fieldId": "score_objective",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_objective }}"
+            },
+            {
+              "fieldId": "score_visa",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_visa }}"
+            },
+            {
+              "fieldId": "score_readiness",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_readiness }}"
+            },
+            {
+              "fieldId": "score_area_bonus",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_area_bonus }}"
+            },
+            {
+              "fieldId": "recommended_product_tier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_tier }}"
+            },
+            {
+              "fieldId": "recommended_product_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_name }}"
+            },
+            {
+              "fieldId": "recommended_product_price",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_price }}"
+            },
+            {
+              "fieldId": "recommended_product_url",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_url }}"
+            },
+            {
+              "fieldId": "fit_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.fit_score }}"
+            },
+            {
+              "fieldId": "secondary_product_tier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_product_tier }}"
+            },
+            {
+              "fieldId": "secondary_product_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_product_name }}"
+            },
+            {
+              "fieldId": "secondary_fit_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_fit_score }}"
+            },
+            {
+              "fieldId": "has_budget",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_budget }}"
+            },
+            {
+              "fieldId": "budget_gap",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.budget_gap }}"
+            },
+            {
+              "fieldId": "estimated_ltv",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.estimated_ltv }}"
+            },
+            {
+              "fieldId": "has_english_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_english_barrier }}"
+            },
+            {
+              "fieldId": "has_experience_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_experience_barrier }}"
+            },
+            {
+              "fieldId": "has_financial_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_financial_barrier }}"
+            },
+            {
+              "fieldId": "has_family_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_family_barrier }}"
+            },
+            {
+              "fieldId": "has_visa_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_visa_barrier }}"
+            },
+            {
+              "fieldId": "has_time_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_time_barrier }}"
+            },
+            {
+              "fieldId": "has_clarity_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_clarity_barrier }}"
+            },
+            {
+              "fieldId": "critical_blockers",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.critical_blockers }}"
+            },
+            {
+              "fieldId": "recommended_first_action",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_first_action }}"
+            },
+            {
+              "fieldId": "estimated_preparation_months",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_report.phase_classification.estimated_preparation_months }}"
+            },
+            {
+              "fieldId": "is_tech_professional",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.is_tech_professional }}"
+            },
+            {
+              "fieldId": "works_remotely",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.works_remotely }}"
+            },
+            {
+              "fieldId": "has_family",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_family }}"
+            },
+            {
+              "fieldId": "is_high_income",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.is_high_income }}"
+            },
+            {
+              "fieldId": "lead_temperature",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.lead_temperature }}"
+            },
+            {
+              "fieldId": "lead_priority_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.lead_priority_score }}"
+            },
+            {
+              "fieldId": "best_contact_time",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.best_contact_time }}"
+            },
+            {
+              "fieldId": "preferred_communication",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.preferred_communication }}"
+            },
+            {
+              "fieldId": "next_milestone_action",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.next_milestone_action }}"
+            },
+            {
+              "fieldId": "next_milestone_deadline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.next_milestone_deadline }}"
+            },
+            {
+              "fieldId": "recheck_recommended_at",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recheck_recommended_at }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_1",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_1 }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_2",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_2 }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_3",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_3 }}"
+            },
+            {
+              "fieldId": "auto_nurture_sequence",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.auto_nurture_sequence }}"
+            },
+            {
+              "fieldId": "processing_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.processing_status }}"
+            },
+            {
+              "fieldId": "processing_error",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.processing_error }}"
+            },
+            {
+              "fieldId": "access_count",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.access_count }}"
+            },
+            {
+              "fieldId": "utm_source",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_source }}"
+            },
+            {
+              "fieldId": "utm_medium",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_medium }}"
+            },
+            {
+              "fieldId": "utm_campaign",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_campaign }}"
+            },
+            {
+              "fieldId": "utm_content",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_content }}"
+            },
+            {
+              "fieldId": "utm_term",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_term }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1824,
+        1840
+      ],
+      "id": "2ea3c054-c369-4e50-b67f-52cbaf12313f",
+      "name": "Lead Existente1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead_form",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3248,
+        1728
+      ],
+      "id": "bc336b01-3350-4fab-89c8-a437145f7d24",
+      "name": "New Lead Form Webhook1",
+      "webhookId": "b962a9f3-1130-47d7-9e07-5686ef1c9121"
+    },
+    {
+      "parameters": {
+        "tableId": "career_evaluations",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.name }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phone }}"
+            },
+            {
+              "fieldId": "area",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.area }}"
+            },
+            {
+              "fieldId": "atuacao",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.atuacao }}"
+            },
+            {
+              "fieldId": "trabalha_internacional",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.trabalha_internacional }}"
+            },
+            {
+              "fieldId": "experiencia",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.experiencia }}"
+            },
+            {
+              "fieldId": "english_level",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.english_level }}"
+            },
+            {
+              "fieldId": "objetivo",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.objetivo }}"
+            },
+            {
+              "fieldId": "visa_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.visa_status }}"
+            },
+            {
+              "fieldId": "timeline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.timeline }}"
+            },
+            {
+              "fieldId": "family_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.family_status }}"
+            },
+            {
+              "fieldId": "income_range",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.income_range }}"
+            },
+            {
+              "fieldId": "investment_range",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.investment_range }}"
+            },
+            {
+              "fieldId": "impediment",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.impediment }}"
+            },
+            {
+              "fieldId": "impediment_other",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.impediment_other }}"
+            },
+            {
+              "fieldId": "main_concern",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.main_concern }}"
+            },
+            {
+              "fieldId": "report_content",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.report_content }}"
+            },
+            {
+              "fieldId": "formatted_report",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_report }}"
+            },
+            {
+              "fieldId": "formatted_at",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_at }}"
+            },
+            {
+              "fieldId": "readiness_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.readiness_score }}"
+            },
+            {
+              "fieldId": "readiness_percentual",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.readiness_percentual }}"
+            },
+            {
+              "fieldId": "phase_id",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_id }}"
+            },
+            {
+              "fieldId": "phase_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_name }}"
+            },
+            {
+              "fieldId": "phase_emoji",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.phase_emoji }}"
+            },
+            {
+              "fieldId": "rota_letter",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.rota_letter }}"
+            },
+            {
+              "fieldId": "urgency_level",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.urgency_level }}"
+            },
+            {
+              "fieldId": "can_apply_jobs",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.can_apply_jobs }}"
+            },
+            {
+              "fieldId": "score_english",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_english }}"
+            },
+            {
+              "fieldId": "score_experience",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_experience }}"
+            },
+            {
+              "fieldId": "score_international_work",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_international_work }}"
+            },
+            {
+              "fieldId": "score_timeline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_timeline }}"
+            },
+            {
+              "fieldId": "score_objective",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_objective }}"
+            },
+            {
+              "fieldId": "score_visa",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_visa }}"
+            },
+            {
+              "fieldId": "score_readiness",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_readiness }}"
+            },
+            {
+              "fieldId": "score_area_bonus",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.score_area_bonus }}"
+            },
+            {
+              "fieldId": "recommended_product_tier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_tier }}"
+            },
+            {
+              "fieldId": "recommended_product_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_name }}"
+            },
+            {
+              "fieldId": "recommended_product_price",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_price }}"
+            },
+            {
+              "fieldId": "recommended_product_url",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_product_url }}"
+            },
+            {
+              "fieldId": "fit_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.fit_score }}"
+            },
+            {
+              "fieldId": "secondary_product_tier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_product_tier }}"
+            },
+            {
+              "fieldId": "secondary_product_name",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_product_name }}"
+            },
+            {
+              "fieldId": "secondary_fit_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.secondary_fit_score }}"
+            },
+            {
+              "fieldId": "has_budget",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_budget }}"
+            },
+            {
+              "fieldId": "budget_gap",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.budget_gap }}"
+            },
+            {
+              "fieldId": "estimated_ltv",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.estimated_ltv }}"
+            },
+            {
+              "fieldId": "has_english_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_english_barrier }}"
+            },
+            {
+              "fieldId": "has_experience_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_experience_barrier }}"
+            },
+            {
+              "fieldId": "has_financial_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_financial_barrier }}"
+            },
+            {
+              "fieldId": "has_family_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_family_barrier }}"
+            },
+            {
+              "fieldId": "has_visa_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_visa_barrier }}"
+            },
+            {
+              "fieldId": "has_time_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_time_barrier }}"
+            },
+            {
+              "fieldId": "has_clarity_barrier",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_clarity_barrier }}"
+            },
+            {
+              "fieldId": "critical_blockers",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.critical_blockers }}"
+            },
+            {
+              "fieldId": "recommended_first_action",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recommended_first_action }}"
+            },
+            {
+              "fieldId": "estimated_preparation_months",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.formatted_report.phase_classification.estimated_preparation_months }}"
+            },
+            {
+              "fieldId": "is_tech_professional",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.is_tech_professional }}"
+            },
+            {
+              "fieldId": "works_remotely",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.works_remotely }}"
+            },
+            {
+              "fieldId": "has_family",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.has_family }}"
+            },
+            {
+              "fieldId": "is_high_income",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.is_high_income }}"
+            },
+            {
+              "fieldId": "lead_temperature",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.lead_temperature }}"
+            },
+            {
+              "fieldId": "lead_priority_score",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.lead_priority_score }}"
+            },
+            {
+              "fieldId": "best_contact_time",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.best_contact_time }}"
+            },
+            {
+              "fieldId": "preferred_communication",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.preferred_communication }}"
+            },
+            {
+              "fieldId": "next_milestone_action",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.next_milestone_action }}"
+            },
+            {
+              "fieldId": "next_milestone_deadline",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.next_milestone_deadline }}"
+            },
+            {
+              "fieldId": "recheck_recommended_at",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.recheck_recommended_at }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_1",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_1 }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_2",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_2 }}"
+            },
+            {
+              "fieldId": "scheduled_follow_up_3",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.scheduled_follow_up_3 }}"
+            },
+            {
+              "fieldId": "auto_nurture_sequence",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.auto_nurture_sequence }}"
+            },
+            {
+              "fieldId": "processing_status",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.processing_status }}"
+            },
+            {
+              "fieldId": "processing_error",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.processing_error }}"
+            },
+            {
+              "fieldId": "access_count",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.access_count }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $('Prepare for Supabase1').item.json.email }}"
+            },
+            {
+              "fieldId": "utm_source",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_source }}"
+            },
+            {
+              "fieldId": "utm_medium",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_medium }}"
+            },
+            {
+              "fieldId": "utm_campaign",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_campaign }}"
+            },
+            {
+              "fieldId": "utm_content",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_content }}"
+            },
+            {
+              "fieldId": "utm_term",
+              "fieldValue": "={{ $('Prepare for LLM1').item.json.tracking.utm_term }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1824,
+        1632
+      ],
+      "id": "e9d18f31-c912-4c97-a7ca-603c930e1ad3",
+      "name": "Novo Lead",
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json[\"body\"][\"data\"] !== null && Array.isArray($json[\"body\"][\"data\"]) && $json[\"body\"][\"data\"].length > 0 ? $json[\"body\"][\"data\"][0][\"id\"] : undefined }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notExists",
+                      "singleValue": true
+                    },
+                    "id": "6bb83ab8-33e8-4116-b9a0-a6464e9e6950"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Contato não existe"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3959efa2-4c3b-4596-b229-6c8ceaad8bf9",
+                    "leftValue": "={{ $json[\"body\"][\"data\"] !== null && Array.isArray($json[\"body\"][\"data\"]) && $json[\"body\"][\"data\"].length > 0 ? $json[\"body\"][\"data\"][0][\"id\"] : undefined }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Contato existe"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1184,
+        1696
+      ],
+      "id": "43723a6a-acc5-46e2-b964-f850d8d39098",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "823a917f-a1b9-4c2d-9d8f-189ed6bfc495",
+              "name": "subscriber_id",
+              "value": "={{ $node[\"Usuario ja Existe?\"].json[\"body\"][\"data\"][0][\"id\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -688,
+        1824
+      ],
+      "id": "4f9bcf1b-aa2d-4e4e-986a-05b8ec287046",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/setCustomFields",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $node[\"ok2\"].json[\"subscriber_id\"] }}\",\n  \"fields\": [\n    {\n      \"field_id\": 14210793,\n      \"field_name\": \"rep_objetivo\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"goal\"] }}\"\n    },\n    {\n      \"field_id\": 14210796,\n      \"field_name\": \"rep_visa_status\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"visaStatus\"] }}\"\n    },\n    {\n      \"field_id\": 14227294,\n      \"field_name\": \"email_lead\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"email\"] }}\"\n    },\n    {\n      \"field_id\": 14280454,\n      \"field_name\": \"link_report\",\n      \"field_value\": \"{{ $node[\"ok3\"].json[\"access_token\"] }}\"\n    }\n  ,\n    {\n      \"field_id\": 14227232,\n      \"field_name\": \"WPP_ID\",\n      \"field_value\": \"{{ ($('New Lead Form Webhook1').item.json.body.lead.ddd + $('New Lead Form Webhook1').item.json.body.lead.whatsapp).replace(/[^0-9]/g, '') }}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        1696
+      ],
+      "id": "9946aacd-9823-4a7a-b644-28a3a4c4704e",
+      "name": "Preenche Campos do Usuário3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        1696
+      ],
+      "id": "05924a31-be01-474c-b7c0-450cdbed672c",
+      "name": "Wait1",
+      "webhookId": "bb667845-8e5e-464a-8f34-a8b55ba95690"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        1696
+      ],
+      "id": "5ca989cd-adc6-440d-8111-15b4b5ebb60a",
+      "name": "ok2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        1728
+      ],
+      "id": "f4f55ff8-378c-4c67-8df5-383663fe8650",
+      "name": "ok3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1360,
+        2160
+      ],
+      "typeVersion": 1,
+      "id": "3db97a0e-0963-47fd-a6f8-8e88661bcb75",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE 1 — CALCULADORA DE SCORE (regras comerciais revisadas)\n// Tipo: Code (JavaScript) no n8n\n// Input: $json.body  ← formulário EUA Na Prática\n// Versão: 2.4 — score-driven tier (financial capacity informs, not gates)\n// ============================================================\n\n// ── ADAPTADOR DE INPUT ──────────────────────────────────────\n// Mapeia os campos do formulário para o formato esperado pela engine\n\nconst body = $json.body;\n\nconst lead = {\n  fullName:           body.lead.fullName          || \"\",\n  email:              body.lead.email             || \"\",\n  whatsapp:           body.lead.whatsapp          || \"\",\n  currentRole:        body.lead.currentRole       || \"\",\n  area:               body.lead.area              || \"\",\n  worksInternational: body.lead.worksInternational|| \"false\",\n  experience:         body.lead.experience        || \"\",\n  englishLevel:       body.lead.englishLevel      || \"\",\n  goal:               body.lead.goal              || \"\",\n  visaStatus:         body.lead.visaStatus        || \"\",\n  timeline:           body.lead.timeline          || \"\",\n  familyStatus:       body.lead.familyStatus      || \"\",\n  incomeRange:        body.lead.incomeRange       || \"\",\n  investmentRange:    body.lead.investmentRange   || \"\",\n  impediment:         body.lead.impediment        || \"\",\n  mainConcern:        body.lead.mainConcern       || \"\",\n  tracking: {\n    submitted_at:            body.lead.tracking?.submitted_at            || \"\",\n    completion_time_seconds: body.lead.tracking?.completion_time_seconds || \"\",\n    device:                  body.lead.tracking?.device                  || \"\",\n    consentimento_marketing: body.lead.tracking?.consentimento_marketing || \"\",\n    utm_source:              body.lead.tracking?.utm_source              || \"\",\n    utm_medium:              body.lead.tracking?.utm_medium              || \"\",\n    utm_campaign:            body.lead.tracking?.utm_campaign            || \"\",\n    utm_content:             body.lead.tracking?.utm_content             || \"\",\n    utm_term:                body.lead.tracking?.utm_term                || \"\",\n    fbclid:                  body.lead.tracking?.fbclid                  || \"\",\n    gclid:                   body.lead.tracking?.gclid                   || \"\",\n  },\n};\n\n// ── HELPER: strip acentos para normalização robusta ─────────\n\nfunction strip(val = \"\") {\n  return val.toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\n// ── NORMALIZAÇÃO ────────────────────────────────────────────\n\nfunction normalizeEnglish(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"fluente\") || v.includes(\"nativo\") || v.includes(\"native\"))           return \"Fluente\";\n  if (v.includes(\"avancado\") || v.includes(\"advanced\"))                                return \"Avançado\";\n  if (v.includes(\"intermediario\") || v.includes(\"intermediate\"))                       return \"Intermediário\";\n  return \"Básico\";\n}\n\nfunction normalizeExperience(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"+10\") || v.includes(\"10+\") || v.includes(\"maisde10\") || v.includes(\"acimade10\")) return \"+10 anos\";\n  if (v.includes(\"5-10\") || v.includes(\"5a10\") || v.includes(\"5e10\") || (v.includes(\"5\") && v.includes(\"10\"))) return \"5-10 anos\";\n  if (v.includes(\"2-5\")  || v.includes(\"2a5\")  || v.includes(\"2e5\")  || (v.includes(\"2\") && v.includes(\"5\")))  return \"2-5 anos\";\n  return \"Menos de 2 anos\";\n}\n\nfunction normalizeArea(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"sap\") || v.includes(\"erp\"))                                                                return \"SAP/ERP\";\n  if (v.includes(\"tecnologia\") || v.includes(\" ti\") || v.includes(\"/ti\") || v.includes(\" it\") || v.includes(\"/it\")) return \"Tecnologia/IT\";\n  if (v.includes(\"gestao\") || v.includes(\"business\") || v.includes(\"negocio\") || v.includes(\"administracao\")) return \"Gestão/Business\";\n  if (v.includes(\"engenharia\") || v.includes(\"engineering\"))                                                 return \"Engenharia\";\n  if (v.includes(\"marketing\") || v.includes(\"comunicacao\"))                                                 return \"Marketing/Comunicação\";\n  if (v.includes(\"saude\") || v.includes(\"health\"))                                                          return \"Saúde\";\n  if (v.includes(\"estudante\") || v.includes(\"student\"))                                                     return \"Estudante\";\n  return \"Outros\";\n}\n\nfunction normalizeObjective(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"green card\") || v.includes(\"imigrar\") || v.includes(\"imigracao\"))    return \"Imigrar/Green Card trabalhando na minha área\";\n  if (v.includes(\"remoto\") || v.includes(\"dolar\"))                                     return \"Emprego remoto em dólar\";\n  if (v.includes(\"estudar\") || v.includes(\"estudo\") || v.includes(\"faculdade\"))        return \"Estudar nos EUA como porta de entrada\";\n  return \"Ainda não tenho clareza, quero entender minhas opções\";\n}\n\nfunction normalizeVisa(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"green card\") || (v.includes(\"trabalho\") && (v.includes(\"aprovado\") || v.includes(\"tenho\")))) return \"Já tenho visto de trabalho ou Green Card aprovado\";\n  if (v.includes(\"andamento\") || v.includes(\"em processo\") || v.includes(\"em curso\"))  return \"Processo de visto/imigração em andamento\";\n  if (v.includes(\"turista\") || v.includes(\"tourist\") || v.includes(\"b1\") || v.includes(\"b2\")) return \"Tenho/tive apenas visto de turista\";\n  return \"Ainda não iniciei nada\";\n}\n\nfunction normalizeTimeline(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"movimento\") || (v.includes(\"3\") && v.includes(\"proximo\")))           return \"Já estou em movimento / próximos 3 meses\";\n  if (v.includes(\"3\") && v.includes(\"6\"))                                               return \"Entre 3 e 6 meses\";\n  if (v.includes(\"6\") && v.includes(\"12\"))                                              return \"Entre 6 e 12 meses\";\n  return \"Ainda não tenho prazo definido\";\n}\n\nfunction normalizeFamilyStatus(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"filho\"))                                                               return \"Com família e filhos\";\n  if (v.includes(\"conjuge\") || v.includes(\"companheiro\") || v.includes(\"casado\"))      return \"Com cônjuge/companheiro(a)\";\n  if (v.includes(\"sozinho\") || v.includes(\"sozinha\") || v.includes(\"solteiro\"))        return \"Sozinho(a)\";\n  return \"Ainda não pensei sobre isso\";\n}\n\nfunction normalizeIncome(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"prefiro\") || v.includes(\"naoresponder\") || v === \"\")                 return \"Prefiro não responder\";\n  if (v.includes(\"acimade20\") || (v.includes(\"20\") && v.includes(\"acima\")))            return \"Acima de R$ 20 mil\";\n  if (v.includes(\"10\") && v.includes(\"20\"))                                             return \"De R$ 10 mil a R$ 20 mil\";\n  if (v.includes(\"5\")  && v.includes(\"10\"))                                             return \"De R$ 5 mil a R$ 10 mil\";\n  if (v.includes(\"ate5\") || (v.includes(\"5\") && v.includes(\"ate\")))                    return \"Até R$ 5 mil\";\n  return \"Prefiro não responder\";\n}\n\nfunction normalizeInvestment(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"naose\") || v.includes(\"naosei\") || v.includes(\"organizar\"))          return \"Ainda não sei/preciso me organizar primeiro\";\n  if (v.includes(\"acimade5\") || (v.includes(\"5\") && v.includes(\"acima\")))              return \"Acima de R$ 5 mil\";\n  if (v.includes(\"2000\") && v.includes(\"5000\"))                                        return \"De R$ 3 mil a R$ 5 mil\";\n  if (v.includes(\"500\") && (v.includes(\"2000\") || v.includes(\"2.000\")))                return \"De R$ 1.500 a R$ 3.000\";\n  if (v.includes(\"ate500\") || (v.includes(\"500\") && v.includes(\"ate\")))                return \"Até R$ 1.500\";\n  return \"Ainda não sei/preciso me organizar primeiro\";\n}\n\nfunction normalizeImpediment(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"pronto\") || v.includes(\"nenhum\"))                                    return \"Nenhum, pois estou pronto(a)\";\n  if (v.includes(\"financeiro\") || v.includes(\"dinheiro\") || v.includes(\"custo\"))      return \"Financeiro\";\n  if (v.includes(\"tempo\") || v.includes(\"rotina\") || v.includes(\"agenda\"))            return \"Tempo ou rotina\";\n  if (v.includes(\"ingles\") || v.includes(\"idioma\"))                                   return \"Inglês\";\n  if (v.includes(\"medo\") || v.includes(\"decisao\") || v.includes(\"errada\"))            return \"Medo de tomar uma decisão errada\";\n  if (v.includes(\"familia\") || v.includes(\"conjuge\") || v.includes(\"apoio\"))          return \"Falta de apoio do cônjuge ou família\";\n  return \"Outro\";\n}\n\nfunction normalizeWorksInternational(val = \"\") {\n  const v = strip(val);\n  return (v === \"sim\" || v === \"yes\" || v === \"s\" || v === \"true\" || v === \"1\") ? \"Sim\" : \"Não\";\n}\n\n// ── DADOS NORMALIZADOS ──────────────────────────────────────\n\nconst input = {\n  name:                   lead.fullName,\n  email:                  lead.email,\n  phone:                  lead.whatsapp,\n  area:                   normalizeArea(lead.area),\n  raw_area:               lead.area,\n  atuacao:                lead.currentRole,\n  current_role:           lead.currentRole,\n  trabalha_internacional: normalizeWorksInternational(lead.worksInternational),\n  experiencia:            normalizeExperience(lead.experience),\n  english_level:          normalizeEnglish(lead.englishLevel),\n  raw_english_level:      lead.englishLevel,\n  objetivo:               normalizeObjective(lead.goal),\n  visa_status:            normalizeVisa(lead.visaStatus),\n  timeline:               normalizeTimeline(lead.timeline),\n  family_status:          normalizeFamilyStatus(lead.familyStatus),\n  income_range:           normalizeIncome(lead.incomeRange),\n  investment_range:       normalizeInvestment(lead.investmentRange),\n  impediment:             normalizeImpediment(lead.impediment),\n  main_concern:           lead.mainConcern,\n};\n\n// ── SCORE ───────────────────────────────────────────────────\n\nconst score_english            = { \"Básico\": 0, \"Intermediário\": 12, \"Avançado\": 20, \"Fluente\": 25 }[input.english_level] ?? 0;\nconst score_experience         = { \"Menos de 2 anos\": 5, \"2-5 anos\": 12, \"5-10 anos\": 17, \"+10 anos\": 20 }[input.experiencia] ?? 0;\nconst score_international_work = input.trabalha_internacional === \"Sim\" ? 15 : 5;\nconst score_timeline           = { \"Já estou em movimento / próximos 3 meses\": 10, \"Entre 3 e 6 meses\": 8, \"Entre 6 e 12 meses\": 5, \"Ainda não tenho prazo definido\": 2 }[input.timeline] ?? 0;\nconst score_objective          = { \"Imigrar/Green Card trabalhando na minha área\": 10, \"Emprego remoto em dólar\": 8, \"Estudar nos EUA como porta de entrada\": 6, \"Ainda não tenho clareza, quero entender minhas opções\": 0 }[input.objetivo] ?? 0;\nconst score_visa               = { \"Já tenho visto de trabalho ou Green Card aprovado\": 10, \"Processo de visto/imigração em andamento\": 7, \"Tenho/tive apenas visto de turista\": 3, \"Ainda não iniciei nada\": 0 }[input.visa_status] ?? 0;\nconst score_readiness          = { \"Nenhum, pois estou pronto(a)\": 10, \"Tempo ou rotina\": 6, \"Medo de tomar uma decisão errada\": 4, \"Financeiro\": 3, \"Inglês\": 2, \"Falta de apoio do cônjuge ou família\": 1, \"Outro\": 3 }[input.impediment] ?? 3;\nconst score_area_bonus         = 0;\n\nconst readiness_score = Math.min(\n  score_english + score_experience + score_international_work +\n  score_timeline + score_objective + score_visa + score_readiness + score_area_bonus,\n  100\n);\n\n// ── FASE ────────────────────────────────────────────────────\n\nlet phase;\nif      (readiness_score <= 35) phase = { phase_id: 0, phase_name: \" Realidade & Direção\",      phase_emoji: \"❌\", phase_color: \"#DC2626\", rota_letter: \"Pré-R\", urgency_level: \"BAIXA\",   can_apply_jobs: false, estimated_preparation_months: 24 };\nelse if (readiness_score <= 60) phase = { phase_id: 1, phase_name: \"Organização\", phase_emoji: \"🟡\", phase_color: \"#F59E0B\", rota_letter: \"R-O\",   urgency_level: \"MÉDIA\",   can_apply_jobs: false, estimated_preparation_months: 15 };\nelse if (readiness_score <= 85) phase = { phase_id: 2, phase_name: \"Tração\",           phase_emoji: \"🟢\", phase_color: \"#10B981\", rota_letter: \"O-T\",   urgency_level: \"ALTA\",    can_apply_jobs: true,  estimated_preparation_months: 9  };\nelse                            phase = { phase_id: 3, phase_name: \"Aceleração\",             phase_emoji: \"🚀\", phase_color: \"#8B5CF6\", rota_letter: \"T-A\",   urgency_level: \"CRÍTICA\", can_apply_jobs: true,  estimated_preparation_months: 3  };\n\n// ── BARREIRAS ───────────────────────────────────────────────\n\nconst barriers = {\n  has_english_barrier:    [\"Básico\", \"Intermediário\"].includes(input.english_level),\n  has_experience_barrier: [\"Menos de 2 anos\", \"2-5 anos\"].includes(input.experiencia),\n  has_financial_barrier:  input.income_range === \"Até R$ 5 mil\" || input.impediment === \"Financeiro\",\n  has_family_barrier:     input.family_status === \"Com família e filhos\" || input.impediment === \"Falta de apoio do cônjuge ou família\",\n  has_visa_barrier:       input.visa_status === \"Ainda não iniciei nada\",\n  has_time_barrier:       input.impediment === \"Tempo ou rotina\",\n  has_clarity_barrier:    input.objetivo === \"Ainda não tenho clareza, quero entender minhas opções\",\n};\n\n// ── TIER CLASSIFICATION (v2.4 — score-driven) ───────────────\n// Score is the PRIMARY driver of tier. Financial capacity is passed as\n// context to the LLM via financial_fit so it can address constraints\n// in the recommendation description, but does NOT gate the tier.\n//\n// Thresholds aligned with phase_classification boundaries:\n//   0-30  → FREE         (phase 0: Realidade & Direção)\n//   31-50 → LOW_TICKET   (phase 0-1: building foundation)\n//   51-70 → MED_TICKET   (phase 1-2: Organização/Tração)\n//   71+   → HIGH_TICKET  (phase 2-3: Tração/Aceleração)\n\nlet recommended_product_tier;\nif (readiness_score >= 71) {\n  recommended_product_tier = 'HIGH_TICKET';\n} else if (readiness_score >= 51) {\n  recommended_product_tier = 'MED_TICKET';\n} else if (readiness_score >= 31) {\n  recommended_product_tier = 'LOW_TICKET';\n} else {\n  recommended_product_tier = 'FREE';\n}\n\n// Convenience flags (derived from tier, used by downstream logic)\nconst isHighTicket = recommended_product_tier === 'HIGH_TICKET';\nconst isMedTicket  = recommended_product_tier === 'MED_TICKET';\nconst isLowTicket  = recommended_product_tier === 'LOW_TICKET';\nconst isFree       = recommended_product_tier === 'FREE';\n\n// ── FINANCIAL FIT (data-driven, independent of tier) ─────────\n// has_budget reflects ACTUAL financial capacity, not tier assignment.\n// A lead can be MED_TICKET (high score) but has_budget=false (no money yet).\n// The LLM uses this to frame the recommendation appropriately.\n\nconst has_budget =\n  ![\"Até R$ 1.500\", \"Ainda não sei/preciso me organizar primeiro\"].includes(input.investment_range);\n\nconst budget_gap =\n  !has_budget                    ? \"Sem orçamento no momento\" :\n  input.impediment === \"Financeiro\" ? \"Tem budget mas precisa superar objeção financeira\" :\n  [\"De R$ 3 mil a R$ 5 mil\", \"Acima de R$ 5 mil\"].includes(input.investment_range)\n                                 ? \"Compatível\" :\n                                   \"Acessível com parcelamento\";\n\n// ── FIT SCORE & LTV ─────────────────────────────────────────\n// fit_score combines readiness (tier) with financial capacity.\n// A high-score lead without budget has decent fit but penalized.\n\nlet fit_score, estimated_ltv;\n\nif (isHighTicket) {\n  fit_score     = has_budget\n    ? Math.min(85 + Math.round((readiness_score - 71) / 2), 100)\n    : Math.min(65 + Math.round((readiness_score - 71) / 2), 80);\n  estimated_ltv = has_budget ? 10000 : 3000;\n} else if (isMedTicket) {\n  const financial_penalty = !has_budget ? 10 : (input.impediment === \"Financeiro\" ? 8 : 0);\n  fit_score     = Math.min(70 + Math.round((readiness_score - 51) / 2) - financial_penalty, 85);\n  estimated_ltv = has_budget ? 2500 : 500;\n} else if (isLowTicket) {\n  fit_score     = Math.min(50 + Math.round((readiness_score - 31) / 3), 70);\n  estimated_ltv = has_budget ? 700 : 200;\n} else {\n  fit_score     = Math.min(30 + Math.round(readiness_score / 2), 45);\n  estimated_ltv = 0;\n}\n\n// ── TEMPERATURA & PRIORITY ──────────────────────────────────\n\nconst lead_temperature =\n  readiness_score >= 80 && has_budget ? \"SUPER_QUENTE\" :\n  readiness_score >= 65 && has_budget ? \"QUENTE\" :\n  readiness_score >= 40               ? \"MORNO\" :\n                                        \"FRIO\";\n\nconst urgency_bonus       = phase.urgency_level === \"CRÍTICA\" ? 10 : phase.urgency_level === \"ALTA\" ? 5 : 0;\nconst lead_priority_score = Math.round(\n  (readiness_score * 0.4) + (fit_score * 0.3) + (has_budget ? 20 : 0) + urgency_bonus\n);\n\n// ── ENRICHMENT ──────────────────────────────────────────────\n\nconst enrichment = {\n  is_tech_professional: input.area === \"Tecnologia/IT\",\n  is_senior_level:      [\"5-10 anos\", \"+10 anos\"].includes(input.experiencia),\n  works_remotely:       input.trabalha_internacional === \"Sim\",\n  has_family:           input.family_status === \"Com família e filhos\",\n  is_high_income:       [\"De R$ 10 mil a R$ 20 mil\", \"Acima de R$ 20 mil\"].includes(input.income_range),\n};\n\n// ── UPSELL PATH (CRM-only, not sent to AI) ──────────────────\n\nconst upsell_path =\n  isHighTicket ? \"Manter em HIGH → Alumni/Indicações\" :\n  isMedTicket && !has_budget ? \"MED sem budget → nurture financeiro → oferta MED após 60-90 dias\" :\n  isMedTicket  ? \"MED → oferta HIGH após 60-90 dias se score evoluir\" :\n  isLowTicket  ? \"LOW → oferta MED após completar módulos iniciais\" :\n                 \"FREE → oferta LOW após 30-60 dias quando engajar\";\n\n// ── DATAS ───────────────────────────────────────────────────\n\nconst today     = new Date();\nconst addDays   = (d, n) => new Date(d.getTime() + n * 86400000).toISOString().split(\"T\")[0];\nconst addMonths = (d, n) => { const r = new Date(d); r.setMonth(r.getMonth() + n); return r.toISOString().split(\"T\")[0]; };\n\nconst milestone = {\n  0: { action: \"Atingir inglês B2 e ganhar 2+ anos de experiência internacional\",   months: 24, recheck: 6 },\n  1: { action: \"Elevar inglês para C1 e otimizar LinkedIn para o mercado americano\", months: 15, recheck: 4 },\n  2: { action: \"Aplicar para 20+ vagas estratégicas e conseguir 3+ entrevistas\",    months: 9,  recheck: 2 },\n  3: { action: \"Negociar ofertas simultaneamente e iniciar processo de visto\",       months: 3,  recheck: 1 },\n}[phase.phase_id];\n\n// ── NURTURE SEQUENCE ────────────────────────────────────────\n\nlet auto_nurture_sequence;\nif (isFree && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Free_FinancialBarrier_Nurture\";\n} else if (isFree) {\n  auto_nurture_sequence = \"Free_Content_Engagement\";\n} else if (phase.phase_id === 0 && barriers.has_english_barrier) {\n  auto_nurture_sequence = \"Fase0_Ingles_Basico\";\n} else if (phase.phase_id === 0 && barriers.has_experience_barrier) {\n  auto_nurture_sequence = \"Fase0_Sem_Experiencia\";\n} else if (isMedTicket && !has_budget) {\n  auto_nurture_sequence = \"MedTicket_NoBudget_Nurture\";\n} else if (isMedTicket && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_FinancialObjection\";\n} else if (isMedTicket) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_Nurture\";\n} else if (isLowTicket && phase.phase_id === 1) {\n  auto_nurture_sequence = \"Fase1_Low_Ticket_Education\";\n} else if (phase.phase_id === 2) {\n  auto_nurture_sequence = \"Fase2_Traction_Active\";\n} else {\n  auto_nurture_sequence = \"Fase3_Acceleration_VIP\";\n}\n\n// ── RETORNO ─────────────────────────────────────────────────\n// NOTE: product_recommendation is NO LONGER included here.\n// The recommend-product edge function handles product selection dynamically\n// by querying hub_services and calling LLM — triggered automatically via\n// Postgres trigger when formatted_report is saved.\n\nreturn [{\n  json: {\n    user_data: {\n      name:                   input.name,\n      email:                  input.email,\n      phone:                  input.phone,\n      area:                   input.area,\n      raw_area:               input.raw_area,\n      atuacao:                input.atuacao,\n      current_role:           input.current_role,\n      trabalha_internacional: input.trabalha_internacional,\n      experiencia:            input.experiencia,\n      english_level:          input.english_level,\n      raw_english_level:      input.raw_english_level,\n      objetivo:               input.objetivo,\n      visa_status:            input.visa_status,\n      timeline:               input.timeline,\n      family_status:          input.family_status,\n      income_range:           input.income_range,\n      investment_range:       input.investment_range,\n      impediment:             input.impediment,\n      main_concern:           input.main_concern,\n    },\n\n    scoring: {\n      readiness_score,\n      readiness_percentual: Math.round(readiness_score),\n      max_score: 100,\n      score_breakdown: {\n        score_english,\n        score_experience,\n        score_international_work,\n        score_timeline,\n        score_objective,\n        score_visa,\n        score_readiness,\n        score_area_bonus,\n      },\n    },\n\n    phase_classification: phase,\n    barriers_analysis:    barriers,\n\n    lead_qualification: {\n      lead_temperature,\n      lead_priority_score,\n      recommended_product_tier,\n      ...enrichment,\n      preferred_communication: \"WhatsApp\",\n      financial_fit: { has_budget, budget_gap, estimated_ltv },\n    },\n\n    timeline_milestones: {\n      next_milestone_action:   milestone.action,\n      next_milestone_deadline: addMonths(today, milestone.months),\n      recheck_recommended_at:  addMonths(today, milestone.recheck),\n      scheduled_follow_up_1:   addDays(today, 7),\n      scheduled_follow_up_2:   addDays(today, 30),\n      scheduled_follow_up_3:   addDays(today, 90),\n      auto_nurture_sequence,\n    },\n\n    tracking: lead.tracking,\n\n    report_metadata: {\n      generated_at:   today.toISOString(),\n      report_version: \"2.4\",\n      prompt_version: \"v2.4\",\n      ai_model_used:  \"claude-sonnet-4-5\",\n    },\n\n    _debug: {\n      english:    `\"${lead.englishLevel}\" → \"${input.english_level}\" → ${score_english}pts`,\n      experience: `\"${lead.experience}\" → \"${input.experiencia}\" → ${score_experience}pts`,\n      area:       `\"${lead.area}\" → \"${input.area}\"`,\n      investment: `\"${lead.investmentRange}\" → \"${input.investment_range}\"`,\n      income:     `\"${lead.incomeRange}\" → \"${input.income_range}\"`,\n      impediment: `\"${lead.impediment}\" → \"${input.impediment}\" → ${score_readiness}pts`,\n      current_role: `\"${lead.currentRole}\"`,\n      works_intl: `\"${lead.worksInternational}\" → \"${input.trabalha_internacional}\"`,\n      tier_logic: `score=${readiness_score} → ${recommended_product_tier} | has_budget=${has_budget}`,\n      total:      `${readiness_score}/100 → Fase ${phase.phase_id} → ${recommended_product_tier}`,\n      upsell_path,\n    },\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2976,
+        1904
+      ],
+      "id": "2b82cfe3-eae6-4c26-bfc4-4363a4b83a61",
+      "name": "Prepare for LLM1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE 3 — PREPARAÇÃO DE DADOS PARA SUPABASE (SMART PARSE)\n// Input: output do Claude (AI Agent node)\n// Compatível com: JSON Input v2.3 (produto decoupled)\n// ============================================================\n\nconst rootInput = $input.first().json;\n\n// ── PARSE INTELIGENTE ───────────────────────────────────────\n// Esta seção procura o JSON correto, não importa onde o n8n o escondeu\n\nlet aiReport = null;\n\n// Função auxiliar para limpar Markdown (```json ... ```) e parsear\nconst parseString = (str) => {\n    if (!str || typeof str !== 'string') return null;\n    try {\n        const cleaned = str\n            .replace(/^```json\\s*/, '') // Remove inicio ```json\n            .replace(/^```\\s*/, '')     // Remove inicio ```\n            .replace(/\\s*```$/, '')     // Remove fim ```\n            .trim();\n        return JSON.parse(cleaned);\n    } catch (e) {\n        return null;\n    }\n};\n\n// 1. Tenta pegar direto da raiz (se o node anterior já entregou o objeto pronto)\nif (rootInput.user_data && rootInput.scoring) {\n    aiReport = rootInput;\n} \n// 2. Tenta pegar de dentro de 'output' (padrão AI Agent do n8n)\nelse if (rootInput.output) {\n    if (typeof rootInput.output === 'object') {\n        aiReport = rootInput.output;\n    } else {\n        aiReport = parseString(rootInput.output);\n    }\n}\n// 3. Tenta pegar de dentro de 'text' ou 'message.content' (outros padrões)\nelse if (rootInput.text) {\n    aiReport = parseString(rootInput.text);\n}\n\n// Se depois de tudo isso ainda for null ou não tiver user_data, lança erro detalhado\nif (!aiReport || !aiReport.user_data) {\n    throw new Error(\n        `Não foi possível encontrar o JSON válido. \\n` +\n        `Input recebido: ${JSON.stringify(rootInput).substring(0, 200)}...`\n    );\n}\n\n// ── VALIDAÇÃO ───────────────────────────────────────────────\n\nconst requiredFields = [\n    'user_data',\n    'scoring',\n    'phase_classification',\n    'barriers_analysis',\n    // product_recommendation REMOVED — decoupled to recommend-product edge function\n    'lead_qualification',\n    'timeline_milestones'\n];\n\nconst missingFields = requiredFields.filter(field => !aiReport[field]);\nif (missingFields.length > 0) {\n    throw new Error(`JSON da IA incompleto. Campos faltando: ${missingFields.join(', ')}`);\n}\n\n// ── HELPERS ─────────────────────────────────────────────────\n\nconst toBool = (val) => {\n    if (typeof val === 'boolean') return val;\n    if (typeof val === 'string') {\n        const v = val.toLowerCase().trim();\n        return ['sim', 'true', '1', 'yes', 'não', 'nao', 'false', '0'].includes(v) \n            ? (['sim', 'true', '1', 'yes'].includes(v)) \n            : false;\n    }\n    if (typeof val === 'number') return val !== 0;\n    return false;\n};\n\n// Permite string vazia \"\" mas bloqueia null/undefined\nconst required = (value, fieldName) => {\n    if (value === undefined || value === null) {\n        throw new Error(`Campo obrigatório ausente: ${fieldName}`);\n    }\n    return value;\n};\n\nconst toInt = (val) => {\n    if (val === null || val === undefined || val === '') return null;\n    if (typeof val === 'number') return Math.round(val);\n    const n = parseInt(String(val).replace(/[^0-9.-]/g, ''), 10);\n    return isNaN(n) ? null : n;\n};\n\nconst toNumeric = (val) => {\n    if (val === null || val === undefined || val === '') return null;\n    if (typeof val === 'number') return val;\n    const n = parseFloat(String(val).replace(/[^0-9.-]/g, ''));\n    return isNaN(n) ? null : n;\n};\n\n// ── EXTRAÇÃO ────────────────────────────────────────────────\n\nconst user = aiReport.user_data || {};\nconst scoring = aiReport.scoring || {};\nconst phase = aiReport.phase_classification || {};\nconst barriers = aiReport.barriers_analysis || {};\nconst lead = aiReport.lead_qualification || {};\nconst timeline = aiReport.timeline_milestones || {};\nconst financialFit = lead.financial_fit || {};\n\n// ── PREPARAÇÃO JSONB ────────────────────────────────────────\nconst {\n    _debug,\n    tracking,\n    database_fields, \n    report_metadata,\n    ...reportClean\n} = aiReport;\n\nconst reportContent = phase.short_diagnosis || \n    `${phase.phase_emoji} ${phase.phase_name} — Score: ${scoring.readiness_score}/100`;\n\n// ── RECORD FINAL ────────────────────────────────────────────\n\nconst record = {\n\n    // ── DADOS DO FORMULÁRIO ──────────────────────────────────\n    email: required(user.email, 'user_data.email'),\n    name: required(user.name, 'user_data.name'),\n    phone: user.phone || '',\n    area: required(user.area, 'user_data.area'),\n    atuacao: user.atuacao || '',\n    trabalha_internacional: toBool(user.trabalha_internacional),\n    experiencia: required(user.experiencia, 'user_data.experiencia'),\n    english_level: required(user.english_level, 'user_data.english_level'),\n    objetivo: required(user.objetivo, 'user_data.objetivo'),\n    visa_status: user.visa_status || '',\n    timeline: user.timeline || '',\n    family_status: user.family_status || '',\n    income_range: user.income_range || '',\n    investment_range: user.investment_range || '',\n    impediment: user.impediment || '',\n    impediment_other: null,\n    main_concern: user.main_concern || null,\n\n    // ── RELATÓRIO ────────────────────────────────────────────\n    report_content: reportContent,\n    formatted_report: reportClean,\n    formatted_at: new Date().toISOString(),\n\n    // ── SCORING & FASE ───────────────────────────────────────\n    readiness_score: toInt(required(scoring.readiness_score, 'scoring.readiness_score')),\n    readiness_percentual: toNumeric(required(scoring.readiness_percentual, 'scoring.readiness_percentual')),\n    phase_id: toInt(required(phase.phase_id, 'phase_classification.phase_id')),\n    phase_name: required(phase.phase_name, 'phase_classification.phase_name'),\n    phase_emoji: required(phase.phase_emoji, 'phase_classification.phase_emoji'),\n    rota_letter: required(phase.rota_letter, 'phase_classification.rota_letter'),\n    urgency_level: required(phase.urgency_level, 'phase_classification.urgency_level'),\n    can_apply_jobs: toBool(required(phase.can_apply_jobs, 'phase_classification.can_apply_jobs')),\n    estimated_preparation_months: toInt(required(phase.estimated_preparation_months, 'phase_classification.estimated_preparation_months')),\n\n    // ── SCORE BREAKDOWN ──────────────────────────────────────\n    score_english: toInt(scoring.score_breakdown?.score_english),\n    score_experience: toInt(scoring.score_breakdown?.score_experience),\n    score_international_work: toInt(scoring.score_breakdown?.score_international_work),\n    score_timeline: toInt(scoring.score_breakdown?.score_timeline),\n    score_objective: toInt(scoring.score_breakdown?.score_objective),\n    score_visa: toInt(scoring.score_breakdown?.score_visa),\n    score_readiness: toInt(scoring.score_breakdown?.score_readiness),\n    score_area_bonus: toInt(scoring.score_breakdown?.score_area_bonus || 0),\n\n    // ── PRODUTO (decoupled — recommend-product edge function populates these) ──\n    recommended_product_tier: required(lead.recommended_product_tier, 'lead_qualification.recommended_product_tier'),\n    recommended_product_name: null,   // edge function: recommend-product\n    recommended_product_price: null,  // edge function: recommend-product\n    recommended_product_url: null,    // edge function: recommend-product\n    fit_score: null,                  // edge function: recommend-product\n\n    // ── SECONDARY PRODUCT (removed — decoupled) ──────────────\n    secondary_product_tier: null,\n    secondary_product_name: null,\n    secondary_fit_score: null,\n\n    // ── FINANCIAL FIT (now in lead_qualification) ────────────\n    has_budget: toBool(financialFit.has_budget),\n    budget_gap: financialFit.budget_gap || '',\n    estimated_ltv: toNumeric(financialFit.estimated_ltv),\n\n    // ── BARREIRAS ────────────────────────────────────────────\n    has_english_barrier: toBool(barriers.has_english_barrier),\n    has_experience_barrier: toBool(barriers.has_experience_barrier),\n    has_financial_barrier: toBool(barriers.has_financial_barrier),\n    has_family_barrier: toBool(barriers.has_family_barrier),\n    has_visa_barrier: toBool(barriers.has_visa_barrier),\n    has_time_barrier: toBool(barriers.has_time_barrier),\n    has_clarity_barrier: toBool(barriers.has_clarity_barrier),\n    critical_blockers: barriers.critical_blockers || [],\n    recommended_first_action: required(barriers.recommended_first_action, 'barriers.first_action'),\n\n    // ── LEAD QUALIFICATION ───────────────────────────────────\n    is_tech_professional: toBool(lead.is_tech_professional),\n    is_senior_level: toBool(lead.is_senior_level),\n    works_remotely: toBool(lead.works_remotely),\n    has_family: toBool(lead.has_family),\n    is_high_income: toBool(lead.is_high_income),\n    lead_temperature: required(lead.lead_temperature, 'lead.temperature'),\n    lead_priority_score: toInt(required(lead.lead_priority_score, 'lead.priority')),\n    best_contact_time: lead.best_contact_time || '',\n    preferred_communication: lead.preferred_communication || '',\n\n    // ── TIMELINE & MILESTONES ────────────────────────────────\n    next_milestone_action: required(timeline.next_milestone_action, 'timeline.next_action'),\n    next_milestone_deadline: required(timeline.next_milestone_deadline, 'timeline.deadline'),\n    recheck_recommended_at: required(timeline.recheck_recommended_at, 'timeline.recheck'),\n    scheduled_follow_up_1: timeline.scheduled_follow_up_1 || null,\n    scheduled_follow_up_2: timeline.scheduled_follow_up_2 || null,\n    scheduled_follow_up_3: timeline.scheduled_follow_up_3 || null,\n    auto_nurture_sequence: timeline.auto_nurture_sequence || 'default',\n\n    // ── STATUS ───────────────────────────────────────────────\n    processing_status: 'completed',\n    processing_error: null,\n    access_count: 0,\n};\n\n// ── RETORNO ────────────────────────────────────────────────\nconsole.log(`✅ Processado com sucesso: ${record.email} (Score: ${record.readiness_score})`);\nreturn { json: record };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2464,
+        1728
+      ],
+      "id": "5fbe26a4-0f8f-46b4-91fc-8695d085b574",
+      "name": "Prepare for Supabase1"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.manychat.com/fb/subscriber/findByCustomField",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "field_id",
+              "value": "14227232"
+            },
+            {
+              "name": "field_value",
+              "value": "={{ $('New Lead Form Webhook1').item.json.body.lead.ddd }}{{ $('New Lead Form Webhook1').item.json.body.lead.whatsapp }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1424,
+        1728
+      ],
+      "id": "f7d34af0-9bf4-4d6f-b95a-3dad38e7701a",
+      "name": "Usuario ja Existe?",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/setCustomFields",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $node[\"ok2\"].json[\"subscriber_id\"] }}\",\n  \"fields\": [\n    {\n      \"field_id\": 14210786,\n      \"field_name\": \"rep_area\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"area\"] }}\"\n    },\n    {\n      \"field_id\": 14210785,\n      \"field_name\": \"rep_atuacao\",\n      \"field_value\": \"{{ $('Prepare for Supabase1').item.json.atuacao }}\"\n    },\n    {\n      \"field_id\": 14210804,\n      \"field_name\": \"rep_concern\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"goal\"] }}\"\n    },\n    {\n      \"field_id\": 14210791,\n      \"field_name\": \"rep_english_level\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"englishLevel\"] }}\"\n    },\n    {\n      \"field_id\": 14216632,\n      \"field_name\": \"rep_experience\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"experience\"] }}\"\n    },\n    {\n      \"field_id\": 14210799,\n      \"field_name\": \"rep_family_status\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"familyStatus\"] }}\"\n    },\n    {\n      \"field_id\": 14210802,\n      \"field_name\": \"rep_impediment\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"impediment\"] }}\"\n    },\n    {\n      \"field_id\": 14210800,\n      \"field_name\": \"rep_income\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"incomeRange\"] }}\"\n    },\n    {\n      \"field_id\": 14210801,\n      \"field_name\": \"rep_investment_range\",\n      \"field_value\": \"{{ $node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"investmentRange\"] }}\"\n    }\n]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -288,
+        1696
+      ],
+      "id": "ef05098f-998a-4df4-abb6-c05683249948",
+      "name": "Preenche dados do Report",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "823a917f-a1b9-4c2d-9d8f-189ed6bfc495",
+              "name": "subscriber_id",
+              "value": "={{ $json.data.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        1504
+      ],
+      "id": "9cb86696-cb99-4aad-8adf-3af6530084fd",
+      "name": "Pega Subscriber Id"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead_form2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3248,
+        2112
+      ],
+      "id": "cf7cee08-5649-4b9b-ab58-627cd4b4b1a7",
+      "name": "Form 2",
+      "webhookId": "b962a9f3-1130-47d7-9e07-5686ef1c9121",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// NODE 1 — CALCULADORA DE SCORE (regras comerciais revisadas)\n// Tipo: Code (JavaScript) no n8n\n// Input: $json.body  ← formulário EUA Na Prática\n// Versão: 2.4 — score-driven tier (financial capacity informs, not gates)\n// ============================================================\n\n// ── ADAPTADOR DE INPUT ──────────────────────────────────────\n// Mapeia os campos do formulário para o formato esperado pela engine\n\nconst body = $json.body;\n\n\n\n// ── HELPER: strip acentos para normalização robusta ─────────\n\nfunction strip(val = \"\") {\n  return val.toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nconst lead = {\n  fullName:           body.name               || \"\",\n  email:              body.email              || \"\",\n  whatsapp:           body.whatsapp           || \"\",\n  currentRole:        body.role               || \"\",\n  area:               body.area               || \"\",\n  worksInternational: body.internationalWork   || \"false\",\n  experience:         body.experience         || \"\",\n  englishLevel:       body.englishLevel       || \"\",\n  goal:               body.goal               || \"\",\n  visaStatus:         body.visaStatus         || \"\",\n  timeline:           body.timeline           || \"\",\n  familyStatus:       body.familyStatus       || \"\",   // campo não existe no novo form — ficará vazio\n  incomeRange:        body.income             || \"\",\n  investmentRange:    body.investment         || \"\",\n  impediment:         body.obstacle           || \"\",\n  mainConcern:        body.concern            || \"\",\n  tracking: {\n    submitted_at:            body.submittedAt                 || \"\",\n    completion_time_seconds: body.completionTimeSeconds       || \"\",\n    device:                  body.device                      || \"\",\n    consentimento_marketing: body.marketingConsent?.toString() || \"\",\n    utm_source:              body.utm_source                  || \"\",\n    utm_medium:              body.utm_medium                  || \"\",\n    utm_campaign:            body.utm_campaign                || \"\",\n    utm_content:             body.utm_content                 || \"\",\n    utm_term:                body.utm_term                    || \"\",\n    fbclid:                  body.fbclid                      || \"\",\n    gclid:                   body.gclid                       || \"\",\n  },\n};\n\n// ── NORMALIZAÇÃO ────────────────────────────────────────────\n\nfunction normalizeEnglish(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"fluente\") || v.includes(\"nativo\") || v.includes(\"native\"))           return \"Fluente\";\n  if (v.includes(\"avancado\") || v.includes(\"advanced\"))                                return \"Avançado\";\n  if (v.includes(\"intermediario\") || v.includes(\"intermediate\"))                       return \"Intermediário\";\n  return \"Básico\";\n}\n\nfunction normalizeExperience(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"+10\") || v.includes(\"10+\") || v.includes(\"maisde10\") || v.includes(\"acimade10\")) return \"+10 anos\";\n  if (v.includes(\"5-10\") || v.includes(\"5a10\") || v.includes(\"5e10\") || (v.includes(\"5\") && v.includes(\"10\"))) return \"5-10 anos\";\n  if (v.includes(\"2-5\")  || v.includes(\"2a5\")  || v.includes(\"2e5\")  || (v.includes(\"2\") && v.includes(\"5\")))  return \"2-5 anos\";\n  return \"Menos de 2 anos\";\n}\n\nfunction normalizeArea(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"sap\") || v.includes(\"erp\"))                                                                return \"SAP/ERP\";\n  if (v.includes(\"tecnologia\") || v.includes(\" ti\") || v.includes(\"/ti\") || v.includes(\" it\") || v.includes(\"/it\")) return \"Tecnologia/IT\";\n  if (v.includes(\"gestao\") || v.includes(\"business\") || v.includes(\"negocio\") || v.includes(\"administracao\")) return \"Gestão/Business\";\n  if (v.includes(\"engenharia\") || v.includes(\"engineering\"))                                                 return \"Engenharia\";\n  if (v.includes(\"marketing\") || v.includes(\"comunicacao\"))                                                 return \"Marketing/Comunicação\";\n  if (v.includes(\"saude\") || v.includes(\"health\"))                                                          return \"Saúde\";\n  if (v.includes(\"estudante\") || v.includes(\"student\"))                                                     return \"Estudante\";\n  return \"Outros\";\n}\n\nfunction normalizeObjective(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"green card\") || v.includes(\"imigrar\") || v.includes(\"imigracao\"))    return \"Imigrar/Green Card trabalhando na minha área\";\n  if (v.includes(\"remoto\") || v.includes(\"dolar\"))                                     return \"Emprego remoto em dólar\";\n  if (v.includes(\"estudar\") || v.includes(\"estudo\") || v.includes(\"faculdade\"))        return \"Estudar nos EUA como porta de entrada\";\n  return \"Ainda não tenho clareza, quero entender minhas opções\";\n}\n\nfunction normalizeVisa(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"green card\") || (v.includes(\"trabalho\") && (v.includes(\"aprovado\") || v.includes(\"tenho\")))) return \"Já tenho visto de trabalho ou Green Card aprovado\";\n  if (v.includes(\"andamento\") || v.includes(\"em processo\") || v.includes(\"em curso\"))  return \"Processo de visto/imigração em andamento\";\n  if (v.includes(\"turista\") || v.includes(\"tourist\") || v.includes(\"b1\") || v.includes(\"b2\")) return \"Tenho/tive apenas visto de turista\";\n  return \"Ainda não iniciei nada\";\n}\n\nfunction normalizeTimeline(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"movimento\") || (v.includes(\"3\") && v.includes(\"proximo\")))           return \"Já estou em movimento / próximos 3 meses\";\n  if (v.includes(\"3\") && v.includes(\"6\"))                                               return \"Entre 3 e 6 meses\";\n  if (v.includes(\"6\") && v.includes(\"12\"))                                              return \"Entre 6 e 12 meses\";\n  return \"Ainda não tenho prazo definido\";\n}\n\nfunction normalizeFamilyStatus(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"filho\"))                                                               return \"Com família e filhos\";\n  if (v.includes(\"conjuge\") || v.includes(\"companheiro\") || v.includes(\"casado\"))      return \"Com cônjuge/companheiro(a)\";\n  if (v.includes(\"sozinho\") || v.includes(\"sozinha\") || v.includes(\"solteiro\"))        return \"Sozinho(a)\";\n  return \"Ainda não pensei sobre isso\";\n}\n\nfunction normalizeIncome(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"prefiro\") || v.includes(\"naoresponder\") || v === \"\")                 return \"Prefiro não responder\";\n  if (v.includes(\"acimade20\") || (v.includes(\"20\") && v.includes(\"acima\")))            return \"Acima de R$ 20 mil\";\n  if (v.includes(\"10\") && v.includes(\"20\"))                                             return \"De R$ 10 mil a R$ 20 mil\";\n  if (v.includes(\"5\")  && v.includes(\"10\"))                                             return \"De R$ 5 mil a R$ 10 mil\";\n  if (v.includes(\"ate5\") || (v.includes(\"5\") && v.includes(\"ate\")))                    return \"Até R$ 5 mil\";\n  return \"Prefiro não responder\";\n}\n\nfunction normalizeInvestment(val = \"\") {\n  const v = strip(val).replace(/\\s/g, \"\");\n  if (v.includes(\"naose\") || v.includes(\"naosei\") || v.includes(\"organizar\"))          return \"Ainda não sei/preciso me organizar primeiro\";\n  if (v.includes(\"acimade5\") || (v.includes(\"5\") && v.includes(\"acima\")))              return \"Acima de R$ 5 mil\";\n  if (v.includes(\"2000\") && v.includes(\"5000\"))                                        return \"De R$ 3 mil a R$ 5 mil\";\n  if (v.includes(\"500\") && (v.includes(\"2000\") || v.includes(\"2.000\")))                return \"De R$ 1.500 a R$ 3.000\";\n  if (v.includes(\"ate500\") || (v.includes(\"500\") && v.includes(\"ate\")))                return \"Até R$ 1.500\";\n  return \"Ainda não sei/preciso me organizar primeiro\";\n}\n\nfunction normalizeImpediment(val = \"\") {\n  const v = strip(val);\n  if (v.includes(\"pronto\") || v.includes(\"nenhum\"))                                    return \"Nenhum, pois estou pronto(a)\";\n  if (v.includes(\"financeiro\") || v.includes(\"dinheiro\") || v.includes(\"custo\"))      return \"Financeiro\";\n  if (v.includes(\"tempo\") || v.includes(\"rotina\") || v.includes(\"agenda\"))            return \"Tempo ou rotina\";\n  if (v.includes(\"ingles\") || v.includes(\"idioma\"))                                   return \"Inglês\";\n  if (v.includes(\"medo\") || v.includes(\"decisao\") || v.includes(\"errada\"))            return \"Medo de tomar uma decisão errada\";\n  if (v.includes(\"familia\") || v.includes(\"conjuge\") || v.includes(\"apoio\"))          return \"Falta de apoio do cônjuge ou família\";\n  return \"Outro\";\n}\n\nfunction normalizeWorksInternational(val = \"\") {\n  const v = strip(val);\n  return (v === \"sim\" || v === \"yes\" || v === \"s\" || v === \"true\" || v === \"1\") ? \"Sim\" : \"Não\";\n}\n\n// ── DADOS NORMALIZADOS ──────────────────────────────────────\n\nconst input = {\n  name:                   lead.fullName,\n  email:                  lead.email,\n  phone:                  lead.whatsapp,\n  area:                   normalizeArea(lead.area),\n  raw_area:               lead.area,\n  atuacao:                lead.currentRole,\n  current_role:           lead.currentRole,\n  trabalha_internacional: normalizeWorksInternational(lead.worksInternational),\n  experiencia:            normalizeExperience(lead.experience),\n  english_level:          normalizeEnglish(lead.englishLevel),\n  raw_english_level:      lead.englishLevel,\n  objetivo:               normalizeObjective(lead.goal),\n  visa_status:            normalizeVisa(lead.visaStatus),\n  timeline:               normalizeTimeline(lead.timeline),\n  family_status:          normalizeFamilyStatus(lead.familyStatus),\n  income_range:           normalizeIncome(lead.incomeRange),\n  investment_range:       normalizeInvestment(lead.investmentRange),\n  impediment:             normalizeImpediment(lead.impediment),\n  main_concern:           lead.mainConcern,\n};\n\n// ── SCORE ───────────────────────────────────────────────────\n\nconst score_english            = { \"Básico\": 0, \"Intermediário\": 12, \"Avançado\": 20, \"Fluente\": 25 }[input.english_level] ?? 0;\nconst score_experience         = { \"Menos de 2 anos\": 5, \"2-5 anos\": 12, \"5-10 anos\": 17, \"+10 anos\": 20 }[input.experiencia] ?? 0;\nconst score_international_work = input.trabalha_internacional === \"Sim\" ? 15 : 5;\nconst score_timeline           = { \"Já estou em movimento / próximos 3 meses\": 10, \"Entre 3 e 6 meses\": 8, \"Entre 6 e 12 meses\": 5, \"Ainda não tenho prazo definido\": 2 }[input.timeline] ?? 0;\nconst score_objective          = { \"Imigrar/Green Card trabalhando na minha área\": 10, \"Emprego remoto em dólar\": 8, \"Estudar nos EUA como porta de entrada\": 6, \"Ainda não tenho clareza, quero entender minhas opções\": 0 }[input.objetivo] ?? 0;\nconst score_visa               = { \"Já tenho visto de trabalho ou Green Card aprovado\": 10, \"Processo de visto/imigração em andamento\": 7, \"Tenho/tive apenas visto de turista\": 3, \"Ainda não iniciei nada\": 0 }[input.visa_status] ?? 0;\nconst score_readiness          = { \"Nenhum, pois estou pronto(a)\": 10, \"Tempo ou rotina\": 6, \"Medo de tomar uma decisão errada\": 4, \"Financeiro\": 3, \"Inglês\": 2, \"Falta de apoio do cônjuge ou família\": 1, \"Outro\": 3 }[input.impediment] ?? 3;\nconst score_area_bonus         = 0;\n\nconst readiness_score = Math.min(\n  score_english + score_experience + score_international_work +\n  score_timeline + score_objective + score_visa + score_readiness + score_area_bonus,\n  100\n);\n\n// ── FASE ────────────────────────────────────────────────────\n\nlet phase;\nif      (readiness_score <= 35) phase = { phase_id: 0, phase_name: \" Realidade & Direção\",      phase_emoji: \"❌\", phase_color: \"#DC2626\", rota_letter: \"Pré-R\", urgency_level: \"BAIXA\",   can_apply_jobs: false, estimated_preparation_months: 24 };\nelse if (readiness_score <= 60) phase = { phase_id: 1, phase_name: \"Organização\", phase_emoji: \"🟡\", phase_color: \"#F59E0B\", rota_letter: \"R-O\",   urgency_level: \"MÉDIA\",   can_apply_jobs: false, estimated_preparation_months: 15 };\nelse if (readiness_score <= 85) phase = { phase_id: 2, phase_name: \"Tração\",           phase_emoji: \"🟢\", phase_color: \"#10B981\", rota_letter: \"O-T\",   urgency_level: \"ALTA\",    can_apply_jobs: true,  estimated_preparation_months: 9  };\nelse                            phase = { phase_id: 3, phase_name: \"Aceleração\",             phase_emoji: \"🚀\", phase_color: \"#8B5CF6\", rota_letter: \"T-A\",   urgency_level: \"CRÍTICA\", can_apply_jobs: true,  estimated_preparation_months: 3  };\n\n// ── BARREIRAS ───────────────────────────────────────────────\n\nconst barriers = {\n  has_english_barrier:    [\"Básico\", \"Intermediário\"].includes(input.english_level),\n  has_experience_barrier: [\"Menos de 2 anos\", \"2-5 anos\"].includes(input.experiencia),\n  has_financial_barrier:  input.income_range === \"Até R$ 5 mil\" || input.impediment === \"Financeiro\",\n  has_family_barrier:     input.family_status === \"Com família e filhos\" || input.impediment === \"Falta de apoio do cônjuge ou família\",\n  has_visa_barrier:       input.visa_status === \"Ainda não iniciei nada\",\n  has_time_barrier:       input.impediment === \"Tempo ou rotina\",\n  has_clarity_barrier:    input.objetivo === \"Ainda não tenho clareza, quero entender minhas opções\",\n};\n\n// ── TIER CLASSIFICATION (v2.4 — score-driven) ───────────────\n// Score is the PRIMARY driver of tier. Financial capacity is passed as\n// context to the LLM via financial_fit so it can address constraints\n// in the recommendation description, but does NOT gate the tier.\n//\n// Thresholds aligned with phase_classification boundaries:\n//   0-30  → FREE         (phase 0: Realidade & Direção)\n//   31-50 → LOW_TICKET   (phase 0-1: building foundation)\n//   51-70 → MED_TICKET   (phase 1-2: Organização/Tração)\n//   71+   → HIGH_TICKET  (phase 2-3: Tração/Aceleração)\n\nlet recommended_product_tier;\nif (readiness_score >= 71) {\n  recommended_product_tier = 'HIGH_TICKET';\n} else if (readiness_score >= 51) {\n  recommended_product_tier = 'MED_TICKET';\n} else if (readiness_score >= 31) {\n  recommended_product_tier = 'LOW_TICKET';\n} else {\n  recommended_product_tier = 'FREE';\n}\n\n// Convenience flags (derived from tier, used by downstream logic)\nconst isHighTicket = recommended_product_tier === 'HIGH_TICKET';\nconst isMedTicket  = recommended_product_tier === 'MED_TICKET';\nconst isLowTicket  = recommended_product_tier === 'LOW_TICKET';\nconst isFree       = recommended_product_tier === 'FREE';\n\n// ── FINANCIAL FIT (data-driven, independent of tier) ─────────\n// has_budget reflects ACTUAL financial capacity, not tier assignment.\n// A lead can be MED_TICKET (high score) but has_budget=false (no money yet).\n// The LLM uses this to frame the recommendation appropriately.\n\nconst has_budget =\n  ![\"Até R$ 1.500\", \"Ainda não sei/preciso me organizar primeiro\"].includes(input.investment_range);\n\nconst budget_gap =\n  !has_budget                    ? \"Sem orçamento no momento\" :\n  input.impediment === \"Financeiro\" ? \"Tem budget mas precisa superar objeção financeira\" :\n  [\"De R$ 3 mil a R$ 5 mil\", \"Acima de R$ 5 mil\"].includes(input.investment_range)\n                                 ? \"Compatível\" :\n                                   \"Acessível com parcelamento\";\n\n// ── FIT SCORE & LTV ─────────────────────────────────────────\n// fit_score combines readiness (tier) with financial capacity.\n// A high-score lead without budget has decent fit but penalized.\n\nlet fit_score, estimated_ltv;\n\nif (isHighTicket) {\n  fit_score     = has_budget\n    ? Math.min(85 + Math.round((readiness_score - 71) / 2), 100)\n    : Math.min(65 + Math.round((readiness_score - 71) / 2), 80);\n  estimated_ltv = has_budget ? 10000 : 3000;\n} else if (isMedTicket) {\n  const financial_penalty = !has_budget ? 10 : (input.impediment === \"Financeiro\" ? 8 : 0);\n  fit_score     = Math.min(70 + Math.round((readiness_score - 51) / 2) - financial_penalty, 85);\n  estimated_ltv = has_budget ? 2500 : 500;\n} else if (isLowTicket) {\n  fit_score     = Math.min(50 + Math.round((readiness_score - 31) / 3), 70);\n  estimated_ltv = has_budget ? 700 : 200;\n} else {\n  fit_score     = Math.min(30 + Math.round(readiness_score / 2), 45);\n  estimated_ltv = 0;\n}\n\n// ── TEMPERATURA & PRIORITY ──────────────────────────────────\n\nconst lead_temperature =\n  readiness_score >= 80 && has_budget ? \"SUPER_QUENTE\" :\n  readiness_score >= 65 && has_budget ? \"QUENTE\" :\n  readiness_score >= 40               ? \"MORNO\" :\n                                        \"FRIO\";\n\nconst urgency_bonus       = phase.urgency_level === \"CRÍTICA\" ? 10 : phase.urgency_level === \"ALTA\" ? 5 : 0;\nconst lead_priority_score = Math.round(\n  (readiness_score * 0.4) + (fit_score * 0.3) + (has_budget ? 20 : 0) + urgency_bonus\n);\n\n// ── ENRICHMENT ──────────────────────────────────────────────\n\nconst enrichment = {\n  is_tech_professional: input.area === \"Tecnologia/IT\",\n  is_senior_level:      [\"5-10 anos\", \"+10 anos\"].includes(input.experiencia),\n  works_remotely:       input.trabalha_internacional === \"Sim\",\n  has_family:           input.family_status === \"Com família e filhos\",\n  is_high_income:       [\"De R$ 10 mil a R$ 20 mil\", \"Acima de R$ 20 mil\"].includes(input.income_range),\n};\n\n// ── UPSELL PATH (CRM-only, not sent to AI) ──────────────────\n\nconst upsell_path =\n  isHighTicket ? \"Manter em HIGH → Alumni/Indicações\" :\n  isMedTicket && !has_budget ? \"MED sem budget → nurture financeiro → oferta MED após 60-90 dias\" :\n  isMedTicket  ? \"MED → oferta HIGH após 60-90 dias se score evoluir\" :\n  isLowTicket  ? \"LOW → oferta MED após completar módulos iniciais\" :\n                 \"FREE → oferta LOW após 30-60 dias quando engajar\";\n\n// ── DATAS ───────────────────────────────────────────────────\n\nconst today     = new Date();\nconst addDays   = (d, n) => new Date(d.getTime() + n * 86400000).toISOString().split(\"T\")[0];\nconst addMonths = (d, n) => { const r = new Date(d); r.setMonth(r.getMonth() + n); return r.toISOString().split(\"T\")[0]; };\n\nconst milestone = {\n  0: { action: \"Atingir inglês B2 e ganhar 2+ anos de experiência internacional\",   months: 24, recheck: 6 },\n  1: { action: \"Elevar inglês para C1 e otimizar LinkedIn para o mercado americano\", months: 15, recheck: 4 },\n  2: { action: \"Aplicar para 20+ vagas estratégicas e conseguir 3+ entrevistas\",    months: 9,  recheck: 2 },\n  3: { action: \"Negociar ofertas simultaneamente e iniciar processo de visto\",       months: 3,  recheck: 1 },\n}[phase.phase_id];\n\n// ── NURTURE SEQUENCE ────────────────────────────────────────\n\nlet auto_nurture_sequence;\nif (isFree && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Free_FinancialBarrier_Nurture\";\n} else if (isFree) {\n  auto_nurture_sequence = \"Free_Content_Engagement\";\n} else if (phase.phase_id === 0 && barriers.has_english_barrier) {\n  auto_nurture_sequence = \"Fase0_Ingles_Basico\";\n} else if (phase.phase_id === 0 && barriers.has_experience_barrier) {\n  auto_nurture_sequence = \"Fase0_Sem_Experiencia\";\n} else if (isMedTicket && !has_budget) {\n  auto_nurture_sequence = \"MedTicket_NoBudget_Nurture\";\n} else if (isMedTicket && barriers.has_financial_barrier) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_FinancialObjection\";\n} else if (isMedTicket) {\n  auto_nurture_sequence = \"Fase1_Med_Ticket_Nurture\";\n} else if (isLowTicket && phase.phase_id === 1) {\n  auto_nurture_sequence = \"Fase1_Low_Ticket_Education\";\n} else if (phase.phase_id === 2) {\n  auto_nurture_sequence = \"Fase2_Traction_Active\";\n} else {\n  auto_nurture_sequence = \"Fase3_Acceleration_VIP\";\n}\n\n// ── RETORNO ─────────────────────────────────────────────────\n// NOTE: product_recommendation is NO LONGER included here.\n// The recommend-product edge function handles product selection dynamically\n// by querying hub_services and calling LLM — triggered automatically via\n// Postgres trigger when formatted_report is saved.\n\nreturn [{\n  json: {\n    user_data: {\n      name:                   input.name,\n      email:                  input.email,\n      phone:                  input.phone,\n      area:                   input.area,\n      raw_area:               input.raw_area,\n      atuacao:                input.atuacao,\n      current_role:           input.current_role,\n      trabalha_internacional: input.trabalha_internacional,\n      experiencia:            input.experiencia,\n      english_level:          input.english_level,\n      raw_english_level:      input.raw_english_level,\n      objetivo:               input.objetivo,\n      visa_status:            input.visa_status,\n      timeline:               input.timeline,\n      family_status:          input.family_status,\n      income_range:           input.income_range,\n      investment_range:       input.investment_range,\n      impediment:             input.impediment,\n      main_concern:           input.main_concern,\n    },\n\n    scoring: {\n      readiness_score,\n      readiness_percentual: Math.round(readiness_score),\n      max_score: 100,\n      score_breakdown: {\n        score_english,\n        score_experience,\n        score_international_work,\n        score_timeline,\n        score_objective,\n        score_visa,\n        score_readiness,\n        score_area_bonus,\n      },\n    },\n\n    phase_classification: phase,\n    barriers_analysis:    barriers,\n\n    lead_qualification: {\n      lead_temperature,\n      lead_priority_score,\n      recommended_product_tier,\n      ...enrichment,\n      preferred_communication: \"WhatsApp\",\n      financial_fit: { has_budget, budget_gap, estimated_ltv },\n    },\n\n    timeline_milestones: {\n      next_milestone_action:   milestone.action,\n      next_milestone_deadline: addMonths(today, milestone.months),\n      recheck_recommended_at:  addMonths(today, milestone.recheck),\n      scheduled_follow_up_1:   addDays(today, 7),\n      scheduled_follow_up_2:   addDays(today, 30),\n      scheduled_follow_up_3:   addDays(today, 90),\n      auto_nurture_sequence,\n    },\n\n    tracking: lead.tracking,\n\n    report_metadata: {\n      generated_at:   today.toISOString(),\n      report_version: \"2.4\",\n      prompt_version: \"v2.4\",\n      ai_model_used:  \"claude-sonnet-4-5\",\n    },\n\n    _debug: {\n      english:    `\"${lead.englishLevel}\" → \"${input.english_level}\" → ${score_english}pts`,\n      experience: `\"${lead.experience}\" → \"${input.experiencia}\" → ${score_experience}pts`,\n      area:       `\"${lead.area}\" → \"${input.area}\"`,\n      investment: `\"${lead.investmentRange}\" → \"${input.investment_range}\"`,\n      income:     `\"${lead.incomeRange}\" → \"${input.income_range}\"`,\n      impediment: `\"${lead.impediment}\" → \"${input.impediment}\" → ${score_readiness}pts`,\n      current_role: `\"${lead.currentRole}\"`,\n      works_intl: `\"${lead.worksInternational}\" → \"${input.trabalha_internacional}\"`,\n      tier_logic: `score=${readiness_score} → ${recommended_product_tier} | has_budget=${has_budget}`,\n      total:      `${readiness_score}/100 → Fase ${phase.phase_id} → ${recommended_product_tier}`,\n      upsell_path,\n    },\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3008,
+        2112
+      ],
+      "id": "21af8412-45ef-4bf2-8e6f-ed3ff55e5c51",
+      "name": "Prepare for LLM",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/createSubscriber",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"first_name\": \"{{ $item(\"0\").$node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"fullName\"] }}\",\n  \"wa_id\": \"{{ $item(\"0\").$node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"ddd\"] }}{{ $item(\"0\").$node[\"New Lead Form Webhook1\"].json[\"body\"][\"lead\"][\"whatsapp\"] }}\",\n  \"email\": \"{{ $('New Lead Form Webhook1').item.json.body.lead.email }}\",\n  \"has_opt_in_email\": true,\n  \"consent_phrase\": \"Lead form submission\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -880,
+        1520
+      ],
+      "id": "cc65b5c0-94f3-4d05-97e4-e530f93b896c",
+      "name": "Cria Usuario",
+      "alwaysOutputData": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $item(\"0\").$node[\"Switch1\"].json[\"body\"][\"data\"][\"0\"][\"status\"] }}",
+                    "rightValue": "deleted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6bb83ab8-33e8-4116-b9a0-a6464e9e6950"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Contato não existe"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3959efa2-4c3b-4596-b229-6c8ceaad8bf9",
+                    "leftValue": "={{ $item(\"0\").$node[\"Switch1\"].json[\"body\"][\"data\"][\"0\"][\"status\"] }}",
+                    "rightValue": "deleted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Contato existe"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 1
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1024,
+        1824
+      ],
+      "id": "04d5293e-d524-45b9-a3ef-b62eb1a340f9",
+      "name": "deletado?"
+    }
+  ],
+  "pinData": {
+    "Prepara Dados1": [
+      {
+        "json": {
+          "user_data": {
+            "name": "Jeane da Silva Araújo ",
+            "email": "jeanearaujotrabalho1972@gmail.com",
+            "phone": "jean71 992520496",
+            "area": "Outros",
+            "raw_area": "Outros",
+            "atuacao": "Iniciante ",
+            "current_role": "Iniciante ",
+            "trabalha_internacional": "Não",
+            "experiencia": "Menos de 2 anos",
+            "english_level": "Intermediário",
+            "raw_english_level": "Intermediário – consigo me virar com esforço",
+            "objetivo": "Emprego remoto em dólar",
+            "visa_status": "Ainda não iniciei nada",
+            "timeline": "Ainda não tenho prazo definido",
+            "family_status": "Ainda não pensei sobre isso",
+            "income_range": "Prefiro não responder",
+            "investment_range": "Ainda não sei/preciso me organizar primeiro",
+            "impediment": "Financeiro",
+            "main_concern": "Estabilidade financeira "
+          },
+          "scoring": {
+            "readiness_score": 35,
+            "readiness_percentual": 35,
+            "max_score": 100,
+            "score_breakdown": {
+              "score_english": 12,
+              "score_experience": 5,
+              "score_international_work": 5,
+              "score_timeline": 2,
+              "score_objective": 8,
+              "score_visa": 0,
+              "score_readiness": 3,
+              "score_area_bonus": 0
+            }
+          },
+          "phase_classification": {
+            "phase_id": 0,
+            "phase_name": "BASE INSUFICIENTE",
+            "phase_emoji": "❌",
+            "phase_color": "#DC2626",
+            "rota_letter": "Pré-R",
+            "urgency_level": "BAIXA",
+            "can_apply_jobs": false,
+            "estimated_preparation_months": 24
+          },
+          "barriers_analysis": {
+            "has_english_barrier": true,
+            "has_experience_barrier": true,
+            "has_financial_barrier": true,
+            "has_family_barrier": false,
+            "has_visa_barrier": true,
+            "has_time_barrier": false,
+            "has_clarity_barrier": false
+          },
+          "product_recommendation": {
+            "primary_offer": {
+              "recommended_product_tier": "LOW_TICKET",
+              "recommended_product_name": "Curso ROTA Internacional",
+              "recommended_product_price": "12x R$ 67 ou R$ 697 à vista",
+              "recommended_product_url": "https://rota.euanapratica.com",
+              "fit_score": 57
+            },
+            "financial_fit": {
+              "has_budget": true,
+              "budget_gap": "Acessível",
+              "estimated_ltv": 700
+            },
+            "upsell_path": "LOW → oferta MED após completar módulos iniciais"
+          },
+          "lead_qualification": {
+            "lead_temperature": "FRIO",
+            "lead_priority_score": 51,
+            "is_tech_professional": false,
+            "is_senior_level": false,
+            "works_remotely": false,
+            "has_family": false,
+            "is_high_income": false,
+            "preferred_communication": "WhatsApp"
+          },
+          "timeline_milestones": {
+            "next_milestone_action": "Atingir inglês B2 e ganhar 2+ anos de experiência internacional",
+            "next_milestone_deadline": "2028-02-18",
+            "recheck_recommended_at": "2026-08-18",
+            "scheduled_follow_up_1": "2026-02-25",
+            "scheduled_follow_up_2": "2026-03-20",
+            "scheduled_follow_up_3": "2026-05-19",
+            "auto_nurture_sequence": "Fase0_Ingles_Basico"
+          },
+          "tracking": {
+            "utm_source": "{{placement}}",
+            "utm_medium": "{{adset.name}}",
+            "utm_campaign": "{{campaign.name}}",
+            "utm_term": "",
+            "utm_content": "{{ad.name}}",
+            "gclid": "",
+            "fbclid": ""
+          },
+          "report_metadata": {
+            "generated_at": "2026-02-18T13:36:52.807Z",
+            "report_version": "2.1",
+            "prompt_version": "v2.1",
+            "ai_model_used": "claude-sonnet-4-5"
+          },
+          "_debug": {
+            "english": "\"Intermediário – consigo me virar com esforço\" → \"Intermediário\" → 12pts",
+            "experience": "\"Menos de 2 anos\" → \"Menos de 2 anos\" → 5pts",
+            "area": "\"Outros\" → \"Outros\"",
+            "investment": "\"Ainda não sei / preciso me organizar primeiro\" → \"Ainda não sei/preciso me organizar primeiro\"",
+            "income": "\"Prefiro não responder\" → \"Prefiro não responder\"",
+            "impediment": "\"Financeiro\" → \"Financeiro\" → 3pts",
+            "flags": {
+              "isHighTicket": false,
+              "isMedTicket": false,
+              "isFree": false,
+              "isLowTicket": true
+            },
+            "total": "35/100 → Fase 0 → LOW_TICKET",
+            "upsell_path": "LOW → oferta MED após completar módulos iniciais"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Form 2": [
+      {
+        "json": {
+          "headers": {
+            "x-forwarded-host": "n8n.sapunplugged.com",
+            "x-forwarded-server": "n8n.sapunplugged.com",
+            "x-real-ip": "130.41.169.225",
+            "x-forwarded-for": "130.41.169.225",
+            "x-forwarded-proto": "https",
+            "host": "n8n.sapunplugged.com",
+            "connection": "Upgrade",
+            "content-length": "650",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+            "sec-ch-ua": "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"",
+            "content-type": "application/json",
+            "sec-ch-ua-mobile": "?0",
+            "accept": "*/*",
+            "origin": "http://localhost:3000",
+            "sec-fetch-site": "cross-site",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
+            "referer": "http://localhost:3000/",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "priority": "u=1, i"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "name": "Daniel Kiel",
+            "countryCode": "US",
+            "ddi": "1",
+            "whatsapp": "+14704469625",
+            "email": "daniel.kiel.usa@gmail.com",
+            "marketingConsent": true,
+            "area": "SAP/ERP",
+            "role": "Gerente de Suporte",
+            "internationalWork": "Sim, já trabalho",
+            "experience": "Expert (+10 anos)",
+            "englishLevel": "Fluente (Nativo/Bilingue)",
+            "goal": "Imigrar (Visto de Trabalho/Green Card)",
+            "visaStatus": "Já possuo Visto de Trabalho / Green Card",
+            "timeline": "Imediatamente (0-3 meses)",
+            "income": "Acima de R$ 20.000",
+            "investment": "Acima de R$ 5.000",
+            "obstacle": "Nenhum – Estou pronto para agir",
+            "concern": "To pronto",
+            "source": "report.euanapratica.com",
+            "submittedAt": "2026-02-21T21:22:05.500Z"
+          },
+          "webhookUrl": "https://n8n.sapunplugged.com/webhook/lead_form2",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "New Lead Form Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "x-forwarded-host": "n8n.sapunplugged.com",
+            "x-forwarded-server": "n8n.sapunplugged.com",
+            "x-real-ip": "72.61.62.158",
+            "x-forwarded-for": "72.61.62.158",
+            "x-forwarded-proto": "https",
+            "host": "n8n.sapunplugged.com",
+            "connection": "Upgrade",
+            "content-length": "1140",
+            "accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+            "content-type": "application/json",
+            "user-agent": "axios/1.12.0",
+            "accept-encoding": "gzip, compress, deflate, br"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "lead": {
+              "fullName": "Felipe Branquinho Gomes",
+              "ddd": "55",
+              "whatsapp": "11970563035",
+              "email": "bksassets@gmail.com",
+              "area": "Outros",
+              "currentRole": "Analista Financeiro",
+              "worksInternational": "Não",
+              "experience": "+10 anos",
+              "englishLevel": "Avançado – converso bem, com pequenos erros",
+              "goal": "Imigrar / Green Card trabalhando na minha área",
+              "visaStatus": "Tenho/tive apenas visto de turista",
+              "timeline": "Ainda não tenho prazo definido",
+              "familyStatus": "Com cônjuge / companheiro(a)",
+              "incomeRange": "Até R$ 5 mil",
+              "investmentRange": "Ainda não sei / preciso me organizar primeiro",
+              "impediment": "Financeiro",
+              "impedimentOther": "",
+              "mainConcern": "Ter que investir valor muito alto para conseguir uma vaga.",
+              "tracking": {
+                "utm_source": "Instagram_Stories",
+                "utm_medium": "[00] - [Reels/Stories] [F] corporativo sênior 30 a 55 anos",
+                "utm_campaign": "[Site][Leads][Reels/stories][F] descrição",
+                "utm_term": "52552583366417",
+                "utm_content": "AD04 - A Matemática do Salário",
+                "gclid": "",
+                "fbclid": "PAZXh0bgNhZW0BMABhZGlkAAAvy_MYKEFzcnRjBmFwcF9pZA8xMjQwMjQ1NzQyODc0MTQAAadcDwmVoVzgQb5mMZenkb-zqQ_Et38aU68o6ZWkCaf0uXXBL4nklnfaThUAwQ_aem_p_3P8N1LccuM2e3guhgtUw"
+              }
+            }
+          },
+          "webhookUrl": "https://n8n.sapunplugged.com/webhook/lead_form",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Supabase1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Exists1": {
+      "main": [
+        [
+          {
+            "node": "Lead Novo ou Existente1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Novo ou Existente1": {
+      "main": [
+        [
+          {
+            "node": "Novo Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lead Existente1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepara Dados1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Existente1": {
+      "main": [
+        [
+          {
+            "node": "ok3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Lead Form Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Prepare for LLM1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Novo Lead": {
+      "main": [
+        [
+          {
+            "node": "ok3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Cria Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "deletado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "ok2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Preenche Campos do Usuário3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ok2": {
+      "main": [
+        [
+          {
+            "node": "Preenche dados do Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ok3": {
+      "main": [
+        [
+          {
+            "node": "Usuario ja Existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for LLM1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Check if Exists1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario ja Existe?": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preenche dados do Report": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega Subscriber Id": {
+      "main": [
+        [
+          {
+            "node": "ok2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form 2": {
+      "main": [
+        [
+          {
+            "node": "Prepare for LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for LLM": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria Usuario": {
+      "main": [
+        [
+          {
+            "node": "Pega Subscriber Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "deletado?": {
+      "main": [
+        [
+          {
+            "node": "Cria Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "22b78b86-52f1-49fd-8770-9faeaa2fb7d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ec2347a1f7929ec3b1d85d738bbb3e5362aa0f47a9ff10796dbc3a92b3b6c33"
+  },
+  "id": "ab4M1JZbR5usxir3",
+  "tags": []
+}

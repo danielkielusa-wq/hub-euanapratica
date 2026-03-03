@@ -94,7 +94,7 @@ Antes de começar, confirme que você tem:
 
 1. Table Editor → `app_configs`
 2. Procure `config_key = 'manychat_webhook_secret'`
-3. O `config_value` estará vazio — **você precisa definir uma senha forte aqui**
+3. O `config_value` — **e9c8c8f9a604cc44028685fc2178d371e404397796f52ae7220bdd6b16adf10f**
 4. Clique para editar, coloque um valor seguro (ex: gere com `openssl rand -hex 32`)
 5. **Anote esse valor** — você vai precisar dele para configurar o ManyChat (Etapa 3)
 
@@ -190,16 +190,44 @@ Para cada card, confirme que mostra:
     → "Ver Relatório" (URL: {{reportLink}})
     → "Quero saber mais" (→ próximo step)
     ↓
-[External Request — botão clicado] ← webhook de retorno
+[External Request — botão clicado] ← webhook de retorno (https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/receive-manychat-webhook)
     ↓
 [Send Message] — "Ótimo! Posso te ajudar com..."
     ↓
 [External Request — flow concluído] ← webhook de retorno
+
+Exemplos:
+
+webhook de retorno (https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/receive-manychat-webhook)
+
+Header Name	Header Value
+Content-Type	application/json
+x-webhook-secret	e9c8c8f9a604cc44028685fc2178d371e404397796f52ae7220bdd6b16adf10f
+
+{
+  "phone": "Phone",
+  "flow_name": "report_delivery",
+  "step_name": "flow_completed",
+  "action_type": "flow_completed",
+  "subscriber_id": "Contact Id"
+}
+
+{
+  "phone": "{{cuf_14227232}}",
+  "flow_name": "report_delivery",
+  "step_name": "interesse_mentoria_individual",
+  "action_type": "button_click",
+  "subscriber_id": "{{user_id}}"
+}
+
 ```
 
 4. Após criar, vá em **Settings** do flow
 5. Copie o **Flow Namespace (NS)** — é o ID que o ManyChat usa para envio via API
    - Geralmente no formato: `content20260301000000_abcdef`
+
+   **content20260130154800_019773**
+
 
 ### 4.2 Anotar o mc_flow_ns
 
@@ -500,7 +528,7 @@ O sistema preenche automaticamente:
 2. Busque o subscriber pelo número de telefone do lead
 3. Confirme que:
    - O subscriber existe (foi criado ou já existia)
-   - O flow foi enviado (veja o histórico de mensagens do subscriber)
+   - O flow foi enviado (veja o histórico de mensagens do subscriber). Olhe o N8n [ManyChat] - Disparo de Flow via CRM veja se terminou com sucesso
    - A mensagem do HSM template (ou flow livre) aparece no chat
 
 ### 6.10 Verificar no WhatsApp do lead

@@ -168,3 +168,12 @@ verify_jwt = false
 
 [functions.admin-assistant]
 verify_jwt = false
+
+[functions.sdr-qualify-prospect]
+verify_jwt = false
+
+[functions.sdr-generate-message]
+verify_jwt = false
+
+[functions.sdr-execute-outreach]
+verify_jwt = false

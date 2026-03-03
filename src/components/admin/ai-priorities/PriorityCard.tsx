@@ -1,9 +1,11 @@
-import { Copy, ExternalLink, Check, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, ExternalLink, Check, MessageSquare, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { PriorityItem } from '@/hooks/useAIDailyPriorities';
 import { cn } from '@/lib/utils';
+import { CopyTemplateDialog } from '@/components/admin/leads/CopyTemplateDialog';
 
 const TEMP_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   'muito-quente': { bg: 'bg-red-100', text: 'text-red-700', label: 'Muito Quente' },
@@ -27,6 +29,7 @@ interface PriorityCardProps {
 
 export function PriorityCard({ item, isCompleted, onMarkDone }: PriorityCardProps) {
   const { toast } = useToast();
+  const [copyTemplateOpen, setCopyTemplateOpen] = useState(false);
 
   const tempStyle = TEMP_STYLES[item.temperature] || TEMP_STYLES['morno'];
   const borderStyle = PRIORITY_STYLES[item.priority] || PRIORITY_STYLES['medium'];
@@ -47,7 +50,7 @@ export function PriorityCard({ item, isCompleted, onMarkDone }: PriorityCardProp
     }
     const phone = item.lead_phone.replace(/\D/g, '');
     const text = encodeURIComponent(item.suggested_message || '');
-    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+    window.open(`https://api.whatsapp.com/send/?phone=${phone}&text=${text}&type=phone_number&app_absent=0`, '_blank');
   };
 
   return (
@@ -100,7 +103,18 @@ export function PriorityCard({ item, isCompleted, onMarkDone }: PriorityCardProp
       )}
 
       {/* Action buttons */}
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center gap-2 pt-1 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs rounded-xl gap-1.5"
+          onClick={() => setCopyTemplateOpen(true)}
+          disabled={isCompleted}
+        >
+          <FileText className="w-3 h-3" />
+          Templates
+        </Button>
+
         {item.suggested_message && (
           <Button
             variant="outline"
@@ -159,6 +173,12 @@ export function PriorityCard({ item, isCompleted, onMarkDone }: PriorityCardProp
           </Button>
         )}
       </div>
+
+      <CopyTemplateDialog
+        open={copyTemplateOpen}
+        onOpenChange={setCopyTemplateOpen}
+        lead={{ name: item.lead_name, email: item.lead_email, phone: item.lead_phone }}
+      />
     </div>
   );
 }

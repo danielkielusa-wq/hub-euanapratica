@@ -17,6 +17,9 @@ export default function PublicReport() {
   const [tokenValid, setTokenValid] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [accessLevel, setAccessLevel] = useState<'full' | 'limited'>('limited');
+  const [referralCode, setReferralCode] = useState<string>('');
+  const [referralCount, setReferralCount] = useState<number>(0);
+  const [referralUnlocked, setReferralUnlocked] = useState<boolean>(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,12 +234,15 @@ export default function PublicReport() {
           // Admin: fetch evaluation directly and skip email gate
           const { data: evalData, error: evalError } = await supabase
             .from('career_evaluations')
-            .select('id, name, email, area, atuacao, experiencia, english_level, objetivo, visa_status, timeline, family_status, formatted_report, processing_status, recommendation_status, recommended_product_name, recommendation_description, recommendation_landing_page_url, formatted_at, created_at, updated_at')
+            .select('id, name, email, area, atuacao, experiencia, english_level, objetivo, visa_status, timeline, family_status, formatted_report, processing_status, recommendation_status, recommended_product_name, recommendation_description, recommendation_landing_page_url, formatted_at, created_at, updated_at, referral_code, referral_count, referral_unlocked')
             .eq('access_token', token)
             .maybeSingle();
 
           if (!evalError && evalData) {
             setAccessLevel('full');
+            setReferralCode((evalData as Record<string, unknown>).referral_code as string || '');
+            setReferralCount((evalData as Record<string, unknown>).referral_count as number || 0);
+            setReferralUnlocked((evalData as Record<string, unknown>).referral_unlocked as boolean || false);
             setEvaluation(evalData as CareerEvaluation);
             if (evalData.formatted_report) {
               setFormattedContent(evalData.formatted_report as string);
@@ -258,6 +264,9 @@ export default function PublicReport() {
 
           if (!autoError && autoData?.success) {
             setAccessLevel(autoData.access_level ?? 'limited');
+            setReferralCode(autoData.evaluation?.referral_code || '');
+            setReferralCount(autoData.evaluation?.referral_count || 0);
+            setReferralUnlocked(autoData.evaluation?.referral_unlocked || false);
             setEvaluation(autoData.evaluation);
             if (autoData.evaluation.formatted_report) {
               setFormattedContent(autoData.evaluation.formatted_report);
@@ -313,6 +322,9 @@ export default function PublicReport() {
       }
 
       setAccessLevel(data.access_level ?? 'limited');
+      setReferralCode(data.evaluation?.referral_code || '');
+      setReferralCount(data.evaluation?.referral_count || 0);
+      setReferralUnlocked(data.evaluation?.referral_unlocked || false);
       setEvaluation(data.evaluation);
       setIsVerifying(false);
 
@@ -362,6 +374,9 @@ export default function PublicReport() {
         isLoading={isFormatting}
         processingStatus={processingStatus}
         accessLevel={accessLevel}
+        referralCode={referralCode}
+        referralCount={referralCount}
+        referralUnlocked={referralUnlocked}
       />
     );
   }

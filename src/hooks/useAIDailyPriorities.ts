@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -74,10 +75,25 @@ const PHASE_ORDER: ProgressPhase[] = [
 
 export function useAIDailyPriorities() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [data, setData] = useState<DailyPrioritiesResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressPhase, setProgressPhase] = useState<ProgressPhase | null>(null);
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+  const [remainingUses, setRemainingUses] = useState<number | null>(null);
+
+  const isAssistant = user?.role === 'assistant';
+  const isLimitReached = isAssistant && remainingUses !== null && remainingUses <= 0;
+
+  // Fetch remaining uses on mount for assistant role
+  useEffect(() => {
+    if (!isAssistant || !user?.id) return;
+    supabase.rpc('check_daily_priorities_limit' as any, { p_user_id: user.id })
+      .then(({ data: rows }: any) => {
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        if (row) setRemainingUses(Math.max(0, row.max_limit - row.used));
+      });
+  }, [isAssistant, user?.id]);
 
   const generatePriorities = useCallback(async () => {
     try {
@@ -104,13 +120,27 @@ export function useAIDailyPriorities() {
       if (error) {
         // Extract actual error message from response body
         let detail = '';
+        let body: any = null;
         try {
-          const body = await error.context?.json?.();
+          body = await error.context?.json?.();
           detail = body?.error || body?.message || '';
         } catch { /* ignore parse errors */ }
+
+        // Handle 429 rate limit — update remaining uses
+        if (body?.remaining_uses !== undefined) {
+          setRemainingUses(body.remaining_uses);
+        }
         throw new Error(detail || error.message);
       }
-      if (result?.error) throw new Error(result.error);
+      if (result?.error) {
+        if (result.remaining_uses !== undefined) setRemainingUses(result.remaining_uses);
+        throw new Error(result.error);
+      }
+
+      // Update remaining uses from response
+      if (result?.remaining_uses !== undefined) {
+        setRemainingUses(result.remaining_uses);
+      }
 
       // Validate basic structure
       if (!result?.categories || !Array.isArray(result.categories)) {
@@ -213,5 +243,8 @@ export function useAIDailyPriorities() {
     completedItems,
     generatePriorities,
     markAsDone,
+    remainingUses,
+    isLimitReached,
+    isAssistant,
   };
 }

@@ -405,3 +405,40 @@ export function useAllPendingTasks() {
     },
   });
 }
+
+export function useRecentCompletedTasks() {
+  return useQuery<GlobalTask[]>({
+    queryKey: ['admin-recent-completed-tasks'],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: tasks, error } = await supabase
+        .from('lead_tasks' as any)
+        .select('*')
+        .in('status', ['done', 'skipped'])
+        .gte('updated_at', sevenDaysAgo.toISOString())
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+
+      const leadIds = [...new Set((tasks || []).map((t: any) => t.lead_id).filter(Boolean))];
+      let leadMap: Record<string, { name: string; email: string }> = {};
+      if (leadIds.length) {
+        const { data: leads } = await supabase
+          .from('career_evaluations')
+          .select('id, name, email')
+          .in('id', leadIds);
+        if (leads) {
+          leadMap = Object.fromEntries(leads.map((l: any) => [l.id, { name: l.name || 'Sem nome', email: l.email || '' }]));
+        }
+      }
+
+      return (tasks || []).map((t: any) => ({
+        ...t,
+        lead_name: leadMap[t.lead_id]?.name || 'Desconhecido',
+        lead_email: leadMap[t.lead_id]?.email || '',
+      })) as GlobalTask[];
+    },
+  });
+}

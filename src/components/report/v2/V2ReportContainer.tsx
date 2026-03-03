@@ -16,9 +16,12 @@ interface V2ReportContainerProps {
   data: V2FormattedReportData;
   evaluation: CareerEvaluation;
   accessLevel?: 'full' | 'limited';
+  referralCode?: string;
+  referralCount?: number;
+  referralUnlocked?: boolean;
 }
 
-export function V2ReportContainer({ data, evaluation, accessLevel = 'limited' }: V2ReportContainerProps) {
+export function V2ReportContainer({ data, evaluation, accessLevel = 'limited', referralCode, referralCount, referralUnlocked }: V2ReportContainerProps) {
   const isLimited = accessLevel === 'limited';
   // Extract current phase letter from rota_letter (handles cases like "O-T" → "T")
   const extractPhaseLetter = (rotaLetter: string | undefined): string => {
@@ -132,6 +135,9 @@ export function V2ReportContainer({ data, evaluation, accessLevel = 'limited' }:
               landingPageUrl: evaluation.recommendation_landing_page_url,
             } : undefined}
             isLimited={isLimited}
+            referralCode={referralCode}
+            referralCount={referralCount}
+            referralUnlocked={referralUnlocked}
           />
         </ScrollReveal>
 

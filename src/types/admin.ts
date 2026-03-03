@@ -103,7 +103,7 @@ export interface EspacoFilters {
 }
 
 export interface UserFilters {
-  role?: 'admin' | 'mentor' | 'student';
+  role?: 'admin' | 'mentor' | 'student' | 'assistant';
   status?: 'active' | 'inactive';
   includeInactive?: boolean;
   search?: string;

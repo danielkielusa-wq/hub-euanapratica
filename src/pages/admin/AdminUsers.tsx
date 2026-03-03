@@ -60,13 +60,15 @@ import { UserAuditLogModal } from '@/components/admin/users/UserAuditLogModal';
 const ROLE_LABELS = {
   admin: 'Administrador',
   mentor: 'Mentor',
-  student: 'Aluno'
+  student: 'Aluno',
+  assistant: 'Assistente'
 };
 
-const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
+const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   admin: 'default',
   mentor: 'secondary',
-  student: 'outline'
+  student: 'outline',
+  assistant: 'destructive'
 };
 
 const STATUS_LABELS = {
@@ -78,7 +80,7 @@ export default function AdminUsers() {
   const [filters, setFilters] = useState<UserFilters>({ includeInactive: false });
   const [search, setSearch] = useState('');
   const [editRoleUser, setEditRoleUser] = useState<{ id: string; name: string; role: string } | null>(null);
-  const [newRole, setNewRole] = useState<'admin' | 'mentor' | 'student'>('student');
+  const [newRole, setNewRole] = useState<'admin' | 'mentor' | 'student' | 'assistant'>('student');
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [auditLogUser, setAuditLogUser] = useState<{ id: string; name: string } | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function AdminUsers() {
 
   const handleEditRole = (user: { id: string; full_name: string; role: string }) => {
     setEditRoleUser({ id: user.id, name: user.full_name, role: user.role });
-    setNewRole(user.role as 'admin' | 'mentor' | 'student');
+    setNewRole(user.role as 'admin' | 'mentor' | 'student' | 'assistant');
   };
 
   const handleSaveRole = () => {
@@ -175,7 +177,7 @@ export default function AdminUsers() {
             value={filters.role || 'all'}
             onValueChange={(value) => setFilters(prev => ({ 
               ...prev, 
-              role: value === 'all' ? undefined : value as 'admin' | 'mentor' | 'student'
+              role: value === 'all' ? undefined : value as 'admin' | 'mentor' | 'student' | 'assistant'
             }))}
           >
             <SelectTrigger className="w-[180px]">
@@ -186,6 +188,7 @@ export default function AdminUsers() {
               <SelectItem value="admin">Administrador</SelectItem>
               <SelectItem value="mentor">Mentor</SelectItem>
               <SelectItem value="student">Aluno</SelectItem>
+              <SelectItem value="assistant">Assistente</SelectItem>
             </SelectContent>
           </Select>
 
@@ -347,6 +350,7 @@ export default function AdminUsers() {
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="mentor">Mentor</SelectItem>
                   <SelectItem value="student">Aluno</SelectItem>
+                  <SelectItem value="assistant">Assistente</SelectItem>
                 </SelectContent>
               </Select>
             </div>

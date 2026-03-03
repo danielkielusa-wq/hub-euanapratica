@@ -76,7 +76,7 @@ GRANT ALL ON public.manychat_flow_logs TO service_role;
 ALTER TABLE public.lead_interactions DROP CONSTRAINT IF EXISTS lead_interactions_type_check;
 ALTER TABLE public.lead_interactions ADD CONSTRAINT lead_interactions_type_check
     CHECK (type IN (
-        'whatsapp_sent', 'email_sent', 'call', 'note',
+        'whatsapp_sent', 'whatsapp_received', 'email_sent', 'call', 'note',
         'status_change', 'report_viewed', 'ai_suggestion_completed',
         'manychat_flow_sent', 'manychat_reply'
     ));

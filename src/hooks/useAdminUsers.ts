@@ -82,7 +82,7 @@ export function useUpdateUserRole() {
   const { user: adminUser } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'mentor' | 'student' }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'mentor' | 'student' | 'assistant' }) => {
       // Get current role for audit log
       const { data: currentRole } = await supabase
         .from('user_roles')
@@ -214,7 +214,7 @@ export function useCreateUser() {
       full_name: string; 
       email: string; 
       password: string; 
-      role: 'admin' | 'mentor' | 'student';
+      role: 'admin' | 'mentor' | 'student' | 'assistant';
       status: 'active' | 'inactive';
     }) => {
       // Use signUp to create user (auto-confirm is enabled)
