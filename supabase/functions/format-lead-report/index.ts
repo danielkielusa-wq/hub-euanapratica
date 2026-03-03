@@ -560,7 +560,8 @@ serve(async (req) => {
               formatted_report: JSON.stringify(enriched),
               processing_status: 'completed',
               processing_error: null,
-              processing_started_at: null
+              processing_started_at: null,
+              ...extractDenormalizedFields(enriched),
             })
             .eq("id", evaluationId);
           return new Response(
@@ -982,7 +983,8 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
         formatted_at: new Date().toISOString(),
         processing_status: 'completed',
         processing_error: null,
-        processing_started_at: null
+        processing_started_at: null,
+        ...extractDenormalizedFields(enrichedReport),
       })
       .eq("id", evaluationId);
 
@@ -1017,6 +1019,56 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
     );
   }
 });
+
+/**
+ * Extracts denormalized score/qualification fields from a V2 report object.
+ * Used to keep individual columns in sync whenever formatted_report is saved.
+ */
+function extractDenormalizedFields(r: Record<string, any>): Record<string, unknown> {
+  const scoring = r.scoring ?? {};
+  const phase = r.phase_classification ?? {};
+  const lead = r.lead_qualification ?? {};
+  const fin = lead.financial_fit ?? {};
+  const barriers = r.barriers_analysis ?? {};
+  const breakdown = scoring.score_breakdown ?? {};
+  return {
+    readiness_score:          scoring.readiness_score          ?? null,
+    readiness_percentual:     scoring.readiness_percentual     ?? null,
+    score_english:            breakdown.score_english           ?? null,
+    score_experience:         breakdown.score_experience        ?? null,
+    score_international_work: breakdown.score_international_work?? null,
+    score_timeline:           breakdown.score_timeline          ?? null,
+    score_objective:          breakdown.score_objective         ?? null,
+    score_visa:               breakdown.score_visa              ?? null,
+    score_readiness:          breakdown.score_readiness         ?? null,
+    phase_id:                 phase.phase_id                   ?? null,
+    phase_name:               phase.phase_name                 ?? null,
+    phase_emoji:              phase.phase_emoji                 ?? null,
+    rota_letter:              phase.rota_letter                 ?? null,
+    urgency_level:            phase.urgency_level               ?? null,
+    can_apply_jobs:           phase.can_apply_jobs              ?? null,
+    estimated_preparation_months: phase.estimated_preparation_months ?? null,
+    lead_temperature:         lead.lead_temperature             ?? null,
+    lead_priority_score:      lead.lead_priority_score          ?? null,
+    recommended_product_tier: lead.recommended_product_tier     ?? null,
+    is_tech_professional:     lead.is_tech_professional         ?? null,
+    works_remotely:           lead.works_remotely               ?? null,
+    has_family:               lead.has_family                   ?? null,
+    is_high_income:           lead.is_high_income               ?? null,
+    best_contact_time:        lead.best_contact_time            ?? null,
+    preferred_communication:  lead.preferred_communication      ?? null,
+    has_budget:               fin.has_budget                    ?? null,
+    budget_gap:               fin.budget_gap                    ?? null,
+    estimated_ltv:            fin.estimated_ltv                 ?? null,
+    has_english_barrier:      barriers.has_english_barrier      ?? null,
+    has_experience_barrier:   barriers.has_experience_barrier   ?? null,
+    has_financial_barrier:    barriers.has_financial_barrier    ?? null,
+    has_family_barrier:       barriers.has_family_barrier       ?? null,
+    has_visa_barrier:         barriers.has_visa_barrier         ?? null,
+    has_time_barrier:         barriers.has_time_barrier         ?? null,
+    has_clarity_barrier:      barriers.has_clarity_barrier      ?? null,
+  };
+}
 
 /**
  * V2 reports are pre-processed by the upstream system.
