@@ -32,7 +32,6 @@ interface PlanCardProps {
 const FEATURE_TOGGLES = [
   { key: 'community', label: 'Comunidade Exclusiva' },
   { key: 'hotseats', label: 'Hotseats Mensais' },
-  { key: 'library', label: 'Biblioteca de Materiais' },
   { key: 'masterclass', label: 'Masterclass Mensal' },
 ] as const;
 

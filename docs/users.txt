@@ -1,0 +1,8 @@
+Email	Nome	Plano	Score	Temperatura	Fase
+teste-free@euanapratica.com	Ana Lima	Básico (Free)	17	frio	Realidade & Direção
+teste-pro@euanapratica.com	Carlos Mendes	Pro	71	quente	Tração
+teste-vip@euanapratica.com	Fernanda Costa	VIP	100	muito-quente	Aceleração
+daniel@danielkielmentor.com	Daniel Kiel	Mentor		
+
+
+!teste123

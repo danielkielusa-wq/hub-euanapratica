@@ -1,0 +1,340 @@
+{
+  "name": "[ManyChat Sync] - Report Completed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manychat-report-sync",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-1200, 400],
+      "id": "webhook-trigger",
+      "name": "Report Generated Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and normalize data from dispatch-report-webhook payload\nconst body = $json.body || $json;\n\n// Safe string: null-safe + truncate to ManyChat's 1000-char text field limit\nconst s = (val, max = 1000) => (val == null ? '' : String(val).trim().slice(0, max));\n\nconst leadPhone = s(body.lead_phone).replace(/[^0-9]/g, '');\nconst leadEmail = s(body.lead_email);\nconst leadName  = s(body.lead_name);\n\nconst tempMap = {\n  'frio': 'Frio',\n  'morno': 'Morno',\n  'quente': 'Quente',\n  'muito-quente': 'Muito Quente',\n};\n\nconst phaseMap = {\n  0: 'Base Insuficiente',\n  1: 'Preparação Estruturada',\n  2: 'Tração Ativa',\n  3: 'Aceleração',\n};\n\nreturn [{\n  json: {\n    // Identity\n    lead_phone: leadPhone,\n    lead_email: leadEmail,\n    lead_name: leadName,\n    first_name: leadName.split(' ')[0] || leadName,\n    report_link: s(body.report_link),\n    // User data (raw form answers)\n    area: s(body.area),\n    atuacao: s(body.atuacao),\n    experiencia: s(body.experiencia),\n    english_level: s(body.english_level),\n    objetivo: s(body.objetivo),\n    visa_status: s(body.visa_status),\n    timeline: s(body.timeline),\n    family_status: s(body.family_status),\n    income_range: s(body.income_range),\n    investment_range: s(body.investment_range),\n    impediment: s(body.impediment),\n    main_concern: s(body.main_concern),\n    // AI-generated scoring & qualification\n    readiness_score: body.readiness_score ?? '',\n    lead_temperature: tempMap[body.lead_temperature] || s(body.lead_temperature),\n    lead_priority_score: body.lead_priority_score ?? '',\n    phase_name: s(body.phase_name) || (phaseMap[body.phase_id] || ''),\n    full_diagnosis: s(body.full_diagnosis),\n    recommended_product_tier: s(body.recommended_product_tier),\n    primary_product: s(body.primary_product),\n    is_tech_professional: body.is_tech_professional || false,\n    is_senior_level: body.is_senior_level || false,\n    is_high_income: body.is_high_income || false,\n    barriers: Array.isArray(body.barriers) ? body.barriers.join(', ').slice(0, 1000) : '',\n    source: body.source || 'enp_hub_supabase',\n    event: body.event || 'report.generated',\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 400],
+      "id": "normalize-data",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.manychat.com/fb/subscriber/findByCustomField",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "field_id",
+              "value": "14227232"
+            },
+            {
+              "name": "field_value",
+              "value": "={{ $('Normalize Data').item.json.lead_phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-720, 400],
+      "id": "find-subscriber",
+      "name": "Busca no ManyChat (WPP_ID)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "not-found",
+                    "leftValue": "={{ Array.isArray($json.data) && $json.data.length > 0 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Não existe"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "found",
+                    "leftValue": "={{ Array.isArray($json.data) && $json.data.length > 0 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Já existe"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-480, 400],
+      "id": "subscriber-exists-switch",
+      "name": "Contato existe?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/createSubscriber",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"first_name\": \"{{ $('Normalize Data').item.json.first_name }}\",\n  \"wa_id\": \"{{ $('Normalize Data').item.json.lead_phone }}\",\n  \"email\": \"{{ $('Normalize Data').item.json.lead_email }}\",\n  \"has_opt_in_email\": true,\n  \"consent_phrase\": \"Report generated on hub.euanapratica.com\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 300],
+      "id": "create-subscriber",
+      "name": "Cria Contato ManyChat",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "get-new-subscriber-id",
+              "name": "subscriber_id",
+              "value": "={{ $json.data.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [40, 300],
+      "id": "new-subscriber-id",
+      "name": "Pega ID (novo)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "get-existing-subscriber-id",
+              "name": "subscriber_id",
+              "value": "={{ $node[\"Busca no ManyChat (WPP_ID)\"].json.data[0].id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-200, 520],
+      "id": "existing-subscriber-id",
+      "name": "Pega ID (existente)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/setCustomFields",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $json.subscriber_id }}\",\n  \"fields\": [\n    {\n      \"field_id\": 14227294,\n      \"field_name\": \"email_lead\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.lead_email }}\"\n    },\n    {\n      \"field_id\": 14227232,\n      \"field_name\": \"WPP_ID\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.lead_phone }}\"\n    },\n    {\n      \"field_id\": 14280454,\n      \"field_name\": \"link_report\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.report_link }}\"\n    },\n    {\n      \"field_id\": 14210786,\n      \"field_name\": \"rep_area\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.area }}\"\n    },\n    {\n      \"field_id\": 14210785,\n      \"field_name\": \"rep_atuacao\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.atuacao }}\"\n    },\n    {\n      \"field_id\": 14210791,\n      \"field_name\": \"rep_english_level\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.english_level }}\"\n    },\n    {\n      \"field_id\": 14216632,\n      \"field_name\": \"rep_experience\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.experiencia }}\"\n    },\n    {\n      \"field_id\": 14210793,\n      \"field_name\": \"rep_objetivo\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.objetivo }}\"\n    },\n    {\n      \"field_id\": 14210796,\n      \"field_name\": \"rep_visa_status\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.visa_status }}\"\n    },\n    {\n      \"field_id\": 14210799,\n      \"field_name\": \"rep_family_status\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.family_status }}\"\n    },\n    {\n      \"field_id\": 14210800,\n      \"field_name\": \"rep_income\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.income_range }}\"\n    },\n    {\n      \"field_id\": 14210801,\n      \"field_name\": \"rep_investment_range\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.investment_range }}\"\n    },\n    {\n      \"field_id\": 14210802,\n      \"field_name\": \"rep_impediment\",\n      \"field_value\": \"{{ $('Normalize Data').item.json.impediment }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 400],
+      "id": "set-report-fields",
+      "name": "Preenche Dados do Report",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "bqxn4Lv8OoDJZBHB",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## [ManyChat Sync] - Report Completed\n\n**Trigger**: Webhook `report.generated` do Supabase `dispatch-report-webhook`\n\n**Cobre 2 caminhos:**\n1. Lead externo (form.euanapratica.com)\n2. Hub user (hub.euanapratica.com)\n\n**Fluxo:**\n1. Recebe payload com dados do report\n2. Busca contato no ManyChat por WPP_ID\n3. Se não existe → cria subscriber\n4. Preenche custom fields com dados do report\n\n**Idempotente**: setCustomFields atualiza se já existir\n**Resposta**: Webhook retorna 200 imediatamente, processa em background\n**Fluxos ManyChat**: Disparados via automação interna do ManyChat (ex: quando link_report é preenchido)"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1240, 200],
+      "typeVersion": 1,
+      "id": "sticky-note-1",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Report Generated Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Busca no ManyChat (WPP_ID)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca no ManyChat (WPP_ID)": {
+      "main": [
+        [
+          {
+            "node": "Contato existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contato existe?": {
+      "main": [
+        [
+          {
+            "node": "Cria Contato ManyChat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pega ID (existente)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria Contato ManyChat": {
+      "main": [
+        [
+          {
+            "node": "Pega ID (novo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega ID (novo)": {
+      "main": [
+        [
+          {
+            "node": "Preenche Dados do Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pega ID (existente)": {
+      "main": [
+        [
+          {
+            "node": "Preenche Dados do Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preenche Dados do Report": {
+      "main": [[]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

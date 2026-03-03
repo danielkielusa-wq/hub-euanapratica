@@ -15,7 +15,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, validateInternalCall } from "../_shared/authGuard.ts";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
-import { sendWhatsAppMessage } from "../_shared/whatsappService.ts";
 
 const GRACE_MINUTES = 60; // minutes after scheduled end before auto-close (for live)
 const EXPIRED_GRACE_MINUTES = 30; // minutes after scheduled end before auto-expire (for scheduled)
@@ -110,22 +109,7 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        // 3. Send WhatsApp if phone available (best-effort)
-        if (mentor?.phone) {
-          try {
-            await sendWhatsAppMessage({
-              phone: mentor.phone,
-              text: `Oi ${mentorName}! Sua live "${live.title}" ainda esta marcada como ao vivo e sera encerrada automaticamente. Acesse: ${origin}/mentor/lives/${live.id}`,
-            });
-          } catch (waErr) {
-            console.warn(
-              `WhatsApp to mentor failed for live ${live.id}:`,
-              waErr
-            );
-          }
-        }
-
-        // 4. Auto-close the live
+        // 3. Auto-close the live
         const { error: updateError } = await supabase
           .from("lives")
           .update({ status: "completed" })

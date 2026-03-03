@@ -1,0 +1,26 @@
+1. Envio WhatsApp em lote para report
+2. Como verificar o Quality Rating no Meta Business Manager para WhatsApp
+3. Validar novo onboarding + questionario
+3. validar nova modalidade de creditos
+4. Global library validation hub-euanapratica/docs/24 Global Library/
+5. Notificacoes docs\27 Notification System\VALIDACAO_E2E.md
+6. Assistant Role  docs/e2e-test-assistant-role.md.
+7. E2E Test with Playwright   (docs/testing/e2e-weekly-report.md)
+8. Weekly report E2E (/e2e-weekly-report.md)
+9. E2E Test Plan — Unified Credit Pool docs/e2e/unified-credit-pool.md.
+10. N8N validation docs/testing/audit-fixes-testing-guide.md
+11. Daily Agenda - c:\Users\I335869\ENP_HUB\hub-euanapratica\docs\28 Agenda Semanal\README.md
+
+
+curl -X POST https://wa.euanapratica.com/instance/create \
+  -H "apikey: 3a4c0821d8d66f96e3f400b5d9002a09f65085c711d0b8c49fc5eff664b76cfc" \
+  -H "Content-Type: application/json" \
+  -d '{"instanceName": "enp_hub", "integration": "WHATSAPP-BAILEYS", "qrcode": true, "number": "14078429360"}'
+
+
+curl --request GET \
+  --url "https://wa.euanapratica.com/instance/connect/enp_hub?number=14078429360" \
+  --header "apikey: 3a4c0821d8d66f96e3f400b5d9002a09f65085c711d0b8c49fc5eff664b76cfc"
+
+curl -sS "https://wa.euanapratica.com/instance/connect/enp_hub?number=14078429360" \
+  -H "apikey: 3a4c0821d8d66f96e3f400b5d9002a09f65085c711d0b8c49fc5eff664b76cfc" > resp.json

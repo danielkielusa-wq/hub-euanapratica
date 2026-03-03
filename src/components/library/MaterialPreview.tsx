@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ExternalLink, X } from 'lucide-react';
 import { Material } from '@/types/library';
-import { isImageType } from '@/lib/file-utils';
-import { FileIcon } from './FileIcon';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useDownloadFile } from '@/hooks/useFileUpload';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface MaterialPreviewProps {
   material: Material | null;
@@ -15,116 +16,76 @@ interface MaterialPreviewProps {
 }
 
 export function MaterialPreview({ material, isOpen, onClose, onDownload }: MaterialPreviewProps) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const { getSignedUrl } = useDownloadFile();
-
-  useEffect(() => {
-    if (!material || !isOpen) {
-      setImageUrl(null);
-      setPdfUrl(null);
-      setLoading(true);
-      setZoom(1);
-      return;
-    }
-
-    const loadPreview = async () => {
-      setLoading(true);
-      try {
-        const url = await getSignedUrl(material.file_url);
-        
-        if (isImageType(material.file_type)) {
-          setImageUrl(url);
-        } else if (material.file_type === 'pdf') {
-          setPdfUrl(url);
-        }
-      } catch (error) {
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPreview();
-  }, [material, isOpen]);
-
   if (!material) return null;
 
-  const isImage = isImageType(material.file_type);
+  const isLink = material.file_type === 'link';
   const isPdf = material.file_type === 'pdf';
+  const isImage = material.file_type === 'png' || material.file_type === 'jpg';
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-        <DialogHeader className="p-4 border-b">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] h-[85vh] flex flex-col">
+        <DialogHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileIcon fileType={material.file_type} size={24} />
-              <DialogTitle className="truncate">
-                {material.title || material.filename}
-              </DialogTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              {isImage && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}
-                    disabled={zoom <= 0.5}
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-muted-foreground w-12 text-center">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setZoom(z => Math.min(3, z + 0.25))}
-                    disabled={zoom >= 3}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-              <Button variant="outline" size="sm" onClick={onDownload} className="gap-2">
-                <Download className="h-4 w-4" />
-                Baixar
-              </Button>
-            </div>
+            <DialogTitle className="pr-8 line-clamp-1">
+              {material.title || material.filename}
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto p-4 bg-muted/50 min-h-[400px] max-h-[calc(90vh-80px)]">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-            </div>
-          ) : isImage && imageUrl ? (
-            <div className="flex items-center justify-center h-full">
-              <img
-                src={imageUrl}
-                alt={material.title || material.filename}
-                className="max-w-full object-contain transition-transform"
-                style={{ transform: `scale(${zoom})` }}
-              />
-            </div>
-          ) : isPdf && pdfUrl ? (
+        <div className="flex-1 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+          {isPdf && material.file_url ? (
             <iframe
-              src={`${pdfUrl}#toolbar=1`}
-              className="w-full h-full min-h-[600px] rounded-lg border"
+              src={material.file_url}
+              className="w-full h-full rounded-md"
               title={material.title || material.filename}
             />
+          ) : isImage && material.file_url ? (
+            <img
+              src={material.file_url}
+              alt={material.title || material.filename}
+              className="max-w-full max-h-full object-contain rounded-md"
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <FileIcon fileType={material.file_type} size={64} className="mb-4 opacity-50" />
-              <p className="text-lg font-medium">Preview não disponível</p>
-              <p className="text-sm mt-1">Clique em "Baixar" para visualizar o arquivo</p>
+            <div className="text-center p-8">
+              <p className="text-muted-foreground text-sm mb-4">
+                {isLink
+                  ? 'Este material é um link externo.'
+                  : 'Visualização não disponível para este tipo de arquivo.'}
+              </p>
+              <Button onClick={onDownload}>
+                {isLink ? (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Abrir link
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar arquivo
+                  </>
+                )}
+              </Button>
             </div>
           )}
         </div>
+
+        {(isPdf || isImage) && (
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={onDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Baixar
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

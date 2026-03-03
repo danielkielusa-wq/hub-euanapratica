@@ -18,8 +18,8 @@ const STUDENT_ITEMS: MenuItemDef[] = [
   { key: 'catalogo',         label: 'Explore',           group: 'DISCOVERY' },
   { key: 'cursos',           label: 'Meus Cursos',       group: 'DISCOVERY' },
   { key: 'espacos',          label: 'Minha Jornada',     group: 'DISCOVERY' },
+  { key: 'biblioteca',       label: 'Biblioteca',        group: 'DISCOVERY' },
   { key: 'dashboard',        label: 'Dashboard',         group: 'MENTORIA' },
-  { key: 'biblioteca',       label: 'Biblioteca',        group: 'MENTORIA' },
   { key: 'tarefas',          label: 'Tarefas',           group: 'MENTORIA' },
   { key: 'curriculo',        label: 'ResumePass AI',     group: 'TOOLS & AI' },
   { key: 'title_translator', label: 'Title Translator',  group: 'TOOLS & AI' },
@@ -39,7 +39,6 @@ const MENTOR_ITEMS: MenuItemDef[] = [
   { key: 'agenda',           label: 'Agenda',            group: 'GESTÃO' },
   { key: 'tarefas',          label: 'Tarefas',           group: 'GESTÃO' },
   { key: 'biblioteca',       label: 'Biblioteca',        group: 'CONTEÚDO' },
-  { key: 'upload_materiais', label: 'Upload Materiais',  group: 'CONTEÚDO' },
   { key: 'perfil',           label: 'Perfil',            group: 'MINHA CONTA' },
   { key: 'suporte',          label: 'Suporte',           group: 'MINHA CONTA' },
 ];

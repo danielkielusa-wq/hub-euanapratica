@@ -1,152 +1,126 @@
 import { useState } from 'react';
-import {
-  ChevronRight,
-  ChevronDown,
-  Folder as FolderIcon,
-  FolderPlus,
-  Pencil,
-  Trash2,
-  Lock,
-  Globe,
-} from 'lucide-react';
+import { ChevronRight, ChevronDown, Lock, Globe, MoreVertical, Plus } from 'lucide-react';
 import { LibraryFolder } from '@/types/global-library';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface AdminFolderTreeProps {
   folders: LibraryFolder[];
-  currentFolderId?: string | null;
+  currentFolderId: string | null;
   onFolderSelect: (folder: LibraryFolder) => void;
   onCreateSubfolder: (parentId: string) => void;
   onEditFolder: (folder: LibraryFolder) => void;
   onDeleteFolder: (folder: LibraryFolder) => void;
 }
 
-interface FolderItemProps {
-  folder: LibraryFolder;
-  level: number;
-  currentFolderId?: string | null;
-  onFolderSelect: (folder: LibraryFolder) => void;
-  onCreateSubfolder: (parentId: string) => void;
-  onEditFolder: (folder: LibraryFolder) => void;
-  onDeleteFolder: (folder: LibraryFolder) => void;
-}
-
-function FolderItem({
+function FolderTreeItem({
   folder,
-  level,
   currentFolderId,
+  depth,
   onFolderSelect,
   onCreateSubfolder,
   onEditFolder,
   onDeleteFolder,
-}: FolderItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+}: {
+  folder: LibraryFolder;
+  currentFolderId: string | null;
+  depth: number;
+  onFolderSelect: (folder: LibraryFolder) => void;
+  onCreateSubfolder: (parentId: string) => void;
+  onEditFolder: (folder: LibraryFolder) => void;
+  onDeleteFolder: (folder: LibraryFolder) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
   const hasChildren = folder.children && folder.children.length > 0;
-  const isActive = folder.id === currentFolderId;
-
-  const renderIcon = () => {
-    if (folder.icon) {
-      // If icon starts with a letter, it's likely an emoji
-      return <span className="text-sm shrink-0">{folder.icon}</span>;
-    }
-    return (
-      <FolderIcon
-        className={cn(
-          'h-4 w-4 shrink-0',
-          isActive ? 'text-primary' : 'text-muted-foreground'
-        )}
-      />
-    );
-  };
+  const isSelected = currentFolderId === folder.id;
 
   return (
     <div>
       <div
         className={cn(
-          'group flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer transition-colors',
-          isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+          'flex items-center gap-1 rounded-md py-1.5 cursor-pointer text-sm group',
+          isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
         )}
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        style={{ paddingLeft: `${8 + depth * 16}px`, paddingRight: '4px' }}
         onClick={() => onFolderSelect(folder)}
       >
         {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="shrink-0"
           >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
+            {expanded
+              ? <ChevronDown className="h-3.5 w-3.5" />
+              : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
         ) : (
-          <div className="w-5" />
+          <span className="w-3.5 shrink-0" />
         )}
 
-        {renderIcon()}
-        <span className="truncate text-sm flex-1">{folder.name}</span>
+        <span className="shrink-0 text-base leading-none">
+          {folder.icon || (isSelected ? '📂' : '📁')}
+        </span>
 
-        {folder.access_level === 'restricted' && (
-          <Lock className="h-3 w-3 text-amber-500 shrink-0" />
+        <span className="flex-1 truncate">{folder.name}</span>
+
+        {folder.access_level === 'restricted'
+          ? <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
+          : <Globe className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+        }
+
+        {typeof folder.item_count === 'number' && folder.item_count > 0 && (
+          <Badge variant="secondary" className="h-4 px-1 text-xs font-normal shrink-0">
+            {folder.item_count}
+          </Badge>
         )}
 
-        {/* Hover actions */}
-        <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateSubfolder(folder.id);
-            }}
-            title="Criar subpasta"
-          >
-            <FolderPlus className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditFolder(folder);
-            }}
-            title="Editar"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-destructive hover:text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteFolder(folder);
-            }}
-            title="Excluir"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onCreateSubfolder(folder.id); }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-2" />
+              Nova subpasta
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onEditFolder(folder); }}
+            >
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder); }}
+              className="text-destructive focus:text-destructive"
+            >
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {hasChildren && isExpanded && (
+      {hasChildren && expanded && (
         <div>
           {folder.children!.map((child) => (
-            <FolderItem
+            <FolderTreeItem
               key={child.id}
               folder={child}
-              level={level + 1}
               currentFolderId={currentFolderId}
+              depth={depth + 1}
               onFolderSelect={onFolderSelect}
               onCreateSubfolder={onCreateSubfolder}
               onEditFolder={onEditFolder}
@@ -167,24 +141,22 @@ export function AdminFolderTree({
   onEditFolder,
   onDeleteFolder,
 }: AdminFolderTreeProps) {
-  if (folders.length === 0) {
+  if (!folders.length) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <FolderIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Nenhuma pasta criada</p>
-        <p className="text-xs mt-1">Crie a primeira pasta para comecar</p>
-      </div>
+      <p className="text-sm text-muted-foreground text-center py-4">
+        Nenhuma pasta criada ainda.
+      </p>
     );
   }
 
   return (
     <div className="space-y-0.5">
       {folders.map((folder) => (
-        <FolderItem
+        <FolderTreeItem
           key={folder.id}
           folder={folder}
-          level={0}
           currentFolderId={currentFolderId}
+          depth={0}
           onFolderSelect={onFolderSelect}
           onCreateSubfolder={onCreateSubfolder}
           onEditFolder={onEditFolder}

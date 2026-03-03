@@ -23,7 +23,6 @@ import {
   Package,
   FileText,
   TestTube,
-  Upload,
   Briefcase,
   Link2,
   Globe,
@@ -39,8 +38,6 @@ import {
   Video,
   Radio,
   Brain,
-  Workflow,
-  Library,
   Layers,
   ChevronRight,
   Bell,
@@ -102,6 +99,7 @@ const studentNavGroups: NavGroup[] = [
       { label: 'Lives', href: '/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Meus Cursos', href: '/dashboard/cursos', icon: PlayCircle, menuKey: 'cursos', badge: { text: 'NOVO', variant: 'new' } },
       { label: 'Minha Jornada', href: '/dashboard/espacos', icon: LayoutGrid, menuKey: 'espacos' },
+      { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
     ],
   },
   {
@@ -170,8 +168,6 @@ const mentorNavGroups: NavGroup[] = [
     label: 'CONTEÚDO',
     items: [
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
-      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library, menuKey: 'biblioteca_global' },
-      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload, menuKey: 'upload_materiais' },
     ],
   },
   {
@@ -226,9 +222,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'BIBLIOTECA',
     items: [
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen },
-      { label: 'Biblioteca Global', href: '/biblioteca-global', icon: Library },
       { label: 'Gerenciar Biblioteca', href: '/admin/biblioteca-global', icon: Settings },
-      { label: 'Upload Materiais', href: '/admin/biblioteca/upload', icon: Upload },
     ],
   },
   {
@@ -249,10 +243,9 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Menu do App', href: '/admin/menu-config', icon: Menu },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Templates de Email', href: '/admin/email-templates', icon: Mail },
-      { label: 'Templates WhatsApp', href: '/admin/whatsapp-templates', icon: MessageSquare },
       { label: 'Automacoes N8N', href: '/admin/automacoes', icon: Zap },
+      { label: 'Flows ManyChat', href: '/admin/manychat-flows', icon: MessageSquare },
       { label: 'Notificacoes', href: '/admin/notificacoes', icon: Bell },
-      { label: 'Fluxos WhatsApp', href: '/admin/whatsapp-flows', icon: Workflow },
       { label: 'Páginas Legais', href: '/admin/paginas-legais', icon: FileText },
       { label: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
       { label: 'Testes E2E', href: '/admin/testes-e2e', icon: TestTube },

@@ -13,7 +13,7 @@ export type StudentMenuKey =
 
 export type MentorMenuKey =
   | 'dashboard' | 'espacos' | 'agendamentos' | 'disponibilidade' | 'agenda' | 'tarefas'
-  | 'biblioteca' | 'upload_materiais'
+  | 'biblioteca'
   | 'perfil' | 'suporte';
 
 export type MenuVisibilityConfig = {
@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: MenuVisibilityConfig = {
   },
   mentor: {
     dashboard: true, espacos: true, agendamentos: true, disponibilidade: true, agenda: true, tarefas: true,
-    biblioteca: true, upload_materiais: true,
+    biblioteca: true,
     perfil: true, suporte: true,
   },
 };

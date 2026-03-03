@@ -33,6 +33,8 @@ const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bgC
   status_change: { label: 'Status', icon: RefreshCw, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   report_viewed: { label: 'Relatório', icon: Eye, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
   ai_suggestion_completed: { label: 'IA Concluída', icon: Sparkles, color: 'text-violet-600', bgColor: 'bg-violet-100' },
+  manychat_flow_sent: { label: 'ManyChat Flow', icon: MessageSquare, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
+  manychat_reply: { label: 'ManyChat Resposta', icon: MessageSquare, color: 'text-teal-600', bgColor: 'bg-teal-100' },
 };
 
 function formatRelativeTime(dateStr: string, tz: string): string {

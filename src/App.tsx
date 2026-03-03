@@ -40,7 +40,6 @@ const AdminHubServices = lazy(() => import("./pages/admin/AdminHubServices"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
 import StudentLibrary from "./pages/library/StudentLibrary";
-import UploadMaterials from "./pages/admin/UploadMaterials";
 const AdminGlobalLibrary = lazy(() => import("./pages/admin/AdminGlobalLibrary"));
 import GlobalLibrary from "./pages/library/GlobalLibrary";
 const AdminE2ETests = lazy(() => import("./pages/admin/AdminE2ETests"));
@@ -96,12 +95,10 @@ const AdminAgendaSemanal = lazy(() => import("./pages/admin/AdminAgendaSemanal")
 const AdminIdeaKanban = lazy(() => import("./pages/admin/AdminIdeaKanban"));
 const AdminLeadDetail = lazy(() => import("./pages/admin/AdminLeadDetail"));
 const AdminAtividades = lazy(() => import("./pages/admin/AdminAtividades"));
-const AdminWhatsAppTemplates = lazy(() => import("./pages/admin/AdminWhatsAppTemplates"));
 const AdminAutomations = lazy(() => import("./pages/admin/AdminAutomations"));
+const AdminManyChatFlows = lazy(() => import("./pages/admin/AdminManyChatFlows"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminPrimeJobs = lazy(() => import("./pages/admin/AdminPrimeJobs"));
-const AdminWhatsAppFlows = lazy(() => import("./pages/admin/AdminWhatsAppFlows"));
-const AdminWhatsAppFlowEditor = lazy(() => import("./pages/admin/AdminWhatsAppFlowEditor"));
 const AdminCourses = lazy(() => import("./pages/admin/AdminCourses"));
 const AdminCourseBuilder = lazy(() => import("./pages/admin/AdminCourseBuilder"));
 const AdminAgendamentos = lazy(() => import("./pages/admin/AdminAgendamentos"));
@@ -332,33 +329,19 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
-      {/* Library routes - protected by plan (SECURITY FIX VULN-05) */}
+      {/* Global Library routes */}
       <Route path="/biblioteca" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <ServiceGuard serviceRoute="/biblioteca">
-            <StudentLibrary />
-          </ServiceGuard>
+          <GlobalLibrary />
         </ProtectedRoute>
       } />
       <Route path="/biblioteca/pasta/:folderId" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <ServiceGuard serviceRoute="/biblioteca">
-            <StudentLibrary />
-          </ServiceGuard>
-        </ProtectedRoute>
-      } />
-
-      {/* Global Library routes - available to all authenticated users */}
-      <Route path="/biblioteca-global" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <GlobalLibrary />
         </ProtectedRoute>
       } />
-      <Route path="/biblioteca-global/pasta/:folderId" element={
-        <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
-          <GlobalLibrary />
-        </ProtectedRoute>
-      } />
+      <Route path="/biblioteca-global" element={<Navigate to="/biblioteca" replace />} />
+      <Route path="/biblioteca-global/pasta/:folderId" element={<Navigate to="/biblioteca" replace />} />
 
       {/* Mentor routes */}
       <Route path="/mentor/dashboard" element={
@@ -498,11 +481,6 @@ function AppRoutes() {
           <AdminAuditLogs />
         </ProtectedRoute>
       } />
-      <Route path="/admin/biblioteca/upload" element={
-        <ProtectedRoute allowedRoles={['admin', 'mentor']}>
-          <UploadMaterials />
-        </ProtectedRoute>
-      } />
       <Route path="/admin/biblioteca-global" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminGlobalLibrary />
@@ -618,14 +596,14 @@ function AppRoutes() {
           <AdminIdeaKanban />
         </ProtectedRoute>
       } />
-      <Route path="/admin/whatsapp-templates" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <AdminWhatsAppTemplates />
-        </ProtectedRoute>
-      } />
       <Route path="/admin/automacoes" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminAutomations />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/manychat-flows" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminManyChatFlows />
         </ProtectedRoute>
       } />
       <Route path="/admin/notificacoes" element={
@@ -636,16 +614,6 @@ function AppRoutes() {
       <Route path="/admin/prime-jobs" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminPrimeJobs />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/whatsapp-flows" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <AdminWhatsAppFlows />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/whatsapp-flows/:flowId" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <AdminWhatsAppFlowEditor />
         </ProtectedRoute>
       } />
       <Route path="/admin/content-studio" element={

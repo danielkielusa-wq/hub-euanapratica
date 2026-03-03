@@ -5,23 +5,18 @@ import { LibraryFolder, LibraryItem, LibraryFilters } from '@/types/global-libra
 
 // ── Folders ──────────────────────────────────────────────
 
-export function useGlobalLibraryFolders(hasFullAccess: boolean) {
+export function useGlobalLibraryFolders() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['library-folders', hasFullAccess],
+    queryKey: ['library-folders'],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('library_folders')
         .select('*')
         .order('display_order')
         .order('name');
 
-      if (!hasFullAccess) {
-        query = query.eq('access_level', 'public');
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data as LibraryFolder[];
     },
@@ -39,14 +34,14 @@ function buildTree(items: LibraryFolder[], parentId: string | null = null): Libr
     .sort((a, b) => a.display_order - b.display_order);
 }
 
-export function useGlobalLibraryFolderTree(hasFullAccess: boolean) {
-  const { data: folders, ...rest } = useGlobalLibraryFolders(hasFullAccess);
+export function useGlobalLibraryFolderTree() {
+  const { data: folders, ...rest } = useGlobalLibraryFolders();
   const tree = folders ? buildTree(folders) : [];
   return { data: tree, folders, ...rest };
 }
 
-export function useGlobalLibraryBreadcrumb(folderId: string | null, hasFullAccess: boolean) {
-  const { data: folders } = useGlobalLibraryFolders(hasFullAccess);
+export function useGlobalLibraryBreadcrumb(folderId: string | null) {
+  const { data: folders } = useGlobalLibraryFolders();
 
   const getBreadcrumb = (): LibraryFolder[] => {
     if (!folderId || !folders) return [];
@@ -77,11 +72,8 @@ export function useGlobalLibraryItems(folderId?: string, filters?: LibraryFilter
     queryFn: async () => {
       let query = supabase
         .from('library_items')
-        .select('*, library_folders(name)');
-
-      if (folderId) {
-        query = query.eq('folder_id', folderId);
-      }
+        .select('*, library_folders(name)')
+        .eq('folder_id', folderId!);
 
       if (filters?.itemTypes?.length) {
         query = query.in('item_type', filters.itemTypes);
@@ -107,29 +99,35 @@ export function useGlobalLibraryItems(folderId?: string, filters?: LibraryFilter
         folder: item.library_folders,
       })) as LibraryItem[];
     },
-    enabled: !!user,
+    enabled: !!user && !!folderId,
   });
 }
 
-export function useSearchGlobalLibrary(searchQuery: string) {
+export function useSearchGlobalLibrary(searchQuery: string, hasFullAccess?: boolean) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['library-search', searchQuery],
+    queryKey: ['library-search', searchQuery, hasFullAccess],
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
 
       const { data, error } = await supabase
         .from('library_items')
-        .select('*, library_folders(name)')
+        .select('*, library_folders(name, access_level)')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
         .limit(20);
 
       if (error) throw error;
-      return data.map((item: any) => ({
-        ...item,
-        folder: item.library_folders,
-      })) as LibraryItem[];
+
+      return data
+        .filter((item: any) => {
+          if (hasFullAccess) return true;
+          return item.library_folders?.access_level === 'public';
+        })
+        .map((item: any) => ({
+          ...item,
+          folder: item.library_folders,
+        })) as LibraryItem[];
     },
     enabled: !!user && searchQuery.length >= 2,
   });

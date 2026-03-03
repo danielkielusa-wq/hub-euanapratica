@@ -1,25 +1,90 @@
 import {
   FileText,
+  File,
+  Video,
   Link as LinkIcon,
-  Download,
-  ExternalLink,
-  Eye,
+  Image as ImageIcon,
   Star,
+  Download,
 } from 'lucide-react';
 import { LibraryItem } from '@/types/global-library';
-import { formatFileSize, getFileIcon, FILE_TYPE_COLORS, isPreviewable } from '@/lib/file-utils';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { FileType } from '@/types/library';
 
 interface GlobalLibraryItemCardProps {
   item: LibraryItem;
   isFavorite: boolean;
   onDownload: () => void;
-  onPreview?: () => void;
+  onPreview: () => void;
   onToggleFavorite: () => void;
+}
+
+type ResourceType = 'pdf' | 'doc' | 'docx' | 'video' | 'link' | 'image' | string;
+
+function FileIcon({ type }: { type: ResourceType }) {
+  switch (type) {
+    case 'pdf':
+      return (
+        <div className="p-2 bg-red-50 text-red-600 rounded-lg">
+          <FileText className="w-5 h-5" />
+        </div>
+      );
+    case 'doc':
+    case 'docx':
+    case 'xlsx':
+    case 'xls':
+    case 'pptx':
+      return (
+        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+          <File className="w-5 h-5" />
+        </div>
+      );
+    case 'video':
+    case 'mp4':
+    case 'mov':
+    case 'avi':
+      return (
+        <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+          <Video className="w-5 h-5" />
+        </div>
+      );
+    case 'link':
+      return (
+        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+          <LinkIcon className="w-5 h-5" />
+        </div>
+      );
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'webp':
+      return (
+        <div className="p-2 bg-pink-50 text-pink-600 rounded-lg">
+          <ImageIcon className="w-5 h-5" />
+        </div>
+      );
+    default:
+      return (
+        <div className="p-2 bg-gray-50 text-gray-600 rounded-lg">
+          <File className="w-5 h-5" />
+        </div>
+      );
+  }
+}
+
+function formatFileSize(bytes: number | null): string | null {
+  if (!bytes) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export function GlobalLibraryItemCard({
@@ -29,116 +94,81 @@ export function GlobalLibraryItemCard({
   onPreview,
   onToggleFavorite,
 }: GlobalLibraryItemCardProps) {
-  const isFile = item.item_type === 'file';
   const isLink = item.item_type === 'link';
-  const canPreview = isFile && item.file_type && isPreviewable(item.file_type as FileType);
+  const resourceType = isLink ? 'link' : (item.file_type?.toLowerCase() || 'file');
+  const fileSize = formatFileSize(item.file_size);
 
-  const getIcon = () => {
-    if (isLink) return LinkIcon;
-    if (item.file_type && item.file_type in FILE_TYPE_COLORS) {
-      return getFileIcon(item.file_type as FileType);
+  const handleCardClick = () => {
+    if (isLink) {
+      onDownload();
+    } else {
+      onPreview();
     }
-    return FileText;
   };
-
-  const getIconColor = () => {
-    if (isLink) return 'text-cyan-500';
-    if (item.file_type && item.file_type in FILE_TYPE_COLORS) {
-      return FILE_TYPE_COLORS[item.file_type as FileType];
-    }
-    return 'text-gray-500';
-  };
-
-  const Icon = getIcon();
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          {/* Icon */}
-          <div className={cn('p-2 rounded-lg bg-muted shrink-0', getIconColor())}>
-            <Icon className="h-5 w-5" />
-          </div>
+    <div
+      onClick={handleCardClick}
+      className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm group cursor-pointer flex flex-col h-full hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <FileIcon type={resourceType} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className={`transition-colors ${
+            isFavorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'
+          }`}
+        >
+          <Star className="w-4 h-4 fill-current" />
+        </button>
+      </div>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{item.title}</h4>
+      <div className="flex-1">
+        <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1 group-hover:text-indigo-600 transition-colors">
+          {item.title}
+        </h3>
+        {item.description && (
+          <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+            {item.description}
+          </p>
+        )}
+      </div>
 
-            {item.description && (
-              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                {item.description}
-              </p>
-            )}
-
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <Badge variant="outline" className="text-xs">
-                {isFile ? (item.file_type?.toUpperCase() || 'FILE') : 'LINK'}
-              </Badge>
-
-              {isFile && item.file_size && (
-                <span className="text-xs text-muted-foreground">
-                  {formatFileSize(item.file_size)}
-                </span>
-              )}
-
-              {item.tags?.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-8 w-8', isFavorite && 'text-yellow-500')}
-              onClick={onToggleFavorite}
-              title={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+      {item.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-4">
+          {item.tags.map((tag) => (
+            <span
+              key={tag}
+              className="px-2 py-0.5 bg-gray-50 text-gray-500 text-[10px] uppercase tracking-wide font-medium rounded-full"
             >
-              <Star className={cn('h-4 w-4', isFavorite && 'fill-current')} />
-            </Button>
-
-            {canPreview && onPreview && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={onPreview}
-                title="Visualizar"
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            )}
-
-            {isFile && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={onDownload}
-                title="Download"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            )}
-
-            {isLink && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={onDownload}
-                title="Abrir link"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+              {tag}
+            </span>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-auto">
+        <div className="flex items-center text-xs text-gray-400 gap-2">
+          {fileSize && <span>{fileSize}</span>}
+          {isLink && <span>URL Externa</span>}
+          {(fileSize || isLink) && (
+            <span className="w-1 h-1 rounded-full bg-gray-300" />
+          )}
+          <span>{formatDate(item.created_at)}</span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
+          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+        >
+          <Download className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }

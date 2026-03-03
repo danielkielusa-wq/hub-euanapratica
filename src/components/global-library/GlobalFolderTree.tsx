@@ -1,89 +1,121 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, ChevronDown, Folder as FolderIcon, Lock } from 'lucide-react';
+import { Folder, Lock, ChevronRight, ChevronDown } from 'lucide-react';
 import { LibraryFolder } from '@/types/global-library';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface GlobalFolderTreeProps {
   folders: LibraryFolder[];
-  currentFolderId?: string | null;
+  currentFolderId?: string;
+  hasFullAccess: boolean;
+  onRestrictedClick: () => void;
 }
 
-interface FolderItemProps {
+function FolderItem({
+  folder,
+  currentFolderId,
+  hasFullAccess,
+  depth,
+  onRestrictedClick,
+}: {
   folder: LibraryFolder;
-  level: number;
-  currentFolderId?: string | null;
-}
-
-function FolderItem({ folder, level, currentFolderId }: FolderItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  currentFolderId?: string;
+  hasFullAccess: boolean;
+  depth: number;
+  onRestrictedClick: () => void;
+}) {
+  const [expanded, setExpanded] = useState(depth === 0);
   const hasChildren = folder.children && folder.children.length > 0;
-  const isActive = folder.id === currentFolderId;
+  const isSelected = currentFolderId === folder.id;
+  const isLocked = folder.access_level === 'restricted' && !hasFullAccess;
 
-  const renderIcon = () => {
-    if (folder.icon) {
-      return <span className="text-sm shrink-0">{folder.icon}</span>;
+  const handleClick = (e: React.MouseEvent) => {
+    if (isLocked) {
+      e.preventDefault();
+      onRestrictedClick();
+      return;
     }
-    return (
-      <FolderIcon
-        className={cn(
-          'h-4 w-4 shrink-0',
-          isActive ? 'text-primary' : 'text-muted-foreground'
-        )}
-      />
-    );
+    if (hasChildren) setExpanded(true);
   };
 
-  return (
-    <div>
-      <div
-        className={cn(
-          'group flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer transition-colors',
-          isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
-        )}
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
-      >
-        {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
-        ) : (
-          <div className="w-5" />
-        )}
+  const handleChevronClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLocked) setExpanded(!expanded);
+  };
 
-        <Link
-          to={`/biblioteca-global/pasta/${folder.id}`}
-          className="flex items-center gap-2 flex-1 min-w-0"
+  const content = (
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center gap-3 overflow-hidden">
+        {isLocked ? (
+          <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        ) : (
+          <Folder
+            className={`w-4 h-4 flex-shrink-0 ${
+              isSelected
+                ? 'fill-indigo-200 text-indigo-600'
+                : 'fill-gray-100 text-gray-400 group-hover:text-gray-500'
+            }`}
+          />
+        )}
+        <span
+          className={`text-sm font-medium truncate ${
+            isSelected ? 'text-indigo-700' : 'text-gray-700'
+          }`}
         >
-          {renderIcon()}
-          <span className="truncate text-sm">{folder.name}</span>
-          {folder.access_level === 'restricted' && (
-            <Lock className="h-3 w-3 text-amber-500 shrink-0" />
-          )}
-        </Link>
+          {folder.icon ? `${folder.icon} ` : ''}
+          {folder.name}
+        </span>
       </div>
 
-      {hasChildren && isExpanded && (
-        <div>
+      {hasChildren && !isLocked && (
+        <button onClick={handleChevronClick} className="text-gray-400 flex-shrink-0 ml-2">
+          {expanded ? (
+            <ChevronDown className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+
+  const itemClass = `
+    flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group
+    ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}
+    ${isLocked ? 'opacity-60 cursor-not-allowed hover:bg-transparent' : ''}
+  `;
+
+  return (
+    <div className="mb-1">
+      {isLocked ? (
+        <div
+          className={itemClass}
+          style={{ marginLeft: `${depth * 12}px` }}
+          onClick={handleClick}
+        >
+          {content}
+        </div>
+      ) : (
+        <Link
+          to={`/biblioteca/pasta/${folder.id}`}
+          className={itemClass}
+          style={{ marginLeft: `${depth * 12}px` }}
+          onClick={handleClick}
+        >
+          {content}
+        </Link>
+      )}
+
+      {hasChildren && expanded && !isLocked && (
+        <div className="overflow-hidden">
           {folder.children!.map((child) => (
             <FolderItem
               key={child.id}
               folder={child}
-              level={level + 1}
               currentFolderId={currentFolderId}
+              hasFullAccess={hasFullAccess}
+              depth={depth + 1}
+              onRestrictedClick={onRestrictedClick}
             />
           ))}
         </div>
@@ -92,24 +124,30 @@ function FolderItem({ folder, level, currentFolderId }: FolderItemProps) {
   );
 }
 
-export function GlobalFolderTree({ folders, currentFolderId }: GlobalFolderTreeProps) {
-  if (folders.length === 0) {
+export function GlobalFolderTree({
+  folders,
+  currentFolderId,
+  hasFullAccess,
+  onRestrictedClick,
+}: GlobalFolderTreeProps) {
+  if (!folders.length) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <FolderIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Nenhuma pasta disponivel</p>
-      </div>
+      <p className="text-sm text-gray-500 text-center py-4">
+        Nenhuma pasta disponível.
+      </p>
     );
   }
 
   return (
-    <div className="space-y-0.5">
+    <div>
       {folders.map((folder) => (
         <FolderItem
           key={folder.id}
           folder={folder}
-          level={0}
           currentFolderId={currentFolderId}
+          hasFullAccess={hasFullAccess}
+          depth={0}
+          onRestrictedClick={onRestrictedClick}
         />
       ))}
     </div>

@@ -11,14 +11,11 @@ import { LeadScoresTab } from '@/components/admin/leads/LeadScoresTab';
 import { LeadInteractionsTab } from '@/components/admin/leads/LeadInteractionsTab';
 import { LeadTasksTab } from '@/components/admin/leads/LeadTasksTab';
 import { LeadReportTab } from '@/components/admin/leads/LeadReportTab';
-import { LeadWhatsAppTab } from '@/components/admin/leads/LeadWhatsAppTab';
 import { AddInteractionDialog } from '@/components/admin/leads/AddInteractionDialog';
 import { AddTaskDialog } from '@/components/admin/leads/AddTaskDialog';
 import { EditInteractionDialog } from '@/components/admin/leads/EditInteractionDialog';
 import { EditTaskDialog } from '@/components/admin/leads/EditTaskDialog';
-import { SendWhatsAppDialog } from '@/components/admin/leads/SendWhatsAppDialog';
 import { SuggestTasksDialog } from '@/components/admin/leads/SuggestTasksDialog';
-import { SuggestWhatsAppDialog } from '@/components/admin/leads/SuggestWhatsAppDialog';
 import {
   useLeadDetail, useLeadInteractions, useLeadTasks,
   useAddInteraction, useAddTask, useUpdateTaskStatus,
@@ -69,9 +66,7 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [editingInteraction, setEditingInteraction] = useState<LeadInteraction | null>(null);
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
-  const [sendWhatsAppOpen, setSendWhatsAppOpen] = useState(false);
   const [suggestTasksOpen, setSuggestTasksOpen] = useState(false);
-  const [suggestWhatsAppOpen, setSuggestWhatsAppOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -107,7 +102,6 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
               lead={lead}
               onAddNote={() => setAddNoteOpen(true)}
               onAddTask={() => setAddTaskOpen(true)}
-              onSendWhatsApp={() => setSendWhatsAppOpen(true)}
               viewMode={viewMode}
             />
           </div>
@@ -140,9 +134,6 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
             <TabsTrigger value="interactions" className="rounded-xl text-xs gap-1.5 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">
               <MessageSquare className="w-3.5 h-3.5" /> Interações
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="rounded-xl text-xs gap-1.5 data-[state=active]:bg-green-50 data-[state=active]:text-green-700">
-              <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
-            </TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-xl text-xs gap-1.5 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">
               <ListTodo className="w-3.5 h-3.5" /> Tarefas
             </TabsTrigger>
@@ -164,16 +155,6 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
               onAddNote={() => setAddNoteOpen(true)}
               onEdit={(interaction) => setEditingInteraction(interaction)}
               onDelete={(interaction) => deleteInteraction.mutate({ id: interaction.id, lead_id: interaction.lead_id })}
-            />
-          </TabsContent>
-          <TabsContent value="whatsapp">
-            <LeadWhatsAppTab
-              leadId={id!}
-              leadPhone={lead.phone}
-              leadName={lead.name}
-              interactions={interactions}
-              onSendMessage={() => setSendWhatsAppOpen(true)}
-              onSuggestWhatsApp={() => setSuggestWhatsAppOpen(true)}
             />
           </TabsContent>
           <TabsContent value="tasks">
@@ -223,26 +204,11 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
           onSubmit={(data) => editTask.mutate(data, { onSuccess: () => setEditingTask(null) })}
           isPending={editTask.isPending}
         />
-        <SendWhatsAppDialog
-          open={sendWhatsAppOpen}
-          onOpenChange={setSendWhatsAppOpen}
-          leadId={id!}
-          leadName={lead.name}
-          leadPhone={lead.phone}
-          accessToken={lead.access_token}
-        />
         <SuggestTasksDialog
           open={suggestTasksOpen}
           onOpenChange={setSuggestTasksOpen}
           leadId={id!}
           leadName={lead.name}
-        />
-        <SuggestWhatsAppDialog
-          open={suggestWhatsAppOpen}
-          onOpenChange={setSuggestWhatsAppOpen}
-          leadId={id!}
-          leadName={lead.name}
-          leadPhone={lead.phone}
         />
       </div>
     </DashboardLayout>

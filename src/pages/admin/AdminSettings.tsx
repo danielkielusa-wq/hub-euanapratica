@@ -10,9 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, MessageSquare, Menu, Image, Upload, Loader2, X, BarChart2 } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, Menu, Image, Upload, Loader2, X, BarChart2 } from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
-import { WhatsAppConnectionStatus } from '@/components/admin/whatsapp/WhatsAppConnectionStatus';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
 import { useGamificationRules } from '@/hooks/useGamification';
@@ -28,8 +27,8 @@ const STUDENT_MENU_ITEMS = [
   { key: 'catalogo',         label: 'Explore',           group: 'DISCOVERY' },
   { key: 'cursos',           label: 'Meus Cursos',       group: 'DISCOVERY' },
   { key: 'espacos',          label: 'Minha Jornada',     group: 'DISCOVERY' },
+  { key: 'biblioteca',       label: 'Biblioteca',        group: 'DISCOVERY' },
   { key: 'dashboard',        label: 'Dashboard',         group: 'MENTORIA' },
-  { key: 'biblioteca',       label: 'Biblioteca',        group: 'MENTORIA' },
   { key: 'tarefas',          label: 'Tarefas',           group: 'MENTORIA' },
   { key: 'curriculo',        label: 'ResumePass AI',     group: 'TOOLS & AI' },
   { key: 'title_translator', label: 'Title Translator',  group: 'TOOLS & AI' },
@@ -49,7 +48,6 @@ const MENTOR_MENU_ITEMS = [
   { key: 'agenda',           label: 'Agenda',            group: 'GESTÃO' },
   { key: 'tarefas',          label: 'Tarefas',           group: 'GESTÃO' },
   { key: 'biblioteca',       label: 'Biblioteca',        group: 'CONTEÚDO' },
-  { key: 'upload_materiais', label: 'Upload Materiais',  group: 'CONTEÚDO' },
   { key: 'perfil',           label: 'Perfil',            group: 'MINHA CONTA' },
   { key: 'suporte',          label: 'Suporte',           group: 'MINHA CONTA' },
 ];
@@ -102,11 +100,6 @@ export default function AdminSettings() {
   const [stPrompt, setStPrompt] = useState('');
   const [hasStChanges, setHasStChanges] = useState(false);
 
-  // Suggest WhatsApp config
-  const [swApiConfig, setSwApiConfig] = useState('anthropic_api');
-  const [swPrompt, setSwPrompt] = useState('');
-  const [hasSwChanges, setHasSwChanges] = useState(false);
-
   // Upsell config
   const [upsellEnabled, setUpsellEnabled] = useState(true);
   const [upsellPrompt, setUpsellPrompt] = useState('');
@@ -117,12 +110,6 @@ export default function AdminSettings() {
   const [upsellRateLimitDays, setUpsellRateLimitDays] = useState('7');
   const [upsellBlacklistDays, setUpsellBlacklistDays] = useState('30');
   const [hasUpsellChanges, setHasUpsellChanges] = useState(false);
-
-  // WhatsApp config
-  const [waEnabled, setWaEnabled] = useState(false);
-  const [waWebhookSecret, setWaWebhookSecret] = useState('');
-  const [waCountryCode, setWaCountryCode] = useState('55');
-  const [hasWaChanges, setHasWaChanges] = useState(false);
 
   // Daily Analytics config
   const [daPrompt, setDaPrompt] = useState('');
@@ -174,12 +161,6 @@ export default function AdminSettings() {
     const stPromptValue = getConfigValue('suggest_tasks_prompt');
     if (stPromptValue !== undefined) setStPrompt(stPromptValue);
 
-    // Load suggest whatsapp configs
-    const swApiValue = getConfigValue('suggest_whatsapp_api_config');
-    if (swApiValue) setSwApiConfig(swApiValue);
-    const swPromptValue = getConfigValue('suggest_whatsapp_prompt');
-    if (swPromptValue !== undefined) setSwPrompt(swPromptValue);
-
     // Load upsell configs
     const upsellEnabledValue = getConfigValue('upsell_enabled');
     setUpsellEnabled(upsellEnabledValue !== 'false');
@@ -197,14 +178,6 @@ export default function AdminSettings() {
     if (upsellRateLimitValue) setUpsellRateLimitDays(upsellRateLimitValue);
     const upsellBlacklistValue = getConfigValue('upsell_blacklist_days');
     if (upsellBlacklistValue) setUpsellBlacklistDays(upsellBlacklistValue);
-
-    // Load WhatsApp configs
-    const waEnabledValue = getConfigValue('whatsapp_enabled');
-    setWaEnabled(waEnabledValue === 'true');
-    const waSecretValue = getConfigValue('whatsapp_webhook_secret');
-    if (waSecretValue) setWaWebhookSecret(waSecretValue);
-    const waCodeValue = getConfigValue('whatsapp_default_country_code');
-    if (waCodeValue) setWaCountryCode(waCodeValue);
 
     // Load Daily Analytics configs
     const daPromptValue = getConfigValue('daily_analytics_prompt');
@@ -285,15 +258,6 @@ export default function AdminSettings() {
   }, [stApiConfig, stPrompt, configs]);
 
   useEffect(() => {
-    const originalApi = getConfigValue('suggest_whatsapp_api_config');
-    const originalPrompt = getConfigValue('suggest_whatsapp_prompt');
-    setHasSwChanges(
-      swApiConfig !== (originalApi || 'anthropic_api') ||
-      swPrompt !== (originalPrompt || '')
-    );
-  }, [swApiConfig, swPrompt, configs]);
-
-  useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
     const originalPrompt = getConfigValue('upsell_prompt_template');
     const originalApi = getConfigValue('upsell_api_config');
@@ -313,26 +277,6 @@ export default function AdminSettings() {
       upsellBlacklistDays !== originalBlacklist;
     setHasUpsellChanges(hasChanges);
   }, [upsellEnabled, upsellPrompt, upsellApiConfig, upsellModel, upsellMaxTokens, upsellTemperature, upsellRateLimitDays, upsellBlacklistDays, configs]);
-
-  useEffect(() => {
-    const originalEnabled = getConfigValue('whatsapp_enabled') === 'true';
-    const originalSecret = getConfigValue('whatsapp_webhook_secret') || '';
-    const originalCode = getConfigValue('whatsapp_default_country_code') || '55';
-    setHasWaChanges(
-      waEnabled !== originalEnabled ||
-      waWebhookSecret !== originalSecret ||
-      waCountryCode !== originalCode
-    );
-  }, [waEnabled, waWebhookSecret, waCountryCode, configs]);
-
-  const handleSaveWhatsApp = async () => {
-    await Promise.all([
-      updateConfig('whatsapp_enabled', waEnabled ? 'true' : 'false'),
-      updateConfig('whatsapp_webhook_secret', waWebhookSecret),
-      updateConfig('whatsapp_default_country_code', waCountryCode),
-    ]);
-    setHasWaChanges(false);
-  };
 
   useEffect(() => {
     const originalPrompt = getConfigValue('daily_analytics_prompt');
@@ -413,14 +357,6 @@ export default function AdminSettings() {
     setHasStChanges(false);
   };
 
-  const handleSaveSuggestWhatsApp = async () => {
-    await Promise.all([
-      updateConfig('suggest_whatsapp_api_config', swApiConfig),
-      updateConfig('suggest_whatsapp_prompt', swPrompt),
-    ]);
-    setHasSwChanges(false);
-  };
-
   const handleSaveUpsellConfigs = async () => {
     await Promise.all([
       updateConfig('upsell_enabled', upsellEnabled ? 'true' : 'false'),
@@ -468,8 +404,6 @@ export default function AdminSettings() {
             <TabsTrigger value="daily-priorities" className="gap-2 rounded-lg"><Brain className="h-4 w-4" />Prioridades do Dia</TabsTrigger>
             <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
             <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg"><ListTodo className="h-4 w-4" />Sugestão de Tarefas</TabsTrigger>
-            <TabsTrigger value="suggest-whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />Sugestão WhatsApp</TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-2 rounded-lg"><MessageSquare className="h-4 w-4" />WhatsApp</TabsTrigger>
             <TabsTrigger value="daily-analytics" className="gap-2 rounded-lg"><BarChart2 className="h-4 w-4" />Analytics Diario</TabsTrigger>
             <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
             <TabsTrigger value="branding" className="gap-2 rounded-lg"><Image className="h-4 w-4" />Identidade Visual</TabsTrigger>
@@ -1135,124 +1069,6 @@ export default function AdminSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="suggest-whatsapp" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-green-600" />
-                  <CardTitle>Sugestão de WhatsApp — IA</CardTitle>
-                </div>
-                <CardDescription>
-                  Configure a API e o prompt usados quando o admin clica em "Sugerir WhatsApp" no detalhe de um lead (aba WhatsApp).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={swApiConfig} onValueChange={setSwApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serão configurados em{' '}
-                        <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configurações de APIs</Link>.
-                        O fallback automático entre APIs também é respeitado.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>System Prompt</Label>
-                      <Textarea
-                        value={swPrompt}
-                        onChange={(e) => setSwPrompt(e.target.value)}
-                        placeholder="Deixe vazio para usar o prompt padrão embutido na Edge Function..."
-                        className="min-h-[320px] font-mono text-sm rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Deixe vazio para usar o prompt padrão. O contexto enviado à IA inclui: perfil do lead, scores, barreiras, histórico de WhatsApp e outras interações. A resposta deve ser um JSON com o campo <code className="px-1 py-0.5 bg-muted rounded">suggestions[]</code> contendo <code className="px-1 py-0.5 bg-muted rounded">message</code>, <code className="px-1 py-0.5 bg-muted rounded">intent</code>, <code className="px-1 py-0.5 bg-muted rounded">tone</code> e <code className="px-1 py-0.5 bg-muted rounded">reasoning</code>.
-                      </p>
-                    </div>
-
-                    {configs.find(c => c.key === 'suggest_whatsapp_prompt')?.updated_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Última atualização: {format(new Date(configs.find(c => c.key === 'suggest_whatsapp_prompt')!.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button
-                        onClick={handleSaveSuggestWhatsApp}
-                        disabled={!hasSwChanges || isSaving}
-                        className="rounded-[12px] gap-2"
-                      >
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[24px] border-green-500/20 bg-green-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-green-500" />
-                  <CardTitle className="text-green-600">Como Funciona</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Fluxo</h4>
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>Admin abre o detalhe de um lead (aba WhatsApp)</li>
-                    <li>Clica em "Sugerir WhatsApp"</li>
-                    <li>A Edge Function <code className="px-1 py-0.5 bg-muted rounded text-xs">suggest-whatsapp-messages</code> busca perfil, interações e histórico WhatsApp</li>
-                    <li>A IA analisa tudo e retorna 2–4 sugestões de mensagens com intent e tom</li>
-                    <li>Admin seleciona uma mensagem e clica em "Enviar selecionada" ou "Copiar"</li>
-                  </ol>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Contexto enviado à IA</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Perfil: área, objetivo, inglês, visto, barreiras</li>
-                    <li>Scores: temperatura, prontidão, fase ROTA, urgência</li>
-                    <li>Histórico WhatsApp: mensagens enviadas e recebidas (últimos 60 dias)</li>
-                    <li>Outras interações: notas, emails, ligações</li>
-                    <li>Produto recomendado e descrição</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="upsell" className="space-y-6">
             <Card className="rounded-[24px]">
               <CardHeader>
@@ -1448,110 +1264,6 @@ export default function AdminSettings() {
                     Todas as interações são rastreadas em <code className="px-1 py-0.5 bg-muted rounded text-xs">upsell_impressions</code>:
                     impressões, clicks, dismissals e conversões.
                   </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="whatsapp" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Connection status */}
-              <WhatsAppConnectionStatus />
-
-              {/* WhatsApp settings */}
-              <Card className="rounded-[24px]">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-green-600" />
-                    <CardTitle>Configurações WhatsApp</CardTitle>
-                  </div>
-                  <CardDescription>Feature flag, webhook secret e código de país</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isLoading ? <Skeleton className="h-48 w-full rounded-xl" /> : (
-                    <>
-                      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">WhatsApp Ativo</p>
-                          <p className="text-xs text-muted-foreground">
-                            {waEnabled ? 'Integração WhatsApp habilitada' : 'Integração WhatsApp desabilitada'}
-                          </p>
-                        </div>
-                        <Switch checked={waEnabled} onCheckedChange={setWaEnabled} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Webhook Secret</Label>
-                        <Input
-                          value={waWebhookSecret}
-                          onChange={(e) => setWaWebhookSecret(e.target.value)}
-                          placeholder="Secret para validar webhooks da Evolution API"
-                          className="rounded-xl font-mono text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Usado no header <code className="px-1 py-0.5 bg-muted rounded text-xs">x-webhook-secret</code> para autenticar webhooks recebidos.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Código de País Padrão</Label>
-                        <Input
-                          value={waCountryCode}
-                          onChange={(e) => setWaCountryCode(e.target.value)}
-                          placeholder="55"
-                          className="w-24 rounded-xl"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Adicionado automaticamente a números sem código de país (ex: 55 para Brasil)
-                        </p>
-                      </div>
-
-                      <div className="flex justify-end pt-4 border-t">
-                        <Button
-                          onClick={handleSaveWhatsApp}
-                          disabled={!hasWaChanges || isSaving}
-                          className="rounded-[12px] gap-2"
-                        >
-                          <Save className="w-4 h-4" />
-                          {isSaving ? 'Salvando...' : 'Salvar'}
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Documentation card */}
-            <Card className="rounded-[24px] border-green-500/20 bg-green-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  <CardTitle className="text-green-700">Setup da Evolution API</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Passo a passo</h4>
-                  <ol className="list-decimal list-inside space-y-1">
-                    <li>Configure a Evolution API no VPS (Docker Compose)</li>
-                    <li>Aponte DNS <code className="px-1 py-0.5 bg-muted rounded text-xs">wa.euanapratica.com</code> para o IP do VPS</li>
-                    <li>Em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">APIs Externas</Link>, edite "Evolution API (WhatsApp)" com a URL e API key</li>
-                    <li>Gere e cole o Webhook Secret acima</li>
-                    <li>Configure o mesmo secret no webhook da Evolution API</li>
-                    <li>Escaneie o QR Code no card de conexão acima</li>
-                    <li>Ative o toggle "WhatsApp Ativo"</li>
-                  </ol>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Funcionalidades</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Envio de mensagens direto do CRM (texto livre ou template)</li>
-                    <li>Recebimento automático de respostas dos leads</li>
-                    <li>Histórico completo na aba WhatsApp do lead</li>
-                    <li>Status de entrega (enviado, entregue, lido)</li>
-                    <li>Templates WhatsApp gerenciáveis em <Link to="/admin/whatsapp-templates" className="text-primary hover:underline">Templates WhatsApp</Link></li>
-                  </ul>
                 </div>
               </CardContent>
             </Card>

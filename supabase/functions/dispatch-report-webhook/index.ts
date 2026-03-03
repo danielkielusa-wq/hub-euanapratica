@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
-import { normalizePhone } from "../_shared/whatsappService.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -36,6 +35,8 @@ serve(async (req) => {
     let report: Record<string, any> = {};
     try { report = JSON.parse(ev.formatted_report || "{}"); } catch { /* ignore */ }
 
+    const userData = report.user_data || {};
+
     // Normalize temperature — LLM sometimes returns non-standard values
     const rawTemp = (report.lead_qualification?.lead_temperature ?? "").toString().toLowerCase().replace(/_/g, "-");
     const TEMP_MAP: Record<string, string> = {
@@ -55,17 +56,34 @@ serve(async (req) => {
       : null;
 
     await dispatchN8NWebhook("report.generated", {
+      // Identity
       lead_id:             ev.id,
       lead_name:           ev.name ?? lead_name,
       lead_email:          ev.email ?? lead_email,
       lead_phone:          ev.phone ?? lead_phone ?? null,
       access_token:        ev.access_token ?? access_token,
       report_link:         reportLink,
+      // User data (raw form answers)
+      area:                userData.area ?? null,
+      atuacao:             userData.atuacao ?? null,
+      experiencia:         userData.experiencia ?? null,
+      english_level:       userData.english_level ?? null,
+      objetivo:            userData.objetivo ?? null,
+      visa_status:         userData.visa_status ?? null,
+      timeline:            userData.timeline ?? null,
+      family_status:       userData.family_status ?? null,
+      income_range:        userData.income_range ?? null,
+      investment_range:    userData.investment_range ?? null,
+      impediment:          userData.impediment ?? null,
+      main_concern:        userData.main_concern ?? null,
+      // AI-generated scoring & qualification
       readiness_score:     report.scoring?.readiness_score ?? null,
       lead_temperature:    normalizedTemp,
       lead_priority_score: report.lead_qualification?.lead_priority_score ?? null,
       phase_id:            report.phase_classification?.phase_id ?? null,
       phase_name:          report.phase_classification?.phase_name ?? null,
+      full_diagnosis:      report.phase_classification?.full_diagnosis ?? null,
+      recommended_product_tier: report.lead_qualification?.recommended_product_tier ?? null,
       is_tech_professional: report.lead_qualification?.is_tech_professional ?? false,
       is_senior_level:     report.lead_qualification?.is_senior_level ?? false,
       is_high_income:      report.lead_qualification?.is_high_income ?? false,
@@ -74,44 +92,6 @@ serve(async (req) => {
     }, supabase);
 
     console.log(`[dispatch-report-webhook] N8N dispatched for ${ev.email} (${evaluation_id})`);
-
-    // Also trigger WhatsApp flow engine for report.generated event
-    const leadPhone = ev.phone ?? lead_phone;
-    if (leadPhone) {
-      try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-        const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || "";
-        const normalized = normalizePhone(leadPhone);
-
-        const flowResp = await fetch(`${supabaseUrl}/functions/v1/execute-whatsapp-flow`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-secret": internalSecret,
-          },
-          body: JSON.stringify({
-            trigger_type: "event",
-            trigger_data: {
-              event: "report.generated",
-              phone: normalized,
-              lead_id: ev.id,
-              lead_name: ev.name ?? lead_name,
-              lead_email: ev.email ?? lead_email,
-              access_token: ev.access_token ?? access_token,
-              report_link: reportLink,
-            },
-          }),
-        });
-
-        if (!flowResp.ok) {
-          console.error(`[dispatch-report-webhook] Flow trigger failed: ${flowResp.status} ${await flowResp.text()}`);
-        } else {
-          console.log(`[dispatch-report-webhook] Flow engine triggered for ${normalized}`);
-        }
-      } catch (flowErr) {
-        console.error("[dispatch-report-webhook] Flow trigger error:", flowErr);
-      }
-    }
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (err) {

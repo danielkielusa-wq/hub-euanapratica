@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Mail, Phone, StickyNote, ListTodo, ExternalLink, ChevronDown, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Mail, Phone, StickyNote, ListTodo, Pencil, Check, X, ChevronDown, ExternalLink, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useUpdateLeadPhone } from '@/hooks/useAdminLeadDetail';
+import { SendManyChatFlowDialog } from './SendManyChatFlowDialog';
 import type { CareerEvaluation } from '@/types/leads';
 
 interface LeadDetailHeaderProps {
   lead: CareerEvaluation;
   onAddNote: () => void;
   onAddTask: () => void;
-  onSendWhatsApp: () => void;
   viewMode?: 'admin' | 'assistant';
 }
 
@@ -32,12 +32,13 @@ function getTempStyle(temp?: string) {
   return TEMP_STYLES[temp.toLowerCase()] || TEMP_STYLES[(temp || '').toUpperCase() === 'QUENTE' ? 'quente' : temp.toLowerCase()] || 'bg-gray-50 text-gray-500 border-gray-200';
 }
 
-export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp, viewMode = 'admin' }: LeadDetailHeaderProps) {
+export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin' }: LeadDetailHeaderProps) {
   const navigate = useNavigate();
   const updatePhone = useUpdateLeadPhone();
 
   const [phoneEditOpen, setPhoneEditOpen] = useState(false);
   const [editPhone, setEditPhone] = useState(lead.phone || '');
+  const [manyChatOpen, setManyChatOpen] = useState(false);
 
   const cleanPhone = (lead.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 10;
@@ -129,38 +130,31 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp, v
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {hasPhone && (
-          <div className="flex">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-xs rounded-l-xl rounded-r-none gap-1.5 text-green-700 border-green-200 hover:bg-green-50"
-              onClick={onSendWhatsApp}
+              className="h-8 text-xs rounded-xl gap-1.5 text-green-700 border-green-200 hover:bg-green-50"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               WhatsApp
+              <ChevronDown className="w-3 h-3 ml-0.5" />
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-1.5 rounded-r-xl rounded-l-none border-l-0 text-green-700 border-green-200 hover:bg-green-50"
-                >
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onSendWhatsApp}>
-                  <MessageSquare className="w-3.5 h-3.5 mr-2" /> Enviar via CRM
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.open(`https://wa.me/${cleanPhone}`, '_blank')}>
-                  <ExternalLink className="w-3.5 h-3.5 mr-2" /> Abrir wa.me
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {hasPhone && (
+              <DropdownMenuItem onClick={() => window.open(`https://wa.me/${cleanPhone}`, '_blank')}>
+                <ExternalLink className="w-3.5 h-3.5 mr-2" />
+                Abrir wa.me
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setManyChatOpen(true)}>
+              <Send className="w-3.5 h-3.5 mr-2" />
+              Enviar Flow ManyChat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="outline"
           size="sm"
@@ -200,6 +194,12 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, onSendWhatsApp, v
           Tarefa
         </Button>
       </div>
+
+      <SendManyChatFlowDialog
+        open={manyChatOpen}
+        onOpenChange={setManyChatOpen}
+        lead={lead}
+      />
     </div>
   );
 }

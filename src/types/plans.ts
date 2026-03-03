@@ -178,7 +178,6 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
 
 // Route to feature mapping for access control
 export const ROUTE_FEATURE_MAP: Record<string, PlanFeatureKey> = {
-  '/biblioteca': 'library',
   '/comunidade': 'community',
   '/masterclass': 'masterclass',
   '/prime-jobs/bookmarks': 'prime_jobs',

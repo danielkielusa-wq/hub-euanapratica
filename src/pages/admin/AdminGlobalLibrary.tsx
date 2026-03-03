@@ -7,6 +7,8 @@ import {
   BarChart3,
   FileText,
   Download,
+  Lock,
+  Globe,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import {
@@ -30,6 +32,7 @@ import { LibraryFolder, LibraryItem } from '@/types/global-library';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,6 +115,20 @@ export default function AdminGlobalLibrary() {
       setFolderDialogOpen(false);
     } catch (error) {
       toast.error('Erro ao salvar pasta');
+    }
+  };
+
+  const handleToggleAccess = async () => {
+    if (!selectedFolder) return;
+    const newLevel = selectedFolder.access_level === 'public' ? 'restricted' : 'public';
+    try {
+      await updateFolder.mutateAsync({
+        id: selectedFolder.id,
+        access_level: newLevel,
+      });
+      toast.success(newLevel === 'public' ? 'Pasta agora é pública' : 'Pasta agora é restrita');
+    } catch {
+      toast.error('Erro ao alterar acesso');
     }
   };
 
@@ -324,7 +341,7 @@ export default function AdminGlobalLibrary() {
               <>
                 {/* Folder header */}
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-1">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       {selectedFolder?.icon && (
                         <span>{selectedFolder.icon}</span>
@@ -335,6 +352,25 @@ export default function AdminGlobalLibrary() {
                       <p className="text-sm text-muted-foreground">
                         {selectedFolder.description}
                       </p>
+                    )}
+                    {selectedFolder && (
+                      <button
+                        onClick={handleToggleAccess}
+                        className="inline-flex items-center gap-1.5 mt-0.5"
+                        title="Clique para alternar o nível de acesso"
+                      >
+                        {selectedFolder.access_level === 'restricted' ? (
+                          <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-amber-500/10 border-amber-500/30 text-amber-600">
+                            <Lock className="h-3 w-3" />
+                            Restrito (Pro / VIP)
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 cursor-pointer hover:bg-green-500/10 border-green-500/30 text-green-600">
+                            <Globe className="h-3 w-3" />
+                            Público (todos)
+                          </Badge>
+                        )}
+                      </button>
                     )}
                   </div>
                   <Button onClick={handleCreateItem} size="sm">

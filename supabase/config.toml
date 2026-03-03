@@ -1,5 +1,11 @@
 project_id = "seqgnxynrcylxsdzbloa"
 
+[functions.trigger-manychat-flow]
+verify_jwt = false
+
+[functions.receive-manychat-webhook]
+verify_jwt = false
+
 [functions.dispatch-report-webhook]
 verify_jwt = false
 
@@ -100,19 +106,7 @@ verify_jwt = false
 [functions.generate-daily-priorities]
 verify_jwt = false
 
-[functions.send-whatsapp]
-verify_jwt = false
-
 [functions.send-lead-email]
-verify_jwt = false
-
-[functions.receive-whatsapp-webhook]
-verify_jwt = false
-
-[functions.check-whatsapp-status]
-verify_jwt = false
-
-[functions.suggest-whatsapp-messages]
 verify_jwt = false
 
 [functions.create-video-upload]
@@ -155,12 +149,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-weekly-report]
-verify_jwt = false
-
-[functions.execute-whatsapp-flow]
-verify_jwt = false
-
-[functions.process-whatsapp-batch]
 verify_jwt = false
 
 [functions.generate-content-social-posts]
