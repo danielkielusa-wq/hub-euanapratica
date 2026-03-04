@@ -283,7 +283,6 @@ Deno.serve(async (req) => {
     };
 
     const userMessage = JSON.stringify(contextData);
-    console.log(`[generate-content-social-posts] Script: "${script.title}", platforms: ${platforms.join(", ")}`);
 
     // ── 4. Load custom prompt ─────────────────────────────────────────
 
@@ -298,8 +297,6 @@ Deno.serve(async (req) => {
     const systemPrompt = configs["content_studio_social_prompt"]?.trim() || DEFAULT_SOCIAL_PROMPT;
     const llmApiKey = configs["content_studio_social_api_key"]?.trim() || configs["content_studio_api_key"]?.trim() || "openai_api";
 
-    console.log(`[generate-content-social-posts] Using LLM API key: ${llmApiKey}`);
-
     // ── 5. Call LLM ───────────────────────────────────────────────────
 
     const result = await callLLM({
@@ -312,8 +309,6 @@ Deno.serve(async (req) => {
       userId: null,
       metadata: { script_id, platforms },
     });
-
-    console.log(`[generate-content-social-posts] LLM response (${result.provider}/${result.model}): ${result.content.length} chars`);
 
     // ── 6. Parse JSON ─────────────────────────────────────────────────
 
@@ -363,7 +358,6 @@ Deno.serve(async (req) => {
       .select("id, script_id, platform, content, hashtags, cta, tone, status, metadata, created_at");
 
     if (insertError) {
-      console.error("[generate-content-social-posts] Insert error:", insertError.message);
       throw new Error(`Failed to save posts: ${insertError.message}`);
     }
 
@@ -389,10 +383,7 @@ Deno.serve(async (req) => {
         },
       });
     } catch (logErr) {
-      console.error("[generate-content-social-posts] Log error:", logErr);
     }
-
-    console.log(`[generate-content-social-posts] Done in ${durationMs}ms: ${insertedPosts?.length || 0} posts saved`);
 
     return new Response(
       JSON.stringify({ posts: insertedPosts }),
@@ -400,7 +391,6 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error("[generate-content-social-posts] Error:", error);
 
     try {
       const supabase = createClient(

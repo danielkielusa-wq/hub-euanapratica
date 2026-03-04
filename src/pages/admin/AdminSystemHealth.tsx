@@ -52,7 +52,6 @@ class HealthErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[AdminSystemHealth] Render crash:', error, info.componentStack);
   }
 
   render() {

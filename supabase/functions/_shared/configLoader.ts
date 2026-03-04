@@ -24,7 +24,6 @@ export async function loadAppConfigs(
     .in("key", keys);
 
   if (error) {
-    console.warn(`[configLoader] Failed to load app_configs: ${error.message}`);
   }
 
   const configs: Record<string, string> = {};

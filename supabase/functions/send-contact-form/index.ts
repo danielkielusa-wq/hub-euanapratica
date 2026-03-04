@@ -60,7 +60,6 @@ Deno.serve(async (req: Request) => {
       "EUA na Prática <noreply@euanapratica.com>";
 
     if (!resendApiKey) {
-      console.error("Resend API key not configured");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         {
@@ -107,20 +106,17 @@ Deno.serve(async (req: Request) => {
 
     if (!emailResponse.ok) {
       const errorBody = await emailResponse.text();
-      console.error("Resend error:", errorBody);
       return new Response(JSON.stringify({ error: "Falha ao enviar email" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("✅ Contact form email sent from:", email);
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
     return new Response(JSON.stringify({ error: "Erro interno" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -14,11 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    console.log("[analyze-resume] === START === Request received");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[analyze-resume] FAIL: No auth header");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -48,7 +46,6 @@ serve(async (req) => {
     }
 
     const userId = claims.user.id;
-    console.log(`[analyze-resume] Step 1 OK: Auth passed, userId=${userId}`);
 
     // ========== UNIFIED CREDIT GATEKEEPER ==========
     const creditCosts = await getCreditCosts(adminSupabase);
@@ -57,7 +54,6 @@ serve(async (req) => {
     const creditCheck = await checkUnifiedCredits(adminSupabase, userId, actionCost);
     const features = (creditCheck.features as Record<string, boolean>) || {};
 
-    console.log(`[analyze-resume] Step 2: Credits: used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits}, cost=${actionCost}, allowed=${creditCheck.allowed}`);
 
     if (!creditCheck.allowed) {
       return new Response(
@@ -74,10 +70,8 @@ serve(async (req) => {
     }
 
     // ========== END GATEKEEPER ==========
-    console.log(`[analyze-resume] Step 2 OK: Credit check passed (used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits})`);
 
     const { filePath, jobDescription } = await req.json();
-    console.log(`[analyze-resume] Step 3 OK: Body parsed, filePath=${filePath}, jobDescLen=${jobDescription?.length || 0}`);
 
     if (!filePath || !jobDescription) {
       return new Response(
@@ -103,7 +97,6 @@ serve(async (req) => {
     }
 
     // Get AI prompt from app_configs (admin-only table, use adminSupabase)
-    console.log("[analyze-resume] Step 4: Fetching AI prompt from app_configs...");
     const { data: configData, error: configError } = await adminSupabase
       .from("app_configs")
       .select("value")
@@ -111,17 +104,14 @@ serve(async (req) => {
       .maybeSingle();
 
     if (configError) {
-      console.error("[analyze-resume] Step 4 WARN: Error fetching AI prompt config:", configError.code, configError.message);
     }
 
     let systemPrompt = configData?.value || "";
     if (!systemPrompt) {
-      console.warn("[analyze-resume] Step 4 WARN: No prompt found in app_configs, using default");
       systemPrompt = `Você é um especialista em recrutamento e ATS (Applicant Tracking Systems) do mercado americano.
 Analise o currículo fornecido em comparação com a descrição da vaga e forneça uma análise detalhada.
 Responda em português brasileiro de forma clara e direta.`;
     }
-    console.log(`[analyze-resume] Step 4 OK: Prompt loaded (length=${systemPrompt.length})`);
 
     // ========== FEATURE STRIPPING: Modify prompt based on plan features ==========
     if (!features.show_improvements) {
@@ -136,19 +126,16 @@ Responda em português brasileiro de forma clara e direta.`;
     // ========== END FEATURE STRIPPING ==========
 
     // Download the resume file
-    console.log(`[analyze-resume] Step 5: Downloading file from storage: ${filePath}`);
     const { data: fileData, error: fileError } = await supabase.storage
       .from("temp-resumes")
       .download(filePath);
 
     if (fileError) {
-      console.error("[analyze-resume] Step 5 FAIL: Error downloading file:", fileError.message);
       return new Response(
         JSON.stringify({ error: "Failed to read resume file", detail: fileError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    console.log(`[analyze-resume] Step 5 OK: File downloaded, size=${fileData.size} bytes`);
 
     // Extract text content based on file type
     const arrayBuffer = await fileData.arrayBuffer();
@@ -171,7 +158,6 @@ Responda em português brasileiro de forma clara e direta.`;
       }
       pdfBase64 = btoa(binaryString);
       resumeContent = `[PDF Resume - Base64 encoded for analysis]`;
-      console.log(`[analyze-resume] Step 6 OK: PDF converted to base64 (${pdfBase64.length} chars)`);
     } else if (isDocx) {
       // DOCX is a ZIP archive - properly unzip it using zip.js
       try {
@@ -258,10 +244,8 @@ Responda em português brasileiro de forma clara e direta.`;
         
         resumeContent = extractedText.slice(0, 15000);
         sourceFormat = "docx";
-        console.log(`[analyze-resume] Step 6 OK: DOCX extracted (${resumeContent.length} chars)`);
 
       } catch (zipError) {
-        console.error("DOCX extraction error:", zipError);
         return new Response(
           JSON.stringify({
             error_code: "EXTRACTION_FAILED",
@@ -285,7 +269,6 @@ Responda em português brasileiro de forma clara e direta.`;
     }
 
     // Get API config key from app_configs (admin-only table, use adminSupabase)
-    console.log("[analyze-resume] Step 7: Fetching API config key from app_configs...");
     const { data: apiConfigKey, error: apiConfigError } = await adminSupabase
       .from("app_configs")
       .select("value")
@@ -293,20 +276,15 @@ Responda em português brasileiro de forma clara e direta.`;
       .maybeSingle();
 
     if (apiConfigError) {
-      console.error(`[analyze-resume] Step 7 WARN: Error fetching API config key:`, apiConfigError.code, apiConfigError.message);
     }
 
     const selectedApiKey = apiConfigKey?.value || "openai_api";
-    console.log(`[analyze-resume] Step 7 OK: API config from db: ${apiConfigKey?.value || 'NOT FOUND'}, using: ${selectedApiKey}`);
 
     // Get API credentials and configuration
-    console.log("[analyze-resume] Step 8: Loading API credentials via getApiConfig...");
     let apiConfig;
     try {
       apiConfig = await getApiConfig(selectedApiKey);
-      console.log(`[analyze-resume] Step 8 OK: API config loaded: ${apiConfig.name}, hasApiKey=${!!apiConfig.credentials?.api_key}, base_url=${apiConfig.base_url}`);
     } catch (configErr) {
-      console.error(`[analyze-resume] Failed to get API config for "${selectedApiKey}":`, configErr);
       return new Response(
         JSON.stringify({
           error: `Erro de configuração: API "${selectedApiKey}" não encontrada. Verifique as configurações em /admin/configuracoes-apis.`,
@@ -318,7 +296,6 @@ Responda em português brasileiro de forma clara e direta.`;
     }
 
     if (!apiConfig?.credentials?.api_key) {
-      console.error(`[analyze-resume] Missing API key for ${apiConfig?.name || selectedApiKey}`);
       return new Response(
         JSON.stringify({
           error: `Credencial não configurada para "${apiConfig?.name || selectedApiKey}". Edite a API em /admin/configuracoes-apis.`,
@@ -334,7 +311,6 @@ Responda em português brasileiro de forma clara e direta.`;
     const selectedModel = apiConfig.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[analyze-resume] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", provider: ${detectedProvider}, model: ${selectedModel}`);
 
     const responseSchema = {
       name: "resume_analysis",
@@ -502,7 +478,6 @@ Responda em português brasileiro de forma clara e direta.`;
 
     let result: any;
 
-    console.log(`[analyze-resume] Step 9: Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API, model=${selectedModel}, isPdf=${isPdf}`);
 
     const llmStartTime = Date.now();
 
@@ -549,14 +524,14 @@ Responda em português brasileiro de forma clara e direta.`;
       });
 
       if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic API error ${aiResponse.status}`, metadata: { app_id: 'curriculo_usa', http_status: aiResponse.status } });
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        const errorText = await aiResponse.text();
-        console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
         return new Response(
           JSON.stringify({ error: "AI analysis failed", error_code: "AI_ERROR", error_message: `Anthropic API error ${aiResponse.status}: ${errorText.slice(0, 300)}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -567,7 +542,6 @@ Responda em português brasileiro de forma clara e direta.`;
       const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
       const text = aiData.content?.[0]?.text;
       if (!text) {
-        console.error("Unexpected Anthropic response:", aiData);
         logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { app_id: 'curriculo_usa' } });
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
@@ -583,7 +557,6 @@ Responda em português brasileiro de forma clara e direta.`;
       }
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("No JSON found in Anthropic response:", text.slice(0, 500));
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -593,7 +566,6 @@ Responda em português brasileiro de forma clara e direta.`;
       try {
         result = JSON.parse(jsonMatch[0]);
       } catch (parseError) {
-        console.error("Failed to parse Anthropic JSON:", parseError, jsonMatch[0].slice(0, 1000));
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -645,6 +617,8 @@ Responda em português brasileiro de forma clara e direta.`;
       });
 
       if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `OpenAI API error ${aiResponse.status}`, metadata: { app_id: 'curriculo_usa', http_status: aiResponse.status } });
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
@@ -657,8 +631,6 @@ Responda em português brasileiro de forma clara e direta.`;
             { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        const errorText = await aiResponse.text();
-        console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
         return new Response(
           JSON.stringify({ error: "AI analysis failed", error_code: "AI_ERROR", error_message: `OpenAI API error ${aiResponse.status}: ${errorText.slice(0, 300)}` }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -667,7 +639,6 @@ Responda em português brasileiro de forma clara e direta.`;
 
       const aiData = await aiResponse.json();
       const { inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens } = extractTokenUsage(aiData, 'openai');
-      console.log("OpenAI response id:", aiData?.id || "unknown");
 
       const extractOutputText = (data: any): string | null => {
         // Check top-level output_text (must be non-empty)
@@ -690,7 +661,6 @@ Responda em português brasileiro de forma clara e direta.`;
 
       const outputText = extractOutputText(aiData);
       if (!outputText) {
-        console.error("Unexpected OpenAI response format:", aiData);
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -700,7 +670,6 @@ Responda em português brasileiro de forma clara e direta.`;
       try {
         result = JSON.parse(outputText);
       } catch (parseError) {
-        console.error("Failed to parse JSON output:", parseError, outputText.slice(0, 1000));
         return new Response(
           JSON.stringify({ error: "Failed to parse AI analysis", error_code: "PARSE_ERROR", error_message: "Não foi possível interpretar a resposta da IA. Tente novamente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -711,14 +680,12 @@ Responda em português brasileiro de forma clara e direta.`;
       logApiCost({ userId, edgeFunction: 'analyze-resume', provider: detectedProvider, model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, durationMs: Date.now() - llmStartTime, metadata: { app_id: 'curriculo_usa' } });
     }
 
-    console.log(`[analyze-resume] Step 9 OK: AI analysis complete, score=${result?.header?.score || 'unknown'}`);
 
     // ========== RECORD USAGE (unified credits) ==========
     // CRITICAL: Usage MUST be recorded BEFORE returning the result
     const usageRecorded = await recordCreditUsage(adminSupabase, userId, "curriculo_usa", actionCost);
 
     if (!usageRecorded) {
-      console.error("CRITICAL: Failed to record usage after all retries for user:", userId);
       return new Response(
         JSON.stringify({
           error: 'Falha ao registrar uso. Por favor, tente novamente.',
@@ -750,7 +717,6 @@ Responda em português brasileiro de forma clara e direta.`;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : undefined;
-    console.error("[analyze-resume] UNHANDLED ERROR:", errMsg);
     if (errStack) console.error("[analyze-resume] Stack:", errStack);
     return new Response(
       JSON.stringify({ error: "Erro interno do servidor", error_code: "INTERNAL_ERROR", error_message: errMsg }),

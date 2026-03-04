@@ -58,7 +58,6 @@ Deno.serve(async (req) => {
         .update({ [column]: null })
         .eq(column, userId);
       if (cleanupErr) {
-        console.warn(`Cleanup warning for ${table}.${column}:`, cleanupErr.message);
       }
     }
 
@@ -68,10 +67,8 @@ Deno.serve(async (req) => {
     if (deleteError) {
       // If user already gone from auth (orphaned profile), clean up the profile directly
       if (deleteError.message?.includes('User not found')) {
-        console.warn('User not found in auth, cleaning up orphaned profile...');
         await supabaseAdmin.from('profiles').delete().eq('id', userId);
       } else {
-        console.error('Error deleting user from auth:', deleteError);
         return new Response(
           JSON.stringify({ error: `Erro ao deletar usuário: ${deleteError.message}` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -84,7 +81,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('Error in delete-user function:', err);
     return new Response(
       JSON.stringify({ error: `Erro interno do servidor: ${err.message}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

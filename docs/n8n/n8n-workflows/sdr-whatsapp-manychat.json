@@ -1,0 +1,300 @@
+{
+  "name": "ENP - SDR WhatsApp via ManyChat",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sdr-send-whatsapp",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "sdr-wa-0001",
+      "name": "Webhook SDR WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "sdr-send-whatsapp"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract data from webhook payload\nconst phone = $input.first().json.body.phone || '';\nconst message = $input.first().json.body.message || '';\nconst prospectName = $input.first().json.body.prospect_name || '';\nconst prospectId = $input.first().json.body.prospect_id || '';\n\n// Normalize phone: ensure +55 prefix for BR numbers\nlet normalizedPhone = phone.replace(/\\D/g, '');\nif (normalizedPhone.length === 11 || normalizedPhone.length === 10) {\n  normalizedPhone = '55' + normalizedPhone;\n}\nif (!normalizedPhone.startsWith('+')) {\n  normalizedPhone = '+' + normalizedPhone;\n}\n\nreturn [{\n  json: {\n    phone: normalizedPhone,\n    message,\n    prospect_name: prospectName,\n    prospect_id: prospectId,\n    original_phone: phone\n  }\n}];"
+      },
+      "id": "sdr-wa-0002",
+      "name": "Normalize Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.manychat.com/fb/subscriber/findBySystemField",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "field_name",
+              "value": "whatsapp_phone"
+            },
+            {
+              "name": "field_value",
+              "value": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sdr-wa-0003",
+      "name": "Find Subscriber by Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MANYCHAT_CREDENTIAL_ID",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-subscriber-found",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sdr-wa-0004",
+      "name": "Subscriber Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/subscriber/createSubscriber",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Normalize Phone').item.json.phone }}\",\n  \"first_name\": \"{{ $('Normalize Phone').item.json.prospect_name.split(' ')[0] }}\",\n  \"last_name\": \"{{ $('Normalize Phone').item.json.prospect_name.split(' ').slice(1).join(' ') }}\",\n  \"whatsapp_phone\": \"{{ $('Normalize Phone').item.json.phone }}\",\n  \"has_opt_in_whatsapp\": true,\n  \"consent_phrase\": \"SDR outreach opt-in\"\n}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sdr-wa-0005",
+      "name": "Create Subscriber",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1140, 460],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MANYCHAT_CREDENTIAL_ID",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get subscriber_id from either find or create response\nconst findResult = $('Find Subscriber by Phone').item.json;\nconst createResult = $input.first().json;\n\nlet subscriberId;\nif (findResult.status === 'success' && findResult.data?.id) {\n  subscriberId = findResult.data.id;\n} else if (createResult.data?.id) {\n  subscriberId = createResult.data.id;\n} else {\n  throw new Error('Could not find or create subscriber');\n}\n\nreturn [{\n  json: {\n    subscriber_id: subscriberId,\n    message: $('Normalize Phone').item.json.message,\n    prospect_id: $('Normalize Phone').item.json.prospect_id,\n    prospect_name: $('Normalize Phone').item.json.prospect_name\n  }\n}];"
+      },
+      "id": "sdr-wa-0006",
+      "name": "Extract Subscriber ID (Create)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get subscriber_id from find response\nconst findResult = $('Find Subscriber by Phone').item.json;\n\nreturn [{\n  json: {\n    subscriber_id: findResult.data.id,\n    message: $('Normalize Phone').item.json.message,\n    prospect_id: $('Normalize Phone').item.json.prospect_id,\n    prospect_name: $('Normalize Phone').item.json.prospect_name\n  }\n}];"
+      },
+      "id": "sdr-wa-0007",
+      "name": "Extract Subscriber ID (Found)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/sending/sendContent",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": {{ $json.subscriber_id }},\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"messages\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"{{ $json.message }}\"\n        }\n      ]\n    }\n  },\n  \"message_tag\": \"CONFIRMED_EVENT_UPDATE\"\n}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "sdr-wa-0008",
+      "name": "Send WhatsApp Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MANYCHAT_CREDENTIAL_ID",
+          "name": "ManyChat API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TELEGRAM_WEBHOOK_URL || 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📤 SDR WhatsApp enviado\\n\\n👤 {{ $json.prospect_name }}\\n📱 {{ $('Normalize Phone').item.json.phone }}\\n\\n✅ Status: Enviado via ManyChat\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sdr-wa-0009",
+      "name": "Telegram Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 300]
+    }
+  ],
+  "connections": {
+    "Webhook SDR WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Normalize Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Phone": {
+      "main": [
+        [
+          {
+            "node": "Find Subscriber by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Subscriber by Phone": {
+      "main": [
+        [
+          {
+            "node": "Subscriber Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subscriber Found?": {
+      "main": [
+        [
+          {
+            "node": "Extract Subscriber ID (Found)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Subscriber": {
+      "main": [
+        [
+          {
+            "node": "Extract Subscriber ID (Create)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Subscriber ID (Found)": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Subscriber ID (Create)": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SDR",
+      "id": "sdr-tag-001"
+    }
+  ],
+  "triggerCount": 1
+}

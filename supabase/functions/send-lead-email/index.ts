@@ -114,12 +114,7 @@ Deno.serve(async (req) => {
           },
         } as any);
     } catch (logErr) {
-      console.warn("[send-lead-email] Failed to log interaction:", logErr);
     }
-
-    console.log(
-      `[send-lead-email] ${template_name} → ${lead.email}: ${result.emailSent ? "sent" : "not sent"}`
-    );
 
     return new Response(
       JSON.stringify({
@@ -130,7 +125,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: jsonHeaders }
     );
   } catch (error) {
-    console.error("[send-lead-email] Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: "Erro interno ao enviar email" }),
       { status: 500, headers: jsonHeaders }

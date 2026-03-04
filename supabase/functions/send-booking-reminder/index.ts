@@ -75,7 +75,6 @@ Deno.serve(async (req) => {
     const { data: bookings, error: bookingsError } = await bookingsQuery;
 
     if (bookingsError) {
-      console.error("Error fetching bookings:", bookingsError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch bookings" }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
@@ -159,7 +158,6 @@ Deno.serve(async (req) => {
 
         if (studentResult.emailSent) {
           emailsSent++;
-          console.log("✅ Student reminder sent to:", booking.student?.email);
         } else if (!studentResult.success) {
           errors.push(`Failed for student ${booking.student?.email}: ${studentResult.message}`);
         }
@@ -178,7 +176,6 @@ Deno.serve(async (req) => {
 
           if (mentorResult.emailSent) {
             emailsSent++;
-            console.log("✅ Mentor reminder sent to:", booking.mentor.email);
           } else if (!mentorResult.success) {
             errors.push(`Failed for mentor ${booking.mentor.email}: ${mentorResult.message}`);
           }
@@ -198,7 +195,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

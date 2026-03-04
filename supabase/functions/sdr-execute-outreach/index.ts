@@ -106,7 +106,6 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -233,7 +232,6 @@ async function sendOutreachMessage(
 
     return { success: true, status: "sent" };
   } catch (sendError) {
-    console.error(`Send error for ${outreachLogId}:`, sendError);
     await supabase
       .from("sdr_outreach_logs")
       .update({
@@ -273,6 +271,24 @@ async function processCronOutreach(
     const campaign = prospect.sdr_campaigns;
     if (!campaign || campaign.status !== "active") continue;
 
+    // CRM bridge: skip prospects who already converted (filled the form)
+    if (prospect.email || prospect.phone) {
+      const { data: crmCheck } = await supabase.rpc("check_sdr_prospect_in_crm", {
+        p_email: prospect.email || null,
+        p_phone: prospect.phone || null,
+      });
+      if (crmCheck?.length > 0 && crmCheck[0].exists_in_crm) {
+        await supabase
+          .from("sdr_prospects")
+          .update({
+            outreach_status: "converted",
+            converted_evaluation_id: crmCheck[0].evaluation_id,
+          })
+          .eq("id", prospect.id);
+        continue;
+      }
+    }
+
     const sequence = (campaign.sequence as Array<{
       step: number;
       channel: string;
@@ -301,7 +317,6 @@ async function processCronOutreach(
         .single();
 
       if (!template) {
-        console.error(`Template ${nextStep.template_key} not found for prospect ${prospect.id}`);
         errors++;
         continue;
       }
@@ -396,7 +411,6 @@ Regras:
         }
       }
     } catch (stepError) {
-      console.error(`Error processing prospect ${prospect.id}:`, stepError);
       errors++;
     }
   }

@@ -149,13 +149,11 @@ export async function createNotification(
 
     // Check if type is globally enabled
     if (!(await isTypeEnabled(sb, options.type))) {
-      console.log(`[notificationService] Type '${options.type}' is disabled globally, skipping`);
       return;
     }
 
     // Check user preference
     if (!(await isUserOptedIn(sb, options.userId, options.type))) {
-      console.log(`[notificationService] User ${options.userId} opted out of '${options.type}', skipping`);
       return;
     }
 
@@ -176,12 +174,9 @@ export async function createNotification(
     });
 
     if (error) {
-      console.error(`[notificationService] Insert error:`, error.message);
     } else {
-      console.log(`[notificationService] Created '${options.type}' for user ${options.userId}`);
     }
   } catch (err) {
-    console.error("[notificationService] createNotification error (swallowed):", err);
   }
 }
 
@@ -208,12 +203,10 @@ export async function createBulkNotifications(
 
     // Check if type is globally enabled
     if (!(await isTypeEnabled(sb, options.type))) {
-      console.log(`[notificationService] Type '${options.type}' is disabled globally, skipping bulk`);
       return;
     }
 
     if (!options.userIds || options.userIds.length === 0) {
-      console.log("[notificationService] No userIds provided for bulk notification");
       return;
     }
 
@@ -229,7 +222,6 @@ export async function createBulkNotifications(
     const eligibleUserIds = options.userIds.filter((id) => !optedOutIds.has(id));
 
     if (eligibleUserIds.length === 0) {
-      console.log(`[notificationService] All users opted out of '${options.type}'`);
       return;
     }
 
@@ -259,17 +251,12 @@ export async function createBulkNotifications(
       const { error } = await sb.from("notifications").insert(batch);
 
       if (error) {
-        console.error(`[notificationService] Bulk insert error (batch ${i / BATCH_SIZE}):`, error.message);
       } else {
         inserted += batch.length;
       }
     }
 
-    console.log(
-      `[notificationService] Bulk '${options.type}': ${inserted}/${eligibleUserIds.length} created (${optedOutIds.size} opted out)`
-    );
   } catch (err) {
-    console.error("[notificationService] createBulkNotifications error (swallowed):", err);
   }
 }
 
@@ -303,20 +290,16 @@ export async function notifyAllActiveUsers(
       .eq("status", "active");
 
     if (error) {
-      console.error("[notificationService] Error querying active users:", error.message);
       return;
     }
 
     if (!users || users.length === 0) {
-      console.log("[notificationService] No active users found");
       return;
     }
 
     const userIds = users.map((u: any) => u.id);
-    console.log(`[notificationService] Notifying ${userIds.length} active users for '${options.type}'`);
 
     await createBulkNotifications({ ...options, userIds }, sb);
   } catch (err) {
-    console.error("[notificationService] notifyAllActiveUsers error (swallowed):", err);
   }
 }

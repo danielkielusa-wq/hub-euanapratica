@@ -14,7 +14,6 @@ serve(async (req) => {
   const authError = await requireAuthOrInternal(req);
   if (authError) return authError;
 
-  console.log("[translate-title] Request received");
 
   try {
     const authHeader = req.headers.get("Authorization")!;
@@ -42,14 +41,12 @@ serve(async (req) => {
     }
 
     const userId = claims.user.id;
-    console.log(`[translate-title] User authenticated: ${userId}`);
 
     // ========== UNIFIED CREDIT GATEKEEPER ==========
     const creditCosts = await getCreditCosts(adminSupabase);
     const actionCost = creditCosts["title_translator"] ?? 1;
 
     const creditCheck = await checkUnifiedCredits(adminSupabase, userId, actionCost);
-    console.log(`[translate-title] Credits: used=${creditCheck.usedCredits}/${creditCheck.monthlyCredits}, cost=${actionCost}, allowed=${creditCheck.allowed}`);
 
     if (!creditCheck.allowed) {
       return new Response(
@@ -84,7 +81,6 @@ serve(async (req) => {
       .single();
 
     if (promptError || !promptConfig?.value) {
-      console.error("Error fetching title translator prompt:", promptError);
       return new Response(
         JSON.stringify({ error: "Failed to load AI configuration" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -99,7 +95,6 @@ serve(async (req) => {
       .single();
 
     const selectedApiKey = apiConfigKey?.value || "openai_api";
-    console.log(`[translate-title] Selected API key from config: ${selectedApiKey}`);
 
     // Build the prompt with user data
     const systemPrompt = promptConfig.value
@@ -156,7 +151,6 @@ serve(async (req) => {
     } catch (llmErr) {
       const errMsg = llmErr instanceof Error ? llmErr.message : "AI analysis failed";
       const statusCode = llmErr instanceof LLMError ? (llmErr.statusCode || 500) : 500;
-      console.error(`[translate-title] LLM call failed:`, errMsg);
       return new Response(
         JSON.stringify({ error: errMsg, error_code: "LLM_ERROR" }),
         { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -164,13 +158,11 @@ serve(async (req) => {
     }
 
     if (llmResult.usedFallback) {
-      console.log(`[translate-title] Used fallback provider: ${llmResult.provider}/${llmResult.model}`);
     }
 
     // Parse JSON from response (may have markdown code fences from Anthropic)
     const jsonMatch = llmResult.content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error("No JSON found in LLM response:", llmResult.content.slice(0, 500));
       return new Response(
         JSON.stringify({ error: "Failed to parse AI response" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -180,7 +172,6 @@ serve(async (req) => {
 
     // Validate result structure
     if (!result.suggestions || !Array.isArray(result.suggestions) || !result.recommended) {
-      console.error("Invalid AI result structure:", result);
       return new Response(
         JSON.stringify({ error: "Invalid AI response structure" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -190,7 +181,6 @@ serve(async (req) => {
     // ========== RECORD USAGE ==========
     const usageRecorded = await recordCreditUsage(adminSupabase, userId, "title_translator", actionCost);
     if (!usageRecorded) {
-      console.error("CRITICAL: Failed to record usage for user:", userId);
       return new Response(
         JSON.stringify({
           error: "Falha ao registrar uso. Por favor, tente novamente.",
@@ -237,7 +227,6 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("[translate-title] Unhandled error:", errorMessage, error);
     return new Response(
       JSON.stringify({
         error: errorMessage,

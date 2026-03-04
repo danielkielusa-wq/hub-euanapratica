@@ -33,14 +33,11 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
-      console.error("Auth error:", authError);
       return new Response(JSON.stringify({ error: "Sessão inválida. Faça login novamente." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    console.log("Authenticated user:", { id: user.id, email: user.email });
 
     // Parse request body
     const body: CancelRequest = await req.json();
@@ -68,13 +65,6 @@ serve(async (req) => {
       .not("status", "eq", "cancelled")
       .maybeSingle();
 
-    console.log("Subscription lookup by user_id:", {
-      userId: user.id,
-      found: !!subscription,
-      error: subError?.message || null,
-      status: subscription?.status || null,
-    });
-
     // Fallback: if no subscription found by user_id, try by email
     // (handles case where user has multiple profiles for same email)
     if (!subscription && !subError && user.email) {
@@ -86,7 +76,6 @@ serve(async (req) => {
 
       if (profile && profile.length > 0) {
         const otherIds = profile.map((p: { id: string }) => p.id);
-        console.log("Trying fallback with other profile IDs:", otherIds);
 
         const { data: fallbackSub, error: fallbackErr } = await supabase
           .from("user_subscriptions")
@@ -96,17 +85,12 @@ serve(async (req) => {
           .maybeSingle();
 
         if (fallbackSub && !fallbackErr) {
-          console.log("Found subscription via email fallback:", {
-            subscriptionUserId: fallbackSub.user_id,
-            actualUserId: user.id,
-          });
           subscription = fallbackSub;
         }
       }
     }
 
     if (subError) {
-      console.error("Error fetching subscription:", subError);
       return new Response(
         JSON.stringify({ error: "Falha ao buscar assinatura. Tente novamente ou contate suporte@euanapratica.com" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -114,19 +98,11 @@ serve(async (req) => {
     }
 
     if (!subscription) {
-      console.warn("No subscription found for user:", { id: user.id, email: user.email });
       return new Response(
         JSON.stringify({ error: "Nenhuma assinatura ativa encontrada para cancelar. Se você acredita que isso é um erro, contate suporte@euanapratica.com" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log("Cancelling subscription:", {
-      userId: user.id,
-      subscriptionId: subscription.id,
-      currentStatus: subscription.status,
-      planId: subscription.plan_id,
-    });
 
     const now = new Date();
 
@@ -152,7 +128,6 @@ serve(async (req) => {
       .eq("id", subscription.id);
 
     if (updateError) {
-      console.error("Error updating subscription:", updateError);
       return new Response(
         JSON.stringify({ error: "Falha ao cancelar assinatura. Tente novamente ou contate suporte@euanapratica.com" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -170,22 +145,12 @@ serve(async (req) => {
       });
 
     if (surveyError) {
-      console.warn("Failed to store exit survey (non-blocking):", surveyError);
     }
-
-    console.log("Subscription cancelled:", {
-      userId: user.id,
-      subscriptionId: subscription.id,
-      reason,
-      immediate: !isActiveSub,
-      expiresAt: subscription.expires_at,
-    });
 
     // Send cancellation email (fire-and-forget)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
     if (!internalSecret) {
-      console.error("[cancel-subscription] INTERNAL_FUNCTION_SECRET not set — skipping cancellation email trigger");
     } else {
       fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
         method: "POST",
@@ -220,7 +185,6 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Cancel subscription error:", error);
     const errMsg = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ error: `Erro interno ao processar cancelamento. Contate suporte@euanapratica.com (${errMsg})` }),

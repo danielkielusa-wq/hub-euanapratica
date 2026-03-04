@@ -48,6 +48,18 @@ const FUNCTION_LABELS: Record<string, string> = {
   'analyze-post-for-upsell': 'Upsell',
   'recommend-product': 'Recomendacao',
   'generate-daily-priorities': 'Prioridades CRM',
+  'suggest-lead-tasks': 'Tarefas Lead',
+  'enrich-jobs': 'Enriquecer Vagas',
+  'sdr-qualify-prospect': 'SDR Qualificacao',
+  'sdr-generate-message': 'SDR Mensagem',
+  'sdr-execute-outreach': 'SDR Outreach',
+  'admin-assistant': 'Assistente Admin',
+  'generate-content-ideas': 'Ideias Conteudo',
+  'generate-content-insights': 'Insights Conteudo',
+  'generate-content-script': 'Roteiro Conteudo',
+  'generate-content-social-posts': 'Posts Sociais',
+  'generate-daily-analytics': 'Analytics Diario',
+  'generate-weekly-report': 'Relatorio Semanal',
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -273,7 +285,7 @@ export default function AdminCustosApi() {
                       {[
                         { item: "Registro automático", detail: "Cada Edge Function com IA chama logApiCost() após a resposta, registrando input_tokens, output_tokens, modelo e duração." },
                         { item: "Tabela de origem", detail: "api_cost_logs — contém edge_function, provider, model, tokens, cost_usd, status, metadata." },
-                        { item: "Edge Functions monitoradas", detail: "analyze-resume, format-lead-report, translate-title, analyze-post-for-upsell, recommend-product, generate-daily-priorities, suggest-lead-tasks, suggest-whatsapp-messages." },
+                        { item: "Edge Functions monitoradas", detail: "analyze-resume, format-lead-report, translate-title, analyze-post-for-upsell, recommend-product, generate-daily-priorities, suggest-lead-tasks, enrich-jobs, sdr-qualify-prospect, sdr-generate-message, sdr-execute-outreach, admin-assistant, generate-content-ideas, generate-content-insights, generate-content-script, generate-content-social-posts, generate-daily-analytics, generate-weekly-report." },
                         { item: "Provedores suportados", detail: "OpenAI, Anthropic, OpenRouter (detectado via base_url em api_configs) e Resend. Chamadas OpenRouter aparecem como provedor separado com cor laranja." },
                         { item: "Custo de email", detail: "Registrado por envio (campo per_email na tabela de preços), não por tokens." },
                       ].map((i, idx) => (

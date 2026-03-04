@@ -354,7 +354,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
         setState('preview');
         setExpandedModules(new Set());
       } catch (err) {
-        console.error('Error reading file:', err);
         setParseErrors([{ row: 0, message: 'Erro ao ler o arquivo. Verifique se é um arquivo Excel (.xlsx) válido.' }]);
         setParsedModules([]);
         setState('preview');
@@ -406,7 +405,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
           .single();
 
         if (modError) {
-          console.error('Error creating module:', mod.title, modError);
           toast.error(`Erro ao criar módulo "${mod.title}": ${modError.message}`);
           continue;
         }
@@ -425,14 +423,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
           }));
 
           // Debug: log what we're inserting
-          console.log(`[Import] Inserting ${lessonPayloads.length} lessons for "${mod.title}":`,
-            lessonPayloads.map((p) => ({
-              title: p.title,
-              hasDesc: !!p.description,
-              hasContent: !!p.content_html,
-              descPreview: p.description?.substring(0, 40),
-            }))
-          );
 
           const { data: lessonRows, error: lessonsError } = await supabase
             .from('course_lessons')
@@ -440,19 +430,11 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
             .select('id, title, description, content_html');
 
           if (lessonsError) {
-            console.error('Error creating lessons for module:', mod.title, lessonsError);
             toast.error(`Erro ao criar aulas do módulo "${mod.title}"`);
             continue;
           }
 
           // Debug: log what came back from DB
-          console.log(`[Import] DB returned for "${mod.title}":`,
-            lessonRows?.map((r: any) => ({
-              title: r.title,
-              hasDesc: !!r.description,
-              hasContent: !!r.content_html,
-            }))
-          );
 
           totalLessons += lessonRows?.length || 0;
 
@@ -475,7 +457,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
                   .single();
 
                 if (quizError) {
-                  console.error('Error creating quiz for lesson:', lesson.title, quizError);
                   continue;
                 }
 
@@ -495,7 +476,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
                     );
 
                   if (questionsError) {
-                    console.error('Error creating questions:', questionsError);
                   } else {
                     totalQuizzes++;
                   }
@@ -511,7 +491,6 @@ export function CurriculumImportDialog({ espacoId, existingModuleCount }: Curric
       queryClient.invalidateQueries({ queryKey: ['admin-course', espacoId] });
       toast.success(`Importação concluída: ${totalModules} módulos, ${totalLessons} aulas, ${totalQuizzes} quizzes`);
     } catch (err) {
-      console.error('Import error:', err);
       toast.error('Erro inesperado durante a importação');
       setState('preview');
     }

@@ -76,7 +76,6 @@ export function useCommunityComments(postId: string) {
         setComments(data || []);
       }
     } catch (err) {
-      console.error('[Community] fetchComments failed:', err);
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +166,6 @@ export function useCommunityComments(postId: string) {
 
       await fetchComments();
     } catch (err: any) {
-      console.error('[Community] toggleCommentLike failed:', err);
     }
   };
 

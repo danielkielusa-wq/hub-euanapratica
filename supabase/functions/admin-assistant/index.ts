@@ -137,9 +137,6 @@ Deno.serve(async (req) => {
 
     userMessage += `Pergunta atual: ${message}`;
 
-    console.log(
-      `[admin-assistant] User ${userId}, history: ${truncatedHistory.length} msgs, question length: ${message.length}`,
-    );
 
     const result = await callLLM({
       apiKey,
@@ -158,7 +155,6 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
-    console.error("[admin-assistant] Error:", error);
     const errMsg = error instanceof Error ? error.message : "Internal error";
     return new Response(
       JSON.stringify({ error: errMsg }),

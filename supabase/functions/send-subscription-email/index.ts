@@ -103,14 +103,11 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log("Subscription email result:", { type, userId: user_id, to: profile.email, ...result });
-
     return new Response(
       JSON.stringify({ success: result.success, emailSent: result.emailSent, message: result.message }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Email error:", error);
     return new Response(
       JSON.stringify({ error: "Internal error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

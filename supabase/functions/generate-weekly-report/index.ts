@@ -86,7 +86,6 @@ async function queryLeadsPipeline(supabase: SupabaseClient, periodStart: Date, p
     .gte("created_at", prevPeriodStart.toISOString());
 
   if (error) {
-    console.error("[weekly-report] leads pipeline error:", error.message);
     return null;
   }
 
@@ -566,8 +565,6 @@ Deno.serve(async (req) => {
     const periodStartStr = periodStart.toISOString().split("T")[0];
     const periodEndStr = periodEnd.toISOString().split("T")[0];
 
-    console.log(`[weekly-report] Generating for ${periodStartStr} to ${periodEndStr} (${periodDays}d, ${generationMethod})`);
-
     // 2. Insert initial row (with created_by for audit trail)
     const { data: inserted, error: insertError } = await supabase
       .from("weekly_intelligence_reports")
@@ -585,7 +582,6 @@ Deno.serve(async (req) => {
     reportId = inserted.id;
 
     // 3. Run 8 parallel queries
-    console.log("[weekly-report] Running 8 parallel queries...");
 
     const [pipeline, hotLeads, reengagement, funnel, bookings, revenue, engagement, tasks] =
       await Promise.all([
@@ -614,10 +610,8 @@ Deno.serve(async (req) => {
     // Transform: merge name+email into name field for LLM consumption
     const llmPayload = sanitizeForLLM(rawMetrics);
     const userMessage = JSON.stringify(llmPayload);
-    console.log(`[weekly-report] Aggregated data: ${(userMessage.length / 1024).toFixed(1)}KB`);
 
     // 4. Call LLM with jsonMode for reliable JSON output
-    console.log(`[weekly-report] Calling LLM (apiKey: ${config.apiKey})...`);
 
     const llmResult = await callLLM({
       apiKey: config.apiKey,
@@ -630,8 +624,6 @@ Deno.serve(async (req) => {
       metadata: { period_days: periodDays, generation_method: generationMethod },
       timeoutMs: 50_000,
     });
-
-    console.log(`[weekly-report] LLM response (${llmResult.provider}/${llmResult.model}): ${llmResult.content.length} chars`);
 
     // 5. Parse JSON using shared robust parser
     const aiAnalysis = parseJsonObject(llmResult.content);
@@ -654,7 +646,6 @@ Deno.serve(async (req) => {
       .eq("id", reportId);
 
     // 7. Dispatch N8N webhook — summary only, no PII (MUST await — Deno kills Promise otherwise)
-    console.log("[weekly-report] Dispatching N8N webhook...");
 
     const webhookPayload = buildWebhookPayload(
       reportId, periodStartStr, periodEndStr,
@@ -667,8 +658,6 @@ Deno.serve(async (req) => {
       .from("weekly_intelligence_reports")
       .update({ webhook_dispatched: true })
       .eq("id", reportId);
-
-    console.log(`[weekly-report] Done in ${durationMs}ms`);
 
     return new Response(
       JSON.stringify({
@@ -683,7 +672,6 @@ Deno.serve(async (req) => {
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[weekly-report] Error:", errMsg);
 
     // Update report row with error if it was created
     if (reportId) {

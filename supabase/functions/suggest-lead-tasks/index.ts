@@ -23,39 +23,73 @@ interface TaskSuggestion {
   priority: "low" | "medium" | "high" | "urgent";
   due_in_days: number;
   reasoning: string;
+  whatsapp_message: string | null;
 }
 
 // ── System Prompt ─────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Você é um assistente especializado em CRM da EUA na Prática, uma plataforma de mentoria para brasileiros que querem fazer carreira internacional nos EUA seguindo o Método ROTA.
+const SYSTEM_PROMPT = `Você é um estrategista de vendas do CRM da EUA na Prática. Sua função é ajudar o operador do CRM (assistente de vendas) a VENDER — não a dar coaching ao lead.
 
-Você receberá dados completos de um lead: perfil profissional, scores de prontidão, barreiras identificadas, interações recentes com o time, mensagens WhatsApp trocadas e tarefas já existentes.
+Você receberá: perfil do lead, scores, barreiras, interações recentes, tarefas existentes e o CATÁLOGO DE PRODUTOS ativos.
 
-Sua missão: sugerir de 2 a 5 tarefas concretas e acionáveis que o time de vendas/mentoria deve realizar para avançar esse lead em direção à conversão ou engajamento.
+Sua missão: sugerir de 2 a 5 AÇÕES DE VENDAS que o operador do CRM deve executar para aquecer e converter esse lead.
 
-REGRAS CRÍTICAS:
-1. Retorne APENAS JSON válido. Sem texto fora do JSON, sem markdown code fences.
-2. NÃO sugira tarefas que já existem (verifique existing_tasks antes de sugerir).
-3. Baseie as sugestões nos dados REAIS: temperatura, última interação, barreiras, produto recomendado, histórico WhatsApp.
-4. Seja específico e personalizado — use o nome e contexto do lead. "Enviar proposta do ENP Mentoring para [Nome]" é melhor que "Entrar em contato".
-5. Priorize de acordo com a urgência: lead quente/muito-quente → tarefas urgentes/high com prazo curto (0-3 dias). Lead frio → tarefas low/medium com prazo maior.
-6. Se há mensagens WhatsApp sem resposta recente, priorize tarefa de resposta.
-7. Se há follow-up vencido (scheduled_follow_up no passado), crie tarefa de follow-up urgente.
-8. Se não houve nenhum contato (interactions=0), priorize tarefa de primeiro contato.
-9. due_in_days: dias a partir de hoje (0=hoje, 1=amanhã, 3=em 3 dias, 7=semana que vem).
-10. Tipos: follow_up (acompanhar lead), contact (primeiro contato/ligação), review (revisar documentos/análise), convert (proposta comercial/fechar venda).
-11. Prioridades: urgent (precisa de ação imediata), high (esta semana), medium (próximas 2 semanas), low (quando possível).
+FOCO ABSOLUTO EM VENDAS:
+- Toda tarefa deve ser algo que o OPERADOR DO CRM faz (ligar, enviar mensagem, apresentar produto, agendar sessão, enviar proposta)
+- NUNCA sugira tarefas para o lead fazer por conta própria (ex: "revisar LinkedIn", "estudar inglês", "pesquisar vagas")
+- Analise o catálogo de produtos e identifique qual é o MELHOR produto para esse lead baseado no perfil, barreiras e momento
+- Use o nome do produto real ao sugerir (ex: "Apresentar a Sessão de Direção ROTA EUA™ para [Nome]")
 
-SCHEMA DE RESPOSTA (ÚNICO formato aceito):
+ESTRATÉGIAS POR TEMPERATURA:
+- muito-quente/quente: Ação de fechamento AGORA — enviar proposta, agendar call de vendas, criar urgência
+- morno: Aquecimento — enviar caso de sucesso similar, compartilhar depoimento, fazer pergunta de dor
+- frio: Reativação — mensagem de valor sem pedir nada, conteúdo educativo, pergunta aberta
+
+REGRAS:
+1. Retorne APENAS JSON válido. Sem texto fora do JSON, sem markdown, sem code fences.
+2. NÃO sugira tarefas que já existem (verifique existing_tasks).
+3. Seja específico — use o NOME do lead e o NOME do produto. "Enviar proposta da Sessão de Direção ROTA EUA™ para Maria" é bom. "Entrar em contato" é ruim.
+4. Se há WhatsApp sem resposta, priorize responder.
+5. Se há follow-up vencido, crie tarefa urgente.
+6. Se não houve nenhum contato, priorize primeiro contato via WhatsApp.
+7. due_in_days: 0=hoje, 1=amanhã, 3=em 3 dias, 7=semana que vem.
+8. Tipos: follow_up (acompanhar), contact (primeiro contato), review (analisar perfil pra montar proposta), convert (apresentar produto/fechar venda).
+9. Prioridades: urgent (ação imediata), high (esta semana), medium (próximas 2 semanas), low (quando possível).
+10. NUNCA truncar os campos description, reasoning ou whatsapp_message. Escreva o conteúdo completo.
+
+PRIMEIRA SUGESTÃO — ENVIO DO LINK DO RELATÓRIO (OBRIGATÓRIA):
+- A suggestions[0] SEMPRE deve ser a tarefa de enviar o link do relatório pelo WhatsApp, se report_url estiver disponível no contexto.
+- Esta tarefa ignora a regra de "não duplicar existing_tasks" — deve ser incluída mesmo que exista algo similar.
+- Type: follow_up | Priority: high | due_in_days: 0
+- O campo report_url do contexto contém o link real — use-o LITERALMENTE na mensagem (não invente, não omita).
+- A mensagem WhatsApp DESTA tarefa deve:
+  1. Abrir com o nome do lead e um insight genuíno sobre o perfil dele (use area, atuacao, experiencia, objetivo, barriers do contexto).
+  2. Apresentar o relatório como algo personalizado e valioso, não como um link genérico.
+  3. Incluir o report_url literal no corpo da mensagem.
+  4. Fechar com UMA pergunta aberta que gere curiosidade sobre os próximos passos — sem mencionar produto, preço ou serviço.
+  Exemplo de estrutura: "[Nome], analisei seu diagnóstico e [insight específico sobre o perfil]. Preparei seu relatório completo com tudo isso mapeado: [report_url]\n\nO que você achou mais surpreendente?"
+
+MENSAGENS WHATSAPP (campo whatsapp_message):
+- Inclua whatsapp_message SEMPRE que a ação envolver contato ou follow-up via WhatsApp.
+- A mensagem deve ser completa, pronta para copiar e enviar, sem placeholders de instrução — exceto [Nome] (substituído pelo operador) e o report_url real quando aplicável.
+- Tom: humano, próximo, sem ser invasivo. Crie conexão antes de vender.
+- Para leads frios: gere curiosidade ou entregue valor sem pedir nada.
+- Para leads mornos: retome conversa com referência ao contexto anterior ou dor específica do perfil.
+- Para leads quentes/muito-quentes: seja direto, crie senso de oportunidade, convite claro para o próximo passo.
+- Máximo 3 parágrafos curtos. Use emojis com moderação (1-2 no máximo).
+- NÃO inclua whatsapp_message em tarefas do tipo review (análise interna).
+
+SCHEMA DE RESPOSTA:
 {
   "suggestions": [
     {
-      "title": "Título curto e acionável (máx 60 chars)",
-      "description": "Descrição com contexto específico baseado nos dados do lead (máx 150 chars)",
+      "title": "Título curto e acionável",
+      "description": "O que fazer e por quê, mencionando o produto ideal",
       "type": "follow_up|contact|review|convert",
       "priority": "low|medium|high|urgent",
       "due_in_days": <inteiro >= 0>,
-      "reasoning": "Por que esta tarefa é relevante AGORA para este lead (1-2 frases)"
+      "reasoning": "Estratégia de vendas: por que essa ação agora para esse lead (1-2 frases)",
+      "whatsapp_message": "Mensagem completa pronta para envio, ou null se não aplicável"
     }
   ]
 }
@@ -88,14 +122,12 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`[suggest-lead-tasks] Processing lead: ${lead_id}`);
-
     // ── 1. Fetch lead profile ─────────────────────────────────────────
 
     const { data: lead, error: leadError } = await supabase
       .from("career_evaluations")
       .select(`
-        id, name, email, phone, area, atuacao, experiencia,
+        id, name, email, phone, area, atuacao, experiencia, access_token,
         english_level, visa_status, family_status, objetivo, timeline,
         income_range, investment_range, impediment, main_concern,
         readiness_score, readiness_percentual, lead_temperature, lead_priority_score,
@@ -113,7 +145,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (leadError || !lead) {
-      console.error("[suggest-lead-tasks] Lead query error:", leadError);
       return new Response(JSON.stringify({ error: leadError?.message || "Lead não encontrado" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -143,14 +174,15 @@ Deno.serve(async (req) => {
 
     // ── 4. Fetch API config + custom prompt ──────────────────────────
 
-    const [{ data: apiConfigRow }, { data: promptConfigRow }] = await Promise.all([
+    const [{ data: apiConfigRow }, { data: promptConfigRow }, { data: maxTokensRow }] = await Promise.all([
       supabase.from("app_configs").select("value").eq("key", "suggest_tasks_api_config").maybeSingle(),
       supabase.from("app_configs").select("value").eq("key", "suggest_tasks_prompt").maybeSingle(),
+      supabase.from("app_configs").select("value").eq("key", "suggest_tasks_max_tokens").maybeSingle(),
     ]);
 
     const apiKey = apiConfigRow?.value || "anthropic_api";
     const customPrompt = promptConfigRow?.value?.trim() || "";
-    console.log(`[suggest-lead-tasks] Using API: ${apiKey}, custom prompt: ${customPrompt ? `${customPrompt.length} chars` : "none (using default)"}`);
+    const maxTokens = parseInt(maxTokensRow?.value || "3000", 10) || 3000;
 
     // ── 5. Build compact context for LLM ─────────────────────────────
 
@@ -183,8 +215,13 @@ Deno.serve(async (req) => {
     // Existing task titles only (to avoid duplicates)
     const existingTaskTitles = (existingTasks || []).map((t: any) => t.title);
 
+    const reportUrl = (lead as any).access_token
+      ? `https://hub.euanapratica.com/report/${(lead as any).access_token}`
+      : null;
+
     const leadContext: Record<string, any> = {
       today: todayISO,
+      report_url: reportUrl,
       lead: {
         id: (lead as any).id,
         name: (lead as any).name,
@@ -234,7 +271,6 @@ Deno.serve(async (req) => {
     };
 
     const userMessage = JSON.stringify(leadContext);
-    console.log(`[suggest-lead-tasks] Context size: ${(userMessage.length / 1024).toFixed(1)}KB`);
 
     // ── 6. Call LLM ───────────────────────────────────────────────────
 
@@ -242,13 +278,11 @@ Deno.serve(async (req) => {
       apiKey,
       systemPrompt: customPrompt || SYSTEM_PROMPT,
       userMessage,
-      maxTokens: 1500,
+      maxTokens,
       edgeFunction: "suggest-lead-tasks",
       userId: null,
       metadata: { lead_id },
     });
-
-    console.log(`[suggest-lead-tasks] LLM response (${result.provider}/${result.model}): ${result.content.length} chars`);
 
     // ── 7. Parse JSON ─────────────────────────────────────────────────
 
@@ -278,21 +312,19 @@ Deno.serve(async (req) => {
     const suggestions: TaskSuggestion[] = parsed.suggestions
       .slice(0, 5)
       .map((s) => ({
-        title: String(s.title || "").slice(0, 100),
-        description: String(s.description || "").slice(0, 200),
+        title: String(s.title || ""),
+        description: String(s.description || ""),
         type: (["follow_up", "contact", "review", "convert"].includes(s.type) ? s.type : "follow_up") as TaskSuggestion["type"],
         priority: (["low", "medium", "high", "urgent"].includes(s.priority) ? s.priority : "medium") as TaskSuggestion["priority"],
         due_in_days: Math.max(0, Math.min(90, parseInt(String(s.due_in_days ?? 3), 10) || 3)),
-        reasoning: String(s.reasoning || "").slice(0, 300),
+        reasoning: String(s.reasoning || ""),
+        whatsapp_message: s.whatsapp_message ? String(s.whatsapp_message) : null,
       }));
-
-    console.log(`[suggest-lead-tasks] Returning ${suggestions.length} suggestions`);
 
     return new Response(JSON.stringify({ suggestions }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[suggest-lead-tasks] Error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Erro interno ao sugerir tarefas",

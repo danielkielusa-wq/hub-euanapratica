@@ -57,7 +57,6 @@ Deno.serve(async (req: Request) => {
 
     if (!createRes.ok) {
       const errText = await createRes.text();
-      console.error("[create-video-upload] Bunny create failed:", createRes.status, errText);
       return new Response(
         JSON.stringify({ error: "Failed to create video on Bunny.net", detail: errText }),
         { status: 502, headers: { ...cors, "Content-Type": "application/json" } }
@@ -105,7 +104,6 @@ Deno.serve(async (req: Request) => {
       .eq("id", lessonId);
 
     if (updateError) {
-      console.error("[create-video-upload] Failed to update lesson:", updateError);
     }
 
     // Delete old video from Bunny (fire-and-forget, don't block response)
@@ -114,13 +112,9 @@ Deno.serve(async (req: Request) => {
         `https://video.bunnycdn.com/library/${libraryId}/videos/${oldVideoId}`,
         { method: "DELETE", headers: { "AccessKey": apiKey } }
       ).then((res) => {
-        console.log("[create-video-upload] Deleted old video:", oldVideoId, "status:", res.status);
       }).catch((err) => {
-        console.warn("[create-video-upload] Failed to delete old video:", oldVideoId, err);
       });
     }
-
-    console.log("[create-video-upload] Video created:", { videoId, lessonId, replacedOld: !!oldVideoId });
 
     return new Response(
       JSON.stringify({
@@ -133,7 +127,6 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[create-video-upload] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

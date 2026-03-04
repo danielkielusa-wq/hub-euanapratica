@@ -1,0 +1,106 @@
+{
+  "name": "ENP - Lead Form (com Referral SDR)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-form",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "lf-ref-0001",
+      "name": "Webhook Lead Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "lead-form"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract form data including referral code and UTM params\nconst body = $input.first().json.body || {};\n\nconst refCode = body.ref_code || '';\nconst utmSource = body.utm_source || (refCode ? 'referral' : '');\nconst utmMedium = body.utm_medium || (refCode ? 'share' : '');\nconst utmCampaign = body.utm_campaign || '';\n\nreturn [{\n  json: {\n    ...body,\n    ref_code: refCode,\n    utm_source: utmSource,\n    utm_medium: utmMedium,\n    utm_campaign: utmCampaign,\n    has_referral: !!refCode,\n    source_type: refCode ? 'referral' : (utmSource === 'sdr' ? 'sdr' : 'organic')\n  }\n}];"
+      },
+      "id": "lf-ref-0002",
+      "name": "Extract Form + Referral Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/career_evaluations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=NOTA: Adapte os campos ao seu workflow existente de criação de career_evaluations.\nAdicione estes campos ao INSERT:\n{\n  \"referred_by_code\": \"{{ $json.ref_code || null }}\",\n  \"source_metadata\": {\n    \"utm_source\": \"{{ $json.utm_source }}\",\n    \"utm_medium\": \"{{ $json.utm_medium }}\",\n    \"utm_campaign\": \"{{ $json.utm_campaign }}\",\n    \"source_type\": \"{{ $json.source_type }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "lf-ref-0003",
+      "name": "Insert career_evaluation (ADAPTAR)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Lead Form": {
+      "main": [
+        [
+          {
+            "node": "Extract Form + Referral Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Form + Referral Data": {
+      "main": [
+        [
+          {
+            "node": "Insert career_evaluation (ADAPTAR)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SDR",
+      "id": "sdr-tag-001"
+    },
+    {
+      "name": "Lead Form",
+      "id": "lf-tag-001"
+    }
+  ],
+  "triggerCount": 1
+}

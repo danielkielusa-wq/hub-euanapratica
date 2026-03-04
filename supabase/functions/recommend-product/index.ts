@@ -63,8 +63,6 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[recommend-product] Starting for evaluation ${evaluationId}`);
-
     // 1. Fetch the full evaluation record FIRST (before marking as processing)
     const { data: evaluation, error: evalError } = await supabase
       .from("career_evaluations")
@@ -73,10 +71,6 @@ serve(async (req) => {
       .maybeSingle();
 
     if (evalError || !evaluation) {
-      console.error(
-        "[recommend-product] Evaluation not found:",
-        evalError?.message
-      );
       return new Response(
         JSON.stringify({ error: "Avaliação não encontrada" }),
         {
@@ -88,9 +82,6 @@ serve(async (req) => {
 
     // Idempotency: if already completed, return existing recommendation
     if (evaluation.recommendation_status === "completed") {
-      console.log(
-        `[recommend-product] Already completed for ${evaluationId} - returning cached`
-      );
       return new Response(
         JSON.stringify({
           status: "completed",
@@ -107,9 +98,6 @@ serve(async (req) => {
 
     // Concurrency guard: if another call is already processing, return status
     if (evaluation.recommendation_status === "processing") {
-      console.log(
-        `[recommend-product] Already processing for ${evaluationId} - skipping`
-      );
       return new Response(
         JSON.stringify({ status: "processing" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -127,10 +115,6 @@ serve(async (req) => {
     try {
       reportData = JSON.parse(evaluation.formatted_report);
     } catch {
-      console.error(
-        "[recommend-product] Invalid formatted_report JSON for",
-        evaluationId
-      );
       await supabase
         .from("career_evaluations")
         .update({
@@ -154,9 +138,6 @@ serve(async (req) => {
       null;
 
     if (!tier) {
-      console.log(
-        `[recommend-product] No recommended_product_tier for ${evaluationId} - skipping`
-      );
       await supabase
         .from("career_evaluations")
         .update({ recommendation_status: "skipped" })
@@ -166,10 +147,6 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(
-      `[recommend-product] Tier found: ${tier} for evaluation ${evaluationId}`
-    );
 
     // 3. Query hub_services dynamically - never hardcode
     // Include both 'available' (free) and 'premium' (paid) services
@@ -183,7 +160,6 @@ serve(async (req) => {
       .eq("is_visible_in_hub", true);
 
     if (!services?.length) {
-      console.log("[recommend-product] No compatible services found");
       await supabase
         .from("career_evaluations")
         .update({
@@ -261,8 +237,6 @@ serve(async (req) => {
         .replace(/\{\{services\}\}/g, servicesJson);
     }
 
-    console.log(`[recommend-product] Using API: ${apiKey}, context: ${(userMessage.length / 1024).toFixed(1)}KB`);
-
     // 6. Call LLM (with automatic fallback and cost logging)
     const result = await callLLM({
       apiKey,
@@ -275,8 +249,6 @@ serve(async (req) => {
       timeoutMs: 50_000,
     });
 
-    console.log(`[recommend-product] LLM response (${result.provider}/${result.model}): ${result.content.length} chars, fallback: ${result.usedFallback}`);
-
     // 7. Parse JSON from LLM response
     let jsonText = result.content.trim();
 
@@ -287,7 +259,6 @@ serve(async (req) => {
     // Extract outermost JSON object
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error("[recommend-product] No JSON found in LLM response:", result.content.slice(0, 500));
       await supabase
         .from("career_evaluations")
         .update({
@@ -308,10 +279,6 @@ serve(async (req) => {
     try {
       recommendation = JSON.parse(jsonMatch[0]);
     } catch {
-      console.error(
-        "[recommend-product] Failed to parse LLM output:",
-        jsonMatch[0].slice(0, 500)
-      );
       await supabase
         .from("career_evaluations")
         .update({
@@ -355,10 +322,6 @@ serve(async (req) => {
       .eq("id", evaluationId);
 
     if (updateError) {
-      console.error(
-        "[recommend-product] Failed to save recommendation:",
-        updateError.message
-      );
       return new Response(
         JSON.stringify({ error: "Falha ao salvar recomendação" }),
         {
@@ -367,10 +330,6 @@ serve(async (req) => {
         }
       );
     }
-
-    console.log(
-      `[recommend-product] Completed for ${evaluationId}: ${recommendation.recommended_service_name}`
-    );
 
     return new Response(
       JSON.stringify({
@@ -383,7 +342,6 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("[recommend-product] Unhandled error:", error);
 
     // Best-effort: mark as error
     if (evaluationId) {

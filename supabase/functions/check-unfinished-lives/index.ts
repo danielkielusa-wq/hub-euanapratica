@@ -69,10 +69,6 @@ Deno.serve(async (req: Request) => {
 
       if (now < threshold) continue; // Still within grace period
 
-      console.log(
-        `[check-unfinished-lives] Live overdue: "${live.title}" (${live.id})`
-      );
-
       try {
         // 1. Fetch mentor profile
         const { data: mentor } = await supabase
@@ -102,10 +98,6 @@ Deno.serve(async (req: Request) => {
             });
             notified++;
           } catch (emailErr) {
-            console.error(
-              `Email to mentor failed for live ${live.id}:`,
-              emailErr
-            );
           }
         }
 
@@ -119,9 +111,6 @@ Deno.serve(async (req: Request) => {
           errors.push(`Failed to close ${live.id}: ${updateError.message}`);
         } else {
           closed++;
-          console.log(
-            `[check-unfinished-lives] Auto-closed: "${live.title}" (${live.id})`
-          );
         }
       } catch (err) {
         errors.push(
@@ -137,7 +126,6 @@ Deno.serve(async (req: Request) => {
       .eq("status", "scheduled");
 
     if (schedError) {
-      console.error("[check-unfinished-lives] Error querying scheduled lives:", schedError);
     }
 
     let expired = 0;
@@ -150,10 +138,6 @@ Deno.serve(async (req: Request) => {
       const expireThreshold = scheduledEnd + EXPIRED_GRACE_MINUTES * 60_000;
 
       if (now < expireThreshold) continue; // Still within grace period
-
-      console.log(
-        `[check-unfinished-lives] Scheduled live expired: "${live.title}" (${live.id})`
-      );
 
       try {
         // 1. Fetch mentor profile
@@ -188,10 +172,6 @@ Deno.serve(async (req: Request) => {
             });
             expiredNotified++;
           } catch (emailErr) {
-            console.error(
-              `Email to mentor failed for expired live ${live.id}:`,
-              emailErr
-            );
           }
         }
 
@@ -205,9 +185,6 @@ Deno.serve(async (req: Request) => {
           errors.push(`Failed to expire ${live.id}: ${updateError.message}`);
         } else {
           expired++;
-          console.log(
-            `[check-unfinished-lives] Auto-expired: "${live.title}" (${live.id})`
-          );
         }
       } catch (err) {
         errors.push(
@@ -226,14 +203,11 @@ Deno.serve(async (req: Request) => {
       errors: errors.length > 0 ? errors : undefined,
     };
 
-    console.log("[check-unfinished-lives] Result:", result);
-
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("[check-unfinished-lives] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

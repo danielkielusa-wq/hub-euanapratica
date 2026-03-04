@@ -27,8 +27,6 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json();
     const { VideoLibraryId, VideoGuid, Status } = payload;
 
-    console.log("[bunny-webhook] Received:", { VideoLibraryId, VideoGuid, Status });
-
     if (!VideoGuid || Status === undefined) {
       return new Response(
         JSON.stringify({ error: "Invalid payload" }),
@@ -41,14 +39,12 @@ Deno.serve(async (req: Request) => {
       const bunnyConfig = await getApiConfig("bunny_stream");
       const configLibraryId = bunnyConfig.credentials.library_id;
       if (configLibraryId && String(VideoLibraryId) !== String(configLibraryId)) {
-        console.warn("[bunny-webhook] Library ID mismatch:", { received: VideoLibraryId, expected: configLibraryId });
         return new Response(
           JSON.stringify({ error: "Library ID mismatch" }),
           { status: 403, headers: { ...cors, "Content-Type": "application/json" } }
         );
       }
     } catch (configErr) {
-      console.warn("[bunny-webhook] Could not validate library ID:", configErr);
     }
 
     const supabase = createClient(
@@ -88,10 +84,8 @@ Deno.serve(async (req: Request) => {
               if (libRes.ok) {
                 const libData = await libRes.json();
                 cdnHostname = libData.CdnHostname || libData.cdnHostname;
-                console.log("[bunny-webhook] Fetched CDN hostname:", cdnHostname);
               }
             } catch (libErr) {
-              console.warn("[bunny-webhook] Could not fetch library CDN hostname:", libErr);
             }
           }
 
@@ -100,10 +94,8 @@ Deno.serve(async (req: Request) => {
             thumbnailUrl = `https://${cdnHostname}/${VideoGuid}/${thumbFile}`;
           }
 
-          console.log("[bunny-webhook] Video metadata:", { duration, thumbnailUrl, cdnHostname, status: videoData.status });
         }
       } catch (metaErr) {
-        console.error("[bunny-webhook] Failed to fetch video metadata:", metaErr);
       }
 
       const updateData: Record<string, unknown> = {
@@ -119,9 +111,7 @@ Deno.serve(async (req: Request) => {
         .eq("bunny_video_id", VideoGuid);
 
       if (error) {
-        console.error("[bunny-webhook] Failed to update lesson:", error);
       } else {
-        console.log("[bunny-webhook] Lesson updated to ready:", VideoGuid);
       }
     } else if (Status === 5) {
       // Failed
@@ -134,9 +124,7 @@ Deno.serve(async (req: Request) => {
         .eq("bunny_video_id", VideoGuid);
 
       if (error) {
-        console.error("[bunny-webhook] Failed to update lesson:", error);
       } else {
-        console.log("[bunny-webhook] Lesson marked as failed:", VideoGuid);
       }
     } else if (Status === 9) {
       // CaptionsGenerated — mark lesson as having captions
@@ -146,9 +134,7 @@ Deno.serve(async (req: Request) => {
         .eq("bunny_video_id", VideoGuid);
 
       if (error) {
-        console.error("[bunny-webhook] Failed to update captions flag:", error);
       } else {
-        console.log("[bunny-webhook] Captions generated:", VideoGuid);
       }
     } else if (Status === 10) {
       // TitleOrDescriptionGenerated — auto-fill empty lesson description
@@ -179,15 +165,12 @@ Deno.serve(async (req: Request) => {
                 .from("course_lessons")
                 .update({ description: aiDescription, updated_at: new Date().toISOString() })
                 .eq("id", lesson.id);
-              console.log("[bunny-webhook] AI description set for:", VideoGuid);
             }
           }
         }
       } catch (metaErr) {
-        console.error("[bunny-webhook] Status 10 handling error:", metaErr);
       }
     } else {
-      console.log("[bunny-webhook] Ignoring status:", Status);
     }
 
     return new Response(
@@ -195,7 +178,6 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[bunny-webhook] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

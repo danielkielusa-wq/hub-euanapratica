@@ -82,14 +82,11 @@ serve(async (req) => {
     }
 
     // Busca configuração
-    console.log(`[test-api-connection] Testing: ${api_key}`);
     const config = await getApiConfig(api_key);
-    console.log(`[test-api-connection] Config found: ${config.name}, base_url: ${config.base_url}`);
 
     // Testa conexão - tenta match exato no slug, senão detecta pela base_url
     const testResult = await routeTest(config);
 
-    console.log(`[test-api-connection] Result for ${api_key}: ${testResult.success ? "OK" : "FAIL"} - ${testResult.message}`);
 
     return new Response(JSON.stringify(testResult), {
       status: 200,
@@ -97,7 +94,6 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("[test-api-connection] Error:", error);
     return new Response(
       JSON.stringify({
         success: false,

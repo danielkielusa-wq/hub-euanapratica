@@ -67,7 +67,6 @@ Deno.serve(async (req) => {
     );
 
     if (quotaError) {
-      console.error("[job-link-proxy] Credit check error:", quotaError);
       return new Response(
         JSON.stringify({ error: "Erro ao verificar créditos" }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

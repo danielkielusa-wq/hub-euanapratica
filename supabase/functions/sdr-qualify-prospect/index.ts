@@ -83,6 +83,30 @@ serve(async (req) => {
     const results: Array<{ prospect_id: string; score: number; temperature: string; status: string }> = [];
 
     for (const prospect of prospects) {
+      // CRM bridge: check if prospect already exists as lead
+      if (prospect.email || prospect.phone) {
+        const { data: crmCheck } = await supabase.rpc("check_sdr_prospect_in_crm", {
+          p_email: prospect.email || null,
+          p_phone: prospect.phone || null,
+        });
+        if (crmCheck?.length > 0 && crmCheck[0].exists_in_crm) {
+          await supabase
+            .from("sdr_prospects")
+            .update({
+              outreach_status: "converted",
+              converted_evaluation_id: crmCheck[0].evaluation_id,
+            })
+            .eq("id", prospect.id);
+          results.push({
+            prospect_id: prospect.id,
+            score: 100,
+            temperature: "converted",
+            status: "converted",
+          });
+          continue;
+        }
+      }
+
       // Mark as qualifying
       await supabase
         .from("sdr_prospects")
@@ -141,7 +165,6 @@ serve(async (req) => {
           status: newStatus,
         });
       } catch (llmError) {
-        console.error(`LLM error for prospect ${prospect.id}:`, llmError);
         // Reset to new on error
         await supabase
           .from("sdr_prospects")
@@ -162,7 +185,6 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

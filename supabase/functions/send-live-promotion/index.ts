@@ -112,7 +112,6 @@ Deno.serve(async (req) => {
         .range(from, from + batchSize - 1);
 
       if (batchError) {
-        console.error("Error fetching profiles:", batchError);
         break;
       }
 
@@ -128,10 +127,6 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(
-      `[send-live-promotion] Sending promotion for "${live.title}" to ${allProfiles.length} users`
-    );
 
     // 6. Send emails
     let emailsSent = 0;
@@ -167,10 +162,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(
-      `[send-live-promotion] Done: ${emailsSent}/${allProfiles.length} emails sent`
-    );
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -181,7 +172,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-live-promotion:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

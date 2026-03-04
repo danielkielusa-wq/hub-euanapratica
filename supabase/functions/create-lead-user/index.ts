@@ -84,7 +84,6 @@ Deno.serve(async (req) => {
           const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ page, perPage });
 
           if (usersError) {
-            console.error("[create-lead-user] Auth error:", createError, usersError);
             return new Response(
               JSON.stringify({ error: "Erro ao buscar usuário existente" }),
               { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
@@ -105,7 +104,6 @@ Deno.serve(async (req) => {
         }
 
         if (!existingUserId) {
-          console.error("[create-lead-user] Auth error:", createError);
           return new Response(
             JSON.stringify({ error: "Erro ao criar lead" }),
             { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
@@ -130,7 +128,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.error("[create-lead-user] Auth error:", createError);
       return new Response(
         JSON.stringify({ error: "Erro ao criar lead" }),
         { status: 400, headers: { ...headers, "Content-Type": "application/json" } }
@@ -150,7 +147,6 @@ Deno.serve(async (req) => {
       { headers: { ...headers, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("[create-lead-user] Error:", error);
     return new Response(
       JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }

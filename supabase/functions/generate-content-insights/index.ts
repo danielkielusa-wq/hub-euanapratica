@@ -77,7 +77,6 @@ async function queryBarrierDistribution(supabase: any, since: Date) {
     .gte("created_at", since.toISOString());
 
   if (error) {
-    console.error("[generate-content-insights] barrier query error:", error.message);
     return null;
   }
 
@@ -135,7 +134,6 @@ async function queryHotCommunityTopics(supabase: any, since: Date) {
     .limit(20);
 
   if (error) {
-    console.error("[generate-content-insights] community query error:", error.message);
     return null;
   }
 
@@ -160,7 +158,6 @@ async function queryJobHighlights(supabase: any, since: Date) {
     .limit(100);
 
   if (error) {
-    console.error("[generate-content-insights] jobs query error:", error.message);
     return null;
   }
 
@@ -213,7 +210,6 @@ async function queryChurnPatterns(supabase: any, since: Date) {
     .gte("created_at", since.toISOString());
 
   if (error) {
-    console.error("[generate-content-insights] churn query error:", error.message);
     return null;
   }
 
@@ -243,7 +239,6 @@ async function queryCourseDropoffs(supabase: any) {
     .select("lesson_id, status, watch_percentage");
 
   if (progressError) {
-    console.error("[generate-content-insights] course progress query error:", progressError.message);
     return null;
   }
 
@@ -301,7 +296,6 @@ async function queryTitleTranslations(supabase: any, since: Date) {
     .limit(50);
 
   if (error) {
-    console.error("[generate-content-insights] translations query error:", error.message);
     return null;
   }
 
@@ -351,8 +345,6 @@ Deno.serve(async (req) => {
     periodStart.setDate(periodStart.getDate() - periodDays);
     const periodEnd = new Date();
 
-    console.log(`[generate-content-insights] Mining data for last ${periodDays} days...`);
-
     // ── 1. Run 6 parallel aggregation queries ───────────────────────
 
     const [barriers, hotPosts, jobStats, churnData, courseDropoffs, translations] =
@@ -380,7 +372,6 @@ Deno.serve(async (req) => {
     };
 
     const userMessage = JSON.stringify(aggregatedData);
-    console.log(`[generate-content-insights] Aggregated data: ${(userMessage.length / 1024).toFixed(1)}KB`);
 
     // ── 2. Load custom prompt + API key from app_configs ─────────────
 
@@ -395,8 +386,6 @@ Deno.serve(async (req) => {
     const systemPrompt = configs["content_studio_insights_prompt"]?.trim() || DEFAULT_INSIGHTS_PROMPT;
     const llmApiKey = configs["content_studio_insights_api_key"]?.trim() || configs["content_studio_api_key"]?.trim() || "openai_api";
 
-    console.log(`[generate-content-insights] Using LLM API key: ${llmApiKey}`);
-
     // ── 3. Call LLM ─────────────────────────────────────────────────
 
     const result = await callLLM({
@@ -409,8 +398,6 @@ Deno.serve(async (req) => {
       userId: null,
       metadata: { period_days: periodDays },
     });
-
-    console.log(`[generate-content-insights] LLM response (${result.provider}/${result.model}): ${result.content.length} chars`);
 
     // ── 4. Parse JSON (robust — handles fences, wrapper objects, cleanup) ──
 
@@ -439,7 +426,6 @@ Deno.serve(async (req) => {
       .select("id, insight_type, title, relevance_score, controversy_score");
 
     if (insertError) {
-      console.error("[generate-content-insights] Insert error:", insertError.message);
       throw new Error(`Failed to save insights: ${insertError.message}`);
     }
 
@@ -463,8 +449,6 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log(`[generate-content-insights] Done: ${insights.length} insights in ${durationMs}ms`);
-
     return new Response(
       JSON.stringify({
         insights: insertedInsights || [],
@@ -476,7 +460,6 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error("[generate-content-insights] Error:", error);
 
     // Log error
     try {

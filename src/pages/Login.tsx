@@ -152,12 +152,15 @@ export default function Login() {
           </form>
 
           {/* Register Link */}
-          <p className="mt-6 text-center text-sm text-gray-500 dark:text-muted-foreground">
-            Novo na plataforma?{' '}
-            <Link to="/cadastro" className="text-[#7367F0] font-medium hover:underline">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-white/10 text-center">
+            <p className="text-sm text-gray-500 dark:text-muted-foreground mb-3">Novo na plataforma?</p>
+            <Link
+              to="/cadastro"
+              className="inline-flex items-center justify-center w-full py-2.5 border-2 border-[#7367F0] text-[#7367F0] font-semibold rounded-lg hover:bg-[#7367F0]/5 transition-colors"
+            >
               Crie uma conta
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>

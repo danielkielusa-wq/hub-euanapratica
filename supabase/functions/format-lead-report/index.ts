@@ -4,7 +4,6 @@ import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
-
 // LOW-9: Module-level constant — avoids re-allocating ~430-line schema on every request
 const RESPONSE_SCHEMA = {
   name: "format_career_report_v2",
@@ -474,19 +473,15 @@ serve(async (req) => {
       .single();
 
     if (apiConfigError && apiConfigError.code !== 'PGRST116') {
-      console.error(`[format-lead-report] Error fetching API config key:`, apiConfigError);
     }
 
     const selectedApiKey = apiConfigKey?.value || "openai_api";
-    console.log(`[format-lead-report] API config from db: ${apiConfigKey?.value || 'NOT FOUND'}, using: ${selectedApiKey}`);
 
     // Get API credentials and configuration
     let apiConfigData;
     try {
       apiConfigData = await getApiConfig(selectedApiKey);
-      console.log(`[format-lead-report] API config loaded successfully: ${apiConfigData.name}`);
     } catch (configErr) {
-      console.error(`[format-lead-report] Failed to get API config for "${selectedApiKey}":`, configErr);
       return new Response(
         JSON.stringify({
           error: `Erro de configuração: API "${selectedApiKey}" não encontrada. Verifique em /admin/configuracoes-apis.`,
@@ -502,8 +497,6 @@ serve(async (req) => {
     const isAnthropic = detectedProvider === "anthropic";
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
-
-    console.log(`[format-lead-report] API: "${selectedApiKey}" (${apiConfigData.name}), base_url: "${apiConfigData.base_url}", provider: ${detectedProvider}, model: ${selectedModel}`);
 
     // Fetch evaluation first
     const { data: evaluation, error: evalError } = await supabase
@@ -776,7 +769,6 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
     // LOW-9: Use module-level RESPONSE_SCHEMA constant (avoids ~430-line re-allocation per request)
     const responseSchema = RESPONSE_SCHEMA;
 
-
     let formattedReport;
     const llmStartTime = Date.now();
 
@@ -807,7 +799,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error("Anthropic error:", aiResponse.status, errorText.slice(0, 1000));
+        logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic API error ${aiResponse.status}`, metadata: { evaluation_id: evaluationId, http_status: aiResponse.status } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: `Anthropic error: ${aiResponse.status}`, processing_started_at: null })
@@ -822,7 +814,6 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
       const text = aiData.content?.[0]?.text;
       if (!text) {
-        console.error("Unexpected Anthropic response:", aiData);
         logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty Anthropic response', metadata: { evaluation_id: evaluationId } });
         await supabase
           .from("career_evaluations")
@@ -842,7 +833,6 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       }
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("No JSON found in Anthropic response:", text.slice(0, 500));
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
@@ -856,7 +846,6 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       try {
         formattedReport = JSON.parse(jsonMatch[0]);
       } catch (parseError) {
-        console.error("Failed to parse Anthropic JSON:", parseError, jsonMatch[0].slice(0, 1000));
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
@@ -909,7 +898,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error("OpenAI error:", aiResponse.status, errorText.slice(0, 1000));
+        logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `OpenAI API error ${aiResponse.status}`, metadata: { evaluation_id: evaluationId, http_status: aiResponse.status } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: `OpenAI error: ${aiResponse.status}`, processing_started_at: null })
@@ -944,7 +933,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
 
       const outputText = extractOutputText(aiData);
       if (!outputText) {
-        console.error("Unexpected OpenAI response format:", aiData);
+        logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'Empty OpenAI response', metadata: { evaluation_id: evaluationId } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Resposta invalida da IA', processing_started_at: null })
@@ -958,7 +947,7 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       try {
         formattedReport = JSON.parse(outputText);
       } catch (parseError) {
-        console.error("Failed to parse OpenAI output:", parseError, outputText.slice(0, 1000));
+        logApiCost({ edgeFunction: 'format-lead-report', provider: detectedProvider, model: selectedModel, inputTokens: oaiInputTokens, outputTokens: oaiOutputTokens, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: 'JSON parse error', metadata: { evaluation_id: evaluationId } });
         await supabase
           .from("career_evaluations")
           .update({ processing_status: 'error', processing_error: 'Erro ao parsear resposta da IA', processing_started_at: null })
@@ -997,7 +986,6 @@ Gere um relatorio V2.0 COMPLETO, calculando scores reais, classificando a fase R
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
     // Try to mark as error if we have context
     try {
       const body = await req.clone().json().catch(() => null);
@@ -1175,7 +1163,6 @@ async function enrichV2Recommendations(
 
     return reportData;
   } catch (err) {
-    console.error("Error enriching V2 recommendations:", err);
     return reportData; // Return original data on any error
   }
 }

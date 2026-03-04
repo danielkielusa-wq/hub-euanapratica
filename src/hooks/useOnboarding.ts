@@ -119,11 +119,9 @@ export function useCompleteOnboarding() {
             body: { user_id: user.id },
           });
           if (fnError) {
-            console.error('Welcome email function error:', fnError);
           }
         } catch (err) {
           // Network-level error (should not happen per Supabase SDK, but defensive)
-          console.error('Welcome email network error:', err);
         }
       }
 

@@ -45,7 +45,6 @@ Deno.serve(async (req: Request) => {
       .limit(50); // Process in batches
 
     if (viewsError) {
-      console.error("[check-abandoned-carts] Query error:", viewsError);
       throw viewsError;
     }
 
@@ -55,8 +54,6 @@ Deno.serve(async (req: Request) => {
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[check-abandoned-carts] Found ${views.length} abandoned carts`);
 
     let sent = 0;
     let errors = 0;
@@ -118,19 +115,15 @@ Deno.serve(async (req: Request) => {
 
         sent++;
       } catch (err) {
-        console.error(`[check-abandoned-carts] Error processing view ${view.id}:`, err);
         errors++;
       }
     }
-
-    console.log(`[check-abandoned-carts] Done: ${sent} sent, ${errors} errors`);
 
     return new Response(
       JSON.stringify({ processed: views.length, sent, errors }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[check-abandoned-carts] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

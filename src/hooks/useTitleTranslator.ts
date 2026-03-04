@@ -65,7 +65,6 @@ export function useTitleTranslator() {
         .rpc('get_unified_credits', { p_user_id: user.id });
 
       if (rpcError) {
-        console.error('[useTitleTranslator] Error fetching credits:', rpcError);
         return;
       }
 
@@ -88,7 +87,6 @@ export function useTitleTranslator() {
         });
       }
     } catch (err) {
-      console.error('[useTitleTranslator] Error loading credits:', err);
     }
   }, [user?.id]);
 

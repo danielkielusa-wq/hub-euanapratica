@@ -70,7 +70,6 @@ async function getEnrichmentConfig(
       .maybeSingle();
 
     if (error || !data?.value) {
-      console.log("[enrich-jobs] No enrichment_config found, using defaults");
       return {
         api_key: DEFAULT_API_KEY,
         system_prompt: DEFAULT_SYSTEM_PROMPT,
@@ -85,7 +84,6 @@ async function getEnrichmentConfig(
       max_tokens: parsed.max_tokens || DEFAULT_MAX_TOKENS,
     };
   } catch (err) {
-    console.error("[enrich-jobs] Error reading config, using defaults:", err);
     return {
       api_key: DEFAULT_API_KEY,
       system_prompt: DEFAULT_SYSTEM_PROMPT,
@@ -129,7 +127,6 @@ Deno.serve(async (req) => {
 
   // Read enrichment config from DB
   const config = await getEnrichmentConfig(supabase);
-  console.log(`[enrich-jobs] Using API: ${config.api_key}, max_tokens: ${config.max_tokens}`);
 
   // Fetch jobs to enrich
   const { data: jobs, error: fetchError } = await supabase
@@ -138,7 +135,6 @@ Deno.serve(async (req) => {
     .in("id", job_ids);
 
   if (fetchError) {
-    console.error("[enrich-jobs] Fetch error:", fetchError);
     return new Response(
       JSON.stringify({ error: "Failed to fetch jobs" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
@@ -196,9 +192,7 @@ Deno.serve(async (req) => {
       }
 
       enriched++;
-      console.log(`[enrich-jobs] Enriched: ${job.title} (${job.id})`);
     } catch (err) {
-      console.error(`[enrich-jobs] Failed to enrich job ${job.id}:`, err);
       failed++;
       errors.push({ job_id: job.id, error: String(err) });
     }

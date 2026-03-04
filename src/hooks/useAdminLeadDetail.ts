@@ -135,6 +135,7 @@ export function useAddTask() {
       priority: string;
       due_date?: string;
       source?: 'manual' | 'ai_suggestion' | 'n8n_automation';
+      whatsapp_message?: string | null;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');

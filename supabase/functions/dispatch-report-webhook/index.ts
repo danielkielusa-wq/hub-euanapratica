@@ -91,11 +91,8 @@ serve(async (req) => {
       barriers:            report.barriers_analysis?.critical_blockers || [],
     }, supabase);
 
-    console.log(`[dispatch-report-webhook] N8N dispatched for ${ev.email} (${evaluation_id})`);
-
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (err) {
-    console.error("[dispatch-report-webhook] Error:", err);
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
 });

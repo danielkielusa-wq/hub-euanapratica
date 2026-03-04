@@ -1,8 +1,9 @@
 # E2E Test Plan — Weekly Intelligence Report
 
-**Feature**: Weekly Intelligence Report (`/admin/inteligencia-semanal`)
-**Version**: 1.2
-**Last Updated**: 2026-02-28
+**Feature**: Weekly Intelligence Report (`/admin/inteligencia-semanal`) + Suggest Lead Tasks
+**Version**: 1.3
+**Last Updated**: 2026-03-03
+**Changelog**: v1.3 — Adicionados TC-17 (Help Sheet), TC-18 (Settings Sheet), TC-19 (Suggest Lead Tasks), TC-20 (Métricas Brutas). TC-02 atualizado com seção Métricas Brutas. TC-11/TC-15 atualizados para referenciar Settings Sheet como caminho primário.
 
 ---
 
@@ -35,7 +36,7 @@ Admin clica "Gerar Agora"
   ├── 5. sanitizeForLLM() — merge name+email, remove IDs desnecessarios
   ├── 6. callLLM() — envia JSON para o modelo, recebe analise estruturada
   ├── 7. UPDATE row com status='completed', ai_analysis, raw_metrics, custo
-  ├── 8. dispatchN8NWebhook() — dispara evento 'intelligence.weekly_report'
+  ├── 8. dispatchN8NWebhook() — dispara evento 'intelligence.weekly_report' (DEVE ser await)
   └── 9. UPDATE webhook_dispatched=true
         |
         v
@@ -44,6 +45,19 @@ Admin clica "Gerar Agora"
         v
 [UI renderiza relatorio completo automaticamente]
 ```
+
+### 8 Fontes de Dados Agregadas
+
+| # | Fonte | O que captura |
+|---|-------|---------------|
+| 1 | **leads_pipeline** | Novos leads (semana atual vs anterior), temperatura, area, UTM source |
+| 2 | **hot_leads_without_followup** | Leads quentes/muito-quentes SEM contato nos ultimos 7 dias |
+| 3 | **re_engagement_opportunities** | Leads antigos (30+ dias) sem agendamentos + com acesso recente ao relatorio |
+| 4 | **funnel_metrics** | Conversao entre etapas (lead → relatorio → agendamento → assinatura/compra) |
+| 5 | **booking_activity** | Sessoes desta semana vs anterior, proximas 7 dias, no-shows, cancelamentos |
+| 6 | **subscription_revenue** | Assinaturas ativas por plano, novas, canceladas, receita BRL |
+| 7 | **engagement_signals** | Top posts da comunidade, visualizacoes de relatorio, interacoes WhatsApp |
+| 8 | **task_health** | Tarefas vencidas, concluidas nesta semana, pendentes por prioridade |
 
 ### Geracao automatica (cron)
 
@@ -59,6 +73,19 @@ O cron usa `x-internal-secret` para autenticacao (sem usuario), entao `created_b
 |---------|-----------|-------------|
 | Dona do negocio | Resumo executivo, metricas, alertas, comparativo | Admin UI `/admin/inteligencia-semanal` |
 | Assistente de vendas | Leads quentes, pontos de conversa, briefing | Apenas relatorios aprovados via toggle de aprovacao |
+
+### Secoes da UI do Relatorio
+
+| # | Secao | Cor | Conteudo |
+|---|-------|-----|---------|
+| 1 | **Resumo Executivo** | Indigo | 3-5 bullets com emojis |
+| 2 | **Leads Quentes sem Contato** | Vermelho | Tabela com nome, email, telefone, temperatura, area, ultimo contato, acao |
+| 3 | **Oportunidades** | Verde | Cards com urgencia (high/medium/low), titulo, descricao, acao sugerida |
+| 4 | **Alertas** | Ambar | Cards com severidade (critical/warning/info), titulo, descricao |
+| 5 | **Pontos de Conversa** | Roxo | Lista com lead_name + opener + botao Copiar |
+| 6 | **Comparativo Semanal** | Azul | Paragrafo comparando semana atual vs anterior |
+| 7 | **Metricas Brutas** | Cinza | Colapsavel — 8 secoes expandiveis com JSON formatado |
+| — | **Card de Aprovacao** | — | Toggle + textarea diretivas + botao Salvar Aprovacao |
 
 ---
 
@@ -183,11 +210,12 @@ DELETE FROM weekly_intelligence_reports;
 - Apos conclusao (sem refresh):
   - Status card mostra data, "Manual", "Completo", custo em USD
   - **Resumo Executivo**: bullets com emojis e dados especificos
-  - **Leads Quentes**: tabela com nome, email, telefone, temperatura (badge colorido), area, ultimo contato, acao
-  - **Oportunidades**: cards com urgencia (high/medium/low)
-  - **Alertas**: cards com severidade (critical/warning/info)
+  - **Leads Quentes**: tabela com nome, email, telefone, temperatura (badge colorido), area, ultimo contato, acao recomendada
+  - **Oportunidades**: cards com urgencia (high/medium/low), titulo, descricao, acao sugerida
+  - **Alertas**: cards com severidade (critical/warning/info), titulo, descricao
   - **Pontos de Conversa**: lista com botao "Copiar"
   - **Comparativo Semanal**: paragrafo com numeros
+  - **Metricas Brutas**: card colapsavel com 8 secoes expandiveis (ver TC-20 para teste especifico)
   - **Card de Aprovacao** ao final
 
 **O que verificar no banco**:
@@ -494,16 +522,18 @@ SELECT value FROM app_configs WHERE key = 'llm_model_pricing';
 
 ---
 
-### TC-11 — Selecao de LLM via "LLM por Feature"
+### TC-11 — Selecao de LLM via Settings Sheet
 
-**O que esta sendo testado**: Que trocar a API no card "LLM por Feature" aplica no proximo relatorio gerado.
+**O que esta sendo testado**: Que trocar a API de IA pela Settings Sheet (dentro da propria pagina do relatorio) aplica no proximo relatorio gerado.
 
-**Por que importa**: O `app_configs → weekly_report_api_key` e lido em RUNTIME pela Edge Function. Trocar o valor deve se refletir imediatamente no proximo relatorio sem necessidade de redeploy.
+**Por que importa**: O `app_configs → weekly_report_api_key` e lido em RUNTIME pela Edge Function. Trocar o valor deve se refletir imediatamente no proximo relatorio sem necessidade de redeploy. Agora ha dois caminhos para fazer isso: Settings Sheet (direto na pagina) ou Admin → Configuracoes de APIs.
 
-**Como executar**:
-1. Navegue para `/admin/configuracoes-apis`
-2. Role ate o card **"LLM por Feature"**
-3. Se voce tiver multiplas APIs LLM configuradas, mude para uma diferente e clique **Salvar**
+**Caminho primario — Settings Sheet na pagina do relatorio**:
+1. Navegue para `/admin/inteligencia-semanal`
+2. Clique no botao **"Configuracoes"** (icone de engrenagem, canto superior direito)
+3. O painel de configuracoes desliza pela direita
+4. No seletor **"LLM / API de IA"**, escolha uma API diferente da atual
+5. Clique **"Salvar"**
 
 **O que observar na UI**:
 - Toast: "Configuracao salva"
@@ -516,8 +546,9 @@ SELECT value FROM app_configs WHERE key = 'weekly_report_api_key';
 ```
 
 **Confirmacao funcional**:
-4. Va para `/admin/inteligencia-semanal` e clique "Gerar Agora"
-5. Apos conclusao:
+6. Feche o Settings Sheet
+7. Clique "Gerar Agora"
+8. Apos conclusao:
 ```sql
 SELECT model_used FROM weekly_intelligence_reports ORDER BY created_at DESC LIMIT 1;
 -- O modelo deve ser do provedor novo, nao do anterior
@@ -530,6 +561,8 @@ WHERE edge_function = 'generate-weekly-report'
 ORDER BY created_at DESC LIMIT 1;
 -- provider deve refletir o novo provedor
 ```
+
+**Caminho alternativo**: Admin → Configuracoes de APIs → LLM por Feature — produz o mesmo resultado via interface diferente.
 
 ---
 
@@ -640,21 +673,21 @@ SELECT generation_method, created_by FROM weekly_intelligence_reports ORDER BY c
 
 ---
 
-### TC-15 — Prompt Customizado via app_configs
+### TC-15 — Prompt Customizado via Settings Sheet
 
-**O que esta sendo testado**: Que o Edge Function le o prompt em runtime do banco, nao de um valor hardcoded.
+**O que esta sendo testado**: Que o Edge Function le o prompt em runtime do banco, nao de um valor hardcoded, e que a edicao via Settings Sheet aplica na proxima geracao.
 
-**Por que importa**: O prompt e o principal mecanismo de controle da qualidade da analise. Deve ser possivel atualizar via UI (Admin → Inteligencia Semanal → Configuracoes) sem redeploy.
+**Por que importa**: O prompt e o principal mecanismo de controle da qualidade da analise. Deve ser possivel atualizar via Settings Sheet sem redeploy.
 
-**Opcao A — Via UI**:
+**Caminho primario — Settings Sheet na pagina do relatorio**:
 1. Navegue para `/admin/inteligencia-semanal`
-2. Clique em **"Configuracoes"**
-3. No painel que abrir, edite o prompt adicionando ao final: `\n\nSEMPRE inclua a frase "RELATORIO-VALIDADO-TC15" no campo executive_summary.`
-4. Clique **"Salvar Prompt"**
-5. Gere um novo relatorio
-6. Verifique se o texto "RELATORIO-VALIDADO-TC15" aparece no Resumo Executivo
+2. Clique no botao **"Configuracoes"** (icone de engrenagem)
+3. No campo **"Prompt de Analise"**, adicione ao final: `SEMPRE inclua a frase "RELATORIO-VALIDADO-TC15" no campo executive_summary.`
+4. Clique **"Salvar"**
+5. Feche o painel e clique "Gerar Agora"
+6. No Resumo Executivo, verifique se o texto "RELATORIO-VALIDADO-TC15" aparece
 
-**Opcao B — Via SQL**:
+**Opcao alternativa — via SQL** (para verificacao/restauracao):
 ```sql
 -- Adicionar marcador de teste
 UPDATE app_configs
@@ -710,11 +743,242 @@ Os valores devem conter emails completos com `@` e dominio completo, nunca com `
 
 ---
 
+### TC-17 — Help Sheet (Painel de Ajuda)
+
+**O que esta sendo testado**: Que o botao de ajuda abre o painel correto com todas as 8 secoes informativas, e que os links internos funcionam.
+
+**Por que importa**: A Help Sheet e a documentacao inline do sistema para o admin. Se alguma secao estiver faltando ou com conteudo errado, o usuario pode configurar incorretamente a ferramenta.
+
+**Como executar**:
+1. Navegue para `/admin/inteligencia-semanal`
+2. Clique no botao **"Ajuda"** (icone de ponto de interrogacao, canto superior direito)
+3. O painel desliza pela direita
+
+**O que observar**:
+- O painel abre com titulo "Guia do Relatorio Semanal" (ou similar)
+- Deve haver 8 secoes colapsaveis:
+  1. **Visao Geral do Sistema**: mostra o fluxo de dados com as 8 fontes → LLM → salvo → webhook
+  2. **O que cada secao significa**: explica todas as 7 secoes visiveis do relatorio
+  3. **Fontes de dados**: descreve as 8 fontes de dados
+  4. **Aprovacao para Assistente**: explica como o toggle de aprovacao funciona
+  5. **Configuracoes**: menciona editor de prompt e seletor de LLM (com link para Admin → Configuracoes de APIs)
+  6. **Custo e Monitoramento**: faixa tipica de custo ($0.001–$0.01), onde verificar logs
+  7. **Webhook N8N**: como configurar, quando e disparado
+  8. **Agendamento Automatico (Cron)**: segunda-feira 06:00 BRT (09:00 UTC)
+- Clicar em cada secao a expande/colapsa corretamente
+- O link para `/admin/custos-api` na secao de Custo funciona (abre a pagina correta)
+- Fechar o painel (X ou clique fora) funciona sem erros no console
+
+---
+
+### TC-18 — Settings Sheet (Configuracoes Inline)
+
+**O que esta sendo testado**: Que o painel de configuracoes dentro da propria pagina do relatorio permite editar o prompt E trocar a API de IA, persistindo ambas as mudancas no banco.
+
+**Por que importa**: O Settings Sheet centraliza a configuracao do relatorio sem sair da pagina. E o caminho mais rapido para ajustar o LLM ou o prompt entre geracoes.
+
+**Como executar**:
+1. Navegue para `/admin/inteligencia-semanal`
+2. Clique no botao **"Configuracoes"** (icone de engrenagem, canto superior direito)
+
+**O que observar na abertura**:
+- Painel desliza pela direita
+- Campo **"LLM / API de IA"**: dropdown mostrando a API atual (filtra APIs de email/webhook, mostra apenas APIs de LLM)
+- Campo **"Prompt de Analise"**: textarea com 16 linhas exibindo o prompt completo atual do banco
+
+**Teste de edicao do prompt**:
+3. Adicione uma linha ao final do prompt: `# Teste TC-18`
+4. Clique **"Salvar"**
+5. Toast de sucesso deve aparecer
+6. Feche e reabra o Settings Sheet — o prompt deve conter a linha adicionada (confirmando persistencia)
+7. Verifique via SQL:
+```sql
+SELECT RIGHT(value, 15) FROM app_configs WHERE key = 'weekly_report_prompt';
+-- Deve terminar com '# Teste TC-18'
+```
+8. Remova a linha de teste e salve novamente
+
+**Teste de troca de API**:
+9. Se houver multiplas APIs LLM configuradas, selecione uma diferente no dropdown
+10. Clique **"Salvar"**
+11. Verifique via SQL:
+```sql
+SELECT value FROM app_configs WHERE key = 'weekly_report_api_key';
+-- Deve ser o slug da nova API
+```
+
+**Teste do botao Desfazer**:
+12. Edite o prompt sem salvar
+13. Clique **"Desfazer"** (ou botao equivalente de undo)
+14. O prompt deve voltar ao valor original (antes das edicoes nao salvas)
+
+**Nota sobre conflito**: Se TC-11 e TC-15 ja foram executados nesta sessao, restaure os valores antes de iniciar TC-18.
+
+---
+
+### TC-19 — Suggest Lead Tasks (Sugestao de Tarefas por Lead)
+
+**O que esta sendo testado**: O fluxo completo da funcionalidade `suggest-lead-tasks` — desde a invocacao ate a renderizacao das sugestoes com mensagens WhatsApp prontas.
+
+**Por que importa**: Esta funcionalidade complementa o relatorio semanal: o relatorio identifica QUAIS leads precisam de atencao; o suggest-lead-tasks define COMO abordar cada lead individualmente com acoes concretas e mensagens prontas.
+
+**Contexto do sistema**: A Edge Function `suggest-lead-tasks`:
+- Auth: `requireAdminOrAssistant` (admin E assistente de vendas tem acesso)
+- Input: `{ lead_id: string }`
+- Analisa: perfil completo do lead (30+ campos), ultimas 60 dias de interacoes, tarefas pendentes existentes
+- Retorna: 2–5 tarefas sugeridas com prioridade, tipo, prazo, raciocinio estrategico e mensagem WhatsApp pronta
+- Primeira sugestao: sempre envia link do relatorio por WhatsApp (se `report_url` disponivel)
+
+**Configuracoes no banco** (auto-populadas):
+```sql
+SELECT key, value FROM app_configs WHERE key LIKE 'suggest_tasks%';
+```
+Deve retornar:
+- `suggest_tasks_prompt`: texto do prompt
+- `suggest_tasks_api_config`: slug da API (padrao: `anthropic_api`)
+- `suggest_tasks_max_tokens`: `3000`
+
+**Como executar**:
+
+1. Obtenha o UUID de um lead quente com relatorio completo:
+```sql
+SELECT id, name, lead_temperature FROM career_evaluations
+WHERE lead_temperature IN ('quente', 'muito-quente')
+  AND processing_status = 'completed'
+ORDER BY lead_priority_score DESC LIMIT 1;
+```
+
+2. Navegue para `/admin/leads/<lead_uuid>` na UI e localize o botao de sugestao de tarefas (ex: "Sugerir Tarefas" ou similar)
+
+3. Clique no botao — aguarde 10–20 segundos para o LLM processar
+
+**Alternativa via cURL** (para testar a funcao isolada):
+```bash
+curl -X POST \
+  'https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/suggest-lead-tasks' \
+  -H 'Authorization: Bearer <jwt_admin>' \
+  -H 'Content-Type: application/json' \
+  -d '{"lead_id": "<lead_uuid>"}'
+```
+
+**O que verificar na resposta** (estrutura esperada):
+```json
+{
+  "suggestions": [
+    {
+      "title": "Enviar link do relatorio de diagnostico",
+      "description": "Primeiro passo: compartilhar o relatorio...",
+      "type": "follow_up",
+      "priority": "urgent",
+      "due_in_days": 0,
+      "reasoning": "Lead nao recebeu o relatorio ainda...",
+      "whatsapp_message": "Ola [Nome], vi seu perfil e preparei uma analise..."
+    },
+    {
+      "title": "Segunda sugestao especifica ao lead",
+      ...
+    }
+  ]
+}
+```
+
+**O que verificar campo por campo**:
+
+| Campo | Esperado |
+|-------|----------|
+| `suggestions` | Array com 2–5 itens |
+| `title` | Texto curto e acionavel |
+| `type` | Um de: `follow_up`, `contact`, `review`, `convert` |
+| `priority` | Um de: `low`, `medium`, `high`, `urgent` |
+| `due_in_days` | Inteiro >= 0 |
+| `reasoning` | Estrategia explicada (menciona o lead especifico) |
+| `whatsapp_message` | Mensagem pronta para envio, ou null |
+
+**Verificar custo no banco**:
+```sql
+SELECT edge_function, provider, model, cost_usd, status
+FROM api_cost_logs
+WHERE edge_function = 'suggest-lead-tasks'
+ORDER BY created_at DESC LIMIT 1;
+```
+- `status = 'success'`
+- `cost_usd > 0`
+
+**Teste de seguranca — chamada sem auth**:
+```bash
+curl -X POST \
+  'https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/suggest-lead-tasks' \
+  -H 'Content-Type: application/json' \
+  -d '{"lead_id": "<qualquer_uuid>"}'
+```
+**Esperado**: HTTP `401`
+
+**Teste de seguranca — chamada com JWT de estudante comum** (nao admin, nao assistant):
+- **Esperado**: HTTP `403` — a funcao rejeita quem nao tem role `admin` ou `assistant`
+
+**Teste de lead inexistente**:
+```bash
+curl -X POST \
+  'https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/suggest-lead-tasks' \
+  -H 'Authorization: Bearer <jwt_admin>' \
+  -H 'Content-Type: application/json' \
+  -d '{"lead_id": "00000000-0000-0000-0000-000000000000"}'
+```
+**Esperado**: HTTP `404` ou resposta de erro descritiva (nao deve quebrar com 500)
+
+---
+
+### TC-20 — Metricas Brutas (Secao Colapsavel)
+
+**O que esta sendo testado**: Que a secao "Metricas Brutas" exibe corretamente as 8 fontes de dados coletadas pela Edge Function, e que o UI de expansao/colapsamento funciona.
+
+**Por que importa**: As metricas brutas sao a "prova de trabalho" do relatorio — permitem ao admin auditar se os dados estao sendo agregados corretamente antes de confiar na analise do LLM.
+
+**Setup**: Gere um relatorio com dados reais (TC-02).
+
+**Como executar**:
+1. Apos a geracao, role ate a secao **"Metricas Brutas"** (penultima secao, antes do Card de Aprovacao)
+2. A secao aparece colapsada por padrao
+3. Clique no header para expandir
+
+**O que observar na expansao**:
+- 8 sub-secoes, cada uma com um icone de expansao:
+  1. **leads_pipeline** — contagens de leads novos por temperatura, area, UTM
+  2. **hot_leads_without_followup** — lista de leads quentes sem contato recente
+  3. **re_engagement_opportunities** — oportunidades de reengajamento
+  4. **funnel_metrics** — taxas de conversao por etapa
+  5. **booking_activity** — agendamentos da semana
+  6. **subscription_revenue** — receita e assinaturas ativas
+  7. **engagement_signals** — posts, visualizacoes, WhatsApp
+  8. **task_health** — saude das tarefas
+
+**O que verificar por sub-secao**:
+- Cada sub-secao expande ao clicar
+- O conteudo e exibido como JSON formatado (indentado, legivel)
+- A altura maxima e limitada (scroll interno, nao expande a pagina indefinidamente)
+- Os dados batem com a realidade: ex. `subscription_revenue.active_count` deve ser o numero de assinaturas ativas que voce sabe que existe
+
+**Verificacao no banco**:
+```sql
+SELECT
+  raw_metrics -> 'leads_pipeline' AS pipeline,
+  raw_metrics -> 'hot_leads_without_followup' AS hot_leads,
+  raw_metrics -> 'booking_activity' AS bookings,
+  raw_metrics -> 'subscription_revenue' AS revenue
+FROM weekly_intelligence_reports
+ORDER BY created_at DESC LIMIT 1;
+```
+Os valores devem bater com o que aparece na UI.
+
+**Teste de colapso**: Clique novamente no header — a secao deve colapsar sem erros no console.
+
+---
+
 ## Guia de Troubleshooting
 
 ### Problema: Relatorio fica em "Gerando..." indefinidamente
 
-**Causa mais provavel**: A Edge Function foi encerrada por timeout ou lancu um erro nao capturado.
+**Causa mais provavel**: A Edge Function foi encerrada por timeout ou lancou um erro nao capturado.
 
 **Diagnostico**:
 ```sql
@@ -735,7 +999,7 @@ SELECT value FROM app_configs WHERE key = 'weekly_report_api_key';
 -- Verificar se existe em api_configs
 SELECT api_key, is_active FROM api_configs;
 ```
-Depois atualize via Admin → Configuracoes de APIs → LLM por Feature.
+Depois atualize via Settings Sheet (icone de engrenagem na pagina do relatorio).
 
 ---
 
@@ -810,6 +1074,38 @@ ORDER BY dispatched_at DESC LIMIT 3;
 
 ---
 
+### Problema: suggest-lead-tasks retorna sugestoes genericas (nao personalizadas ao lead)
+
+**Causa provavel**: O lead nao tem dados ricos — sem interacoes, sem barreiras preenchidas, sem produto recomendado.
+
+**Diagnostico**:
+```sql
+SELECT
+  name, email, phone,
+  lead_temperature, lead_priority_score, rota_letter,
+  english_barrier, financial_barrier, family_barrier,
+  preferred_communication, best_contact_time,
+  recommended_product
+FROM career_evaluations
+WHERE id = '<lead_uuid>';
+```
+Quanto mais campos preenchidos, mais especificas as sugestoes. Com perfil vazio, o LLM vai gerar sugestoes genericas — isso e comportamento esperado, nao bug.
+
+---
+
+### Problema: Settings Sheet nao carrega o prompt atual
+
+**Causa provavel**: `app_configs → weekly_report_prompt` nao existe ou tem permissao insuficiente.
+
+**Diagnostico**:
+```sql
+SELECT key, LENGTH(value) AS prompt_length FROM app_configs WHERE key = 'weekly_report_prompt';
+-- Deve retornar uma linha com prompt_length > 500
+```
+Se nao retornar, rode a migration. Se retornar mas a UI nao carrega, verifique se o RLS de `app_configs` permite leitura para `authenticated`.
+
+---
+
 ## Checklist de Regressao
 
 Apos qualquer mudanca na Edge Function ou nos componentes React, execute este checklist minimo:
@@ -819,17 +1115,24 @@ Apos qualquer mudanca na Edge Function ou nos componentes React, execute este ch
 | Pagina carrega sem erro de console | DevTools → Console, nenhum erro vermelho |
 | Botao "Gerar Agora" dispara geracao | Status muda para "Gerando..." em < 2s |
 | Skeleton aparece durante geracao | Observe a UI nos primeiros 5s |
-| Todas as 7 secoes renderizam | Role pelo relatorio completo |
+| Todas as 6 secoes de conteudo renderizam | Role pelo relatorio completo |
+| Secao Metricas Brutas colapsa/expande | Clique no header, verify 8 sub-secoes |
 | Emails aparecem completos nos leads | Tabela de leads quentes, coluna Email |
 | Emails aparecem no texto do LLM | Briefing e Pontos de Conversa |
 | Links de leads funcionam | Clique em nome na tabela de leads |
 | Botao Copiar funciona | Clique "Copiar" em um ponto de conversa, cole num editor |
 | Historico abre e carrega | Clique "Historico", selecione um item |
+| Help Sheet abre com 8 secoes | Clique "Ajuda", expanda cada secao |
+| Settings Sheet abre com prompt e API | Clique "Configuracoes", verificar conteudo |
+| Settings Sheet salva prompt | Edite prompt, salve, reabra — deve persistir |
+| Settings Sheet salva API | Troque API, salve, verifique app_configs |
 | Aprovacao salva no banco | Toggle + texto + salvar, verificar DB |
 | Webhook foi disparado | `webhook_dispatched = true` no DB |
 | Custo foi registrado | `api_cost_logs` tem linha com custo > 0 |
 | LLM por Feature reflete config atual | Admin → Configuracoes de APIs |
-| Trocar LLM aplica no proximo relatorio | Mudar API, gerar, verificar `model_used` no DB |
+| Trocar LLM aplica no proximo relatorio | Mudar API via Settings Sheet, gerar, verificar `model_used` no DB |
+| suggest-lead-tasks retorna JSON valido | cURL com lead_uuid, verificar estrutura |
+| suggest-lead-tasks rejeita nao-autorizados | cURL sem auth → 401, estudante → 403 |
 
 ---
 
@@ -839,3 +1142,4 @@ Apos qualquer mudanca na Edge Function ou nos componentes React, execute este ch
 - **Acoes downstream do N8N**: O que o N8N faz com o payload (envia email, mensagem no Telegram, etc.) e testado na suite do proprio N8N, nao aqui
 - **Qualidade do conteudo da IA**: A relevancia dos insights e uma avaliacao subjetiva — revise 2–3 relatorios por mes com as partes interessadas do negocio
 - **Fallback de API**: Se a API primaria cair e o fallback ativar, verifique `api_cost_logs.metadata` para `"used_fallback": true`. Teste completo de fallback exige desabilitar a cota da API primaria temporariamente
+- **UI do suggest-lead-tasks**: O test TC-19 cobre a Edge Function via cURL. O teste da UI depende de onde o botao esta integrado na pagina de detalhes do lead — adaptar conforme a implementacao atual

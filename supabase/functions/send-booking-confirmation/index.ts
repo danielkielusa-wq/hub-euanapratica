@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (bookingError || !booking) {
-      console.error("Booking not found:", booking_id);
       return new Response(
         JSON.stringify({ error: "Booking not found" }),
         { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
@@ -109,7 +108,6 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log("Student confirmation email:", { bookingId: booking_id, to: booking.student?.email, sent: studentResult.emailSent });
 
     // Send email to mentor
     let mentorEmailSent = false;
@@ -132,7 +130,6 @@ Deno.serve(async (req) => {
         },
       });
       mentorEmailSent = !!mentorResult.emailSent;
-      console.log("Mentor confirmation email:", { bookingId: booking_id, to: booking.mentor.email, sent: mentorEmailSent });
     }
 
     return new Response(
@@ -144,7 +141,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-booking-confirmation:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

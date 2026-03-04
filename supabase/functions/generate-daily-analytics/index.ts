@@ -392,8 +392,6 @@ Deno.serve(async (req) => {
     const targetDate = body.target_date || getTodayBRT();
     const yesterday = prevDay(targetDate);
 
-    console.log(`[daily-analytics] Generating for ${targetDate} (${generationMethod})`);
-
     // 2. Upsert initial row (ON CONFLICT updates existing row for same day)
     const { data: upserted, error: upsertError } = await supabase
       .from("daily_analytics_snapshots")
@@ -417,7 +415,6 @@ Deno.serve(async (req) => {
     snapshotId = upserted.id;
 
     // 3. Run 9 parallel queries
-    console.log("[daily-analytics] Running 9 parallel queries...");
 
     const [growth, revenue, toolUsage, bookings, community, whatsapp, email, pageViews, apiCosts] =
       await Promise.all([
@@ -445,10 +442,7 @@ Deno.serve(async (req) => {
       api_costs: apiCosts,
     };
 
-    console.log(`[daily-analytics] Aggregated data: ${(JSON.stringify(rawMetrics).length / 1024).toFixed(1)}KB`);
-
     // 4. Call LLM for analyst summary (plain text, not JSON)
-    console.log(`[daily-analytics] Calling LLM (apiKey: ${config.apiKey}, model: ${config.model || 'default'})...`);
 
     const llmResult = await callLLM({
       apiKey: config.apiKey,
@@ -462,8 +456,6 @@ Deno.serve(async (req) => {
       timeoutMs: 30_000,
       modelOverride: config.model,
     });
-
-    console.log(`[daily-analytics] LLM response (${llmResult.provider}/${llmResult.model}): ${llmResult.content.length} chars`);
 
     // 5. Update snapshot with results
     const durationMs = Date.now() - startTime;
@@ -483,7 +475,6 @@ Deno.serve(async (req) => {
       .eq("id", snapshotId);
 
     // 6. Dispatch N8N webhook — MUST await (Deno kills unawaited Promises)
-    console.log("[daily-analytics] Dispatching N8N webhook...");
 
     const webhookPayload = {
       snapshot_date: targetDate,
@@ -521,8 +512,6 @@ Deno.serve(async (req) => {
       .update({ webhook_dispatched: true })
       .eq("id", snapshotId);
 
-    console.log(`[daily-analytics] Done in ${durationMs}ms`);
-
     return new Response(
       JSON.stringify({
         snapshot_id: snapshotId,
@@ -535,7 +524,6 @@ Deno.serve(async (req) => {
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[daily-analytics] Error:", errMsg);
 
     if (snapshotId) {
       await supabase

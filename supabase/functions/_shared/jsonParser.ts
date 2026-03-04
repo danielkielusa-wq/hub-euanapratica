@@ -62,7 +62,6 @@ export function parseJsonArray(raw: string, wrapperKey?: string): any[] {
       const obj = JSON.parse(repaired);
       const arr = extractArray(obj, wrapperKey);
       if (arr && arr.length > 0) {
-        console.warn(`[jsonParser] Repaired truncated JSON — salvaged ${arr.length} items`);
         return arr;
       }
     } catch {

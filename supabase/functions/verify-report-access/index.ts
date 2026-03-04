@@ -274,7 +274,6 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
     // MED-6: Generic error message, never expose internals
     return new Response(
       JSON.stringify({ error: "Erro interno do servidor" }),

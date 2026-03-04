@@ -102,7 +102,6 @@ Deno.serve(async (req) => {
 
     if (!emailResponse.ok) {
       const errorBody = await emailResponse.text();
-      console.error("Resend API error:", errorBody);
       return new Response(
         JSON.stringify({ success: false, message: `Resend error: ${emailResponse.status}`, emailSent: false }),
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
@@ -110,7 +109,6 @@ Deno.serve(async (req) => {
     }
 
     const emailResult = await emailResponse.json();
-    console.log(`✅ Test email sent: template=${template_name}, to=${to}`, emailResult);
 
     // Best-effort log
     try {
@@ -128,7 +126,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-test-email:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

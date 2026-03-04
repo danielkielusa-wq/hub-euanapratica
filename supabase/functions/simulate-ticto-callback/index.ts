@@ -50,12 +50,6 @@ Deno.serve(async (req) => {
       },
     };
 
-    console.log("Simulating Ticto callback:", {
-      email,
-      product_id,
-      status,
-      orderHash: tictoPayload.order.hash,
-    });
 
     // 5. Call ticto-webhook internally
     const startTime = Date.now();
@@ -89,18 +83,12 @@ Deno.serve(async (req) => {
       webhookResponse: responseData,
     };
 
-    console.log("Simulation result:", {
-      success: result.success,
-      status: result.status,
-      responseTime: result.responseTime,
-    });
 
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Simulation error:", error);
     return new Response(
       JSON.stringify({ 
         error: "Simulation failed", 

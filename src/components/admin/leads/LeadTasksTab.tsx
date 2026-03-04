@@ -1,4 +1,4 @@
-import { Check, Circle, SkipForward, RotateCcw, Plus, ListTodo, MoreHorizontal, Pencil, Trash2, Sparkles } from 'lucide-react';
+import { Check, Circle, SkipForward, RotateCcw, Plus, ListTodo, MoreHorizontal, Pencil, Trash2, Sparkles, MessageCircle, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -69,6 +69,23 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
   const tz = useUserTimezone();
   const [showCompleted, setShowCompleted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LeadTask | null>(null);
+  const [expandedWA, setExpandedWA] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function toggleWA(id: string) {
+    setExpandedWA(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function copyWA(id: string, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
 
   const pending = tasks.filter(t => t.status === 'pending').sort((a, b) => {
     if (!a.due_date && !b.due_date) return 0;
@@ -147,6 +164,41 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
                             {SOURCE_LABELS[task.source] || task.source}
                           </Badge>
                         </div>
+
+                        {/* WhatsApp message */}
+                        {task.whatsapp_message && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleWA(task.id); }}
+                              className="flex items-center gap-1 mt-2 text-[10px] text-green-600 hover:text-green-700 transition-colors font-medium"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              {expandedWA.has(task.id) ? 'Ocultar mensagem WhatsApp' : 'Ver mensagem WhatsApp'}
+                              {expandedWA.has(task.id) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+                            {expandedWA.has(task.id) && (
+                              <div className="mt-1.5 rounded-lg border border-green-200 bg-green-50/60 overflow-hidden">
+                                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-green-200/60">
+                                  <span className="text-[10px] text-green-700 font-medium flex items-center gap-1">
+                                    <MessageCircle className="w-3 h-3" /> Mensagem pronta para envio
+                                  </span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); copyWA(task.id, task.whatsapp_message!); }}
+                                    className="flex items-center gap-1 text-[10px] text-green-700 hover:text-green-800 transition-colors"
+                                  >
+                                    {copiedId === task.id
+                                      ? <><Check className="w-3 h-3" /> Copiado!</>
+                                      : <><Copy className="w-3 h-3" /> Copiar</>
+                                    }
+                                  </button>
+                                </div>
+                                <p className="px-2.5 py-2 text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {task.whatsapp_message}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       {/* Actions dropdown */}

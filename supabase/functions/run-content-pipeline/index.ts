@@ -56,7 +56,6 @@ async function logPipeline(supabase: any, result: any, status: string) {
       metadata: result,
     });
   } catch (err) {
-    console.error("[run-content-pipeline] Log error:", err);
   }
 }
 
@@ -110,10 +109,6 @@ Deno.serve(async (req) => {
     const periodDays = body.period_days || 7;
     const source = body.source || "manual";
 
-    console.log(
-      `[run-content-pipeline] Starting: mode=${pipelineMode}, source=${source}, period=${periodDays}d, autoIdeas=${autoIdeasCount}, autoScripts=${autoScriptsCount}, socialPosts=${autoSocialEnabled}`
-    );
-
     const pipelineResult: any = {
       source,
       pipeline_mode: pipelineMode,
@@ -124,7 +119,6 @@ Deno.serve(async (req) => {
 
     // ── STEP 1: Generate Insights ────────────────────────────────────
 
-    console.log(`[run-content-pipeline] Step 1: Generating insights (${periodDays} days)...`);
     const insightsResult = await callInternal(supabaseUrl, internalSecret, "generate-content-insights", {
       period_days: periodDays,
     });
@@ -134,10 +128,6 @@ Deno.serve(async (req) => {
       count: insightsResult.data?.count || 0,
       error: insightsResult.error || null,
     };
-
-    console.log(
-      `[run-content-pipeline] Step 1 done: ${insightsResult.ok ? "success" : "failed"}, ${insightsResult.data?.count || 0} insights`
-    );
 
     // Stop if no insights or insights-only mode
     if (!insightsResult.ok || !insightsResult.data?.count || pipelineMode === "insights_only") {
@@ -167,9 +157,6 @@ Deno.serve(async (req) => {
 
     const insightIds = topInsights.map((i: any) => i.id);
 
-    console.log(
-      `[run-content-pipeline] Step 2: Generating ideas from ${insightIds.length} top insights...`
-    );
     const ideasResult = await callInternal(supabaseUrl, internalSecret, "generate-content-ideas", {
       insight_ids: insightIds,
       count: autoIdeasCount,
@@ -181,10 +168,6 @@ Deno.serve(async (req) => {
       insight_ids_used: insightIds,
       error: ideasResult.error || null,
     };
-
-    console.log(
-      `[run-content-pipeline] Step 2 done: ${ideasResult.ok ? "success" : "failed"}, ${ideasResult.data?.count || 0} ideas`
-    );
 
     // Stop if no ideas
     if (!ideasResult.ok || !ideasResult.data?.count) {
@@ -206,9 +189,6 @@ Deno.serve(async (req) => {
 
     const scriptResults: any[] = [];
     for (const idea of topIdeas) {
-      console.log(
-        `[run-content-pipeline] Step 3: Generating script for idea "${idea.title || idea.id}"...`
-      );
       const scriptResult = await callInternal(
         supabaseUrl,
         internalSecret,
@@ -235,15 +215,9 @@ Deno.serve(async (req) => {
     const successfulScripts = scriptResults.filter((r) => r.success && r.script_id);
 
     if (autoSocialEnabled && successfulScripts.length > 0) {
-      console.log(
-        `[run-content-pipeline] Step 4: Generating social posts for ${successfulScripts.length} scripts...`
-      );
 
       const socialResults: any[] = [];
       for (const script of successfulScripts) {
-        console.log(
-          `[run-content-pipeline] Step 4: Generating social posts for script "${script.script_id}"...`
-        );
         const socialResult = await callInternal(
           supabaseUrl,
           internalSecret,
@@ -266,9 +240,6 @@ Deno.serve(async (req) => {
         results: socialResults,
       };
 
-      console.log(
-        `[run-content-pipeline] Step 4 done: ${pipelineResult.steps.social_posts.succeeded}/${pipelineResult.steps.social_posts.attempted} scripts processed, ${pipelineResult.steps.social_posts.total_posts} posts generated`
-      );
     } else if (!autoSocialEnabled) {
       pipelineResult.steps.social_posts = { skipped: true, reason: "auto_social_disabled" };
     } else {
@@ -289,16 +260,11 @@ Deno.serve(async (req) => {
       ? "social_posts=skipped"
       : `social_posts=${pipelineResult.steps.social_posts?.total_posts || 0}`;
 
-    console.log(
-      `[run-content-pipeline] Done in ${pipelineResult.total_duration_ms}ms: ${pipelineResult.steps.insights.count} insights, ${pipelineResult.steps.ideas.count} ideas, ${pipelineResult.steps.scripts.succeeded}/${pipelineResult.steps.scripts.attempted} scripts, ${socialSummary}`
-    );
-
     return new Response(JSON.stringify(pipelineResult), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error("[run-content-pipeline] Fatal error:", error);
 
     try {
       await supabase.from("content_generation_logs").insert({

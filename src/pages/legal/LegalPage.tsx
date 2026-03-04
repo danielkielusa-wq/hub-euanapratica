@@ -24,7 +24,6 @@ export default function LegalPage({ configKey, title }: LegalPageProps) {
 
       if (rpcError) {
         setError('Não foi possível carregar o conteúdo.');
-        console.error('Error fetching legal page:', rpcError);
       } else if (data && data.length > 0) {
         setContent(data[0].value);
       } else {

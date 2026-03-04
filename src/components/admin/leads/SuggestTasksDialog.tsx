@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Loader2, ChevronDown, ChevronUp, CheckSquare, Square, Wand2 } from 'lucide-react';
+import { Sparkles, Loader2, ChevronDown, ChevronUp, CheckSquare, Square, Wand2, MessageCircle, Copy, Check } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ interface TaskSuggestion {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   due_in_days: number;
   reasoning: string;
+  whatsapp_message: string | null;
 }
 
 interface SuggestTasksDialogProps {
@@ -84,6 +85,8 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
   const [suggestions, setSuggestions] = useState<TaskSuggestion[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [expandedReasoning, setExpandedReasoning] = useState<Set<number>>(new Set());
+  const [expandedWhatsApp, setExpandedWhatsApp] = useState<Set<number>>(new Set());
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +96,8 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
     setSuggestions([]);
     setSelected(new Set());
     setExpandedReasoning(new Set());
+    setExpandedWhatsApp(new Set());
+    setCopiedIndex(null);
     setError(null);
     fetchSuggestions();
   }, [open]);
@@ -147,6 +152,22 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
     });
   }
 
+  function toggleWhatsApp(index: number) {
+    setExpandedWhatsApp((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function copyWhatsApp(index: number, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    });
+  }
+
   async function handleCreate() {
     const toCreate = suggestions.filter((_, i) => selected.has(i));
     if (!toCreate.length) return;
@@ -164,6 +185,7 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
           priority: suggestion.priority,
           due_date: dueDateFromDays(suggestion.due_in_days),
           source: 'ai_suggestion',
+          whatsapp_message: suggestion.whatsapp_message ?? null,
         });
         successCount++;
       } catch {
@@ -241,7 +263,6 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
 
               {suggestions.map((s, i) => {
                 const isSelected = selected.has(i);
-                const showReasoning = expandedReasoning.has(i);
 
                 return (
                   <div
@@ -283,19 +304,54 @@ export function SuggestTasksDialog({ open, onOpenChange, leadId, leadName }: Sug
                           </span>
                         </div>
 
+                        {/* WhatsApp message toggle */}
+                        {s.whatsapp_message && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleWhatsApp(i); }}
+                              className="flex items-center gap-1 mt-2 text-[10px] text-green-600 hover:text-green-700 transition-colors font-medium"
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              {expandedWhatsApp.has(i) ? 'Ocultar mensagem WhatsApp' : 'Ver mensagem WhatsApp'}
+                              {expandedWhatsApp.has(i) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+                            {expandedWhatsApp.has(i) && (
+                              <div className="mt-1.5 rounded-lg border border-green-200 bg-green-50/60 overflow-hidden">
+                                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-green-200/60">
+                                  <span className="text-[10px] text-green-700 font-medium flex items-center gap-1">
+                                    <MessageCircle className="w-3 h-3" /> Mensagem pronta para envio
+                                  </span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); copyWhatsApp(i, s.whatsapp_message!); }}
+                                    className="flex items-center gap-1 text-[10px] text-green-700 hover:text-green-800 transition-colors"
+                                  >
+                                    {copiedIndex === i
+                                      ? <><Check className="w-3 h-3" /> Copiado!</>
+                                      : <><Copy className="w-3 h-3" /> Copiar</>
+                                    }
+                                  </button>
+                                </div>
+                                <p className="px-2.5 py-2 text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {s.whatsapp_message}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
                         {/* Reasoning toggle */}
                         {s.reasoning && (
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleReasoning(i); }}
                             className="flex items-center gap-1 mt-2 text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
                           >
-                            {showReasoning
+                            {expandedReasoning.has(i)
                               ? <><ChevronUp className="w-3 h-3" /> Ocultar raciocínio</>
                               : <><ChevronDown className="w-3 h-3" /> Ver raciocínio da IA</>
                             }
                           </button>
                         )}
-                        {showReasoning && s.reasoning && (
+                        {expandedReasoning.has(i) && s.reasoning && (
                           <p className="mt-1.5 text-[11px] text-gray-500 bg-white/70 rounded-lg px-2.5 py-2 border border-gray-100 leading-relaxed italic">
                             {s.reasoning}
                           </p>

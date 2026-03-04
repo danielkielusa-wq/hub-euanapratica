@@ -21,6 +21,8 @@ import {
   Smartphone,
   Mail,
   Zap,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,21 +43,35 @@ interface AgendaTask {
 
 // ─── Role Config ──────────────────────────────────────────────────────────────
 
-const ROLE_CONFIG: Record<Role, { label: string; color: string; bg: string; border: string }> = {
+const ROLE_CONFIG: Record<Role, {
+  label: string;
+  badgeClass: string;
+  dotClass: string;
+  // kept for docs sheet (dark theme)
+  color: string;
+  bg: string;
+  border: string;
+}> = {
   fundador: {
     label: 'Fundador',
+    badgeClass: 'text-amber-700 bg-amber-100',
+    dotClass: 'bg-amber-500',
     color: '#d4a84b',
     bg: 'rgba(212,168,75,0.10)',
     border: 'rgba(212,168,75,0.28)',
   },
   crm: {
     label: 'Assistente CRM',
+    badgeClass: 'text-emerald-700 bg-emerald-100',
+    dotClass: 'bg-emerald-500',
     color: '#5eead4',
     bg: 'rgba(94,234,212,0.08)',
     border: 'rgba(94,234,212,0.22)',
   },
   creator: {
     label: 'Creator',
+    badgeClass: 'text-orange-700 bg-orange-100',
+    dotClass: 'bg-orange-500',
     color: '#fb923c',
     bg: 'rgba(251,146,60,0.10)',
     border: 'rgba(251,146,60,0.25)',
@@ -216,126 +232,46 @@ function TaskCard({
   return (
     <div
       onClick={onToggle}
-      style={{
-        background: isCompleted ? 'rgba(255,255,255,0.02)' : cfg.bg,
-        border: `1px solid ${isCompleted ? '#222018' : cfg.border}`,
-        borderRadius: '10px',
-        padding: '9px 10px',
-        cursor: 'pointer',
-        opacity: isCompleted ? 0.45 : 1,
-        transition: 'opacity 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease',
-      }}
-      onMouseEnter={e => {
-        if (!isCompleted) {
-          e.currentTarget.style.transform = 'translateY(-1px)';
-          e.currentTarget.style.boxShadow = `0 4px 16px ${cfg.color}18`;
-        }
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
+      className={`group relative p-4 rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer ${
+        isCompleted ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-gray-200'
+      }`}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-        {/* Checkbox */}
+      <div className="flex justify-between items-start mb-2">
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${cfg.badgeClass}`}>
+          {cfg.label}
+        </span>
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            flexShrink: 0,
-            marginTop: '1px',
-          }}
+          className={`transition-colors duration-200 ${
+            isCompleted ? 'text-emerald-500' : 'text-gray-300 hover:text-gray-400'
+          }`}
         >
-          {isCompleted ? (
-            <div style={{
-              width: '15px', height: '15px', borderRadius: '4px',
-              background: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                <path d="M1 3.5L3.2 5.8L8 1" stroke="#0f0d0a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          ) : (
-            <div style={{
-              width: '15px', height: '15px', borderRadius: '4px',
-              border: `1.5px solid ${cfg.border}`,
-              background: 'transparent', flexShrink: 0,
-              transition: 'border-color 0.15s ease',
-            }} />
-          )}
+          {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
         </button>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Role pill */}
-          <span style={{
-            fontFamily: 'DM Mono, monospace',
-            fontSize: '8px',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: cfg.color,
-            opacity: 0.75,
-            display: 'block',
-            marginBottom: '2px',
-          }}>
-            {cfg.label}
-          </span>
-
-          {/* Title */}
-          <div style={{
-            fontFamily: 'Playfair Display, Georgia, serif',
-            fontSize: '11.5px',
-            fontWeight: 600,
-            lineHeight: 1.35,
-            color: isCompleted ? '#4a4538' : '#d8cfbe',
-            textDecoration: isCompleted ? 'line-through' : 'none',
-          }}>
-            {task.title}
-          </div>
-
-          {/* Description */}
-          {!isCompleted && (
-            <div style={{
-              fontSize: '10px',
-              color: '#5a5348',
-              lineHeight: 1.45,
-              marginTop: '3px',
-              fontFamily: 'DM Sans, sans-serif',
-            }}>
-              {task.description}
-            </div>
-          )}
-
-          {/* Action */}
-          {task.action && !isCompleted && (
-            <Link
-              to={task.action.href}
-              onClick={e => e.stopPropagation()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                marginTop: '5px',
-                fontSize: '9px',
-                fontFamily: 'DM Mono, monospace',
-                letterSpacing: '0.04em',
-                color: cfg.color,
-                textDecoration: 'none',
-                opacity: 0.7,
-                transition: 'opacity 0.15s ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; }}
-            >
-              {task.action.label}
-              <ExternalLink size={8} />
-            </Link>
-          )}
-        </div>
       </div>
+
+      <h3 className={`text-sm font-bold mb-1.5 leading-tight ${
+        isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
+      }`}>
+        {task.title}
+      </h3>
+
+      {!isCompleted && (
+        <p className="text-xs leading-relaxed mb-3 text-gray-500">
+          {task.description}
+        </p>
+      )}
+
+      {task.action && !isCompleted && (
+        <Link
+          to={task.action.href}
+          onClick={e => e.stopPropagation()}
+          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors uppercase tracking-wide"
+        >
+          {task.action.label}
+          <ExternalLink className="w-2.5 h-2.5" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -359,166 +295,67 @@ function DayColumn({
 }) {
   const morning = tasks.filter(t => t.timeOfDay === 'morning');
   const evening = tasks.filter(t => t.timeOfDay === 'evening');
-  const doneCount = tasks.filter(t => completed[t.id]).length;
-  const total = tasks.length;
-  const allDone = total > 0 && doneCount === total;
 
   return (
-    <div style={{
-      background: isToday ? '#1c1910' : '#121009',
-      border: `1px solid ${isToday ? 'rgba(212,168,75,0.35)' : '#1d1b15'}`,
-      borderRadius: '16px',
-      overflow: 'hidden',
-      minWidth: '195px',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '13px 13px 10px',
-        borderBottom: `1px solid ${isToday ? '#2a2518' : '#1d1b15'}`,
-        background: isToday ? 'rgba(212,168,75,0.04)' : 'transparent',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{
-              fontFamily: 'DM Mono, monospace',
-              fontSize: '9.5px',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: isToday ? '#d4a84b' : '#4a4538',
-              marginBottom: '2px',
-            }}>
-              {DAYS_SHORT[dayIndex]}
-            </div>
-            <div style={{
-              fontFamily: 'Playfair Display, Georgia, serif',
-              fontSize: '22px',
-              fontWeight: 700,
-              lineHeight: 1,
-              color: isToday ? '#f0e6d3' : '#6a6050',
-            }}>
-              {date.getDate()}
-            </div>
-          </div>
-          {total > 0 && (
-            <div style={{
-              fontFamily: 'DM Mono, monospace',
-              fontSize: '10px',
-              color: allDone ? '#5eead4' : '#3a3528',
-              paddingTop: '2px',
-            }}>
-              {doneCount}/{total}
-              {allDone && ' ✓'}
-            </div>
-          )}
-        </div>
-
-        {/* Day progress bar */}
-        {total > 0 && (
-          <div style={{
-            height: '2px',
-            background: '#222018',
-            borderRadius: '1px',
-            overflow: 'hidden',
-            marginTop: '10px',
-          }}>
-            <div style={{
-              width: `${(doneCount / total) * 100}%`,
-              height: '100%',
-              background: isToday
-                ? 'linear-gradient(90deg, #d4a84b, #f0c570)'
-                : '#3a3528',
-              borderRadius: '1px',
-              transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
-            }} />
-          </div>
-        )}
+    <div className="flex flex-col min-w-[260px]">
+      {/* Column Header */}
+      <div className={`flex items-baseline justify-between mb-4 px-2 border-b pb-2 ${
+        isToday ? 'border-amber-300' : 'border-gray-200'
+      }`}>
+        <span className={`text-xs font-bold uppercase tracking-widest ${
+          isToday ? 'text-amber-500' : 'text-gray-400'
+        }`}>
+          {DAYS_SHORT[dayIndex]}
+        </span>
+        <span
+          className={`text-3xl font-medium ${
+            isToday ? 'text-amber-500 opacity-60' : 'text-gray-900 opacity-20'
+          }`}
+          style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+        >
+          {date.getDate()}
+        </span>
       </div>
 
-      {/* Task area */}
-      <div style={{ padding: '10px', flex: 1 }}>
-        {total === 0 && (
-          <div style={{
-            fontFamily: 'DM Mono, monospace',
-            fontSize: '10px',
-            color: '#2a2820',
-            textAlign: 'center',
-            paddingTop: '12px',
-          }}>
-            —
-          </div>
-        )}
-
-        {/* Morning */}
+      <div className="space-y-6">
+        {/* Morning Section */}
         {morning.length > 0 && (
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              marginBottom: '7px',
-            }}>
-              <Sun size={9} style={{ color: '#d4a84b', opacity: 0.6 }} />
-              <span style={{
-                fontFamily: 'DM Mono, monospace',
-                fontSize: '8.5px',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#4a4538',
-              }}>
-                Manhã
-              </span>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-2">
+              <Sun className="w-3 h-3 text-amber-500" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Manhã</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {morning.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  isCompleted={!!completed[task.id]}
-                  onToggle={() => onToggle(task.id)}
-                />
-              ))}
-            </div>
+            {morning.map(task => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isCompleted={!!completed[task.id]}
+                onToggle={() => onToggle(task.id)}
+              />
+            ))}
           </div>
         )}
 
-        {/* Divider */}
-        {morning.length > 0 && evening.length > 0 && (
-          <div style={{ height: '1px', background: '#1d1b15', margin: '10px 0' }} />
-        )}
-
-        {/* Evening */}
+        {/* Evening Section */}
         {evening.length > 0 && (
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              marginBottom: '7px',
-            }}>
-              <Moon size={9} style={{ color: '#8b7ff0', opacity: 0.6 }} />
-              <span style={{
-                fontFamily: 'DM Mono, monospace',
-                fontSize: '8.5px',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#4a4538',
-              }}>
-                Final do dia
-              </span>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-2 pt-2">
+              <Moon className="w-3 h-3 text-indigo-400" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Final do dia</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {evening.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  isCompleted={!!completed[task.id]}
-                  onToggle={() => onToggle(task.id)}
-                />
-              ))}
-            </div>
+            {evening.map(task => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                isCompleted={!!completed[task.id]}
+                onToggle={() => onToggle(task.id)}
+              />
+            ))}
           </div>
+        )}
+
+        {tasks.length === 0 && (
+          <div className="text-center text-gray-300 text-xs py-4">—</div>
         )}
       </div>
     </div>
@@ -551,7 +388,6 @@ export default function AdminAgendaSemanal() {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          // Internal secret fallback handled server-side via pg_cron; frontend test uses auth token
         },
       });
       const json = await res.json();
@@ -623,304 +459,163 @@ export default function AdminAgendaSemanal() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
       `}</style>
 
-      <div
-        style={{
-          minHeight: '100vh',
-          background: '#0f0d0a',
-          paddingBottom: '64px',
-          fontFamily: 'DM Sans, sans-serif',
-        }}
-      >
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 20px 0' }}>
+      <div className="p-8 max-w-[1800px] mx-auto space-y-8" style={{ fontFamily: 'DM Sans, sans-serif' }}>
 
-          {/* ── Header ──────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-              {/* Title */}
-              <div>
-                <div style={{
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '10px',
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: '#5a5045',
-                  marginBottom: '6px',
-                }}>
-                  Planejamento
-                </div>
-                <h1 style={{
-                  fontFamily: 'Playfair Display, Georgia, serif',
-                  fontSize: '30px',
-                  fontWeight: 700,
-                  color: '#f0e6d3',
-                  margin: 0,
-                  lineHeight: 1.1,
-                }}>
-                  Agenda Semanal
-                </h1>
-                <p style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: '13px',
-                  color: '#5a5045',
-                  margin: '6px 0 0',
-                }}>
-                  Rituais diários para cada papel do negócio
-                </p>
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+          {/* Title */}
+          <div>
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              Planejamento
+            </div>
+            <h1
+              className="text-4xl font-bold tracking-tight text-gray-900 mb-2"
+              style={{ fontFamily: 'Playfair Display, Georgia, serif' }}
+            >
+              Agenda Semanal
+            </h1>
+            <p className="text-gray-500 text-lg">
+              Rituais diários para cada papel do negócio
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
+            {/* Progress Widget */}
+            <div className="bg-gray-900 text-white p-4 rounded-xl w-full sm:w-64 shadow-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Progresso da semana
+                </span>
+                <span className={`text-xl font-bold ${completionPct === 100 ? 'text-emerald-400' : 'text-yellow-400'}`}>
+                  {completionPct}%
+                </span>
               </div>
-
-              {/* Progress card */}
-              <div style={{
-                background: '#1a1712',
-                border: '1px solid #2a2620',
-                borderRadius: '16px',
-                padding: '16px 20px',
-                minWidth: '220px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '10px',
-                    color: '#5a5045',
-                    letterSpacing: '0.04em',
-                  }}>
-                    Progresso da semana
-                  </span>
-                  <span style={{
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '16px',
-                    fontWeight: 500,
-                    color: completionPct === 100 ? '#5eead4' : '#d4a84b',
-                  }}>
-                    {completionPct}%
-                  </span>
-                </div>
-                <div style={{ height: '4px', background: '#2a2620', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${completionPct}%`,
-                    height: '100%',
-                    background: completionPct === 100
-                      ? 'linear-gradient(90deg, #5eead4, #99f6e4)'
-                      : 'linear-gradient(90deg, #d4a84b, #f0c96a)',
-                    borderRadius: '2px',
-                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
-                  }} />
-                </div>
-                <div style={{
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '10px',
-                  color: '#3a3528',
-                  marginTop: '6px',
-                }}>
-                  {completedCount} de {totalTasks} tarefas concluídas
-                </div>
+              <div className="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                <div
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    completionPct === 100 ? 'bg-emerald-400' : 'bg-yellow-400'
+                  }`}
+                  style={{ width: `${completionPct}%` }}
+                />
               </div>
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignSelf: 'stretch', justifyContent: 'center' }}>
-                <button
-                  onClick={() => setDocsOpen(true)}
-                  style={{
-                    background: '#1a1712',
-                    border: '1px solid #2a2620',
-                    borderRadius: '10px',
-                    padding: '9px 16px',
-                    color: '#d8cfbe',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '11px',
-                    letterSpacing: '0.03em',
-                    transition: 'all 0.15s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#d4a84b'; e.currentTarget.style.color = '#d4a84b'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2620'; e.currentTarget.style.color = '#d8cfbe'; }}
-                >
-                  <BookOpen size={13} />
-                  Documentação
-                </button>
-                <button
-                  onClick={sendTestNow}
-                  disabled={isTesting}
-                  style={{
-                    background: isTesting ? '#1a1712' : 'rgba(212,168,75,0.12)',
-                    border: '1px solid rgba(212,168,75,0.3)',
-                    borderRadius: '10px',
-                    padding: '9px 16px',
-                    color: isTesting ? '#5a5045' : '#d4a84b',
-                    cursor: isTesting ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '11px',
-                    letterSpacing: '0.03em',
-                    transition: 'all 0.15s ease',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {isTesting ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
-                  {isTesting ? 'Enviando...' : 'Testar agora'}
-                </button>
+              <div className="text-[10px] text-gray-400 text-right">
+                {completedCount} de {totalTasks} tarefas concluídas
               </div>
             </div>
 
-            {/* Week nav */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>
-              {/* Prev */}
-              <NavButton onClick={() => navigateWeek(-1)}>
-                <ChevronLeft size={15} />
-              </NavButton>
-
-              {/* Week label */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CalendarDays size={13} style={{ color: '#d4a84b' }} />
-                <span style={{
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '12px',
-                  color: '#d8cfbe',
-                  letterSpacing: '0.02em',
-                }}>
-                  {getWeekRange(weekDates)}
-                </span>
-                {isCurrentWeek && (
-                  <span style={{
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '9px',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    padding: '3px 8px',
-                    borderRadius: '100px',
-                    background: 'rgba(212,168,75,0.12)',
-                    color: '#d4a84b',
-                    border: '1px solid rgba(212,168,75,0.28)',
-                  }}>
-                    Esta semana
-                  </span>
-                )}
-              </div>
-
-              {/* Next */}
-              <NavButton onClick={() => navigateWeek(1)}>
-                <ChevronRight size={15} />
-              </NavButton>
-
-              {/* Reset */}
+            {/* Action buttons */}
+            <div className="flex flex-col gap-2">
               <button
-                onClick={resetWeek}
-                title="Limpar progresso desta semana"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '6px 10px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '10px',
-                  color: '#3a3528',
-                  borderRadius: '8px',
-                  transition: 'color 0.15s ease',
-                  letterSpacing: '0.03em',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#3a3528'; }}
+                onClick={() => setDocsOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-900 transition-all whitespace-nowrap"
               >
-                <RotateCcw size={11} />
-                Resetar semana
+                <BookOpen className="w-4 h-4" />
+                Documentação
+              </button>
+              <button
+                onClick={sendTestNow}
+                disabled={isTesting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isTesting
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Send className="w-4 h-4" />}
+                {isTesting ? 'Enviando...' : 'Testar agora'}
               </button>
             </div>
-
-            {/* Role filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '14px', flexWrap: 'wrap' }}>
-              {(['all', 'fundador', 'crm', 'creator'] as const).map(r => {
-                const isActive = roleFilter === r;
-                const cfg = r !== 'all' ? ROLE_CONFIG[r] : null;
-                return (
-                  <button
-                    key={r}
-                    onClick={() => setRoleFilter(r)}
-                    style={{
-                      padding: '5px 13px',
-                      borderRadius: '100px',
-                      border: `1px solid ${isActive ? (cfg?.color ?? '#d4a84b') : '#2a2620'}`,
-                      background: isActive ? (cfg?.bg ?? 'rgba(212,168,75,0.10)') : 'transparent',
-                      color: isActive ? (cfg?.color ?? '#d4a84b') : '#4a4538',
-                      fontFamily: 'DM Mono, monospace',
-                      fontSize: '10.5px',
-                      fontWeight: 500,
-                      letterSpacing: '0.04em',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {r === 'all' ? 'Todos os papéis' : cfg!.label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
-
-          {/* ── Week Grid ────────────────────────────────────────────────── */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '10px',
-            overflowX: 'auto',
-          }}>
-            {DAYS_LONG.map((_, dayIndex) => (
-              <DayColumn
-                key={dayIndex}
-                dayIndex={dayIndex}
-                date={weekDates[dayIndex]}
-                isToday={isCurrentWeek && dayIndex === todayDayIndex}
-                tasks={filteredTasks.filter(t => t.day === dayIndex)}
-                completed={completed}
-                onToggle={toggleTask}
-              />
-            ))}
-          </div>
-
-          {/* ── Legend ───────────────────────────────────────────────────── */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '24px',
-            marginTop: '24px',
-            flexWrap: 'wrap',
-          }}>
-            {(Object.entries(ROLE_CONFIG) as [Role, typeof ROLE_CONFIG[Role]][]).map(([role, cfg]) => (
-              <div key={role} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <div style={{
-                  width: '7px', height: '7px',
-                  borderRadius: '50%',
-                  background: cfg.color,
-                  flexShrink: 0,
-                }} />
-                <span style={{
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '10px',
-                  color: '#4a4538',
-                  letterSpacing: '0.03em',
-                }}>
-                  {cfg.label}
-                </span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <Sun size={9} style={{ color: '#d4a84b', opacity: 0.7 }} />
-              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '10px', color: '#3a3528' }}>Manhã</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-              <Moon size={9} style={{ color: '#8b7ff0', opacity: 0.7 }} />
-              <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '10px', color: '#3a3528' }}>Final do dia</span>
-            </div>
-          </div>
-
         </div>
+
+        {/* ── Controls Bar ─────────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm">
+          {/* Week Navigation */}
+          <div className="flex items-center gap-2 p-1">
+            <button
+              onClick={() => navigateWeek(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+              <CalendarDays className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-semibold text-gray-700">
+                {getWeekRange(weekDates)}
+              </span>
+              {isCurrentWeek && (
+                <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full uppercase tracking-wide ml-2">
+                  Esta Semana
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => navigateWeek(1)}
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={resetWeek}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-red-500 transition-colors ml-2"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Resetar semana
+            </button>
+          </div>
+
+          {/* Role Filter */}
+          <div className="flex gap-1 p-1 overflow-x-auto w-full md:w-auto">
+            {(['all', 'fundador', 'crm', 'creator'] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => setRoleFilter(r)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                  roleFilter === r
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {r === 'all' ? 'Todos os papéis' : ROLE_CONFIG[r].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Kanban Grid ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 overflow-x-auto pb-4">
+          {DAYS_LONG.map((_, dayIndex) => (
+            <DayColumn
+              key={dayIndex}
+              dayIndex={dayIndex}
+              date={weekDates[dayIndex]}
+              isToday={isCurrentWeek && dayIndex === todayDayIndex}
+              tasks={filteredTasks.filter(t => t.day === dayIndex)}
+              completed={completed}
+              onToggle={toggleTask}
+            />
+          ))}
+        </div>
+
+        {/* ── Legend ────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-6 flex-wrap">
+          {(Object.entries(ROLE_CONFIG) as [Role, typeof ROLE_CONFIG[Role]][]).map(([role, cfg]) => (
+            <div key={role} className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${cfg.dotClass}`} />
+              <span className="text-xs text-gray-500">{cfg.label}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            <Sun className="w-3 h-3 text-amber-500 opacity-70" />
+            <span className="text-xs text-gray-400">Manhã</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Moon className="w-3 h-3 text-indigo-400 opacity-70" />
+            <span className="text-xs text-gray-400">Final do dia</span>
+          </div>
+        </div>
+
       </div>
 
       {/* ── Documentation Sheet ─────────────────────────────────────── */}
@@ -937,7 +632,6 @@ export default function AdminAgendaSemanal() {
 
           <div style={{ fontFamily: 'DM Sans, sans-serif', display: 'flex', flexDirection: 'column', gap: '28px', paddingBottom: '40px' }}>
 
-            {/* Section: What is it */}
             <DocSection icon={<CalendarDays size={14} />} title="O que é a Agenda Semanal">
               <p style={docText}>
                 Um planner de rituais semanais dividido por <b style={{ color: '#d4a84b' }}>papel</b>: Fundador, Assistente CRM e Creator. Cada dia tem tarefas de <b>manhã</b> e <b>final do dia</b> com links diretos para as telas relevantes da plataforma.
@@ -947,7 +641,6 @@ export default function AdminAgendaSemanal() {
               </p>
             </DocSection>
 
-            {/* Section: Notifications */}
             <DocSection icon={<Zap size={14} />} title="Notificações Diárias às 6h BRT">
               <p style={docText}>
                 Todo dia de semana às <b style={{ color: '#d4a84b' }}>6h da manhã</b> (horário de Brasília), a plataforma pode enviar automaticamente a agenda do dia via <b>Telegram</b> e <b>Email</b>.
@@ -957,7 +650,6 @@ export default function AdminAgendaSemanal() {
               </p>
             </DocSection>
 
-            {/* Section: Telegram */}
             <DocSection icon={<Smartphone size={14} />} title="Configurar Telegram">
               <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
@@ -976,14 +668,12 @@ export default function AdminAgendaSemanal() {
               </ol>
             </DocSection>
 
-            {/* Section: Email */}
             <DocSection icon={<Mail size={14} />} title="Configurar Email">
               <p style={docText}>O email é enviado via Resend usando a API key já configurada em <b>Configurações → APIs Externas</b>. Apenas adicione o segredo abaixo no Supabase:</p>
               <code style={{ ...codeBlock, display: 'block' }}>ADMIN_NOTIFICATION_EMAIL = seu@email.com</code>
               <p style={{ ...docText, marginTop: '8px' }}>Vá em <b>Supabase Dashboard → Edge Functions → Secrets</b> e adicione essa variável.</p>
             </DocSection>
 
-            {/* Section: Webhook URL */}
             <DocSection icon={<Terminal size={14} />} title="Webhook para N8N">
               <p style={docText}>URL que o N8N deve chamar com <b>HTTP Request (POST)</b>:</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
@@ -998,7 +688,6 @@ export default function AdminAgendaSemanal() {
                   {copied ? 'Copiado' : 'Copiar'}
                 </button>
               </div>
-
               <p style={{ ...docText, marginTop: '16px' }}>Header obrigatório:</p>
               <code style={{ ...codeBlock, display: 'block' }}>x-internal-secret: &lt;valor de INTERNAL_FUNCTION_SECRET&gt;</code>
               <p style={{ ...docText, marginTop: '8px', fontSize: '11px', color: '#4a4538' }}>
@@ -1006,7 +695,6 @@ export default function AdminAgendaSemanal() {
               </p>
             </DocSection>
 
-            {/* Section: N8N Setup */}
             <DocSection icon={<Zap size={14} />} title="Flow N8N — passo a passo">
               <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
@@ -1024,7 +712,6 @@ export default function AdminAgendaSemanal() {
               </ol>
             </DocSection>
 
-            {/* Section: pg_cron alternative */}
             <DocSection icon={<Terminal size={14} />} title="pg_cron (alternativa ao N8N)">
               <p style={docText}>
                 A migração <code style={codeInline}>20260303100000_schedule_daily_agenda.sql</code> já cria um job pg_cron que dispara às <b>9h UTC (6h BRT)</b>, de segunda a sexta. Para ativá-lo, execute:
@@ -1038,7 +725,6 @@ export default function AdminAgendaSemanal() {
               </code>
             </DocSection>
 
-            {/* Section: Test */}
             <DocSection icon={<Send size={14} />} title="Testar agora">
               <p style={docText}>
                 Use o botão <b>Testar agora</b> na tela para disparar manualmente a função e verificar se Telegram e Email estão configurados. O resultado aparece em um toast no canto da tela.
@@ -1047,8 +733,7 @@ export default function AdminAgendaSemanal() {
                 ⚠️ O teste usa a autenticação do usuário logado (não o internal secret). Para testar via terminal:
               </p>
               <code style={{ ...codeBlock, display: 'block', fontSize: '10px', lineHeight: 1.8 }}>
-                {`curl -X POST "${FUNCTION_URL}" \\
-  -H "x-internal-secret: <seu_secret>"`}
+                {`curl -X POST "${FUNCTION_URL}" \\\n  -H "x-internal-secret: <seu_secret>"`}
               </code>
             </DocSection>
 
@@ -1102,37 +787,5 @@ function DocSection({ icon, title, children }: { icon: React.ReactNode; title: s
         {children}
       </div>
     </div>
-  );
-}
-
-// ─── Tiny NavButton helper ────────────────────────────────────────────────────
-
-function NavButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: '#1a1712',
-        border: '1px solid #2a2620',
-        borderRadius: '9px',
-        padding: '7px',
-        color: '#5a5045',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 0.15s ease',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = '#d4a84b';
-        e.currentTarget.style.color = '#d4a84b';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = '#2a2620';
-        e.currentTarget.style.color = '#5a5045';
-      }}
-    >
-      {children}
-    </button>
   );
 }

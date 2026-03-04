@@ -78,7 +78,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (liveError || !live) {
-      console.error("Live not found:", live_id);
       return new Response(
         JSON.stringify({ error: "Live not found" }),
         { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
@@ -96,7 +95,6 @@ Deno.serve(async (req) => {
 
     return await handleGoingLive(supabase, live, livePageLink, meetingLink, cors);
   } catch (error) {
-    console.error("Error in send-live-notification:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
@@ -141,10 +139,6 @@ async function handleGoingLive(
   let emailsSent = 0;
   const errors: string[] = [];
 
-  console.log(
-    `[send-live-notification] Sending going_live to ${profiles.length} participants for: ${live.title}`
-  );
-
   for (const profile of profiles) {
     if (!profile.email) continue;
     try {
@@ -168,8 +162,6 @@ async function handleGoingLive(
       errors.push(`${profile.email}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-
-  console.log(`[send-live-notification] Done: ${emailsSent}/${profiles.length} emails sent`);
 
   return new Response(
     JSON.stringify({
@@ -259,10 +251,6 @@ async function handleRegistration(
     timeZone: "America/Sao_Paulo",
   });
 
-  console.log(
-    `[send-live-notification] Sending registration confirmation to ${profile.email} for: ${live.title}`
-  );
-
   // 7. Send email with ICS attachment
   const result = await sendTemplatedEmail({
     templateName: "live_registration_confirmation",
@@ -285,11 +273,6 @@ async function handleRegistration(
       },
     ],
   });
-
-  console.log(
-    `[send-live-notification] Registration email result:`,
-    { to: profile.email, sent: result.emailSent }
-  );
 
   return new Response(
     JSON.stringify({

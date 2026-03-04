@@ -25,13 +25,6 @@ serve(async (req) => {
     // 1. Parse payload
     const payload: TictoPayload = await req.json();
 
-    console.log("Ticto webhook received:", {
-      status: payload.status,
-      productId: payload.item?.product_id,
-      offerId: payload.item?.offer_id,
-      email: payload.customer?.email,
-      tokenPresent: !!payload.token,
-    });
 
     // 2. Validate token
     const tictoConfig = await getApiConfig("ticto_webhook");
@@ -42,7 +35,6 @@ serve(async (req) => {
       req.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!expectedToken) {
-      console.error("Ticto secret key not configured");
       return new Response(JSON.stringify({ error: "Webhook not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -50,14 +42,12 @@ serve(async (req) => {
     }
 
     if (!receivedToken || !timingSafeEqual(receivedToken, expectedToken)) {
-      console.error("Token mismatch: received token does not match expected token");
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Token validated successfully");
 
     // 3. Create Supabase admin client
     const supabase = createClient(
@@ -94,10 +84,6 @@ serve(async (req) => {
     // SUBSCRIPTION PATH
     // ================================================================
     if (matchedPlan) {
-      console.log("Routing to SUBSCRIPTION handler:", {
-        planId: matchedPlan.id,
-        offerId: offerId || productId,
-      });
 
       const result = await handleSubscriptionEvent(payload, matchedPlan, supabase);
 
@@ -124,7 +110,6 @@ serve(async (req) => {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             const internalSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
             if (!internalSecret) {
-              console.error("[ticto-webhook] INTERNAL_FUNCTION_SECRET not set — skipping subscription email trigger");
             } else {
               fetch(`${supabaseUrl}/functions/v1/send-subscription-email`, {
                 method: "POST",
@@ -168,7 +153,6 @@ serve(async (req) => {
     // ================================================================
     // ONE-TIME PURCHASE PATH (existing logic — unchanged)
     // ================================================================
-    console.log("Routing to ONE-TIME purchase handler");
 
     const eventStatus = (payload.status || payload.event || "").toLowerCase();
     const customerEmail = payload.customer?.email?.toLowerCase();
@@ -177,7 +161,6 @@ serve(async (req) => {
       payload.transaction_id ||
       `GEN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    console.log("Parsed data:", { eventStatus, customerEmail, productId, transactionId });
 
     // Process sale event
     const saleEvents = [
@@ -186,10 +169,8 @@ serve(async (req) => {
     ];
 
     if (saleEvents.includes(eventStatus)) {
-      console.log("Processing sale event:", eventStatus);
 
       if (!customerEmail) {
-        console.error("No customer email in payload");
         await supabase.from("payment_logs").insert({
           transaction_id: transactionId,
           event_type: eventStatus,
@@ -211,10 +192,8 @@ serve(async (req) => {
         .maybeSingle();
 
       if (profileError) {
-        console.error("Error finding profile:", profileError);
       }
 
-      console.log("Profile lookup:", { found: !!profile, email: customerEmail });
 
       // Find service by ticto_product_id
       let service: { id: string; name: string; service_type: string; espaco_id: string | null } | null = null;
@@ -226,12 +205,10 @@ serve(async (req) => {
           .maybeSingle();
 
         if (serviceError) {
-          console.error("Error finding service:", serviceError);
         }
         service = serviceData;
       }
 
-      console.log("Service lookup:", { found: !!service, productId });
 
       // ---- LIVES FALLBACK: if no hub_service matched, check lives table ----
       if (profile && !service && productId) {
@@ -242,7 +219,6 @@ serve(async (req) => {
           .maybeSingle();
 
         if (liveData) {
-          console.log("Live found for purchase:", { liveId: liveData.id, title: liveData.title });
 
           // Upsert live registration with payment_status = paid
           const { error: regError } = await supabase
@@ -258,9 +234,7 @@ serve(async (req) => {
             );
 
           if (regError) {
-            console.error("Error registering for live:", regError);
           } else {
-            console.log("Live registration created/updated:", { userId: profile.id, liveId: liveData.id });
           }
 
           // Create order record
@@ -280,9 +254,7 @@ serve(async (req) => {
           });
 
           if (orderError) {
-            console.error("Error creating live order:", orderError);
           } else {
-            console.log("Live order created:", { userId: profile.id, liveId: liveData.id, amount: amountInCurrency });
           }
 
           // Log and return early — live purchase handled
@@ -338,9 +310,7 @@ serve(async (req) => {
             .eq("id", existingAccess.id);
 
           if (updateError) {
-            console.error("Error updating existing access:", updateError);
           } else {
-            console.log("Access updated (re-purchase):", { userId: profile.id, serviceId: service.id, sessions_total: newTotal });
           }
         } else {
           const { error: accessError } = await supabase
@@ -357,9 +327,7 @@ serve(async (req) => {
             });
 
           if (accessError) {
-            console.error("Error granting access:", accessError);
           } else {
-            console.log("Access granted:", { userId: profile.id, serviceId: service.id });
           }
         }
 
@@ -379,16 +347,10 @@ serve(async (req) => {
               );
 
             if (enrollError) {
-              console.error("Error enrolling in espaco:", enrollError);
             } else {
-              console.log("Espaco enrollment created:", {
-                userId: profile.id,
-                espacoId: service.espaco_id,
-              });
             }
           }
         } catch (enrollErr) {
-          console.error("Espaco enrollment check failed:", enrollErr);
         }
 
         // Create order record for user-facing history
@@ -409,21 +371,9 @@ serve(async (req) => {
         });
 
         if (orderError) {
-          console.error("Error creating order:", orderError);
         } else {
-          console.log("Order created:", {
-            userId: profile.id,
-            serviceId: service.id,
-            amount: amountInCurrency,
-          });
         }
       } else {
-        console.warn("Could not grant access:", {
-          profileFound: !!profile,
-          serviceFound: !!service,
-          customerEmail,
-          productId,
-        });
       }
 
       // Log transaction
@@ -442,15 +392,11 @@ serve(async (req) => {
         .upsert(logData, { onConflict: "transaction_id,event_type" });
 
       if (logError) {
-        console.warn("Upsert failed, trying insert:", logError);
         const { error: insertError } = await supabase.from("payment_logs").insert(logData);
         if (insertError) {
-          console.error("Insert also failed:", insertError);
         } else {
-          console.log("Payment logged via insert fallback");
         }
       } else {
-        console.log("Payment logged successfully:", { transactionId, eventStatus });
       }
     }
 
@@ -462,7 +408,6 @@ serve(async (req) => {
       "cancelled",
     ];
     if (refundEvents.includes(eventStatus)) {
-      console.log("Processing refund event:", eventStatus);
 
       if (customerEmail && productId) {
         const { data: profile } = await supabase
@@ -484,7 +429,6 @@ serve(async (req) => {
             .eq("user_id", profile.id)
             .eq("service_id", service.id);
 
-          console.log("Access revoked:", { userId: profile.id, serviceId: service.id });
 
           // Update order status to refunded
           const { error: orderUpdateError } = await supabase
@@ -497,12 +441,7 @@ serve(async (req) => {
             .eq("ticto_order_id", transactionId);
 
           if (orderUpdateError) {
-            console.error("Error updating order to refunded:", orderUpdateError);
           } else {
-            console.log("Order status updated to refunded:", {
-              userId: profile.id,
-              transactionId,
-            });
           }
         }
 
@@ -521,7 +460,6 @@ serve(async (req) => {
               .eq("live_id", liveData.id)
               .eq("user_id", profile.id);
 
-            console.log("Live registration refunded:", { userId: profile.id, liveId: liveData.id });
 
             await supabase
               .from("orders")
@@ -546,7 +484,6 @@ serve(async (req) => {
           .upsert(refundLogData, { onConflict: "transaction_id,event_type" });
 
         if (refundLogError) {
-          console.warn("Refund upsert failed, trying insert:", refundLogError);
           await supabase.from("payment_logs").insert(refundLogData);
         }
       }
@@ -554,7 +491,6 @@ serve(async (req) => {
 
     // For other events, just log
     if (!saleEvents.includes(eventStatus) && !refundEvents.includes(eventStatus)) {
-      console.log("Non-actionable event, logging only:", eventStatus);
 
       let userId = null;
       if (customerEmail) {
@@ -589,7 +525,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Webhook error:", error);
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

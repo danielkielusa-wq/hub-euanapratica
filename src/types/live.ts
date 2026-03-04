@@ -51,6 +51,24 @@ export interface LiveRegistrationWithProfile extends LiveRegistration {
   } | null;
 }
 
+export interface LiveGuestParticipant {
+  id: string;
+  live_id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  attended: boolean;
+  added_by: string;
+  created_at: string;
+}
+
+export interface AddGuestParticipantInput {
+  live_id: string;
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 export interface LiveAccessCheck {
   allowed: boolean;
   reason: string;

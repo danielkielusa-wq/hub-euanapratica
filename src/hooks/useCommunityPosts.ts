@@ -140,14 +140,11 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
         {
           onSuccess: (result) => {
             if (result.match) {
-              console.log('[Upsell] Card created:', result.impression_id, result.service);
               queryClient.invalidateQueries({ queryKey: ['post-upsell', data.id] });
             } else {
-              console.warn('[Upsell] No match. Reason:', result.reason || 'unknown', result);
             }
           },
           onError: (error) => {
-            console.error('[Upsell] Analysis failed:', error);
           },
         }
       );

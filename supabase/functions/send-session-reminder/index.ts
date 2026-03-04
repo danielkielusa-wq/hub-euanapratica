@@ -54,7 +54,6 @@ serve(async (req: Request) => {
       .eq("status", "scheduled");
 
     if (sessions24hError) {
-      console.error("Error fetching 24h sessions:", sessions24hError);
     }
 
     // Find sessions starting in ~1 hour
@@ -76,7 +75,6 @@ serve(async (req: Request) => {
       .eq("status", "scheduled");
 
     if (sessions1hError) {
-      console.error("Error fetching 1h sessions:", sessions1hError);
     }
 
     const notifications: Array<{
@@ -164,12 +162,10 @@ serve(async (req: Request) => {
         .insert(notifications);
 
       if (insertError) {
-        console.error("Error inserting notifications:", insertError);
         throw insertError;
       }
     }
 
-    console.log(`Created ${notifications.length} notifications`);
 
     return new Response(
       JSON.stringify({
@@ -184,7 +180,6 @@ serve(async (req: Request) => {
       }
     );
   } catch (error: unknown) {
-    console.error("Error in send-session-reminder:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),

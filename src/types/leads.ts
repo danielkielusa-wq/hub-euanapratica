@@ -478,6 +478,7 @@ export interface LeadTask {
   status: string;
   source: string;
   ai_generation_id: string | null;
+  whatsapp_message: string | null;
   completed_at: string | null;
   completed_by: string | null;
   created_by: string | null;

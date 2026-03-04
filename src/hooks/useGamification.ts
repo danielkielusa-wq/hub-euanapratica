@@ -22,7 +22,6 @@ export function useGamification() {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116' && error.status !== 406) {
-        console.error('[Gamification] fetchUserStats error:', error);
       }
 
       if (data) {
@@ -47,7 +46,6 @@ export function useGamification() {
         });
       }
     } catch (err) {
-      console.error('[Gamification] fetchUserStats failed:', err);
     }
   }, [user]);
 
@@ -60,7 +58,6 @@ export function useGamification() {
 
       setRanking(data || []);
     } catch (err) {
-      console.error('[Gamification] fetchRanking failed:', err);
     }
   }, []);
 

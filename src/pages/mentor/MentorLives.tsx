@@ -193,7 +193,7 @@ export default function MentorLives() {
                         size="sm"
                         variant="outline"
                         className="text-xs"
-                        onClick={() => handleStatusChange(live, 'completed')}
+                        onClick={() => navigate(`/mentor/lives/${live.id}`)}
                       >
                         Encerrar
                       </Button>

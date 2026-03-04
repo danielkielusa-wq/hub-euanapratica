@@ -80,8 +80,6 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
     primaryConfig.parameters?.model ||
     (primaryProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
 
-  console.log(`[llmService] Primary: ${primaryProvider}/${primaryModel} (${options.apiKey})`);
-
   // 2. Try primary
   try {
     const result = await callProvider(primaryConfig, primaryProvider, primaryModel, options, timeoutMs);
@@ -107,7 +105,6 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
     };
   } catch (primaryError) {
     const errMsg = primaryError instanceof Error ? primaryError.message : String(primaryError);
-    console.warn(`[llmService] Primary ${primaryProvider} failed: ${errMsg}`);
 
     // Log primary error cost (fire-and-forget)
     logApiCost({
@@ -124,13 +121,11 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
     // 3. Check if error is retryable and fallback exists
     if (!isRetryableError(primaryError) || !primaryConfig.fallback_api_key) {
       if (!primaryConfig.fallback_api_key) {
-        console.warn(`[llmService] No fallback configured for ${options.apiKey}`);
       }
       throw primaryError;
     }
 
     // 4. Try fallback
-    console.log(`[llmService] Attempting fallback: ${primaryConfig.fallback_api_key}`);
     const fallbackStart = Date.now();
 
     try {
@@ -138,8 +133,6 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
       const fallbackProvider = detectProviderFromUrl(fallbackConfig.base_url || "");
       const fallbackModel = fallbackConfig.parameters?.model ||
         (fallbackProvider === "anthropic" ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
-
-      console.log(`[llmService] Fallback: ${fallbackProvider}/${fallbackModel} (${primaryConfig.fallback_api_key})`);
 
       const result = await callProvider(fallbackConfig, fallbackProvider, fallbackModel, options, timeoutMs);
 
@@ -169,7 +162,6 @@ export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
       };
     } catch (fallbackError) {
       const fbErrMsg = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      console.error(`[llmService] Fallback also failed: ${fbErrMsg}`);
 
       // Log fallback error cost
       logApiCost({

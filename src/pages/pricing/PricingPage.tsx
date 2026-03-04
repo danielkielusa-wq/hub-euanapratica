@@ -75,7 +75,6 @@ export default function PricingPage() {
         .order('price', { ascending: true });
 
       if (error) {
-        console.error('Error fetching plans:', error);
         return;
       }
 
@@ -163,7 +162,6 @@ export default function PricingPage() {
         p_terms_version: 'v1.0-2026-02',
       });
       if (termsError) {
-        console.error('Failed to record terms acceptance:', termsError);
       }
     }
 

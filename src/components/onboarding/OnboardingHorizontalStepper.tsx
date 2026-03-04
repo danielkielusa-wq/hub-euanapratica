@@ -1,8 +1,9 @@
-import { Check, HelpCircle } from 'lucide-react';
+import { Check, HelpCircle, LogOut } from 'lucide-react';
 import { OnboardingStep, ONBOARDING_STEPS } from '@/types/onboarding';
 import { cn } from '@/lib/utils';
 import { usePlatformLogo } from '@/hooks/usePlatformLogo';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OnboardingHorizontalStepperProps {
   currentStep: OnboardingStep;
@@ -12,6 +13,14 @@ const stepLabels = ['INÍCIO', 'PERFIL', 'DESTINO', 'CARREIRA', 'FINAL'];
 
 export function OnboardingHorizontalStepper({ currentStep }: OnboardingHorizontalStepperProps) {
   const { logoHorizontal } = usePlatformLogo();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleExit = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
@@ -89,14 +98,24 @@ export function OnboardingHorizontalStepper({ currentStep }: OnboardingHorizonta
           })}
         </div>
 
-        {/* Help Link */}
-        <a
-          href="mailto:suporte@euanapratica.com"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <HelpCircle className="h-4 w-4" />
-          <span className="hidden sm:inline">Ajuda</span>
-        </a>
+        {/* Right actions */}
+        <div className="flex items-center gap-3">
+          <a
+            href="mailto:suporte@euanapratica.com"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Ajuda</span>
+          </a>
+          <button
+            onClick={handleExit}
+            title="Sair da conta"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Sair</span>
+          </button>
+        </div>
       </div>
     </header>
   );

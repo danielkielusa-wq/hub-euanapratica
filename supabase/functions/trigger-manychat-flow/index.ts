@@ -162,8 +162,6 @@ Deno.serve(async (req) => {
           metadata: { flow_name, fallback: true },
         });
 
-        console.log(`[trigger-manychat-flow] Email fallback for ${lead.email}: ${typedFlow.email_fallback_template}`);
-
         return new Response(
           JSON.stringify({
             success: true,
@@ -249,8 +247,6 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log(`[trigger-manychat-flow] ${flow_name} → ${lead.email} (${normalizedPhone})`);
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -261,7 +257,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: jsonHeaders }
     );
   } catch (error) {
-    console.error("[trigger-manychat-flow] Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: "Erro interno ao disparar flow" }),
       { status: 500, headers: jsonHeaders }
@@ -296,7 +291,6 @@ async function logFlowTrigger(
   try {
     await supabase.from("manychat_flow_logs").insert(data);
   } catch (err) {
-    console.warn("[trigger-manychat-flow] Failed to log flow trigger:", err);
   }
 }
 
@@ -307,6 +301,5 @@ async function logInteraction(
   try {
     await supabase.from("lead_interactions" as any).insert(data as any);
   } catch (err) {
-    console.warn("[trigger-manychat-flow] Failed to log interaction:", err);
   }
 }

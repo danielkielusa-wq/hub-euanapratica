@@ -42,27 +42,21 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
 
   const data = rows && rows.length > 0 ? rows[0] : null;
 
-  console.log(`[getApiConfig] Query for ${apiKey}:`, { found: !!data, error: error?.message });
 
   if (error || !data) {
-    console.warn(`API config not found in database: ${apiKey}`, error?.message);
     return getApiConfigLegacy(apiKey);
   }
 
-  console.log(`[getApiConfig] credentials type:`, typeof data.credentials);
   const credKeys = data.credentials ? Object.keys(data.credentials) : [];
-  console.log(`[getApiConfig] credentials keys:`, credKeys.join(", ") || "(empty)");
 
   // Check if credentials exist and are not null/empty
   const hasCredentials = data.credentials &&
     typeof data.credentials === 'object' &&
     Object.keys(data.credentials).length > 0;
 
-  console.log(`[getApiConfig] hasCredentials:`, hasCredentials);
 
   // Se tem credenciais no banco, usa diretamente
   if (hasCredentials) {
-    console.log(`[getApiConfig] ✅ Using credentials from database for ${apiKey}`);
     return {
       id: data.id,
       name: data.name,
@@ -77,7 +71,6 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
   }
 
   // Credenciais vazias no banco - tenta fallback para env vars
-  console.warn(`[getApiConfig] No credentials in DB for ${apiKey} - trying env vars`);
   try {
     const legacy = getApiConfigLegacy(apiKey);
     // Retorna dados do banco + credenciais do env var
@@ -105,7 +98,6 @@ export async function getApiConfig(apiKey: string): Promise<ApiConfig> {
  * Remove após todas APIs terem credenciais no banco.
  */
 export function getApiConfigLegacy(apiKey: string): ApiConfig {
-  console.warn(`⚠️ Using legacy env var for ${apiKey}`);
 
   switch (apiKey) {
     case "openai_api": {

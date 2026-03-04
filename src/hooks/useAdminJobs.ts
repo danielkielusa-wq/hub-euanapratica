@@ -247,7 +247,6 @@ export function useImportJobs() {
           }
         } catch (err: any) {
           const errorMsg = err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
-          console.error(`[import] Job ${i} failed:`, err);
           errors.push({
             index: i,
             error: errorMsg,

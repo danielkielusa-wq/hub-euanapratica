@@ -141,8 +141,6 @@ Deno.serve(async (req) => {
       }
     } catch { /* internal call or malformed — skip limit */ }
 
-    console.log(`[generate-daily-priorities] User: ${userId}, role: ${userRole}`);
-
     // ── Rate limit for assistant role ────────────────────────────
     if (userRole === "assistant" && userId) {
       const { data: limitRows, error: limitErr } = await supabase
@@ -150,9 +148,7 @@ Deno.serve(async (req) => {
 
       const limitData = limitRows?.[0] || limitRows;
       if (limitErr) {
-        console.warn("[generate-daily-priorities] Rate limit check failed:", limitErr.message);
       } else if (limitData && !limitData.allowed) {
-        console.log(`[generate-daily-priorities] Rate limited: ${limitData.used}/${limitData.max_limit}`);
         return new Response(
           JSON.stringify({
             error: "Limite diário atingido",
@@ -166,8 +162,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log("[generate-daily-priorities] Starting...");
-
     // ── 0. Load config from app_configs ─────────────────────────────
 
     const { data: apiConfigRow, error: apiConfigErr } = await supabase
@@ -175,8 +169,6 @@ Deno.serve(async (req) => {
       .select("value")
       .eq("key", "daily_priorities_api_config")
       .maybeSingle();
-
-    console.log(`[generate-daily-priorities] app_configs lookup: daily_priorities_api_config = ${JSON.stringify(apiConfigRow?.value)}, error: ${apiConfigErr?.message || "none"}`);
 
     const { data: promptConfigRow } = await supabase
       .from("app_configs")
@@ -193,7 +185,6 @@ Deno.serve(async (req) => {
     const selectedApiKey = apiConfigRow?.value || "anthropic_api";
     const rawLimitValue = leadLimitRow?.value;
     const leadLimit = Math.min(500, Math.max(5, parseInt(rawLimitValue || "80", 10) || 80));
-    console.log(`[generate-daily-priorities] RESOLVED: selectedApiKey="${selectedApiKey}" (from db: ${!!apiConfigRow?.value}), lead limit: ${leadLimit} (raw db value: ${JSON.stringify(rawLimitValue)})`);
 
     // ── 1. Query completed career_evaluations ───────────────────────
 
@@ -218,12 +209,10 @@ Deno.serve(async (req) => {
       .limit(leadLimit);
 
     if (leadsError) {
-      console.error("[generate-daily-priorities] Leads query failed:", leadsError.message);
       throw new Error(`Leads query failed: ${leadsError.message}`);
     }
 
     if (!leads?.length) {
-      console.log("[generate-daily-priorities] No completed leads found");
       return new Response(
         JSON.stringify({
           generated_at: new Date().toISOString(),
@@ -234,8 +223,6 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[generate-daily-priorities] Found ${leads.length} completed leads`);
 
     // ── 2. Query recent interactions (last 30 days) ─────────────────
 
@@ -331,9 +318,7 @@ Deno.serve(async (req) => {
     let apiConfigData;
     try {
       apiConfigData = await getApiConfig(selectedApiKey);
-      console.log(`[generate-daily-priorities] API config loaded: ${apiConfigData.name}`);
     } catch (configErr) {
-      console.error(`[generate-daily-priorities] Failed to get API config for "${selectedApiKey}":`, configErr);
       return new Response(
         JSON.stringify({
           error: `Erro de configuracao: API "${selectedApiKey}" nao encontrada. Verifique em /admin/configuracoes-apis.`,
@@ -350,22 +335,18 @@ Deno.serve(async (req) => {
     const selectedModel = apiConfigData.parameters?.model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4.1-mini");
 
-    console.log(`[generate-daily-priorities] API key: "${selectedApiKey}", name: "${apiConfigData.name}", base_url: "${apiConfigData.base_url}", provider: ${detectedProvider}, model: ${selectedModel}, leads: ${leadsContext.length}`);
-
     // ── 6. Build prompt ─────────────────────────────────────────────
 
     const rawPrompt = promptConfigRow?.value || DEFAULT_SYSTEM_PROMPT;
     const systemPrompt = rawPrompt.replace(/\{\{today\}\}/g, todayISO);
 
     const userMessage = JSON.stringify({ leads: leadsContext, today: todayISO });
-    console.log(`[generate-daily-priorities] User message size: ${(userMessage.length / 1024).toFixed(1)}KB`);
 
     // ── 7. Call LLM ─────────────────────────────────────────────────
 
     // Scale max_tokens based on lead count to avoid truncation
     // ~500 tokens base (summary + structure) + ~300 tokens per lead (across 7 categories)
     const dynamicMaxTokens = Math.min(8000, Math.max(3000, 500 + leadsContext.length * 300));
-    console.log(`[generate-daily-priorities] Dynamic max_tokens: ${dynamicMaxTokens} (for ${leadsContext.length} leads)`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55000);
@@ -398,14 +379,13 @@ Deno.serve(async (req) => {
 
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
-          console.error("[generate-daily-priorities] Anthropic error:", aiResponse.status, errorText.slice(0, 500));
+          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic API error ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
           throw new Error(`Anthropic API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
         }
 
         const aiData = await aiResponse.json();
         const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
         const stopReason = aiData.stop_reason || "unknown";
-        console.log(`[generate-daily-priorities] Anthropic stop_reason: ${stopReason}, tokens: ${inputTokens}/${outputTokens}`);
         if (stopReason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
         logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.content?.[0]?.text || "";
@@ -435,14 +415,13 @@ Deno.serve(async (req) => {
 
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
-          console.error("[generate-daily-priorities] OpenAI error:", aiResponse.status, errorText.slice(0, 500));
+          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `OpenAI API error ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
           throw new Error(`OpenAI API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
         }
 
         const aiData = await aiResponse.json();
         const { inputTokens: oaiIn, outputTokens: oaiOut } = extractTokenUsage(aiData, 'openai');
         const finishReason = aiData.choices?.[0]?.finish_reason || "unknown";
-        console.log(`[generate-daily-priorities] OpenAI finish_reason: ${finishReason}, tokens: ${oaiIn}/${oaiOut}`);
         if (finishReason === "length") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
         logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.choices?.[0]?.message?.content || "";
@@ -453,8 +432,6 @@ Deno.serve(async (req) => {
       if (!responseText) {
         throw new Error("Empty AI response");
       }
-
-      console.log(`[generate-daily-priorities] AI response length: ${responseText.length} chars`);
 
       // ── 8. Extract JSON from response ─────────────────────────────
 
@@ -469,7 +446,6 @@ Deno.serve(async (req) => {
       // Find the JSON object
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error("[generate-daily-priorities] No JSON found in response:", responseText.slice(0, 500));
         throw new Error("No valid JSON in AI response");
       }
 
@@ -478,7 +454,6 @@ Deno.serve(async (req) => {
       try {
         priorities = JSON.parse(jsonMatch[0]);
       } catch (parseErr) {
-        console.warn("[generate-daily-priorities] JSON parse failed, attempting repair...");
         // Attempt to repair truncated JSON by closing unclosed brackets/braces
         let repaired = jsonMatch[0];
         // Remove trailing incomplete string values (e.g. `"some text` without closing quote)
@@ -506,10 +481,7 @@ Deno.serve(async (req) => {
         }
         try {
           priorities = JSON.parse(repaired);
-          console.log("[generate-daily-priorities] JSON repair succeeded");
         } catch (repairErr) {
-          console.error("[generate-daily-priorities] JSON repair also failed:", (repairErr as Error).message);
-          console.error("[generate-daily-priorities] Raw response (last 500 chars):", responseText.slice(-500));
           throw new Error("Failed to parse AI response JSON (truncated output)");
         }
       }
@@ -518,11 +490,6 @@ Deno.serve(async (req) => {
       if (!priorities.categories || !Array.isArray(priorities.categories)) {
         throw new Error("Invalid response: missing categories array");
       }
-
-      console.log(
-        `[generate-daily-priorities] Success: ${priorities.categories.length} categories, ` +
-        `${priorities.total_actionable_leads || "?"} actionable leads`
-      );
 
       // Calculate remaining uses for assistant (after this successful call)
       let remainingUses: number | null = null;
@@ -547,7 +514,6 @@ Deno.serve(async (req) => {
       throw fetchError;
     }
   } catch (error) {
-    console.error("[generate-daily-priorities] Error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Erro interno ao gerar prioridades",

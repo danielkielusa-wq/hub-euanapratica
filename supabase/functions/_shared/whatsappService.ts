@@ -98,7 +98,6 @@ export async function findLeadByPhone(
     .limit(1000);
 
   if (error || !leads) {
-    console.error("[findLeadByPhone] Query error:", error?.message);
     return null;
   }
 

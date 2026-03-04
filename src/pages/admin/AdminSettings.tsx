@@ -98,6 +98,7 @@ export default function AdminSettings() {
   // Suggest Tasks config
   const [stApiConfig, setStApiConfig] = useState('anthropic_api');
   const [stPrompt, setStPrompt] = useState('');
+  const [stMaxTokens, setStMaxTokens] = useState('3000');
   const [hasStChanges, setHasStChanges] = useState(false);
 
   // Upsell config
@@ -160,6 +161,8 @@ export default function AdminSettings() {
     if (stApiValue) setStApiConfig(stApiValue);
     const stPromptValue = getConfigValue('suggest_tasks_prompt');
     if (stPromptValue !== undefined) setStPrompt(stPromptValue);
+    const stMaxTokensValue = getConfigValue('suggest_tasks_max_tokens');
+    if (stMaxTokensValue) setStMaxTokens(stMaxTokensValue);
 
     // Load upsell configs
     const upsellEnabledValue = getConfigValue('upsell_enabled');
@@ -251,11 +254,13 @@ export default function AdminSettings() {
   useEffect(() => {
     const originalApi = getConfigValue('suggest_tasks_api_config');
     const originalPrompt = getConfigValue('suggest_tasks_prompt');
+    const originalMaxTokens = getConfigValue('suggest_tasks_max_tokens');
     setHasStChanges(
       stApiConfig !== (originalApi || 'anthropic_api') ||
-      stPrompt !== (originalPrompt || '')
+      stPrompt !== (originalPrompt || '') ||
+      stMaxTokens !== (originalMaxTokens || '3000')
     );
-  }, [stApiConfig, stPrompt, configs]);
+  }, [stApiConfig, stPrompt, stMaxTokens, configs]);
 
   useEffect(() => {
     const originalEnabled = getConfigValue('upsell_enabled') !== 'false';
@@ -353,6 +358,7 @@ export default function AdminSettings() {
     await Promise.all([
       updateConfig('suggest_tasks_api_config', stApiConfig),
       updateConfig('suggest_tasks_prompt', stPrompt),
+      updateConfig('suggest_tasks_max_tokens', stMaxTokens),
     ]);
     setHasStChanges(false);
   };
@@ -1002,6 +1008,22 @@ export default function AdminSettings() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label>Max Tokens (resposta da IA)</Label>
+                      <Input
+                        type="number"
+                        min={500}
+                        max={8000}
+                        step={500}
+                        value={stMaxTokens}
+                        onChange={(e) => setStMaxTokens(e.target.value)}
+                        className="rounded-xl w-40"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Tokens máximos na resposta. Recomendado: 3000 com mensagens WhatsApp, 1500 sem. JSON truncado causa erro 500.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label>System Prompt</Label>
                       <Textarea
                         value={stPrompt}
@@ -1507,7 +1529,6 @@ function BrandingTab({ getConfigValue, updateConfig, isSaving, isLoading }: Bran
 
       await updateConfig(configKey, urlData.publicUrl);
     } catch (err: any) {
-      console.error('Logo upload error:', err);
     } finally {
       setUploading(false);
     }

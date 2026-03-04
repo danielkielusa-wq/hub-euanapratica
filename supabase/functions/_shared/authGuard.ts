@@ -99,7 +99,6 @@ export function validateInternalCall(req: Request): boolean {
 
   const dedicatedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
   if (!dedicatedSecret) {
-    console.error("[authGuard] INTERNAL_FUNCTION_SECRET not set — rejecting internal call. Set it via: npx supabase secrets set INTERNAL_FUNCTION_SECRET=<value>");
     return false;
   }
 

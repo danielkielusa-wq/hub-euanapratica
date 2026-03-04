@@ -71,19 +71,11 @@ Deno.serve(async (req: Request) => {
         .eq("milestone", milestone);
     }
 
-    console.log("[send-course-milestone]", {
-      user_id,
-      milestone,
-      course_name,
-      email_sent: emailResult.success,
-    });
-
     return new Response(
       JSON.stringify({ success: true, email_sent: emailResult.success }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[send-course-milestone] Error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

@@ -28,7 +28,6 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      console.error("Auth header missing or invalid format");
       return new Response(
         JSON.stringify({
           error: "Unauthorized",
@@ -52,7 +51,6 @@ Deno.serve(async (req) => {
     const { data: claims, error: claimsError } = await supabaseUser.auth.getUser(token);
 
     if (claimsError || !claims?.user) {
-      console.error("Token validation failed:", claimsError?.message || "No user found");
       return new Response(
         JSON.stringify({
           error: "Unauthorized",
@@ -102,7 +100,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (espacoError || !espaco) {
-      console.error("Espaco not found:", espaco_id);
       return new Response(
         JSON.stringify({
           error: "Not Found",
@@ -124,7 +121,6 @@ Deno.serve(async (req) => {
     const isAdmin = userRole?.role === "admin";
 
     if (!isMentor && !isAdmin) {
-      console.error("Permission denied for user:", userId);
       return new Response(
         JSON.stringify({
           error: "Forbidden",
@@ -168,7 +164,6 @@ Deno.serve(async (req) => {
         .eq("id", existingInvitation.id);
 
       if (updateError) {
-        console.error("Error updating invitation:", updateError);
         return new Response(
           JSON.stringify({ error: "Failed to update invitation" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -186,7 +181,6 @@ Deno.serve(async (req) => {
         });
 
       if (insertError) {
-        console.error("Error creating invitation:", insertError);
         return new Response(
           JSON.stringify({ error: "Failed to create invitation" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -214,8 +208,6 @@ Deno.serve(async (req) => {
       ? `${origin}/cadastro?token=${invitation.token}&espaco_id=${espaco_id}`
       : null;
 
-    console.log("Invitation created for:", email);
-    console.log("Invite link:", inviteLink);
 
     // Send email via template service
     let emailSent = false;
@@ -237,9 +229,7 @@ Deno.serve(async (req) => {
       emailSent = result.emailSent;
 
       if (result.emailSent) {
-        console.log("✅ Invitation email sent successfully to:", email);
       } else {
-        console.warn("Email not sent:", result.message);
       }
     }
 
@@ -254,7 +244,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-espaco-invitation:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

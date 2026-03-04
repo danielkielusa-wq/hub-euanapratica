@@ -142,6 +142,9 @@ verify_jwt = false
 [functions.send-live-cancelled]
 verify_jwt = false
 
+[functions.send-live-thankyou]
+verify_jwt = false
+
 [functions.check-unfinished-lives]
 verify_jwt = false
 

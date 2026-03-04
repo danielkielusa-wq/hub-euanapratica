@@ -155,7 +155,6 @@ export function useAIDailyPriorities() {
         description: result.summary?.slice(0, 100) || 'Briefing diário pronto.',
       });
     } catch (error: any) {
-      console.error('[useAIDailyPriorities] Error:', error);
       toast({
         title: 'Erro ao gerar prioridades',
         description: error.message || 'Tente novamente.',
@@ -197,7 +196,6 @@ export function useAIDailyPriorities() {
         } as any);
 
       if (interactionError) {
-        console.error('[markAsDone] Interaction insert error:', interactionError);
         throw interactionError;
       }
 
@@ -218,7 +216,6 @@ export function useAIDailyPriorities() {
         } as any);
 
       if (taskError) {
-        console.error('[markAsDone] Task insert error:', taskError);
         throw taskError;
       }
 
@@ -227,7 +224,6 @@ export function useAIDailyPriorities() {
 
       toast({ title: 'Marcado como concluído!' });
     } catch (error: any) {
-      console.error('[markAsDone] Error:', error);
       toast({
         title: 'Erro ao marcar como concluído',
         description: error.message || 'Tente novamente.',

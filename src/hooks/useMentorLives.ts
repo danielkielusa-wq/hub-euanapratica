@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import type { Live, CreateLiveInput, UpdateLiveInput, LiveRegistrationWithProfile } from '@/types/live';
+import type { Live, CreateLiveInput, UpdateLiveInput, LiveRegistrationWithProfile, LiveGuestParticipant, AddGuestParticipantInput } from '@/types/live';
 
 /**
  * Fetch mentor's own lives
@@ -226,6 +226,173 @@ export function useToggleAttended() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['live-registrations'] });
+    },
+  });
+}
+
+/**
+ * Fetch guest participants for a live
+ */
+export function useGuestParticipants(liveId: string | undefined) {
+  return useQuery({
+    queryKey: ['live-guest-participants', liveId],
+    queryFn: async (): Promise<LiveGuestParticipant[]> => {
+      const { data, error } = await supabase
+        .from('live_guest_participants')
+        .select('*')
+        .eq('live_id', liveId!)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as LiveGuestParticipant[];
+    },
+    enabled: !!liveId,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Add a guest participant to a live
+ */
+export function useAddGuestParticipant() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: AddGuestParticipantInput) => {
+      const { data, error } = await supabase
+        .from('live_guest_participants')
+        .insert({
+          live_id: input.live_id,
+          name: input.name,
+          email: input.email,
+          phone: input.phone || null,
+          added_by: user!.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as LiveGuestParticipant;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['live-guest-participants', data.live_id] });
+      toast({ title: 'Participante adicionado!' });
+    },
+    onError: (error: Error) => {
+      if (error.message.includes('live_guest_participants_live_id_email_key')) {
+        toast({
+          title: 'Email ja cadastrado',
+          description: 'Este email ja esta na lista de participantes desta live.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Erro ao adicionar participante',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    },
+  });
+}
+
+/**
+ * Toggle attended status for a guest participant
+ */
+export function useToggleGuestAttended() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ guestId, attended }: { guestId: string; attended: boolean }) => {
+      const { error } = await supabase
+        .from('live_guest_participants')
+        .update({ attended })
+        .eq('id', guestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['live-guest-participants'] });
+    },
+  });
+}
+
+/**
+ * Remove a guest participant
+ */
+export function useRemoveGuestParticipant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (guestId: string) => {
+      const { error } = await supabase
+        .from('live_guest_participants')
+        .delete()
+        .eq('id', guestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['live-guest-participants'] });
+      toast({ title: 'Participante removido.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao remover participante',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Close a live: updates status to completed, saves recording URL,
+ * and fires thank-you email to all participants (registered + guests)
+ */
+export function useCloseLive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ liveId, recordingUrl }: { liveId: string; recordingUrl?: string }) => {
+      const updatePayload: Record<string, unknown> = { status: 'completed' };
+      if (recordingUrl?.trim()) {
+        updatePayload.recording_url = recordingUrl.trim();
+      }
+
+      const { data, error } = await supabase
+        .from('lives')
+        .update(updatePayload)
+        .eq('id', liveId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Live;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-lives'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-live', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['live', data.slug] });
+      queryClient.invalidateQueries({ queryKey: ['lives'] });
+      toast({ title: 'Live encerrada!', description: 'Emails de agradecimento serao enviados.' });
+
+      // Fire-and-forget thank-you email
+      supabase.functions
+        .invoke('send-live-thankyou', {
+          body: { live_id: data.id },
+        })
+        .then(({ error }) => {
+          if (error) console.error('Live thankyou email error:', error);
+        });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao encerrar live',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 }

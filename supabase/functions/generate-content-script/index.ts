@@ -245,7 +245,6 @@ Deno.serve(async (req) => {
     };
 
     const userMessage = JSON.stringify(contextData);
-    console.log(`[generate-content-script] Idea: "${idea.title}", platform: ${platform}`);
 
     // ── 5. Load custom prompt ───────────────────────────────────────
 
@@ -260,7 +259,6 @@ Deno.serve(async (req) => {
     const systemPrompt = configs["content_studio_script_prompt"]?.trim() || DEFAULT_SCRIPT_PROMPT;
     const llmApiKey = configs["content_studio_script_api_key"]?.trim() || configs["content_studio_api_key"]?.trim() || "openai_api";
 
-    console.log(`[generate-content-script] Using LLM API key: ${llmApiKey}`);
 
     // ── 6. Call LLM ─────────────────────────────────────────────────
 
@@ -275,7 +273,6 @@ Deno.serve(async (req) => {
       metadata: { idea_id, platform },
     });
 
-    console.log(`[generate-content-script] LLM response (${result.provider}/${result.model}): ${result.content.length} chars`);
 
     // ── 7. Parse JSON (robust — handles fences, cleanup, truncation) ──
 
@@ -333,7 +330,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error("[generate-content-script] Insert error:", insertError.message);
       throw new Error(`Failed to save script: ${insertError.message}`);
     }
 
@@ -357,7 +353,6 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log(`[generate-content-script] Done: "${scriptData.title}" in ${durationMs}ms`);
 
     return new Response(
       JSON.stringify({ script: insertedScript }),
@@ -365,7 +360,6 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error("[generate-content-script] Error:", error);
 
     try {
       const supabase = createClient(

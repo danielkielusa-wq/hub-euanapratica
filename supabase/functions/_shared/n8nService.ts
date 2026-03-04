@@ -71,16 +71,12 @@ export async function dispatchN8NWebhook(
       .or(`trigger_event.eq.${triggerEvent},trigger_event.eq.${eventPrefix}.*`);
 
     if (error) {
-      console.error("[n8nService] Error querying automations:", error.message);
       return;
     }
 
     if (!automations || automations.length === 0) {
-      console.log(`[n8nService] No active automations for event: ${triggerEvent}`);
       return;
     }
-
-    console.log(`[n8nService] Found ${automations.length} automation(s) for ${triggerEvent}`);
 
     // Enrich payload with standard metadata
     const enrichedPayload = {
@@ -97,7 +93,6 @@ export async function dispatchN8NWebhook(
 
     await Promise.allSettled(promises);
   } catch (err) {
-    console.error("[n8nService] Dispatch error (swallowed):", err);
   }
 }
 
@@ -111,7 +106,6 @@ async function dispatchSingle(
 ): Promise<DispatchResult> {
   // Skip if no webhook URL configured
   if (!automation.webhook_url) {
-    console.log(`[n8nService] ${automation.name}: no webhook_url configured, skipping`);
     await logResult(supabase, automation, triggerEvent, payload, {
       automation_name: automation.name,
       status: "skipped",
@@ -166,10 +160,6 @@ async function dispatchSingle(
 
   await logResult(supabase, automation, triggerEvent, payload, result);
 
-  console.log(
-    `[n8nService] ${automation.name} → ${result.status} (${result.duration_ms ?? 0}ms)`
-  );
-
   return result;
 }
 
@@ -204,6 +194,5 @@ async function logResult(
       })
       .eq("id", automation.id);
   } catch (logErr) {
-    console.warn("[n8nService] Failed to log webhook result:", logErr);
   }
 }

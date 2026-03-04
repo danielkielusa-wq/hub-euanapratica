@@ -40,7 +40,6 @@ function calculateCost(
   if (!pricing || !model) return null;
   const modelPricing = pricing[model];
   if (!modelPricing) {
-    console.warn(`[apiCostService] No pricing found for model "${model}" — cost will be null. Add it to llm_model_pricing in app_configs.`);
     return null;
   }
 
@@ -78,7 +77,6 @@ async function getPricing(
       return cachedPricing;
     }
   } catch (err) {
-    console.warn("[apiCostService] Failed to fetch pricing config:", err);
   }
   return null;
 }
@@ -93,7 +91,6 @@ export function extractTokenUsage(
 ): { inputTokens: number | null; outputTokens: number | null } {
   const usage = (aiData as Record<string, Record<string, number>>)?.usage;
   if (!usage) {
-    console.warn(`[apiCostService] No 'usage' field in ${provider} response — tokens will be null. Response keys: ${aiData ? Object.keys(aiData).join(", ") : "null"}`);
     return { inputTokens: null, outputTokens: null };
   }
 
@@ -178,10 +175,8 @@ export async function logApiCost(options: LogApiCostOptions): Promise<void> {
     });
 
     if (insertError) {
-      console.warn(`[logApiCost] INSERT failed for ${options.edgeFunction} (provider: ${options.provider}, model: ${options.model}):`, insertError.message);
     }
   } catch (err) {
-    console.warn("[logApiCost] Failed to write api_cost_logs:", err);
   }
 }
 

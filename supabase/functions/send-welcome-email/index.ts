@@ -46,7 +46,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (profileError || !profile) {
-      console.error("Profile not found:", user_id);
       return new Response(
         JSON.stringify({ error: "Profile not found" }),
         { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
@@ -64,14 +63,11 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log("Welcome email result:", { userId: user_id, to: profile.email, ...result });
-
     return new Response(
       JSON.stringify({ success: result.success, message: result.message, emailSent: result.emailSent }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-welcome-email:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

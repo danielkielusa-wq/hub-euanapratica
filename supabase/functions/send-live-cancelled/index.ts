@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (liveError || !live) {
-      console.error("Live not found:", live_id);
       return new Response(
         JSON.stringify({ error: "Live not found" }),
         { status: 404, headers: { ...cors, "Content-Type": "application/json" } }
@@ -106,10 +105,6 @@ Deno.serve(async (req) => {
         .select("id, full_name, preferred_name, email")
         .in("id", userIds);
 
-      console.log(
-        `[send-live-cancelled] Sending cancellation to ${profiles?.length || 0} participants for: ${live.title}`
-      );
-
       for (const profile of profiles || []) {
         if (!profile.email) continue;
         try {
@@ -136,10 +131,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-
-    console.log(
-      `[send-live-cancelled] Participant emails: ${participantEmailsSent}/${registrationCount}`
-    );
 
     // 6. Send confirmation email to mentor
     let mentorEmailSent = false;
@@ -173,10 +164,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(
-      `[send-live-cancelled] Done: ${participantEmailsSent} participant + ${mentorEmailSent ? 1 : 0} mentor emails sent`
-    );
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -188,7 +175,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-live-cancelled:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

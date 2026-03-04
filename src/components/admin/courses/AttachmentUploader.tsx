@@ -56,7 +56,6 @@ export function AttachmentUploader({ lessonId }: AttachmentUploaderProps) {
         });
       }
     } catch (err: any) {
-      console.error('Attachment upload error:', err);
     } finally {
       setUploading(false);
     }

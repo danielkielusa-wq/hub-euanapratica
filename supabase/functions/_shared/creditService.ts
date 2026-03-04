@@ -52,7 +52,6 @@ export async function getCreditCosts(
       return JSON.parse(data.value) as CreditCosts;
     }
   } catch (err) {
-    console.error("[creditService] Failed to read credit_costs:", err);
   }
   return { ...DEFAULT_CREDIT_COSTS };
 }
@@ -71,7 +70,6 @@ export async function checkUnifiedCredits(
   });
 
   if (error || !data) {
-    console.error("[creditService] get_unified_credits failed:", error);
     return {
       allowed: false,
       remaining: 0,
@@ -138,22 +136,11 @@ export async function recordCreditUsage(
       });
 
       if (!error) return true;
-      console.error(
-        `[creditService] Usage record attempt ${attempt + 1} failed:`,
-        error
-      );
     } catch (err) {
-      console.error(
-        `[creditService] Usage record attempt ${attempt + 1} threw:`,
-        err
-      );
     }
     if (attempt < maxRetries - 1) {
       await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
     }
   }
-  console.error(
-    `[creditService] All ${maxRetries} usage record attempts failed for user=${userId} app=${appId} credits=${creditsUsed}`
-  );
   return false;
 }

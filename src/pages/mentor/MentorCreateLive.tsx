@@ -176,7 +176,6 @@ export default function MentorCreateLive() {
           body: { live_id: data.id },
         });
         if (error) {
-          console.error('Promotion email error:', error);
           toast({ title: 'Erro ao enviar divulgação', description: error.message, variant: 'destructive' });
         } else {
           toast({ title: 'Email de divulgação enviado!' });

@@ -112,7 +112,6 @@ Deno.serve(async (req) => {
       });
 
     if (enrollmentError) {
-      console.error("Error creating enrollment:", enrollmentError);
       return new Response(
         JSON.stringify({ error: "Failed to enroll user" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -130,7 +129,6 @@ Deno.serve(async (req) => {
       .eq("id", invitation.id);
 
     if (updateError) {
-      console.error("Error updating invitation:", updateError);
     }
 
     // Get espaco name for response
@@ -150,7 +148,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in process-invitation:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

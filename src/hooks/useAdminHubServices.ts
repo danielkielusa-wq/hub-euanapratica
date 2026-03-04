@@ -262,7 +262,6 @@ export function useDeleteHubService() {
       toast.success('Produto removido com sucesso!');
     },
     onError: (error) => {
-      console.error('Erro ao remover produto:', error);
       toast.error('Erro ao remover produto');
     },
   });

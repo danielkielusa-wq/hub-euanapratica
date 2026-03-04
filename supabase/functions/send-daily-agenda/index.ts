@@ -251,8 +251,6 @@ Deno.serve(async (req: Request) => {
       results.email = `error: ${err}`;
     }
 
-    console.log(`[send-daily-agenda] ${DAY_NAMES[dayIndex]}:`, results);
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -263,7 +261,6 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[send-daily-agenda] Unexpected error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...cors, "Content-Type": "application/json" },

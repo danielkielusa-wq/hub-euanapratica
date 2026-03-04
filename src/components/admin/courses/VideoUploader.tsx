@@ -99,7 +99,6 @@ export function VideoUploader({
 
       onUploadComplete?.();
     } catch (err: any) {
-      console.error('Video upload error:', err);
       if (err?.context) console.error('Error context:', err.context);
       const msg = err?.message || 'Upload failed';
       setError(msg);

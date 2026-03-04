@@ -169,7 +169,6 @@ Deno.serve(async (req) => {
     contextData.requested_count = Math.min(count, 10);
 
     const userMessage = JSON.stringify(contextData);
-    console.log(`[generate-content-ideas] Context: ${(userMessage.length / 1024).toFixed(1)}KB, insights: ${insight_ids?.length || 0}, free_text: ${free_text ? "yes" : "no"}`);
 
     // ── 2. Load custom prompt ───────────────────────────────────────
 
@@ -184,7 +183,6 @@ Deno.serve(async (req) => {
     const systemPrompt = configs["content_studio_ideas_prompt"]?.trim() || DEFAULT_IDEAS_PROMPT;
     const llmApiKey = configs["content_studio_ideas_api_key"]?.trim() || configs["content_studio_api_key"]?.trim() || "openai_api";
 
-    console.log(`[generate-content-ideas] Using LLM API key: ${llmApiKey}`);
 
     // ── 3. Call LLM ─────────────────────────────────────────────────
 
@@ -199,7 +197,6 @@ Deno.serve(async (req) => {
       metadata: { insight_count: insight_ids?.length || 0, has_free_text: !!free_text },
     });
 
-    console.log(`[generate-content-ideas] LLM response (${result.provider}/${result.model}): ${result.content.length} chars`);
 
     // ── 4. Parse JSON (robust — handles fences, wrappers, truncation) ──
 
@@ -259,7 +256,6 @@ Deno.serve(async (req) => {
       .select("id, title, content_type, category, estimated_virality_score, hooks, metadata, created_at");
 
     if (insertError) {
-      console.error("[generate-content-ideas] Insert error:", insertError.message);
       throw new Error(`Failed to save ideas: ${insertError.message}`);
     }
 
@@ -292,7 +288,6 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log(`[generate-content-ideas] Done: ${ideas.length} ideas in ${durationMs}ms`);
 
     return new Response(
       JSON.stringify({
@@ -303,7 +298,6 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error("[generate-content-ideas] Error:", error);
 
     try {
       const supabase = createClient(

@@ -47,10 +47,7 @@ serve(async (req) => {
 
     const { postId, title, content, userId }: AnalyzePostRequest = await req.json();
 
-    console.log(`[Upsell] === START === Post: "${title}" (${postId}) User: ${userId}`);
-
     if (!postId || !title || !content || !userId) {
-      console.error("[Upsell] Missing required fields:", { postId: !!postId, title: !!title, content: !!content, userId: !!userId });
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -66,10 +63,7 @@ serve(async (req) => {
       .eq("key", "upsell_enabled")
       .maybeSingle();
 
-    console.log("[Upsell] Step 1 - upsell_enabled:", upsellEnabledConfig?.value, "error:", enabledError?.message);
-
     if (upsellEnabledConfig?.value !== "true") {
-      console.log("[Upsell] STOPPED: System disabled globally (config value:", upsellEnabledConfig?.value, ")");
       return new Response(
         JSON.stringify({ match: false, reason: "system_disabled" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -82,15 +76,11 @@ serve(async (req) => {
       { p_user_id: userId }
     );
 
-    console.log("[Upsell] Step 2 - Rate limit OK:", rateLimitOk, "error:", rateLimitError?.message);
-
     if (rateLimitError) {
-      console.error("[Upsell] Rate limit RPC failed - function may not exist:", rateLimitError.message);
       throw new Error(`Rate limit check failed: ${rateLimitError.message}`);
     }
 
     if (!rateLimitOk) {
-      console.log(`[Upsell] STOPPED: User ${userId} hit rate limit`);
       return new Response(
         JSON.stringify({ match: false, reason: "rate_limited" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -105,7 +95,6 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingImpression) {
-      console.log(`[Upsell] STOPPED: Post ${postId} already has upsell`);
       return new Response(
         JSON.stringify({ match: false, reason: "already_exists" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -121,13 +110,10 @@ serve(async (req) => {
       .eq("is_visible_for_upsell", true)
       .eq("is_visible_in_hub", true);
 
-    console.log("[Upsell] Step 3 - Services found:", services?.length || 0, "error:", servicesError?.message);
     if (services) {
-      console.log("[Upsell] Services with upsell enabled:", services.map(s => `${s.name} (keywords: ${s.keywords?.join(', ') || 'none'})`));
     }
 
     if (servicesError || !services || services.length === 0) {
-      console.log("[Upsell] STOPPED: No services available for upsell. Check is_visible_for_upsell=true AND is_visible_in_hub=true");
       return new Response(
         JSON.stringify({ match: false, reason: "no_services" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -143,18 +129,12 @@ serve(async (req) => {
       );
     });
 
-    console.log("[Upsell] Step 4 - Post text (lowercase):", postText.substring(0, 200));
-    console.log("[Upsell] Matched services:", matchedServices.length, matchedServices.map(s => s.name));
-
     if (matchedServices.length === 0) {
-      console.log("[Upsell] STOPPED: No keyword matches found - skipping AI analysis");
       return new Response(
         JSON.stringify({ match: false, reason: "no_keyword_match" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[Upsell] Pre-filter passed: ${matchedServices.length} services matched`);
 
     // ========== ANÁLISE COM CLAUDE ==========
 
@@ -171,14 +151,11 @@ serve(async (req) => {
       ]);
 
     if (configsError) {
-      console.error("[Upsell] Error fetching configs:", configsError);
     }
 
     const configMap = Object.fromEntries(
       configs?.map((c) => [c.key, c.value]) || []
     );
-
-    console.log(`[Upsell] Configs loaded: ${JSON.stringify(Object.keys(configMap))}`);
 
     const promptTemplate = configMap.upsell_prompt_template || "";
     const selectedApiKey = configMap.upsell_api_config || "anthropic_api";
@@ -186,22 +163,17 @@ serve(async (req) => {
     const temperature = parseFloat(configMap.upsell_temperature || "0");
 
     // Buscar API config (admin-selectable)
-    console.log(`[Upsell] Step 5 - API config from db: ${configMap.upsell_api_config || 'NOT FOUND'}, using: ${selectedApiKey}`);
     let apiConfig;
     try {
       apiConfig = await getApiConfig(selectedApiKey);
-      console.log(`[Upsell] API config loaded successfully: ${apiConfig.name}`);
     } catch (configErr) {
-      console.error(`[Upsell] Failed to get API config for "${selectedApiKey}":`, configErr);
       throw new Error(`API "${selectedApiKey}" não encontrada. Verifique em /admin/configuracoes-apis. Details: ${configErr instanceof Error ? configErr.message : String(configErr)}`);
     }
 
     const hasApiKey = !!apiConfig.credentials?.api_key;
     const apiKeyPreview = hasApiKey ? apiConfig.credentials.api_key.substring(0, 10) + "..." : "MISSING";
-    console.log("[Upsell] API key found:", hasApiKey, "preview:", apiKeyPreview, "base_url:", apiConfig.base_url);
 
     if (!apiConfig.credentials.api_key) {
-      console.error(`[Upsell] STOPPED: API key not configured for ${selectedApiKey}`);
       throw new Error(`API key not configured for ${selectedApiKey}`);
     }
 
@@ -213,8 +185,6 @@ serve(async (req) => {
     // then per-app override, then sensible defaults
     const model = apiConfig.parameters?.model || configMap.upsell_model ||
       (isAnthropic ? "claude-haiku-4-5-20251001" : "gpt-4o-mini");
-
-    console.log(`[Upsell] API: "${selectedApiKey}" (${apiConfig.name}), base_url: "${apiConfig.base_url}", provider: ${detectedProvider}, model: ${model}`);
 
     // Preparar serviços para o prompt
     const servicesJson = JSON.stringify(
@@ -233,11 +203,7 @@ serve(async (req) => {
       .replace("{post_content}", `Título: ${title}\n\nConteúdo: ${content}`)
       .replace("{services_json}", servicesJson);
 
-    console.log("[Upsell] Step 5.5 - Prompt template length:", promptTemplate.length, "empty?", !promptTemplate);
-    console.log("[Upsell] Step 5.5 - Final prompt (first 500 chars):", prompt.substring(0, 500));
-
     // Chamar API de IA
-    console.log(`[Upsell] Step 6 - Calling ${isAnthropic ? "Anthropic" : "OpenAI"} API. Model:`, model, "Max tokens:", maxTokens);
 
     let responseText: string;
     const llmStartTime = Date.now();
@@ -261,7 +227,7 @@ serve(async (req) => {
 
       if (!claudeResponse.ok) {
         const errorText = await claudeResponse.text();
-        console.error("[Upsell] Anthropic API error:", claudeResponse.status, errorText);
+        logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: detectedProvider, model, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic API error ${claudeResponse.status}`, metadata: { post_id: postId, http_status: claudeResponse.status } });
         throw new Error(`Anthropic API failed: ${claudeResponse.status} - ${errorText}`);
       }
 
@@ -287,7 +253,7 @@ serve(async (req) => {
 
       if (!openaiResponse.ok) {
         const errorText = await openaiResponse.text();
-        console.error("[Upsell] OpenAI API error:", openaiResponse.status, errorText);
+        logApiCost({ userId, edgeFunction: 'analyze-post-for-upsell', provider: detectedProvider, model, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `OpenAI API error ${openaiResponse.status}`, metadata: { post_id: postId, http_status: openaiResponse.status } });
         throw new Error(`OpenAI API failed: ${openaiResponse.status} - ${errorText}`);
       }
 
@@ -297,21 +263,17 @@ serve(async (req) => {
       responseText = openaiData.choices?.[0]?.message?.content || JSON.stringify({ match: false });
     }
 
-    console.log("[Upsell] Step 7 - Claude raw response:", responseText);
-
     // Parse resposta - handle markdown-wrapped JSON (```json ... ```)
     let jsonText = responseText.trim();
     const jsonBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonBlockMatch) {
       jsonText = jsonBlockMatch[1].trim();
-      console.log("[Upsell] Extracted JSON from markdown block:", jsonText);
     }
 
     let analysis: ClaudeResponse;
     try {
       analysis = JSON.parse(jsonText);
     } catch {
-      console.error("[Upsell] Failed to parse Claude response as JSON. Raw:", responseText);
       return new Response(
         JSON.stringify({ match: false, reason: "parse_error" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -320,7 +282,6 @@ serve(async (req) => {
 
     // Verificar se há match
     if (!analysis.match || !analysis.service_id) {
-      console.log("No match found by AI");
       return new Response(
         JSON.stringify({ match: false, reason: "no_ai_match" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -329,7 +290,6 @@ serve(async (req) => {
 
     // Verificar confidence threshold
     if (!analysis.confidence || analysis.confidence < 0.7) {
-      console.log(`Low confidence: ${analysis.confidence}`);
       return new Response(
         JSON.stringify({ match: false, reason: "low_confidence" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -346,7 +306,6 @@ serve(async (req) => {
     );
 
     if (isBlacklisted) {
-      console.log(`Service ${analysis.service_id} is blacklisted for user ${userId}`);
       return new Response(
         JSON.stringify({ match: false, reason: "blacklisted" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -361,7 +320,6 @@ serve(async (req) => {
       .single();
 
     if (!service) {
-      console.log(`Service ${analysis.service_id} not found`);
       return new Response(
         JSON.stringify({ match: false, reason: "service_not_found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -391,11 +349,8 @@ serve(async (req) => {
       .single();
 
     if (impressionError) {
-      console.error("Failed to create impression:", impressionError);
       throw impressionError;
     }
-
-    console.log(`[Upsell] === SUCCESS === Impression created: ${impression.id} for service: ${service.name}`);
 
     // Retornar dados para o frontend
     return new Response(
@@ -419,7 +374,6 @@ serve(async (req) => {
     const errorMessage = error instanceof Error
       ? error.message
       : (error as Record<string, unknown>)?.message || JSON.stringify(error);
-    console.error("[Upsell] === ERROR ===", errorMessage);
     // Return 200 with error in body so supabase.functions.invoke can read it
     return new Response(
       JSON.stringify({

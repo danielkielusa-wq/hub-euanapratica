@@ -105,7 +105,6 @@ export async function logSubscriptionEvent(
   );
 
   if (error) {
-    console.error("Failed to log subscription event:", error);
   }
 }
 
@@ -197,14 +196,7 @@ async function createSubscriptionOrder(
   const { error } = await supabase.from("orders").insert(orderData);
 
   if (error) {
-    console.error("Failed to create subscription order:", error);
   } else {
-    console.log("Subscription order created:", {
-      userId,
-      planId,
-      type: orderData.product_type,
-      amount: amountInCurrency,
-    });
   }
 }
 
@@ -223,13 +215,11 @@ export async function activateSubscription(
 ): Promise<{ success: boolean; userId?: string }> {
   const email = payload.customer?.email;
   if (!email) {
-    console.error("activateSubscription: No customer email");
     return { success: false };
   }
 
   const profile = await findProfileByEmail(email, supabase);
   if (!profile) {
-    console.warn("activateSubscription: No profile for email:", email);
     return { success: false };
   }
 
@@ -275,15 +265,8 @@ export async function activateSubscription(
     .upsert(subscriptionData, { onConflict: "user_id" });
 
   if (error) {
-    console.error("activateSubscription: Failed to upsert:", error);
     return { success: false, userId: profile.id };
   }
-
-  console.log("Subscription activated:", {
-    userId: profile.id,
-    planId: plan.id,
-    cycle,
-  });
 
   // Create order record for user-facing transaction history
   // Get subscription ID after upsert
@@ -328,7 +311,6 @@ export async function handleSubscriptionDelayed(
     .maybeSingle();
 
   if (!sub) {
-    console.warn("handleSubscriptionDelayed: No active subscription for:", profile.id);
     return { success: false, userId: profile.id };
   }
 
@@ -360,15 +342,8 @@ export async function handleSubscriptionDelayed(
     .eq("id", sub.id);
 
   if (error) {
-    console.error("handleSubscriptionDelayed: Update failed:", error);
     return { success: false, userId: profile.id };
   }
-
-  console.log("Dunning updated:", {
-    userId: profile.id,
-    stage: newStage,
-    status: newStatus,
-  });
 
   return { success: true, userId: profile.id };
 }
@@ -418,7 +393,6 @@ export async function handleSubscriptionCancelled(
       .eq("id", sub.id);
   }
 
-  console.log("Subscription cancellation processed:", { userId: profile.id });
   return { success: true, userId: profile.id };
 }
 
@@ -444,7 +418,6 @@ export async function handleSubscriptionResumed(
     .maybeSingle();
 
   if (!sub) {
-    console.warn("handleSubscriptionResumed: No subscription for:", profile.id);
     return { success: false, userId: profile.id };
   }
 
@@ -464,11 +437,9 @@ export async function handleSubscriptionResumed(
     .eq("id", sub.id);
 
   if (error) {
-    console.error("handleSubscriptionResumed: Update failed:", error);
     return { success: false, userId: profile.id };
   }
 
-  console.log("Subscription resumed:", { userId: profile.id });
   return { success: true, userId: profile.id };
 }
 
@@ -495,7 +466,6 @@ export async function handleSubscriptionEnded(
     .maybeSingle();
 
   if (!sub) {
-    console.warn("handleSubscriptionEnded: No subscription for:", profile.id);
     return { success: false, userId: profile.id };
   }
 
@@ -513,14 +483,9 @@ export async function handleSubscriptionEnded(
     .eq("id", sub.id);
 
   if (error) {
-    console.error("handleSubscriptionEnded: Update failed:", error);
     return { success: false, userId: profile.id };
   }
 
-  console.log("Subscription ended (all charges paid):", {
-    userId: profile.id,
-    accessUntil: sub.expires_at,
-  });
   return { success: true, userId: profile.id };
 }
 
@@ -556,11 +521,8 @@ export async function handleSubscriptionRefund(
     .eq("user_id", profile.id);
 
   if (error) {
-    console.error("handleSubscriptionRefund: Update failed:", error);
     return { success: false, userId: profile.id };
   }
-
-  console.log("Subscription refunded, downgraded to basic:", { userId: profile.id });
 
   // Mark the most recent subscription order as refunded
   const { error: orderError } = await supabase
@@ -575,9 +537,7 @@ export async function handleSubscriptionRefund(
     .limit(1);
 
   if (orderError) {
-    console.error("Failed to mark order as refunded:", orderError);
   } else {
-    console.log("Latest subscription order marked as refunded:", { userId: profile.id });
   }
 
   return { success: true, userId: profile.id };
@@ -686,12 +646,9 @@ export async function handleSubscriptionEvent(
   const eventStatus = (payload.status || payload.event || "").toLowerCase();
   const transactionId = extractTransactionId(payload);
 
-  console.log("Subscription event:", { eventStatus, transactionId, planId: plan.id });
-
   // Idempotency check
   const alreadyProcessed = await isAlreadyProcessed(transactionId, eventStatus, supabase);
   if (alreadyProcessed) {
-    console.log("Duplicate event skipped:", { transactionId, eventStatus });
     return { success: true, action: "already_processed" };
   }
 
@@ -725,7 +682,6 @@ export async function handleSubscriptionEvent(
     }
     action = "log_only";
   } else {
-    console.warn("Unknown subscription event:", eventStatus);
     action = "unknown";
   }
 

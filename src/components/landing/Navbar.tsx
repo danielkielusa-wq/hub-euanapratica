@@ -39,8 +39,8 @@ export default function Navbar() {
     <nav
       className={cn(
         'fixed top-0 left-0 right-0 z-50 py-0 transition-all duration-200',
-        scrolled
-          ? 'bg-white/90 backdrop-blur-xl shadow-sm'
+        scrolled || mobileOpen
+          ? 'bg-white/95 backdrop-blur-xl shadow-sm'
           : 'bg-transparent'
       )}
     >

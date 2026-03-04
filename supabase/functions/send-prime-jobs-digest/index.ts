@@ -96,7 +96,6 @@ Deno.serve(async (req) => {
     const { test_email, user_ids } = requestBody;
 
     if (!resendConfig?.credentials?.api_key) {
-      console.warn("RESEND_API_KEY not configured - emails will not be sent");
       return new Response(
         JSON.stringify({ success: false, message: "Email not configured", emailsSent: 0 }),
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
@@ -117,7 +116,6 @@ Deno.serve(async (req) => {
       .limit(15);
 
     if (jobsError) {
-      console.error("Error fetching jobs:", jobsError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch jobs" }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
@@ -125,14 +123,12 @@ Deno.serve(async (req) => {
     }
 
     if (!newJobs || newJobs.length === 0) {
-      console.log("No new jobs this week, skipping digest");
       return new Response(
         JSON.stringify({ success: true, message: "No new jobs this week", emailsSent: 0 }),
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Found ${newJobs.length} new jobs this week`);
 
     // Build user query
     let userQuery = supabase
@@ -161,7 +157,6 @@ Deno.serve(async (req) => {
     const { data: users, error: usersError } = await userQuery;
 
     if (usersError) {
-      console.error("Error fetching users:", usersError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch users" }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
@@ -182,14 +177,12 @@ Deno.serve(async (req) => {
         });
 
     if (recipients.length === 0) {
-      console.log("No eligible recipients found");
       return new Response(
         JSON.stringify({ success: true, message: "No eligible recipients", emailsSent: 0 }),
         { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Sending digest to ${recipients.length} recipients`);
 
     let emailsSent = 0;
     let emailsFailed = 0;
@@ -373,18 +366,14 @@ Deno.serve(async (req) => {
 
         if (emailResponse.ok) {
           emailsSent++;
-          console.log(`✅ Digest sent to: ${recipient.email}`);
         } else {
           emailsFailed++;
-          console.error(`❌ Failed to send to ${recipient.email}:`, emailResult);
         }
       } catch (emailError) {
         emailsFailed++;
-        console.error(`❌ Error sending to ${recipient.email}:`, emailError);
       }
     }
 
-    console.log(`Digest complete: ${emailsSent} sent, ${emailsFailed} failed`);
 
     return new Response(
       JSON.stringify({
@@ -397,7 +386,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in send-prime-jobs-digest:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

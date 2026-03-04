@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingProfile, useUpdateOnboarding, useCompleteOnboarding } from '@/hooks/useOnboarding';
@@ -37,10 +37,12 @@ export default function Onboarding() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasExistingCareerData, setHasExistingCareerData] = useState(false);
+  const formInitialized = useRef(false);
 
-  // Initialize form data from profile
+  // Initialize form data from profile (only once — prevents background refetches from overwriting user's in-progress changes)
   useEffect(() => {
-    if (profile) {
+    if (profile && !formInitialized.current) {
+      formInitialized.current = true;
       setFormData({
         full_name: profile.full_name || '',
         preferred_name: profile.preferred_name,

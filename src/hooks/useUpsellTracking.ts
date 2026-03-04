@@ -13,10 +13,8 @@ export function useUpsellTracking() {
       if (error) throw error;
     },
     onSuccess: (_, impressionId) => {
-      console.log('Upsell click tracked:', impressionId);
     },
     onError: (error) => {
-      console.error('Failed to track upsell click:', error);
     },
   });
 
@@ -28,12 +26,10 @@ export function useUpsellTracking() {
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      console.log('Upsell dismissed:', variables);
       // Invalidate queries para esconder o card
       queryClient.invalidateQueries({ queryKey: ['post-upsell'] });
     },
     onError: (error) => {
-      console.error('Failed to track upsell dismiss:', error);
       toast.error('Erro ao processar ação');
     },
   });
@@ -46,11 +42,9 @@ export function useUpsellTracking() {
       if (error) throw error;
     },
     onSuccess: (_, impressionId) => {
-      console.log('Upsell conversion tracked:', impressionId);
       toast.success('Obrigado pela compra!');
     },
     onError: (error) => {
-      console.error('Failed to track upsell conversion:', error);
     },
   });
 

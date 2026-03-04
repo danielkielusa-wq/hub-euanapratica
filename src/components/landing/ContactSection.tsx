@@ -23,7 +23,6 @@ export default function ContactSection() {
       toast.success('Mensagem enviada! Retornaremos em breve.');
       setForm({ name: '', email: '', message: '' });
     } catch (err) {
-      console.error('Contact form error:', err);
       toast.error('Erro ao enviar mensagem. Tente novamente.');
     } finally {
       setSending(false);

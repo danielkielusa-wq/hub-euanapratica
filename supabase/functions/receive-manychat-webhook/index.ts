@@ -79,7 +79,6 @@ Deno.serve(async (req) => {
       const envSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET") || "";
 
       if (!envSecret || !timingSafeEqual(internalSecret, envSecret)) {
-        console.warn("[receive-manychat-webhook] Invalid webhook secret");
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
           { status: 401, headers: jsonHeaders }
@@ -117,9 +116,6 @@ Deno.serve(async (req) => {
     const lead = await findLeadByPhone(supabase, normalizedPhone);
 
     if (!lead) {
-      console.warn(
-        `[receive-manychat-webhook] Lead not found for phone ${normalizedPhone}. Flow: ${flow_name}, action: ${action_type}`
-      );
       // Return 200 to not block ManyChat retries
       return new Response(
         JSON.stringify({ success: true, warning: "Lead not found" }),
@@ -154,7 +150,6 @@ Deno.serve(async (req) => {
         },
       } as any);
     } catch (logErr) {
-      console.warn("[receive-manychat-webhook] Failed to log interaction:", logErr);
     }
 
     // 6. Update manychat_flow_logs status if matching log exists
@@ -179,20 +174,14 @@ Deno.serve(async (req) => {
             .eq("id", existingLog.id);
         }
       } catch (updateErr) {
-        console.warn("[receive-manychat-webhook] Failed to update flow log:", updateErr);
       }
     }
-
-    console.log(
-      `[receive-manychat-webhook] ${action_type || "unknown"} from ${lead.name} (${normalizedPhone}) — ${flow_name || "unknown flow"}`
-    );
 
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: jsonHeaders }
     );
   } catch (error) {
-    console.error("[receive-manychat-webhook] Error:", error);
     return new Response(
       JSON.stringify({ success: false, error: "Internal error" }),
       { status: 500, headers: jsonHeaders }

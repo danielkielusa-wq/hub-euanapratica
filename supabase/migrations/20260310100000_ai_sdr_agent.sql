@@ -70,7 +70,7 @@ CREATE TABLE public.sdr_prospects (
   source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'linkedin_import', 'csv', 'api')),
   source_metadata JSONB,
   campaign_id UUID REFERENCES sdr_campaigns(id) ON DELETE SET NULL,
-  converted_evaluation_id UUID REFERENCES career_evaluations(id) ON DELETE SET NULL,
+  converted_evaluation_id UUID,  -- soft ref to career_evaluations(id)
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),

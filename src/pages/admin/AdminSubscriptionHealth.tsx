@@ -56,7 +56,6 @@ export default function AdminSubscriptionHealth() {
       .select('status, plan_id, billing_cycle');
 
     if (error) {
-      console.error('Error fetching stats:', error);
       setIsLoading(false);
       return;
     }

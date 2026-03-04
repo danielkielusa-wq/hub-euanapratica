@@ -219,7 +219,6 @@ export function useCurriculoAnalysis() {
           })
           .then(({ error: saveError }) => {
             if (saveError) {
-              console.error('Failed to save report to database:', saveError);
             }
           });
       }

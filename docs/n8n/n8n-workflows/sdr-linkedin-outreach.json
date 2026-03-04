@@ -1,0 +1,155 @@
+{
+  "name": "ENP - SDR LinkedIn Outreach",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sdr-send-linkedin",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "sdr-li-0001",
+      "name": "Webhook SDR LinkedIn",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "sdr-send-linkedin"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and format data for LinkedIn outreach\nconst linkedinUrl = $input.first().json.body.linkedin_url || '';\nconst message = $input.first().json.body.message || '';\nconst prospectName = $input.first().json.body.prospect_name || '';\nconst prospectId = $input.first().json.body.prospect_id || '';\n\n// Extract LinkedIn profile slug from URL\nlet profileSlug = '';\nconst match = linkedinUrl.match(/linkedin\\.com\\/in\\/([^/\\?]+)/);\nif (match) {\n  profileSlug = match[1];\n}\n\n// Truncate message to LinkedIn limit (300 chars for connection request)\nconst truncatedMessage = message.length > 300 ? message.substring(0, 297) + '...' : message;\n\nreturn [{\n  json: {\n    linkedin_url: linkedinUrl,\n    profile_slug: profileSlug,\n    message: truncatedMessage,\n    prospect_name: prospectName,\n    prospect_id: prospectId\n  }\n}];"
+      },
+      "id": "sdr-li-0002",
+      "name": "Format LinkedIn Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-has-slug",
+              "leftValue": "={{ $json.profile_slug }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sdr-li-0003",
+      "name": "Has LinkedIn Profile?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TELEGRAM_WEBHOOK_URL || 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🔗 SDR LinkedIn - Ação Manual Necessária\\n\\n👤 {{ $json.prospect_name }}\\n🔗 {{ $json.linkedin_url }}\\n\\n💬 Mensagem sugerida:\\n{{ $json.message }}\\n\\n⚡ Copie a mensagem e envie manualmente no LinkedIn (ou configure Phantombuster)\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sdr-li-0004",
+      "name": "Telegram - Manual Action Required",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TELEGRAM_WEBHOOK_URL || 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"⚠️ SDR LinkedIn - Profile URL Inválida\\n\\n👤 {{ $json.prospect_name }}\\nURL: {{ $json.linkedin_url }}\\n\\nNão foi possível extrair o slug do perfil.\",\n  \"parse_mode\": \"HTML\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sdr-li-0005",
+      "name": "Telegram - Invalid URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 440]
+    }
+  ],
+  "connections": {
+    "Webhook SDR LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Format LinkedIn Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format LinkedIn Data": {
+      "main": [
+        [
+          {
+            "node": "Has LinkedIn Profile?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has LinkedIn Profile?": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Manual Action Required",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram - Invalid URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SDR",
+      "id": "sdr-tag-001"
+    }
+  ],
+  "triggerCount": 1
+}

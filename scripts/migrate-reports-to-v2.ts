@@ -26,7 +26,6 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ Erro: VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY devem estar definidos no .env');
   process.exit(1);
 }
 
@@ -99,11 +98,7 @@ async function migrateReportsToV2(options: {
 }): Promise<void> {
   const { dryRun = false, limit, delayMs = 2000 } = options;
 
-  console.log('🚀 Iniciando migração de relatórios V1 → V2');
-  console.log(`Mode: ${dryRun ? 'DRY RUN (sem mudanças)' : 'PRODUÇÃO'}`);
-  console.log(`Delay entre requisições: ${delayMs}ms`);
   if (limit) console.log(`Limite: ${limit} relatórios`);
-  console.log('');
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -121,12 +116,10 @@ async function migrateReportsToV2(options: {
   const { data: evaluations, error: fetchError } = await query;
 
   if (fetchError) {
-    console.error('❌ Erro ao buscar relatórios:', fetchError);
     process.exit(1);
   }
 
   if (!evaluations || evaluations.length === 0) {
-    console.log('ℹ️  Nenhum relatório encontrado.');
     process.exit(0);
   }
 
@@ -138,8 +131,6 @@ async function migrateReportsToV2(options: {
     failed: 0,
     skipped: 0
   };
-
-  console.log(`📊 Total de relatórios encontrados: ${stats.total}\n`);
 
   // Identificar V1 vs V2
   const v1Evaluations: CareerEvaluation[] = [];
@@ -155,40 +146,28 @@ async function migrateReportsToV2(options: {
     }
   }
 
-  console.log(`📋 Relatórios V1 (precisam migração): ${stats.v1Reports}`);
-  console.log(`✅ Relatórios V2 (já atualizados): ${stats.v2Reports}\n`);
-
   if (v1Evaluations.length === 0) {
-    console.log('🎉 Todos os relatórios já estão em V2!');
     process.exit(0);
   }
 
   if (dryRun) {
-    console.log('🔍 DRY RUN - Relatórios que seriam migrados:\n');
     v1Evaluations.forEach((evalData, i) => {
-      console.log(`${i + 1}. ${evalData.name} (${evalData.email}) - ID: ${evalData.id}`);
     });
-    console.log(`\n✨ Para executar a migração de verdade, remova --dry-run`);
     process.exit(0);
   }
 
   // Migrar V1 → V2
-  console.log('🔄 Iniciando migração...\n');
 
   for (let i = 0; i < v1Evaluations.length; i++) {
     const evaluation = v1Evaluations[i];
     const progress = `[${i + 1}/${v1Evaluations.length}]`;
 
-    console.log(`${progress} Migrando: ${evaluation.name} (${evaluation.email})`);
-
     const result = await regenerateReport(supabase, evaluation.id);
 
     if (result.success) {
       stats.migrated++;
-      console.log(`  ✅ Sucesso`);
     } else {
       stats.failed++;
-      console.log(`  ❌ Falhou: ${result.error}`);
     }
 
     // Delay entre requisições para não sobrecarregar
@@ -198,21 +177,10 @@ async function migrateReportsToV2(options: {
   }
 
   // Resumo final
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 RESUMO DA MIGRAÇÃO');
-  console.log('='.repeat(60));
-  console.log(`Total de relatórios:        ${stats.total}`);
-  console.log(`Relatórios V1 encontrados:  ${stats.v1Reports}`);
-  console.log(`Relatórios V2 já existentes: ${stats.v2Reports}`);
-  console.log(`Migrados com sucesso:       ${stats.migrated} ✅`);
-  console.log(`Falhas:                     ${stats.failed} ❌`);
-  console.log('='.repeat(60));
 
   if (stats.failed > 0) {
-    console.log('\n⚠️  Algumas migrações falharam. Verifique os logs acima.');
     process.exit(1);
   } else {
-    console.log('\n🎉 Migração concluída com sucesso!');
     process.exit(0);
   }
 }
@@ -226,6 +194,5 @@ const limit = limitArg ? parseInt(limitArg.split('=')[1]) : undefined;
 // Run migration
 migrateReportsToV2({ dryRun, limit })
   .catch(err => {
-    console.error('❌ Erro fatal:', err);
     process.exit(1);
   });

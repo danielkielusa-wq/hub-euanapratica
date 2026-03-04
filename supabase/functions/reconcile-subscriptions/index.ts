@@ -96,7 +96,6 @@ serve(async (req) => {
           results.errors.push(`update overdue ${sub.id}: ${error.message}`);
         } else {
           results.overdue_to_past_due++;
-          console.log("Marked overdue:", { userId: sub.user_id, planId: sub.plan_id });
         }
       }
     }
@@ -132,7 +131,6 @@ serve(async (req) => {
           results.errors.push(`cancel grace ${sub.id}: ${error.message}`);
         } else {
           results.grace_period_expired++;
-          console.log("Grace period expired, downgraded:", { userId: sub.user_id });
         }
       }
     }
@@ -169,14 +167,11 @@ serve(async (req) => {
           results.errors.push(`expire cancelled ${sub.id}: ${error.message}`);
         } else {
           results.cancelled_expired++;
-          console.log("Cancelled sub expired, downgraded:", { userId: sub.user_id });
         }
       }
     }
 
     const totalProcessed = results.overdue_to_past_due + results.grace_period_expired + results.cancelled_expired;
-
-    console.log("Reconciliation complete:", results);
 
     return new Response(
       JSON.stringify({
@@ -190,7 +185,6 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Reconciliation error:", error);
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

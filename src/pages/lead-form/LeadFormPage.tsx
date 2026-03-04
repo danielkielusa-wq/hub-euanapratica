@@ -54,14 +54,14 @@ const COUNTRIES: Country[] = [
   { code: 'US', dial: '1', flag: '\u{1F1FA}\u{1F1F8}', name: 'Estados Unidos', mask: '(XXX) XXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
   { code: 'PT', dial: '351', flag: '\u{1F1F5}\u{1F1F9}', name: 'Portugal', mask: 'XXX XXX XXX', minLocalDigits: 9, maxLocalDigits: 9 },
   { code: 'UK', dial: '44', flag: '\u{1F1EC}\u{1F1E7}', name: 'Reino Unido', mask: 'XXXX XXXXXX', minLocalDigits: 10, maxLocalDigits: 10 },
-  { code: 'CA', dial: '1', flag: '\u{1F1E8}\u{1F1E6}', name: 'Canada', mask: '(XXX) XXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
+  { code: 'CA', dial: '1', flag: '\u{1F1E8}\u{1F1E6}', name: 'Canadá', mask: '(XXX) XXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
   { code: 'DE', dial: '49', flag: '\u{1F1E9}\u{1F1EA}', name: 'Alemanha', mask: 'XXX XXXXXXXX', minLocalDigits: 10, maxLocalDigits: 11 },
-  { code: 'FR', dial: '33', flag: '\u{1F1EB}\u{1F1F7}', name: 'Franca', mask: 'X XX XX XX XX', minLocalDigits: 9, maxLocalDigits: 9 },
+  { code: 'FR', dial: '33', flag: '\u{1F1EB}\u{1F1F7}', name: 'França', mask: 'X XX XX XX XX', minLocalDigits: 9, maxLocalDigits: 9 },
   { code: 'ES', dial: '34', flag: '\u{1F1EA}\u{1F1F8}', name: 'Espanha', mask: 'XXX XXX XXX', minLocalDigits: 9, maxLocalDigits: 9 },
-  { code: 'IT', dial: '39', flag: '\u{1F1EE}\u{1F1F9}', name: 'Italia', mask: 'XXX XXX XXXX', minLocalDigits: 9, maxLocalDigits: 10 },
+  { code: 'IT', dial: '39', flag: '\u{1F1EE}\u{1F1F9}', name: 'Itália', mask: 'XXX XXX XXXX', minLocalDigits: 9, maxLocalDigits: 10 },
   { code: 'AR', dial: '54', flag: '\u{1F1E6}\u{1F1F7}', name: 'Argentina', mask: 'XX XXXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
-  { code: 'MX', dial: '52', flag: '\u{1F1F2}\u{1F1FD}', name: 'Mexico', mask: 'XX XXXX XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
-  { code: 'JP', dial: '81', flag: '\u{1F1EF}\u{1F1F5}', name: 'Japao', mask: 'XX-XXXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
+  { code: 'MX', dial: '52', flag: '\u{1F1F2}\u{1F1FD}', name: 'México', mask: 'XX XXXX XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
+  { code: 'JP', dial: '81', flag: '\u{1F1EF}\u{1F1F5}', name: 'Japão', mask: 'XX-XXXX-XXXX', minLocalDigits: 10, maxLocalDigits: 10 },
 ];
 
 const STEPS: { Icon: LucideIcon; label: string }[] = [
@@ -74,23 +74,23 @@ const STEPS: { Icon: LucideIcon; label: string }[] = [
 ];
 
 const MOTIVATIONAL_MESSAGES = [
-  'Otimo! Vamos conhecer sua trajetoria',
+  'Ótimo! Vamos conhecer sua trajetória',
   'Perfeito! Agora seus objetivos',
-  'Quase la! Voce esta a 2 passos',
-  'Incrivel! Ultima etapa',
-  'Parabens! Analise completa',
+  'Quase lá! Você está a 2 passos',
+  'Incrível! Última etapa',
+  'Parabéns! Análise completa',
 ];
 
-const AREAS = ['Tecnologia', 'Engenharia', 'Negocios / Administracao', 'Marketing / Comunicacao', 'Saude', 'Estudante', 'Outro'];
+const AREAS = ['Tecnologia', 'Engenharia', 'Negócios / Administração', 'Marketing / Comunicação', 'Saúde', 'Estudante', 'Outro'];
 const EXPERIENCE = ['Menos de 2 anos', '2 a 5 anos', '5 a 10 anos', 'Mais de 10 anos'];
-const ENGLISH = ['Basico', 'Intermediario', 'Avancado', 'Fluente'];
-const OBJECTIVES = ['Emprego remoto em dolar', 'Imigrar / Green Card trabalhando na minha area', 'Estudar nos EUA como porta de entrada', 'Ainda nao tenho clareza, quero entender minhas opcoes'];
-const VISA_STATUS = ['Ja tenho visto de trabalho ou Green Card', 'Processo de visto / imigracao em andamento', 'Tenho/tive apenas visto de turista', 'Ainda nao iniciei nada'];
-const TIMELINE = ['Ja estou em movimento / proximos 3 meses', 'Entre 3 e 6 meses', 'Entre 6 e 12 meses', 'Ainda nao tenho prazo definido'];
-const FAMILY = ['Sozinho(a)', 'Com conjuge / companheiro(a)', 'Com familia e filhos', 'Ainda nao pensei sobre isso'];
-const INCOME = ['Ate R$ 5 mil', 'De R$ 5 mil a R$ 10 mil', 'De R$ 10 mil a R$ 20 mil', 'Acima de R$ 20 mil', 'Prefiro nao responder'];
-const INVESTMENTS = ['Ate R$500', 'De R$500 a R$2.000', 'De R$2.000 a R$5.000', 'Acima de R$5.000', 'Prefiro nao responder'];
-const OBSTACLES = ['Nenhum - estou pronto(a)', 'Financeiro', 'Tempo / rotina', 'Ingles', 'Medo de tomar uma decisao errada', 'Falta de apoio do conjuge / familia', 'Outro'];
+const ENGLISH = ['Básico', 'Intermediário', 'Avançado', 'Fluente'];
+const OBJECTIVES = ['Emprego remoto em dólar', 'Imigrar / Green Card trabalhando na minha área', 'Estudar nos EUA como porta de entrada', 'Ainda não tenho clareza, quero entender minhas opções'];
+const VISA_STATUS = ['Já tenho visto de trabalho ou Green Card', 'Processo de visto / imigração em andamento', 'Tenho/tive apenas visto de turista', 'Ainda não iniciei nada'];
+const TIMELINE = ['Já estou em movimento / próximos 3 meses', 'Entre 3 e 6 meses', 'Entre 6 e 12 meses', 'Ainda não tenho prazo definido'];
+const FAMILY = ['Sozinho(a)', 'Com cônjuge / companheiro(a)', 'Com família e filhos', 'Ainda não pensei sobre isso'];
+const INCOME = ['Até R$ 5 mil', 'De R$ 5 mil a R$ 10 mil', 'De R$ 10 mil a R$ 20 mil', 'Acima de R$ 20 mil', 'Prefiro não responder'];
+const INVESTMENTS = ['Até R$500', 'De R$500 a R$2.000', 'De R$2.000 a R$5.000', 'Acima de R$5.000', 'Prefiro não responder'];
+const OBSTACLES = ['Nenhum - estou pronto(a)', 'Financeiro', 'Tempo / rotina', 'Inglês', 'Medo de tomar uma decisão errada', 'Falta de apoio do cônjuge / família', 'Outro'];
 
 const WEBHOOK_URL = 'https://n8n.sapunplugged.com/webhook/lead_form';
 
@@ -284,7 +284,7 @@ function Step1Personal({
           Descubra seu potencial para uma Carreira Internacional
         </h1>
         <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base lg:text-lg">
-          Preencha seus dados para iniciar a analise de perfil.
+          Preencha seus dados para iniciar a análise de perfil.
         </p>
       </div>
 
@@ -375,7 +375,7 @@ function Step1Personal({
           </div>
           {emailSuggestion && (
             <button type="button" onClick={() => onChange('email', emailSuggestion)} className="text-xs text-[hsl(217,91%,53%)] hover:underline">
-              Voce quis dizer {emailSuggestion}?
+              Você quis dizer {emailSuggestion}?
             </button>
           )}
           {errors.email && <p className="text-xs text-[hsl(0,84%,60%)] lf-shake">{errors.email}</p>}
@@ -390,7 +390,7 @@ function Step1Personal({
             className="mt-0.5 w-5 h-5 rounded border-[hsl(214,32%,91%)] text-[hsl(217,91%,53%)] accent-[hsl(217,91%,53%)]"
           />
           <span className="text-xs text-[hsl(220,25%,14%)] leading-relaxed">
-            Aceito receber comunicacoes de marketing, ofertas, eventos da EUA Na Pratica e promocoes por e-mail e WhatsApp.
+            Aceito receber comunicações de marketing, ofertas, eventos da EUA Na Prática e promoções por e-mail e WhatsApp.
           </span>
         </label>
         {errors.consentimento_marketing && (
@@ -412,12 +412,12 @@ function Step2Professional({
     <div className="space-y-6 lf-fade-in-scale">
       <div className="text-center space-y-1">
         <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(220,25%,14%)]">Perfil Profissional</h2>
-        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">Queremos entender melhor sua trajetoria!</p>
+        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">Queremos entender melhor sua trajetória!</p>
       </div>
 
       <div className="space-y-5">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Qual sua area atual de atuacao?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Qual sua área atual de atuação?</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {AREAS.map((a) => (
               <SelectCard key={a} label={a} selected={data.area_profissional === a} onClick={() => onChange('area_profissional', a)} />
@@ -439,16 +439,16 @@ function Step2Professional({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Voce ja trabalha hoje para uma empresa internacional ou em modelo remoto para o exterior?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Você já trabalha hoje para uma empresa internacional ou em modelo remoto para o exterior?</p>
           <div className="grid grid-cols-2 gap-2">
             <SelectCard label="Sim" selected={data.trabalha_internacional === 'true'} onClick={() => onChange('trabalha_internacional', 'true')} />
-            <SelectCard label="Nao" selected={data.trabalha_internacional === 'false'} onClick={() => onChange('trabalha_internacional', 'false')} />
+            <SelectCard label="Não" selected={data.trabalha_internacional === 'false'} onClick={() => onChange('trabalha_internacional', 'false')} />
           </div>
           {errors.trabalha_internacional && <p className="text-xs text-[hsl(0,84%,60%)] lf-shake">{errors.trabalha_internacional}</p>}
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Quantos anos de experiencia voce tem?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Quantos anos de experiência você tem?</p>
           <div className="grid grid-cols-2 gap-2">
             {EXPERIENCE.map((e) => (
               <SelectCard key={e} label={e} selected={data.anos_experiencia === e} onClick={() => onChange('anos_experiencia', e)} />
@@ -458,7 +458,7 @@ function Step2Professional({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Qual seu nivel de ingles?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Qual seu nível de inglês?</p>
           <div className="grid grid-cols-2 gap-2">
             {ENGLISH.map((e) => (
               <SelectCard key={e} label={e} selected={data.nivel_ingles === e} onClick={() => onChange('nivel_ingles', e)} />
@@ -469,7 +469,7 @@ function Step2Professional({
       </div>
 
       <p className="text-center text-sm text-[hsl(215,16%,47%)]">
-        Otimo comeco! Continue para descobrir suas melhores oportunidades
+        Ótimo começo! Continue para descobrir suas melhores oportunidades
       </p>
     </div>
   );
@@ -485,14 +485,14 @@ function Step3Objectives({
   return (
     <div className="space-y-6 lf-fade-in-scale">
       <div className="text-center space-y-1">
-        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Voce esta na metade!</p>
+        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Você está na metade!</p>
         <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(220,25%,14%)]">Objetivos e Momento</h2>
-        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">Vamos identificar o melhor caminho para voce!</p>
+        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">Vamos identificar o melhor caminho para você!</p>
       </div>
 
       <div className="space-y-5">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">O que voce busca nos proximos 6-12 meses?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">O que você busca nos próximos 6-12 meses?</p>
           <div className="grid grid-cols-1 gap-2">
             {OBJECTIVES.map((o) => (
               <SelectCard key={o} label={o} selected={data.objetivo === o} onClick={() => onChange('objetivo', o)} />
@@ -502,7 +502,7 @@ function Step3Objectives({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Sua situacao em relacao a vistos ou imigracao?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Sua situação em relação a vistos ou imigração?</p>
           <div className="grid grid-cols-1 gap-2">
             {VISA_STATUS.map((v) => (
               <SelectCard key={v} label={v} selected={data.status_visto === v} onClick={() => onChange('status_visto', v)} />
@@ -512,7 +512,7 @@ function Step3Objectives({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Quando imagina comecar movimentos concretos?</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Quando imagina começar movimentos concretos?</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {TIMELINE.map((t) => (
               <SelectCard key={t} label={t} selected={data.prazo_movimento === t} onClick={() => onChange('prazo_movimento', t)} />
@@ -522,7 +522,7 @@ function Step3Objectives({
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Voce pensa em ir para os EUA:</p>
+          <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">Você pensa em ir para os EUA:</p>
           <div className="grid grid-cols-2 gap-2">
             {FAMILY.map((f) => (
               <SelectCard key={f} label={f} selected={data.composicao_familiar === f} onClick={() => onChange('composicao_familiar', f)} />
@@ -533,7 +533,7 @@ function Step3Objectives({
       </div>
 
       <p className="text-center text-sm text-[hsl(215,16%,47%)]">
-        Excelente! Faltam apenas 3 perguntas para sua analise completa
+        Excelente! Faltam apenas 3 perguntas para sua análise completa
       </p>
     </div>
   );
@@ -549,10 +549,10 @@ function Step4Investment({
   return (
     <div className="space-y-6 lf-fade-in-scale">
       <div className="text-center space-y-1">
-        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Quase la!</p>
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(220,25%,14%)]">Investimento e Preparacao</h2>
+        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Quase lá!</p>
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(220,25%,14%)]">Investimento e Preparação</h2>
         <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">
-          Essa informacao nos ajuda a recomendar o melhor programa para voce.
+          Essa informação nos ajuda a recomendar o melhor programa para você.
         </p>
       </div>
 
@@ -571,7 +571,7 @@ function Step4Investment({
 
         <div className="space-y-2">
           <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">
-            Qual faixa de investimento voce estaria disposto(a) a fazer para acelerar sua carreira internacional?
+            Qual faixa de investimento você estaria disposto(a) a fazer para acelerar sua carreira internacional?
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {INVESTMENTS.map((inv) => (
@@ -584,11 +584,11 @@ function Step4Investment({
 
       <div className="flex items-center justify-center gap-2 text-xs text-[hsl(215,16%,47%)]">
         <Lock className="w-3 h-3" />
-        <span>Suas informacoes sao 100% confidenciais</span>
+        <span>Suas informações são 100% confidenciais</span>
       </div>
 
       <p className="text-center text-sm text-[hsl(215,16%,47%)]">
-        Incrivel! So mais 2 etapas para completar
+        Incrível! Só mais 2 etapas para completar
       </p>
     </div>
   );
@@ -604,14 +604,14 @@ function Step5Closing({
   return (
     <div className="space-y-6 lf-fade-in-scale">
       <div className="text-center space-y-1">
-        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Ultima etapa!</p>
+        <p className="text-xs sm:text-sm font-semibold text-[hsl(217,91%,53%)]">Última etapa!</p>
         <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[hsl(220,25%,14%)]">Quase terminando!</h2>
-        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">So precisamos entender melhor seus desafios.</p>
+        <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base">Só precisamos entender melhor seus desafios.</p>
       </div>
 
       <div className="space-y-2">
         <p className="text-sm font-semibold text-[hsl(220,25%,14%)]">
-          Se voce for selecionado para algum programa, qual seria hoje seu principal obstaculo para comecar?
+          Se você for selecionado para algum programa, qual seria hoje seu principal obstáculo para começar?
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {OBSTACLES.map((o) => (
@@ -623,13 +623,13 @@ function Step5Closing({
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-[hsl(220,25%,14%)]">
-          Conte em uma frase qual e sua maior duvida ou preocupacao hoje
+          Conte em uma frase qual é sua maior dúvida ou preocupação hoje
           <span className="text-[hsl(215,16%,47%)] text-xs ml-1">(opcional)</span>
         </label>
         <textarea
           value={data.maior_duvida}
           onChange={(e) => onChange('maior_duvida', e.target.value)}
-          placeholder="Ex: Tenho receio de nao conseguir validar meu diploma..."
+          placeholder="Ex: Tenho receio de não conseguir validar meu diploma..."
           rows={3}
           maxLength={500}
           className="lf-input resize-none"
@@ -637,7 +637,7 @@ function Step5Closing({
       </div>
 
       <p className="text-center text-sm text-[hsl(215,16%,47%)]">
-        Voce chegou ate aqui! Clique abaixo para finalizar sua analise
+        Você chegou até aqui! Clique abaixo para finalizar sua análise
       </p>
     </div>
   );
@@ -660,10 +660,10 @@ function Step6Confirmation() {
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[hsl(160,84%,39%)]/10 text-[hsl(160,84%,39%)] text-sm font-semibold">
           <CheckCircle className="w-4 h-4" />
-          Parabens! Analise Completa
+          Parabéns! Análise Completa
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-[hsl(220,25%,14%)]">
-          Sua aplicacao foi recebida com sucesso!
+          Sua aplicação foi recebida com sucesso!
         </h2>
         <p className="text-[hsl(215,16%,47%)] text-sm sm:text-base max-w-md mx-auto">
           Assista ao video abaixo enquanto nossa equipe{' '}
@@ -674,7 +674,7 @@ function Step6Confirmation() {
       <div className="w-full aspect-video rounded-xl overflow-hidden shadow-lg">
         <iframe
           src="https://www.youtube.com/embed/hsX8gWHrLRE?autoplay=1&mute=1&rel=0"
-          title="EUA Na Pratica"
+          title="EUA Na Prática"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
           className="w-full h-full"
@@ -684,11 +684,11 @@ function Step6Confirmation() {
       <div className="space-y-3 text-sm text-[hsl(215,16%,47%)]">
         <p className="flex items-center justify-center gap-2">
           <Mail className="w-4 h-4" />
-          Voce recebera o resultado via <strong>E-mail</strong> ou <strong>WhatsApp</strong>.
+          Você receberá o resultado via <strong>E-mail</strong> ou <strong>WhatsApp</strong>.
         </p>
         <p className="flex items-center justify-center gap-2">
           <Clock className="w-4 h-4" />
-          <strong>Tempo medio de resposta: 24-48 horas</strong>
+          <strong>Tempo médio de resposta: 24-48 horas</strong>
         </p>
       </div>
 
@@ -744,30 +744,30 @@ export default function LeadFormPage() {
     const errs: Record<string, string> = {};
 
     if (currentStep === 0) {
-      if (formData.nome.trim().length < 3) errs.nome = 'Minimo 3 caracteres';
-      if (formData.whatsapp.replace(/\D/g, '').length < 10) errs.whatsapp = 'Numero invalido';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'E-mail invalido';
-      if (!formData.consentimento_marketing) errs.consentimento_marketing = 'Consentimento obrigatorio';
+      if (formData.nome.trim().length < 3) errs.nome = 'Mínimo 3 caracteres';
+      if (formData.whatsapp.replace(/\D/g, '').length < 10) errs.whatsapp = 'Número inválido';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'E-mail inválido';
+      if (!formData.consentimento_marketing) errs.consentimento_marketing = 'Consentimento obrigatório';
     }
     if (currentStep === 1) {
-      if (!formData.area_profissional) errs.area_profissional = 'Selecione uma opcao';
+      if (!formData.area_profissional) errs.area_profissional = 'Selecione uma opção';
       if (formData.cargo_atual.trim().length < 2) errs.cargo_atual = 'Informe seu cargo atual';
-      if (!formData.trabalha_internacional) errs.trabalha_internacional = 'Selecione uma opcao';
-      if (!formData.anos_experiencia) errs.anos_experiencia = 'Selecione uma opcao';
-      if (!formData.nivel_ingles) errs.nivel_ingles = 'Selecione uma opcao';
+      if (!formData.trabalha_internacional) errs.trabalha_internacional = 'Selecione uma opção';
+      if (!formData.anos_experiencia) errs.anos_experiencia = 'Selecione uma opção';
+      if (!formData.nivel_ingles) errs.nivel_ingles = 'Selecione uma opção';
     }
     if (currentStep === 2) {
-      if (!formData.objetivo) errs.objetivo = 'Selecione uma opcao';
-      if (!formData.status_visto) errs.status_visto = 'Selecione uma opcao';
-      if (!formData.prazo_movimento) errs.prazo_movimento = 'Selecione uma opcao';
-      if (!formData.composicao_familiar) errs.composicao_familiar = 'Selecione uma opcao';
+      if (!formData.objetivo) errs.objetivo = 'Selecione uma opção';
+      if (!formData.status_visto) errs.status_visto = 'Selecione uma opção';
+      if (!formData.prazo_movimento) errs.prazo_movimento = 'Selecione uma opção';
+      if (!formData.composicao_familiar) errs.composicao_familiar = 'Selecione uma opção';
     }
     if (currentStep === 3) {
-      if (!formData.faixa_renda) errs.faixa_renda = 'Selecione uma opcao';
-      if (!formData.faixa_investimento) errs.faixa_investimento = 'Selecione uma opcao';
+      if (!formData.faixa_renda) errs.faixa_renda = 'Selecione uma opção';
+      if (!formData.faixa_investimento) errs.faixa_investimento = 'Selecione uma opção';
     }
     if (currentStep === 4) {
-      if (!formData.principal_obstaculo) errs.principal_obstaculo = 'Selecione uma opcao';
+      if (!formData.principal_obstaculo) errs.principal_obstaculo = 'Selecione uma opção';
     }
 
     setErrors(errs);
@@ -797,9 +797,7 @@ export default function LeadFormPage() {
         mode: 'no-cors',
         body: params,
       });
-      console.log('Webhook sent successfully');
     } catch (err) {
-      console.error('Webhook error (continuing anyway):', err);
     }
   };
 

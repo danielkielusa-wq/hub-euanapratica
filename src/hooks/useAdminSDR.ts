@@ -170,17 +170,38 @@ export function useImportProspectsCSV() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (prospects: Array<Partial<SDRProspect>>) => {
+      // 1. Get CRM exclusion list (emails/phones of existing leads)
+      const { data: exclusions } = await supabase.rpc('get_sdr_exclusion_list');
+      const crmEmails = new Set((exclusions || []).map((e: { email: string }) => e.email?.toLowerCase()).filter(Boolean));
+      const crmPhones = new Set((exclusions || []).map((e: { phone: string }) => e.phone).filter(Boolean));
+
+      // 2. Filter out prospects already in CRM
+      const filtered = prospects.filter(p => {
+        if (p.email && crmEmails.has(p.email.toLowerCase())) return false;
+        if (p.phone && crmPhones.has(p.phone)) return false;
+        return true;
+      });
+
+      const skipped = prospects.length - filtered.length;
+
+      if (filtered.length === 0) {
+        return { imported: 0, skipped };
+      }
+
+      // 3. Upsert (ON CONFLICT handled by unique indexes on email/phone)
       const { data, error } = await supabase
         .from('sdr_prospects')
-        .insert(prospects)
+        .insert(filtered)
         .select('id');
       if (error) throw error;
-      return data;
+      return { imported: data?.length || 0, skipped };
     },
-    onSuccess: (data) => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['sdr-prospects'] });
       qc.invalidateQueries({ queryKey: ['sdr-stats'] });
-      toast({ title: `${data?.length || 0} prospects importados com sucesso` });
+      const parts = [`${result?.imported || 0} prospects importados`];
+      if (result?.skipped) parts.push(`${result.skipped} ignorados (já no CRM)`);
+      toast({ title: parts.join(', ') });
     },
     onError: (err: Error) => {
       toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' });
@@ -398,5 +419,22 @@ export function useSDROutreachLogs(prospectId?: string) {
       return (data || []) as SDROutreachLog[];
     },
     enabled: !!prospectId || prospectId === undefined,
+  });
+}
+
+// ── CRM Bridge ──────────────────────────────────────────────────
+
+export function useSDRProspectCRMMatch(email?: string | null, phone?: string | null) {
+  return useQuery({
+    queryKey: ['sdr-crm-match', email, phone],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('check_sdr_prospect_in_crm', {
+        p_email: email || null,
+        p_phone: phone || null,
+      });
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!(email || phone),
   });
 }

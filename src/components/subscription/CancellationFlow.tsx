@@ -95,7 +95,6 @@ export function CancellationFlow({
         } catch {
           // could not parse response body
         }
-        console.error('cancel-subscription error:', { message: response.error.message, serverMsg });
         throw new Error(serverMsg || 'Erro ao cancelar assinatura.');
       }
 

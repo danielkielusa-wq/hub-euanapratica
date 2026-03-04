@@ -137,7 +137,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("manage-ideas error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...cors, "Content-Type": "application/json" },

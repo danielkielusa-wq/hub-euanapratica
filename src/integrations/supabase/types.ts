@@ -726,6 +726,10 @@ export type Database = {
           recommended_product_price: string | null
           recommended_product_tier: string | null
           recommended_product_url: string | null
+          referral_code: string | null
+          referral_count: number
+          referral_unlocked: boolean
+          referred_by_code: string | null
           report_content: string
           rota_letter: string | null
           scheduled_follow_up_1: string | null
@@ -827,6 +831,10 @@ export type Database = {
           recommended_product_price?: string | null
           recommended_product_tier?: string | null
           recommended_product_url?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referral_unlocked?: boolean
+          referred_by_code?: string | null
           report_content: string
           rota_letter?: string | null
           scheduled_follow_up_1?: string | null
@@ -928,6 +936,10 @@ export type Database = {
           recommended_product_price?: string | null
           recommended_product_tier?: string | null
           recommended_product_url?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referral_unlocked?: boolean
+          referred_by_code?: string | null
           report_content?: string
           rota_letter?: string | null
           scheduled_follow_up_1?: string | null
@@ -2868,6 +2880,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          whatsapp_message: string | null
         }
         Insert: {
           ai_generation_id?: string | null
@@ -2885,6 +2898,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          whatsapp_message?: string | null
         }
         Update: {
           ai_generation_id?: string | null
@@ -2902,6 +2916,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          whatsapp_message?: string | null
         }
         Relationships: [
           {
@@ -3191,6 +3206,123 @@ export type Database = {
           ticto_product_id?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      manychat_flow_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          flow_id: string | null
+          flow_name: string
+          id: string
+          lead_id: string
+          metadata: Json
+          status: string
+          trigger_source: string
+          triggered_by: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          flow_id?: string | null
+          flow_name: string
+          id?: string
+          lead_id: string
+          metadata?: Json
+          status?: string
+          trigger_source: string
+          triggered_by?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          flow_id?: string | null
+          flow_name?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          status?: string
+          trigger_source?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manychat_flow_logs_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "manychat_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manychat_flow_logs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manychat_flows: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          email_fallback_template: string | null
+          enabled: boolean
+          hsm_template_language: string
+          hsm_template_name: string | null
+          hsm_template_params: Json
+          hsm_template_preview: string | null
+          id: string
+          mc_flow_ns: string | null
+          name: string
+          requires_phone: boolean
+          sort_order: number
+          trigger_type: string
+          updated_at: string
+          use_case: string
+          variables: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          email_fallback_template?: string | null
+          enabled?: boolean
+          hsm_template_language?: string
+          hsm_template_name?: string | null
+          hsm_template_params?: Json
+          hsm_template_preview?: string | null
+          id?: string
+          mc_flow_ns?: string | null
+          name: string
+          requires_phone?: boolean
+          sort_order?: number
+          trigger_type?: string
+          updated_at?: string
+          use_case: string
+          variables?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          email_fallback_template?: string | null
+          enabled?: boolean
+          hsm_template_language?: string
+          hsm_template_name?: string | null
+          hsm_template_params?: Json
+          hsm_template_preview?: string | null
+          id?: string
+          mc_flow_ns?: string | null
+          name?: string
+          requires_phone?: boolean
+          sort_order?: number
+          trigger_type?: string
+          updated_at?: string
+          use_case?: string
+          variables?: Json
         }
         Relationships: []
       }
@@ -4080,6 +4212,326 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sdr_campaigns: {
+        Row: {
+          ai_context: string | null
+          ai_persona: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sequence: Json
+          started_at: string | null
+          status: string
+          target_criteria: Json | null
+          total_converted: number
+          total_prospects: number
+          total_replied: number
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          ai_context?: string | null
+          ai_persona?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sequence?: Json
+          started_at?: string | null
+          status?: string
+          target_criteria?: Json | null
+          total_converted?: number
+          total_prospects?: number
+          total_replied?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_context?: string | null
+          ai_persona?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sequence?: Json
+          started_at?: string | null
+          status?: string
+          target_criteria?: Json | null
+          total_converted?: number
+          total_prospects?: number
+          total_replied?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sdr_message_templates: {
+        Row: {
+          ai_instructions: string | null
+          body_template: string
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          performance_score: number | null
+          subject_template: string | null
+          template_key: string
+          updated_at: string
+          variant: string
+        }
+        Insert: {
+          ai_instructions?: string | null
+          body_template: string
+          channel: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          performance_score?: number | null
+          subject_template?: string | null
+          template_key: string
+          updated_at?: string
+          variant?: string
+        }
+        Update: {
+          ai_instructions?: string | null
+          body_template?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          performance_score?: number | null
+          subject_template?: string | null
+          template_key?: string
+          updated_at?: string
+          variant?: string
+        }
+        Relationships: []
+      }
+      sdr_outreach_logs: {
+        Row: {
+          ai_generation_metadata: Json | null
+          campaign_id: string | null
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_body: string
+          opened_at: string | null
+          prospect_id: string
+          replied_at: string | null
+          sent_at: string | null
+          status: string
+          step_number: number
+          subject: string | null
+        }
+        Insert: {
+          ai_generation_metadata?: Json | null
+          campaign_id?: string | null
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_body: string
+          opened_at?: string | null
+          prospect_id: string
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          step_number: number
+          subject?: string | null
+        }
+        Update: {
+          ai_generation_metadata?: Json | null
+          campaign_id?: string | null
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_body?: string
+          opened_at?: string | null
+          prospect_id?: string
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          step_number?: number
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sdr_outreach_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sdr_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sdr_outreach_logs_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "sdr_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sdr_prospects: {
+        Row: {
+          ai_qualification: Json | null
+          ai_qualified_at: string | null
+          ai_score: number | null
+          ai_temperature: string | null
+          bio: string | null
+          campaign_id: string | null
+          company: string | null
+          converted_evaluation_id: string | null
+          created_at: string
+          current_step: number
+          email: string | null
+          english_level: string | null
+          experience_years: number | null
+          headline: string | null
+          id: string
+          instagram_handle: string | null
+          last_contacted_at: string | null
+          last_replied_at: string | null
+          linkedin_url: string | null
+          location: string | null
+          name: string
+          next_outreach_at: string | null
+          outreach_status: string
+          phone: string | null
+          skills: string[] | null
+          source: string
+          source_metadata: Json | null
+          updated_at: string
+        }
+        Insert: {
+          ai_qualification?: Json | null
+          ai_qualified_at?: string | null
+          ai_score?: number | null
+          ai_temperature?: string | null
+          bio?: string | null
+          campaign_id?: string | null
+          company?: string | null
+          converted_evaluation_id?: string | null
+          created_at?: string
+          current_step?: number
+          email?: string | null
+          english_level?: string | null
+          experience_years?: number | null
+          headline?: string | null
+          id?: string
+          instagram_handle?: string | null
+          last_contacted_at?: string | null
+          last_replied_at?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          name: string
+          next_outreach_at?: string | null
+          outreach_status?: string
+          phone?: string | null
+          skills?: string[] | null
+          source?: string
+          source_metadata?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          ai_qualification?: Json | null
+          ai_qualified_at?: string | null
+          ai_score?: number | null
+          ai_temperature?: string | null
+          bio?: string | null
+          campaign_id?: string | null
+          company?: string | null
+          converted_evaluation_id?: string | null
+          created_at?: string
+          current_step?: number
+          email?: string | null
+          english_level?: string | null
+          experience_years?: number | null
+          headline?: string | null
+          id?: string
+          instagram_handle?: string | null
+          last_contacted_at?: string | null
+          last_replied_at?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          name?: string
+          next_outreach_at?: string | null
+          outreach_status?: string
+          phone?: string | null
+          skills?: string[] | null
+          source?: string
+          source_metadata?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sdr_prospects_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "sdr_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sdr_replies: {
+        Row: {
+          ai_classification: Json | null
+          ai_intent: string | null
+          ai_sentiment: string | null
+          ai_suggested_action: string | null
+          channel: string
+          created_at: string
+          id: string
+          outreach_log_id: string | null
+          prospect_id: string
+          raw_message: string
+        }
+        Insert: {
+          ai_classification?: Json | null
+          ai_intent?: string | null
+          ai_sentiment?: string | null
+          ai_suggested_action?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          outreach_log_id?: string | null
+          prospect_id: string
+          raw_message: string
+        }
+        Update: {
+          ai_classification?: Json | null
+          ai_intent?: string | null
+          ai_sentiment?: string | null
+          ai_suggested_action?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          outreach_log_id?: string | null
+          prospect_id?: string
+          raw_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sdr_replies_outreach_log_id_fkey"
+            columns: ["outreach_log_id"]
+            isOneToOne: false
+            referencedRelation: "sdr_outreach_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sdr_replies_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "sdr_prospects"
             referencedColumns: ["id"]
           },
         ]
@@ -5727,10 +6179,30 @@ export type Database = {
           name: string
         }[]
       }
+      check_daily_priorities_limit: {
+        Args: { p_user_id: string }
+        Returns: {
+          allowed: boolean
+          max_limit: number
+          used: number
+        }[]
+      }
       check_job_exists: { Args: { job_url: string }; Returns: boolean }
       check_live_access: {
         Args: { p_live_id: string; p_user_id: string }
         Returns: Json
+      }
+      check_sdr_prospect_in_crm: {
+        Args: { p_email?: string; p_phone?: string }
+        Returns: {
+          created_at: string
+          evaluation_id: string
+          evaluation_name: string
+          exists_in_crm: boolean
+          has_report: boolean
+          has_subscription: boolean
+          subscription_status: string
+        }[]
       }
       check_upsell_blacklist: {
         Args: { p_service_id: string; p_user_id: string }
@@ -6025,6 +6497,21 @@ export type Database = {
           total_active_jobs: number
         }[]
       }
+      get_sdr_exclusion_list: {
+        Args: never
+        Returns: {
+          email: string
+          phone: string
+        }[]
+      }
+      get_sdr_prospect_detail: {
+        Args: { p_prospect_id: string }
+        Returns: {
+          crm_match: Json
+          outreach_history: Json
+          prospect: Json
+        }[]
+      }
       get_service_session_info: {
         Args: { p_service_id: string; p_student_id: string }
         Returns: {
@@ -6094,6 +6581,7 @@ export type Database = {
           variables: Json
         }[]
       }
+      has_library_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
