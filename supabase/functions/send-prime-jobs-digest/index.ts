@@ -431,12 +431,20 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: `Digest sent to ${emailsSent} recipients`,
+        success: emailsSent > 0,
+        message: emailsSent > 0
+          ? `Digest sent to ${emailsSent} recipients`
+          : lastError
+            ? `Email failed: ${lastError}`
+            : emailsSkipped > 0
+              ? `Recipient skipped (unsubscribed)`
+              : `No emails sent`,
         emailsSent,
         emailsFailed,
         emailsSkipped,
         totalJobs: newJobs.length,
+        totalRecipients: recipients.length,
+        testEmailReceived: test_email || null,
         templateSource: template ? "database" : "fallback",
         ...(lastError ? { lastError } : {}),
       }),

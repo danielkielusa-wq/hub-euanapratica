@@ -122,11 +122,14 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
         } catch { /* use default message */ }
         throw new Error(message);
       }
-      if (!data?.success) throw new Error(data?.message || 'Falha ao enviar');
-
-      // Standalone functions return emailsSent count — check it
-      if (standaloneFunction && data?.emailsSent === 0) {
-        throw new Error(data?.message || 'Nenhum email enviado. Verifique os logs.');
+      if (!data?.success) {
+        // Include diagnostic details from the response
+        const details = [data?.message];
+        if (data?.lastError) details.push(`Erro: ${data.lastError}`);
+        if (data?.testEmailReceived) details.push(`test_email: ${data.testEmailReceived}`);
+        if (data?.emailsFailed) details.push(`Falhou: ${data.emailsFailed}`);
+        if (data?.emailsSkipped) details.push(`Ignorado: ${data.emailsSkipped}`);
+        throw new Error(details.filter(Boolean).join(' | ') || 'Falha ao enviar');
       }
 
       toast({
