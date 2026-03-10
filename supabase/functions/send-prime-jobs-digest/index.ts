@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
-import { isUnsubscribed } from "../_shared/emailCampaignService.ts";
+import { isUnsubscribed, generateUnsubscribeToken, generateUnsubscribeLink } from "../_shared/emailCampaignService.ts";
 
 interface DigestRequest {
   test_email?: string; // Optional: send to specific email for testing
@@ -30,7 +30,7 @@ interface JobForDigest {
 
 const REMOTE_TYPE_LABELS: Record<string, string> = {
   fully_remote: "100% Remoto",
-  hybrid: "Híbrido",
+  hybrid: "Hibrido",
   onsite: "Presencial",
 };
 
@@ -47,14 +47,13 @@ function formatSalary(min: number | null, max: number | null, currency: string):
     return `${formatter.format(min)} - ${formatter.format(max)}`;
   }
   if (min) return `A partir de ${formatter.format(min)}`;
-  if (max) return `Até ${formatter.format(max)}`;
+  if (max) return `Ate ${formatter.format(max)}`;
   return "A combinar";
 }
 
-const DEFAULT_TIP = "Personalize seu currículo para cada vaga usando nosso ResumePass AI. Candidatos com currículos personalizados têm 3x mais chances de receber retorno!";
+const DEFAULT_TIP = "Personalize seu curriculo para cada vaga usando nosso ResumePass AI. Candidatos com curriculos personalizados tem 3x mais chances de receber retorno!";
 
 function getWeeklyTip(jobs: JobForDigest[]): string {
-  // Collect all application tips from enriched jobs
   const allTips: string[] = [];
   for (const job of jobs) {
     if (job.ai_enrichment?.application_tips) {
@@ -62,8 +61,128 @@ function getWeeklyTip(jobs: JobForDigest[]): string {
     }
   }
   if (allTips.length === 0) return DEFAULT_TIP;
-  // Pick a random tip
   return allTips[Math.floor(Math.random() * allTips.length)];
+}
+
+function buildJobCardsHtml(jobs: JobForDigest[], origin: string): string {
+  return jobs.map((job) => {
+    const ai = job.ai_enrichment;
+    const enrichmentBadges = ai ? [
+      ai.timezone_analysis?.compatibility_score != null
+        ? `<span style="display:inline-block;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">Fuso ${ai.timezone_analysis.compatibility_score}/10</span>`
+        : "",
+      ai.english_level_required
+        ? `<span style="display:inline-block;padding:2px 8px;background:#f0fdf4;color:#166534;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">${ai.english_level_required}</span>`
+        : "",
+      ai.salary_brl_context?.monthly_brl
+        ? `<span style="display:inline-block;padding:2px 8px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:11px;font-weight:600;">R$${ai.salary_brl_context.monthly_brl.toLocaleString("pt-BR")}/mes</span>`
+        : "",
+    ].filter(Boolean).join("") : "";
+
+    return `
+    <tr>
+      <td style="padding: 16px 0; border-bottom: 1px solid #e4e4e7;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="width: 48px; vertical-align: top;">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; text-align: center; line-height: 48px;">
+                ${job.company.substring(0, 2).toUpperCase()}
+              </div>
+            </td>
+            <td style="padding-left: 16px; vertical-align: top;">
+              <p style="margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #18181b;">
+                ${job.title}
+              </p>
+              <p style="margin: 0 0 8px; font-size: 14px; color: #71717a;">
+                ${job.company} - ${REMOTE_TYPE_LABELS[job.remote_type] || job.remote_type}${job.industry ? ` - ${job.industry}` : ""}
+              </p>
+              <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #10b981;">
+                ${formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
+              </p>
+              ${enrichmentBadges ? `<p style="margin:0;">${enrichmentBadges}</p>` : ""}
+            </td>
+            <td style="width: 100px; vertical-align: middle; text-align: right;">
+              <a href="${origin}/prime-jobs/${job.id}" style="display: inline-block; background: #18181b; color: white; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;">
+                Ver Vaga
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function buildUpgradePromptHtml(totalJobs: number, origin: string): string {
+  return `
+  <tr>
+    <td style="padding: 24px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; margin-top: 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>
+            <p style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: #92400e;">
+              +${totalJobs - 3} vagas exclusivas esta semana
+            </p>
+            <p style="margin: 0 0 16px; font-size: 14px; color: #a16207;">
+              Faca upgrade para VIP ou Pro e tenha acesso completo a todas as vagas remotas em empresas americanas.
+            </p>
+            <a href="${origin}/catalogo" style="display: inline-block; background: #f59e0b; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700;">
+              Ver Planos
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+}
+
+// ── Fallback HTML (used if template not found in DB) ──────────────
+function buildFallbackHtml(vars: Record<string, string>): string {
+  let html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <tr><td style="background-color:#ffffff;padding:24px 30px 8px;text-align:center;">
+          <img src="https://hub.euanapratica.com/logo-enp.png" alt="EUA Na Pratica" width="160" style="max-width:160px;height:auto;display:inline-block;" />
+        </td></tr>
+        <tr><td style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8);padding:48px 30px;text-align:center;">
+          <h1 style="color:#fff;margin:0 0 8px;font-size:28px;font-weight:800;">Prime Jobs</h1>
+          <p style="color:#93c5fd;margin:0;font-size:16px;">{{jobCount}} novas vagas remotas esta semana</p>
+        </td></tr>
+        <tr><td style="padding:32px 30px;">
+          <p style="color:#52525b;font-size:16px;line-height:1.6;margin:0 0 24px;">Ola <strong>{{recipientName}}</strong>,</p>
+          <p style="color:#52525b;font-size:16px;line-height:1.6;margin:0 0 24px;">Confira as vagas remotas em empresas americanas mais recentes para voce:</p>
+          <table width="100%" cellpadding="0" cellspacing="0">{{jobCardsHtml}}</table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">{{upgradePromptHtml}}</table>
+          <div style="text-align:center;margin:32px 0;">
+            <a href="{{allJobsLink}}" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:700;font-size:16px;">Ver Todas as Vagas</a>
+          </div>
+          <div style="background-color:#f0fdf4;border-radius:12px;padding:16px;margin:24px 0;border:1px solid #bbf7d0;">
+            <p style="color:#166534;font-size:14px;font-weight:600;margin:0 0 8px;">Dica da semana</p>
+            <p style="color:#15803d;font-size:14px;margin:0;">{{weeklyTip}}</p>
+          </div>
+        </td></tr>
+        <tr><td style="background-color:#fafafa;padding:24px 30px;text-align:center;border-top:1px solid #e4e4e7;">
+          <p style="color:#a1a1aa;font-size:12px;margin:0 0 8px;">Voce recebe este email porque esta inscrito no Prime Jobs.</p>
+          <p style="color:#a1a1aa;font-size:12px;margin:0;">&copy; 2026 EUA Na Pratica. Todos os direitos reservados.</p>
+          {{unsubscribeSection}}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  for (const [key, value] of Object.entries(vars)) {
+    html = html.replace(new RegExp(escapeRegex(key), "g"), value);
+  }
+  return html;
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 Deno.serve(async (req) => {
@@ -73,7 +192,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: cors });
   }
 
-  // SECURITY FIX (VULN-02): Require auth or internal call (cron)
   const authError = await requireAuthOrInternal(req);
   if (authError) return authError;
 
@@ -83,10 +201,8 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Resend config from database
     const resendConfig = await getApiConfig("resend_email");
 
-    // Parse request body (optional parameters)
     let requestBody: DigestRequest = {};
     try {
       requestBody = await req.json();
@@ -130,9 +246,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch email template from DB
+    const { data: templateRows } = await supabase.rpc(
+      "get_email_template_by_name",
+      { p_template_name: "prime_jobs_digest" }
+    );
+    const template = templateRows && templateRows.length > 0 ? templateRows[0] : null;
 
-    // No direct FK between user_subscriptions and profiles (both FK to auth.users),
-    // so we use two queries: subscriptions first, then profiles for those user_ids.
+    // Fetch subscribers
     let subQuery = supabase
       .from("user_subscriptions")
       .select("user_id, plan_id, plans(id, features)")
@@ -175,7 +296,6 @@ Deno.serve(async (req) => {
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
-    // If test_email is provided, send only to that email
     const recipients = test_email
       ? [{ email: test_email, full_name: "Test User", isPremium: true }]
       : subs.map((sub: any) => {
@@ -197,20 +317,17 @@ Deno.serve(async (req) => {
       );
     }
 
-
     let emailsSent = 0;
     let emailsFailed = 0;
     let emailsSkipped = 0;
     let lastError = "";
 
-    const origin = req.headers.get("origin") || "https://hub.euanapratica.com";
+    const origin = "https://hub.euanapratica.com";
 
     const TEMPLATE_NAME = "prime_jobs_digest";
-    const emailSubject = `${newJobs.length} novas vagas remotas esta semana | Prime Jobs`;
 
     for (const recipient of recipients) {
       try {
-        // Check unsubscribe
         if (await isUnsubscribed(supabase, recipient.email)) {
           emailsSkipped++;
           continue;
@@ -224,160 +341,47 @@ Deno.serve(async (req) => {
         const totalJobsAvailable = newJobs.length;
         const showUpgradePrompt = !recipient.isPremium && totalJobsAvailable > 3;
 
-        const jobCardsHtml = jobsToShow.map((job: JobForDigest) => {
-          const ai = job.ai_enrichment;
-          const enrichmentBadges = ai ? [
-            ai.timezone_analysis?.compatibility_score != null
-              ? `<span style="display:inline-block;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">⏰ Fuso ${ai.timezone_analysis.compatibility_score}/10</span>`
-              : "",
-            ai.english_level_required
-              ? `<span style="display:inline-block;padding:2px 8px;background:#f0fdf4;color:#166534;border-radius:6px;font-size:11px;font-weight:600;margin-right:4px;">🌐 ${ai.english_level_required}</span>`
-              : "",
-            ai.salary_brl_context?.monthly_brl
-              ? `<span style="display:inline-block;padding:2px 8px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:11px;font-weight:600;">💰 R$${ai.salary_brl_context.monthly_brl.toLocaleString("pt-BR")}/mês</span>`
-              : "",
-          ].filter(Boolean).join("") : "";
+        // Pre-render dynamic HTML blocks
+        const jobCardsHtml = buildJobCardsHtml(jobsToShow, origin);
+        const upgradePromptHtml = showUpgradePrompt
+          ? buildUpgradePromptHtml(totalJobsAvailable, origin)
+          : "";
 
-          return `
-          <tr>
-            <td style="padding: 16px 0; border-bottom: 1px solid #e4e4e7;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width: 48px; vertical-align: top;">
-                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; text-align: center; line-height: 48px;">
-                      ${job.company.substring(0, 2).toUpperCase()}
-                    </div>
-                  </td>
-                  <td style="padding-left: 16px; vertical-align: top;">
-                    <p style="margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #18181b;">
-                      ${job.title}
-                    </p>
-                    <p style="margin: 0 0 8px; font-size: 14px; color: #71717a;">
-                      ${job.company} • ${REMOTE_TYPE_LABELS[job.remote_type] || job.remote_type}${job.industry ? ` • ${job.industry}` : ""}
-                    </p>
-                    <p style="margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #10b981;">
-                      ${formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
-                    </p>
-                    ${enrichmentBadges ? `<p style="margin:0;">${enrichmentBadges}</p>` : ""}
-                  </td>
-                  <td style="width: 100px; vertical-align: middle; text-align: right;">
-                    <a href="${origin}/prime-jobs/${job.id}" style="display: inline-block; background: #18181b; color: white; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;">
-                      Ver Vaga
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        `}).join("");
+        // Generate unsubscribe link
+        let unsubscribeSection = "";
+        try {
+          const token = await generateUnsubscribeToken(supabase, recipient.email);
+          const link = generateUnsubscribeLink(token);
+          unsubscribeSection = `<p style="margin: 8px 0 0;"><a href="${link}" style="color: #a1a1aa; font-size: 11px; text-decoration: underline;">Cancelar inscricao</a></p>`;
+        } catch { /* non-blocking */ }
 
-        const upgradePromptHtml = showUpgradePrompt ? `
-          <tr>
-            <td style="padding: 24px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; margin-top: 16px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td>
-                    <p style="margin: 0 0 8px; font-size: 16px; font-weight: 700; color: #92400e;">
-                      🔒 +${totalJobsAvailable - 3} vagas exclusivas esta semana
-                    </p>
-                    <p style="margin: 0 0 16px; font-size: 14px; color: #a16207;">
-                      Faça upgrade para VIP ou Pro e tenha acesso completo a todas as vagas remotas em empresas americanas.
-                    </p>
-                    <a href="${origin}/catalogo" style="display: inline-block; background: #f59e0b; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700;">
-                      Ver Planos →
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        ` : "";
+        // Build template variables
+        const vars: Record<string, string> = {
+          "{{recipientName}}": recipient.full_name || "Assinante",
+          "{{jobCount}}": String(newJobs.length),
+          "{{jobCardsHtml}}": jobCardsHtml,
+          "{{upgradePromptHtml}}": upgradePromptHtml,
+          "{{allJobsLink}}": `${origin}/prime-jobs`,
+          "{{weeklyTip}}": getWeeklyTip(newJobs as JobForDigest[]),
+          "{{unsubscribeSection}}": unsubscribeSection,
+        };
 
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
-              <tr>
-                <td align="center">
-                  <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
-                    <!-- Logo -->
-                    <tr>
-                      <td style="background-color: #ffffff; padding: 24px 30px 8px; text-align: center;">
-                        <img src="https://hub.euanapratica.com/logo-enp.png" alt="EUA Na Prática" width="160" style="max-width: 160px; height: auto; display: inline-block;" />
-                      </td>
-                    </tr>
-                    <!-- Header -->
-                    <tr>
-                      <td style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8); padding: 48px 30px; text-align: center;">
-                        <h1 style="color: #ffffff; margin: 0 0 8px; font-size: 28px; font-weight: 800;">
-                          Prime Jobs
-                        </h1>
-                        <p style="color: #93c5fd; margin: 0; font-size: 16px;">
-                          ${newJobs.length} novas vagas remotas esta semana
-                        </p>
-                      </td>
-                    </tr>
+        // Apply variables to template (DB or fallback)
+        let subject: string;
+        let body: string;
 
-                    <!-- Content -->
-                    <tr>
-                      <td style="padding: 32px 30px;">
-                        <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                          Olá <strong>${recipient.full_name}</strong>,
-                        </p>
-                        <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                          Confira as vagas remotas em empresas americanas mais recentes para você:
-                        </p>
-
-                        <!-- Job Cards -->
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                          ${jobCardsHtml}
-                        </table>
-
-                        <!-- Upgrade Prompt for FREE users -->
-                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 24px;">
-                          ${upgradePromptHtml}
-                        </table>
-
-                        <!-- CTA Button -->
-                        <div style="text-align: center; margin: 32px 0;">
-                          <a href="${origin}/prime-jobs" style="display: inline-block; background: #18181b; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 700; font-size: 16px;">
-                            Ver Todas as Vagas
-                          </a>
-                        </div>
-
-                        <!-- Tips -->
-                        <div style="background-color: #f0fdf4; border-radius: 12px; padding: 16px; margin: 24px 0; border: 1px solid #bbf7d0;">
-                          <p style="color: #166534; font-size: 14px; font-weight: 600; margin: 0 0 8px;">Dica da semana</p>
-                          <p style="color: #15803d; font-size: 14px; margin: 0;">
-                            ${getWeeklyTip(newJobs as JobForDigest[])}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                      <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #e4e4e7;">
-                        <p style="color: #a1a1aa; font-size: 12px; margin: 0 0 8px;">
-                          Você recebe este email porque está inscrito no Prime Jobs.
-                        </p>
-                        <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
-                          © ${new Date().getFullYear()} EUA Na Prática. Todos os direitos reservados.
-                        </p>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </body>
-          </html>
-        `;
+        if (template && template.enabled !== false) {
+          subject = template.subject;
+          body = template.body_html;
+          for (const [key, value] of Object.entries(vars)) {
+            const regex = new RegExp(escapeRegex(key), "g");
+            subject = subject.replace(regex, value);
+            body = body.replace(regex, value);
+          }
+        } else {
+          subject = `${newJobs.length} novas vagas remotas esta semana | Prime Jobs`;
+          body = buildFallbackHtml(vars);
+        }
 
         const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
           method: "POST",
@@ -386,10 +390,10 @@ Deno.serve(async (req) => {
             "Authorization": `Bearer ${resendConfig.credentials.api_key}`,
           },
           body: JSON.stringify({
-            from: "EUA Na Prática <noreply@euanapratica.com>",
+            from: "EUA Na Pratica <noreply@euanapratica.com>",
             to: [recipient.email],
-            subject: emailSubject,
-            html: emailHtml,
+            subject,
+            html: body,
           }),
         });
 
@@ -398,23 +402,22 @@ Deno.serve(async (req) => {
         if (emailResponse.ok) {
           const emailResult = JSON.parse(responseBody);
           emailsSent++;
-          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, emailSubject, "sent", null, emailResult.id);
+          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, subject, "sent", null, emailResult.id);
         } else {
           emailsFailed++;
           lastError = `Resend HTTP ${emailResponse.status}: ${responseBody.slice(0, 200)}`;
-          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, emailSubject, "failed", lastError);
+          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, subject, "failed", lastError);
         }
       } catch (emailError) {
         emailsFailed++;
         lastError = emailError instanceof Error ? emailError.message : String(emailError);
         console.error(`Digest error for ${recipient?.email}:`, lastError);
-        await logToEmailLogs(supabase, TEMPLATE_NAME, recipient?.email || "unknown", emailSubject, "failed", lastError);
+        await logToEmailLogs(supabase, TEMPLATE_NAME, recipient?.email || "unknown", "Prime Jobs Digest", "failed", lastError);
       }
     }
 
     // Update automation stats (best-effort)
     await updateAutomationStats(supabase, TEMPLATE_NAME, emailsSent, emailsSkipped);
-
 
     return new Response(
       JSON.stringify({
@@ -424,6 +427,7 @@ Deno.serve(async (req) => {
         emailsFailed,
         emailsSkipped,
         totalJobs: newJobs.length,
+        templateSource: template ? "database" : "fallback",
         ...(lastError ? { lastError } : {}),
       }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
