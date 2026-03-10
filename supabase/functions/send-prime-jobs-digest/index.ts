@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
 
     for (const recipient of recipients) {
       try {
-        if (await isUnsubscribed(supabase, recipient.email)) {
+        if (!test_email && await isUnsubscribed(supabase, recipient.email)) {
           emailsSkipped++;
           continue;
         }
