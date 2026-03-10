@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/vaga/:id",
-      "destination": "/api/og/prime-jobs/:id"
+      "destination": "/api/og-job?id=:id"
     },
     {
       "source": "/(.*)",
