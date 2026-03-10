@@ -82,6 +82,7 @@ export default async function handler(request: Request) {
     const ogDescription = descParts.join(' | ');
 
     const ogImage = `${SITE_URL}/images/landing/landing-page/hero-dashboard-light.png`;
+    const ogUrl = `${SITE_URL}/vaga/${id}`;
     const canonicalUrl = `${SITE_URL}/prime-jobs/${id}`;
 
     const html = `<!DOCTYPE html>
@@ -93,7 +94,7 @@ export default async function handler(request: Request) {
   <meta name="description" content="${esc(ogDescription)}" />
   <link rel="canonical" href="${canonicalUrl}" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:url" content="${ogUrl}" />
   <meta property="og:site_name" content="EUA Na Pratica — Prime Jobs" />
   <meta property="og:title" content="${esc(ogTitle)}" />
   <meta property="og:description" content="${esc(ogDescription)}" />
