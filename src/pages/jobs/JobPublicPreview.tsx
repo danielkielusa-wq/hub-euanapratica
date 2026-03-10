@@ -104,13 +104,16 @@ export default function JobPublicPreview() {
           </div>
 
           {/* Lock Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white from-40% via-white/90 to-transparent rounded-[40px] flex flex-col items-center justify-end pb-8">
-            <div className="p-3 bg-gray-100 text-gray-400 rounded-xl mb-3">
-              <Lock size={22} />
+          <div className="absolute inset-0 rounded-[40px] flex flex-col items-center justify-end pb-12">
+            <div className="absolute inset-0 bg-white/95 rounded-[40px]" style={{ top: '45%' }} />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-2xl flex items-center justify-center mb-3">
+                <Lock size={20} />
+              </div>
+              <p className="text-[15px] font-semibold text-gray-600 text-center max-w-[260px] leading-relaxed">
+                Crie sua conta gratuita para ver todos os detalhes desta vaga
+              </p>
             </div>
-            <p className="text-sm font-semibold text-gray-500 text-center max-w-[240px] leading-snug">
-              Crie sua conta gratuita para ver todos os detalhes desta vaga
-            </p>
           </div>
         </div>
 
