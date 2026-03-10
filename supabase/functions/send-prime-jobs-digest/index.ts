@@ -1,6 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { isUnsubscribed } from "../_shared/emailCampaignService.ts";
 
 interface DigestRequest {
   test_email?: string; // Optional: send to specific email for testing
@@ -130,51 +131,64 @@ Deno.serve(async (req) => {
     }
 
 
-    // Build user query
-    let userQuery = supabase
-      .from("profiles")
-      .select(`
-        id,
-        full_name,
-        email,
-        role,
-        user_subscriptions!inner(
-          plan_id,
-          status,
-          plans!inner(
-            id,
-            features
-          )
-        )
-      `)
-      .eq("role", "student")
-      .eq("user_subscriptions.status", "active");
+    // No direct FK between user_subscriptions and profiles (both FK to auth.users),
+    // so we use two queries: subscriptions first, then profiles for those user_ids.
+    let subQuery = supabase
+      .from("user_subscriptions")
+      .select("user_id, plan_id, plans(id, features)")
+      .eq("status", "active");
 
     if (user_ids && user_ids.length > 0) {
-      userQuery = userQuery.in("id", user_ids);
+      subQuery = subQuery.in("user_id", user_ids);
     }
 
-    const { data: users, error: usersError } = await userQuery;
+    const { data: subs, error: subsError } = await subQuery;
 
-    if (usersError) {
+    if (subsError) {
+      console.error("send-prime-jobs-digest subs error:", subsError);
       return new Response(
-        JSON.stringify({ error: "Failed to fetch users" }),
+        JSON.stringify({ error: "Failed to fetch subscriptions", details: subsError.message }),
         { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
+    if (!subs || subs.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, message: "No active subscribers", emailsSent: 0 }),
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
+    const subUserIds = subs.map((s: any) => s.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", subUserIds);
+
+    if (profilesError) {
+      console.error("send-prime-jobs-digest profiles error:", profilesError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch profiles", details: profilesError.message }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
     // If test_email is provided, send only to that email
     const recipients = test_email
       ? [{ email: test_email, full_name: "Test User", isPremium: true }]
-      : (users || []).map((user: any) => {
-          const planId = user.user_subscriptions?.[0]?.plan_id || "basic";
+      : subs.map((sub: any) => {
+          const profile = profileMap.get(sub.user_id);
+          if (!profile?.email) return null;
+          const planId = sub.plan_id || "basic";
           const isPremium = planId === "pro" || planId === "vip";
           return {
-            email: user.email,
-            full_name: user.full_name,
+            email: profile.email,
+            full_name: profile.full_name,
             isPremium,
           };
-        });
+        }).filter(Boolean) as { email: string; full_name: string; isPremium: boolean }[];
 
     if (recipients.length === 0) {
       return new Response(
@@ -186,11 +200,22 @@ Deno.serve(async (req) => {
 
     let emailsSent = 0;
     let emailsFailed = 0;
+    let emailsSkipped = 0;
+    let lastError = "";
 
-    const origin = req.headers.get("origin") || "https://hub-euanapratica.vercel.app";
+    const origin = req.headers.get("origin") || "https://hub.euanapratica.com";
+
+    const TEMPLATE_NAME = "prime_jobs_digest";
+    const emailSubject = `${newJobs.length} novas vagas remotas esta semana | Prime Jobs`;
 
     for (const recipient of recipients) {
       try {
+        // Check unsubscribe
+        if (await isUnsubscribed(supabase, recipient.email)) {
+          emailsSkipped++;
+          continue;
+        }
+
         // FREE users see 3 jobs, Premium users see 10
         const jobsToShow = recipient.isPremium
           ? (newJobs as JobForDigest[]).slice(0, 10)
@@ -280,11 +305,17 @@ Deno.serve(async (req) => {
               <tr>
                 <td align="center">
                   <table width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                    <!-- Logo -->
+                    <tr>
+                      <td style="background-color: #ffffff; padding: 24px 30px 8px; text-align: center;">
+                        <img src="https://hub.euanapratica.com/logo-enp.png" alt="EUA Na Prática" width="160" style="max-width: 160px; height: auto; display: inline-block;" />
+                      </td>
+                    </tr>
                     <!-- Header -->
                     <tr>
                       <td style="background: linear-gradient(135deg, #1e3a8a, #1d4ed8); padding: 48px 30px; text-align: center;">
                         <h1 style="color: #ffffff; margin: 0 0 8px; font-size: 28px; font-weight: 800;">
-                          📬 Prime Jobs
+                          Prime Jobs
                         </h1>
                         <p style="color: #93c5fd; margin: 0; font-size: 16px;">
                           ${newJobs.length} novas vagas remotas esta semana
@@ -321,7 +352,7 @@ Deno.serve(async (req) => {
 
                         <!-- Tips -->
                         <div style="background-color: #f0fdf4; border-radius: 12px; padding: 16px; margin: 24px 0; border: 1px solid #bbf7d0;">
-                          <p style="color: #166534; font-size: 14px; font-weight: 600; margin: 0 0 8px;">💡 Dica da semana</p>
+                          <p style="color: #166534; font-size: 14px; font-weight: 600; margin: 0 0 8px;">Dica da semana</p>
                           <p style="color: #15803d; font-size: 14px; margin: 0;">
                             ${getWeeklyTip(newJobs as JobForDigest[])}
                           </p>
@@ -357,22 +388,32 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             from: "EUA Na Prática <noreply@euanapratica.com>",
             to: [recipient.email],
-            subject: `📬 ${newJobs.length} novas vagas remotas esta semana | Prime Jobs`,
+            subject: emailSubject,
             html: emailHtml,
           }),
         });
 
-        const emailResult = await emailResponse.json();
+        const responseBody = await emailResponse.text();
 
         if (emailResponse.ok) {
+          const emailResult = JSON.parse(responseBody);
           emailsSent++;
+          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, emailSubject, "sent", null, emailResult.id);
         } else {
           emailsFailed++;
+          lastError = `Resend HTTP ${emailResponse.status}: ${responseBody.slice(0, 200)}`;
+          await logToEmailLogs(supabase, TEMPLATE_NAME, recipient.email, emailSubject, "failed", lastError);
         }
       } catch (emailError) {
         emailsFailed++;
+        lastError = emailError instanceof Error ? emailError.message : String(emailError);
+        console.error(`Digest error for ${recipient?.email}:`, lastError);
+        await logToEmailLogs(supabase, TEMPLATE_NAME, recipient?.email || "unknown", emailSubject, "failed", lastError);
       }
     }
+
+    // Update automation stats (best-effort)
+    await updateAutomationStats(supabase, TEMPLATE_NAME, emailsSent, emailsSkipped);
 
 
     return new Response(
@@ -381,14 +422,66 @@ Deno.serve(async (req) => {
         message: `Digest sent to ${emailsSent} recipients`,
         emailsSent,
         emailsFailed,
+        emailsSkipped,
         totalJobs: newJobs.length,
+        ...(lastError ? { lastError } : {}),
       }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("send-prime-jobs-digest error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+async function logToEmailLogs(
+  supabase: SupabaseClient,
+  templateName: string,
+  recipient: string,
+  subject: string,
+  status: string,
+  errorMessage?: string | null,
+  resendId?: string
+) {
+  try {
+    await supabase.from("email_logs").insert({
+      template_name: templateName,
+      recipient,
+      subject,
+      status,
+      error_message: errorMessage || null,
+      resend_id: resendId || null,
+    });
+  } catch { /* never block */ }
+}
+
+async function updateAutomationStats(
+  supabase: SupabaseClient,
+  templateName: string,
+  sent: number,
+  skipped: number
+) {
+  try {
+    const { data: automation } = await supabase
+      .from("email_automations")
+      .select("id, total_sent, total_skipped")
+      .eq("template_name", templateName)
+      .maybeSingle();
+
+    if (automation) {
+      await supabase
+        .from("email_automations")
+        .update({
+          total_sent: (automation.total_sent || 0) + sent,
+          total_skipped: (automation.total_skipped || 0) + skipped,
+          last_triggered_at: new Date().toISOString(),
+        })
+        .eq("id", automation.id);
+    }
+  } catch { /* never block */ }
+}
