@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.91.1";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
-import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
 import { isUnsubscribed, generateUnsubscribeToken, generateUnsubscribeLink } from "../_shared/emailCampaignService.ts";
 
 interface DigestRequest {
@@ -192,7 +192,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: cors });
   }
 
-  const authError = await requireAuthOrInternal(req);
+  // requireAdmin also accepts x-internal-secret (cron), so this works for both admin UI and cron
+  const authError = await requireAdmin(req);
   if (authError) return authError;
 
   try {
@@ -205,12 +206,17 @@ Deno.serve(async (req) => {
 
     let requestBody: DigestRequest = {};
     try {
-      requestBody = await req.json();
-    } catch {
-      // No body provided, use defaults
+      const rawBody = await req.text();
+      console.log("send-prime-jobs-digest raw body:", rawBody);
+      if (rawBody) {
+        requestBody = JSON.parse(rawBody);
+      }
+    } catch (parseErr) {
+      console.error("send-prime-jobs-digest body parse error:", parseErr);
     }
 
     const { test_email, user_ids } = requestBody;
+    console.log("send-prime-jobs-digest test_email:", test_email, "user_ids:", user_ids);
 
     if (!resendConfig?.credentials?.api_key) {
       return new Response(

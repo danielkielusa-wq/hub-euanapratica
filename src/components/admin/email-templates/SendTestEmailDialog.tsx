@@ -84,10 +84,23 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
       let error: any;
 
       if (standaloneFunction) {
-        // Call the standalone function with test_email — it generates all dynamic content
-        ({ data, error } = await supabase.functions.invoke(standaloneFunction, {
-          body: { test_email: email },
-        }));
+        // Call standalone function directly via fetch (supabase.functions.invoke
+        // can lose the body in some edge cases with verify_jwt=false)
+        const session = (await supabase.auth.getSession()).data.session;
+        const resp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${standaloneFunction}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ test_email: email }),
+          }
+        );
+        data = await resp.json();
+        if (!resp.ok) error = { message: data?.error || `HTTP ${resp.status}` };
       } else {
         ({ data, error } = await supabase.functions.invoke('send-test-email', {
           body: {
