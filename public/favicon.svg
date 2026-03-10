@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background circle -->
+  <rect width="32" height="32" rx="8" fill="#1A3A6B"/>
+  <!-- Letter E stylized -->
+  <text
+    x="16"
+    y="22"
+    font-family="Arial, sans-serif"
+    font-weight="700"
+    font-size="18"
+    fill="#FFFFFF"
+    text-anchor="middle"
+    dominant-baseline="auto"
+    letter-spacing="-1"
+  >E</text>
+  <!-- Accent dot (USA star hint) -->
+  <circle cx="23" cy="9" r="2.5" fill="#E63946"/>
+</svg>

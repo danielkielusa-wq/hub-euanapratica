@@ -155,21 +155,27 @@ const studentNavGroups: NavGroup[] = [
 // Mentor Navigation
 const mentorNavGroups: NavGroup[] = [
   {
-    label: 'GESTÃO',
+    label: 'VISÃO GERAL',
     items: [
       { label: 'Dashboard', href: '/mentor/dashboard', icon: LayoutDashboard, menuKey: 'dashboard' },
-      { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid, menuKey: 'espacos' },
-      { label: 'Agendamentos', href: '/mentor/agendamentos', icon: CalendarCheck, menuKey: 'agendamentos' },
+      { label: 'Agenda', href: '/mentor/agenda', icon: CalendarDays, menuKey: 'agenda' },
       { label: 'Disponibilidade', href: '/mentor/disponibilidade', icon: Calendar, menuKey: 'disponibilidade' },
-      { label: 'Lives', href: '/mentor/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
-      { label: 'Agenda', href: '/mentor/agenda', icon: Calendar, menuKey: 'agenda' },
-      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
     ],
   },
   {
-    label: 'CONTEÚDO',
+    label: 'ENSINO',
     items: [
+      { label: 'Meus Espaços', href: '/mentor/espacos', icon: LayoutGrid, menuKey: 'espacos' },
+      { label: 'Lives', href: '/mentor/lives', icon: Radio, menuKey: 'lives', badge: { text: 'NOVO', variant: 'new' } },
+      { label: 'Tarefas', href: '/mentor/tarefas', icon: ClipboardList, menuKey: 'tarefas' },
       { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, menuKey: 'biblioteca' },
+    ],
+  },
+  {
+    label: 'COMUNIDADE',
+    noHeader: true,
+    items: [
+      { label: 'Comunidade', href: '/comunidade', icon: Users, menuKey: 'comunidade', badge: { text: 'HOT', variant: 'hot' } },
     ],
   },
   {
@@ -411,7 +417,8 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
                   const Icon = item.icon;
 
                   const isCommunityRoute = item.href === '/comunidade';
-                  const blockCommunityAccess = isCommunityRoute && !communityAccessLoading && !canAccessCommunity;
+                  const isMentorOrAdmin = user?.role === 'mentor' || user?.role === 'admin';
+                  const blockCommunityAccess = isCommunityRoute && !isMentorOrAdmin && !communityAccessLoading && !canAccessCommunity;
 
                   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
                     if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {

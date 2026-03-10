@@ -24,7 +24,7 @@ const teamMembers = [
     borderClass: 'border-red-200',
   },
   {
-    name: 'Dr. Gustavo Saliba',
+    name: 'Dr. Gustavo Nicolau',
     role1: 'CEO Green Card US',
     role2: 'Advogado Licenciado nos EUA',
     image: '/images/landing/landing-page/team-member-4.png',

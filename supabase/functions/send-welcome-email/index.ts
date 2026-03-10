@@ -7,6 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
+import { triggerEmailAutomation } from "../_shared/emailCampaignService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 
 interface WelcomeEmailRequest {
@@ -61,6 +62,14 @@ Deno.serve(async (req) => {
         "{{firstName}}": firstName,
         "{{dashboardLink}}": "https://hub.euanapratica.com/dashboard/hub",
       },
+    });
+
+    // Trigger activation drip for free users (enrolls in "Ativacao Free" automation)
+    // Fire-and-forget — never blocks the welcome email response
+    triggerEmailAutomation("onboarding.completed", {
+      user_id: user_id,
+      email: profile.email,
+      user_name: profile.full_name || firstName,
     });
 
     return new Response(

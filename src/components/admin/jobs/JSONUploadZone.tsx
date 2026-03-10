@@ -19,6 +19,8 @@ export function JSONUploadZone({ onFileSelect, isLoading }: JSONUploadZoneProps)
     onDrop,
     accept: {
       'application/json': ['.json'],
+      'text/csv': ['.csv'],
+      'text/plain': ['.csv'],
     },
     maxFiles: 1,
     disabled: isLoading,
@@ -43,10 +45,10 @@ export function JSONUploadZone({ onFileSelect, isLoading }: JSONUploadZoneProps)
         )}
         <div className="space-y-2">
           <p className="text-lg font-medium text-foreground">
-            {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o JSON ou clique para selecionar'}
+            {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
           </p>
           <p className="text-sm text-muted-foreground">
-            Formato: {'{ "job_posts": [...] }'} com job_title e post_link obrigatórios
+            JSON: {'{ "job_posts": [...] }'} • CSV: colunas post_title, post_link obrigatórias
           </p>
         </div>
       </div>

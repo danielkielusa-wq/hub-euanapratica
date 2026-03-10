@@ -124,6 +124,113 @@ function mapLinkedInJobToDb(raw: LinkedInJobRaw) {
   };
 }
 
+// ── Parse CSV file (RFC 4180) ────────────────────────────────
+
+function parseCSVRaw(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        row.push(field);
+        field = '';
+      } else if (ch === '\r' && next === '\n') {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        i++;
+      } else if (ch === '\n') {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+      } else {
+        field += ch;
+      }
+    }
+  }
+
+  if (field || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+export function parseJobsCSV(text: string): { jobs: LinkedInJobRaw[]; error?: string } {
+  try {
+    const rows = parseCSVRaw(text);
+    if (rows.length < 2) {
+      return { jobs: [], error: 'CSV vazio ou sem dados' };
+    }
+
+    const headers = rows[0].map((h) => h.trim().toLowerCase());
+    const col = (name: string) => headers.indexOf(name);
+
+    const titleIdx = col('post_title');
+    const linkIdx = col('post_link');
+    if (titleIdx === -1 || linkIdx === -1) {
+      return { jobs: [], error: 'CSV deve ter colunas "post_title" e "post_link"' };
+    }
+
+    const jobs: LinkedInJobRaw[] = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length <= 1 && (!r[0] || r[0].trim() === '')) continue;
+
+      const get = (idx: number) => (idx >= 0 && idx < r.length ? r[idx].trim() : '');
+      const getNum = (idx: number) => {
+        const v = parseFloat(get(idx));
+        return isNaN(v) ? undefined : v;
+      };
+
+      const job_title = get(titleIdx);
+      const post_link = get(linkIdx);
+      if (!job_title || !post_link) continue;
+
+      jobs.push({
+        job_title,
+        post_link,
+        contact_name: get(col('author_name')) || undefined,
+        description_summary: get(col('post_text')) || undefined,
+        salary_min_usd: getNum(col('salary_min_usd')),
+        salary_max_usd: getNum(col('salary_max_usd')),
+        relevance_score: getNum(col('relevance_score')),
+        relevance_notes: get(col('relevance_notes')) || undefined,
+        salary_notes: get(col('salary_notes')) || undefined,
+      });
+    }
+
+    if (jobs.length === 0) {
+      return { jobs: [], error: 'Nenhuma vaga válida encontrada no CSV' };
+    }
+
+    return { jobs };
+  } catch (e) {
+    return { jobs: [], error: `Erro ao parsear CSV: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 // ── Parse JSON file ──────────────────────────────────────────
 
 export function parseJobsJSON(text: string): { jobs: LinkedInJobRaw[]; error?: string } {

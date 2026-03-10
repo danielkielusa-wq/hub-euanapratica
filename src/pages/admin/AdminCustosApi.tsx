@@ -60,6 +60,7 @@ const FUNCTION_LABELS: Record<string, string> = {
   'generate-content-social-posts': 'Posts Sociais',
   'generate-daily-analytics': 'Analytics Diario',
   'generate-weekly-report': 'Relatorio Semanal',
+  'suggest-whatsapp-messages': 'Sugestao WhatsApp',
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -88,7 +89,22 @@ interface ModelPricing {
 const MODEL_LABELS: Record<string, string> = {
   'gpt-4o-mini': 'GPT-4o mini',
   'gpt-4.1-mini': 'GPT-4.1 mini',
+  'gpt-4': 'GPT-4 (legacy)',
   'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
+  'anthropic/claude-haiku-4-5': 'Haiku 4.5 (OR)',
+  'anthropic/claude-haiku-4.5': 'Haiku 4.5 (OR)',
+  'anthropic/claude-sonnet-4-5': 'Sonnet 4.5 (OR)',
+  'openai/gpt-4o-mini': 'GPT-4o mini (OR)',
+  'openai/gpt-4.1-mini': 'GPT-4.1 mini (OR)',
+  'openai/gpt-4.1-nano': 'GPT-4.1 nano (OR)',
+  'google/gemini-2.0-flash': 'Gemini 2.0 Flash (OR)',
+  'google/gemini-2.0-flash-001': 'Gemini 2.0 Flash (OR)',
+  'google/gemini-2.5-flash': 'Gemini 2.5 Flash (OR)',
+  'google/gemini-2.5-flash-preview': 'Gemini 2.5 Flash (OR)',
+  'google/gemini-2.5-pro': 'Gemini 2.5 Pro (OR)',
+  'perplexity/sonar-pro': 'Sonar Pro (OR)',
+  'perplexity/sonar': 'Sonar (OR)',
+  'meta-llama/llama-4-scout': 'Llama 4 Scout (OR)',
   'resend_email': 'Resend (e-mail)',
 };
 

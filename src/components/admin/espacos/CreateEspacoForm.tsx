@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft, Loader2, GraduationCap } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -36,7 +37,7 @@ const formSchema = z.object({
   category: z.enum(['immersion', 'group_mentoring', 'workshop', 'bootcamp', 'course']),
   visibility: z.enum(['public', 'private']),
   max_students: z.coerce.number().min(1).max(500),
-  status: z.enum(['active', 'inactive']),
+  status: z.enum(['active', 'inactive', 'completed', 'arquivado']),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
 });
@@ -53,13 +54,16 @@ const categoryLabels = {
 
 interface CreateEspacoFormProps {
   isMentor?: boolean;
+  espacoId?: string;
 }
 
-export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
+export function CreateEspacoForm({ isMentor = false, espacoId }: CreateEspacoFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingEspaco, setIsLoadingEspaco] = useState(!!espacoId);
+  const isEditing = !!espacoId;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -75,40 +79,104 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (!espacoId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('espacos')
+        .select('*')
+        .eq('id', espacoId)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error('Espaço não encontrado');
+        navigate(isMentor ? '/mentor/espacos' : '/admin/espacos');
+        return;
+      }
+      form.reset({
+        name: data.name || '',
+        description: data.description || '',
+        category: (data.category as FormData['category']) || 'immersion',
+        visibility: (data.visibility as FormData['visibility']) || 'private',
+        max_students: data.max_students ?? 30,
+        status: (data.status as FormData['status']) || 'active',
+        start_date: data.start_date || '',
+        end_date: data.end_date || '',
+      });
+      setIsLoadingEspaco(false);
+    })();
+  }, [espacoId]);
+
   const onSubmit = async (data: FormData) => {
     if (!user) return;
-    
+
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('espacos')
-        .insert({
-          name: data.name,
-          description: data.description || null,
-          category: data.category,
-          visibility: data.visibility,
-          max_students: data.max_students,
-          status: data.status,
-          start_date: data.start_date || null,
-          end_date: data.end_date || null,
-          mentor_id: isMentor ? user.id : null,
-        });
+      if (isEditing) {
+        const { error } = await supabase
+          .from('espacos')
+          .update({
+            name: data.name,
+            description: data.description || null,
+            category: data.category,
+            visibility: data.visibility,
+            max_students: data.max_students,
+            status: data.status,
+            start_date: data.start_date || null,
+            end_date: data.end_date || null,
+          })
+          .eq('id', espacoId);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success('Espaço atualizado com sucesso!');
+      } else {
+        const { error } = await supabase
+          .from('espacos')
+          .insert({
+            name: data.name,
+            description: data.description || null,
+            category: data.category,
+            visibility: data.visibility,
+            max_students: data.max_students,
+            status: data.status,
+            start_date: data.start_date || null,
+            end_date: data.end_date || null,
+            mentor_id: isMentor ? user.id : null,
+          });
 
-      toast.success('Espaço criado com sucesso!');
+        if (error) throw error;
+        toast.success('Espaço criado com sucesso!');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['mentor-espacos'] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-espaco'] });
       queryClient.invalidateQueries({ queryKey: ['admin-espacos'] });
-      
-      navigate(isMentor ? '/mentor/espacos' : '/admin/espacos');
+
+      if (isMentor) {
+        navigate(isEditing ? `/mentor/espacos/${espacoId}` : '/mentor/espacos');
+      } else {
+        navigate('/admin/espacos');
+      }
     } catch (error) {
-      toast.error('Erro ao criar espaço');
+      toast.error(isEditing ? 'Erro ao atualizar espaço' : 'Erro ao criar espaço');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const backPath = isMentor ? '/mentor/espacos' : '/admin/espacos';
+  const backPath = isMentor
+    ? (isEditing ? `/mentor/espacos/${espacoId}` : '/mentor/espacos')
+    : '/admin/espacos';
+
+  if (isLoadingEspaco) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto space-y-6 p-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -118,8 +186,10 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Criar Espaço</h1>
-            <p className="text-muted-foreground">Preencha as informações do novo espaço</p>
+            <h1 className="text-2xl font-bold">{isEditing ? 'Editar Espaço' : 'Criar Espaço'}</h1>
+            <p className="text-muted-foreground">
+              {isEditing ? 'Altere as informações do espaço' : 'Preencha as informações do novo espaço'}
+            </p>
           </div>
         </div>
 
@@ -237,7 +307,7 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status Inicial</FormLabel>
+                        <FormLabel>{isEditing ? 'Status' : 'Status Inicial'}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -247,6 +317,12 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
                           <SelectContent>
                             <SelectItem value="active">Ativo</SelectItem>
                             <SelectItem value="inactive">Inativo</SelectItem>
+                            {isEditing && (
+                              <>
+                                <SelectItem value="completed">Concluído</SelectItem>
+                                <SelectItem value="arquivado">Arquivado</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -293,7 +369,7 @@ export function CreateEspacoForm({ isMentor = false }: CreateEspacoFormProps) {
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Criar Espaço
+                    {isEditing ? 'Salvar Alterações' : 'Criar Espaço'}
                   </Button>
                 </div>
               </form>

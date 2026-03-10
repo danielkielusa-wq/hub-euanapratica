@@ -1,5 +1,8 @@
 project_id = "seqgnxynrcylxsdzbloa"
 
+[functions.test-n8n-webhook]
+verify_jwt = false
+
 [functions.trigger-manychat-flow]
 verify_jwt = false
 
@@ -179,4 +182,22 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sdr-execute-outreach]
+verify_jwt = false
+
+[functions.process-email-campaign]
+verify_jwt = false
+
+[functions.process-email-automations]
+verify_jwt = false
+
+[functions.handle-email-unsubscribe]
+verify_jwt = false
+
+[functions.track-email-event]
+verify_jwt = false
+
+[functions.receive-mentoria-waitlist]
+verify_jwt = false
+
+[functions.handle-report-accessed]
 verify_jwt = false

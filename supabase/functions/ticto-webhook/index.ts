@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { handleSubscriptionEvent } from "../_shared/subscriptionHandlers.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
+import { triggerEmailAutomation } from "../_shared/emailCampaignService.ts";
 import { timingSafeEqual } from "../_shared/authGuard.ts";
 import type { TictoSubscriptionPayload, MatchedPlan } from "../_shared/subscriptionHandlers.ts";
 
@@ -121,6 +122,16 @@ serve(async (req) => {
               }).catch(err => console.error("Subscription email trigger error:", err));
             }
           }
+        }
+
+        // Trigger email automation for new subscription onboarding drip
+        if (result.action === "activated") {
+          triggerEmailAutomation("subscription.activated", {
+            user_id: emailUserId ?? null,
+            email: payload.customer?.email ?? null,
+            name: payload.customer?.name ?? null,
+            plan_name: payload.item?.product_name ?? null,
+          }).catch(() => {});
         }
 
         // Dispatch N8N webhook for subscription lifecycle

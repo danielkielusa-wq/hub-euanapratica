@@ -142,96 +142,29 @@ export function useUpdateAutomation() {
   });
 }
 
-// ── Mutation: Test webhook ──────────────────────────────────────────
+// ── Mutation: Test webhook (proxied through Edge Function to avoid CORS) ──
 export function useTestAutomation() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (automation: N8NAutomation) => {
       if (!automation.webhook_url) throw new Error('Webhook URL nao configurada');
 
-      const testPayload: Record<string, unknown> = {
-        event: automation.trigger_event.replace('.*', '.test'),
-        timestamp: new Date().toISOString(),
-        source: 'enp_hub_admin_test',
-        test: true,
-        lead_id: '00000000-0000-0000-0000-000000000000',
-        lead_name: 'Lead Teste',
-        lead_email: 'teste@example.com',
-        lead_phone: '5511999999999',
-      };
-
-      // Add realistic fields based on trigger event type
-      if (automation.trigger_event === 'report.generated') {
-        Object.assign(testPayload, {
-          access_token: 'test-token-000',
-          report_link: 'https://hub.euanapratica.com/report/test-token-000',
-          readiness_score: 78,
-          lead_temperature: 'quente',
-          lead_priority_score: 82,
-          phase_id: 'decolagem',
-          phase_name: 'Decolagem',
-          is_tech_professional: true,
-          is_senior_level: true,
-          is_high_income: false,
-          primary_product: 'Mentoria Individual 1:1',
-          barriers: ['networking', 'portfolio'],
-        });
-      } else if (automation.trigger_event === 'subscription.*') {
-        Object.assign(testPayload, {
-          action: 'activated',
-          customer_email: 'teste@example.com',
-          customer_name: 'Lead Teste',
-          user_id: '00000000-0000-0000-0000-000000000000',
-          plan_id: null,
-          plan_name: 'Pro',
-          product_name: 'ENP Hub Pro',
-          paid_amount: 97.00,
-        });
-      } else if (automation.trigger_event === 'analytics.daily') {
-        Object.assign(testPayload, {
-          snapshot_date: new Date().toISOString().slice(0, 10),
-          ai_summary: 'Hoje a plataforma registrou 15 novos leads de diagnostico, dos quais 3 se cadastraram no hub. A taxa de conversao de 20% esta dentro da media. O MRR estimado e de R$8.400 com 42 assinaturas ativas e churn de 2,4% nos ultimos 30 dias. As ferramentas mais utilizadas foram ResumePass AI (12 usos) e Tradutor de Titulos (8 usos), consumindo 28 creditos no total. Foram realizados 5 agendamentos e 120 mensagens WhatsApp enviadas. O custo total de API no dia foi de $1,23.',
-          dashboard_url: 'https://hub.euanapratica.com/admin/analytics',
-          metrics: {
-            new_leads: 15,
-            new_signups: 3,
-            active_subscriptions: 42,
-            mrr_estimate: 8400,
-            churn_percent_30d: 2.4,
-            total_credits_used: 28,
-            bookings_today: 5,
-            community_posts: 8,
-            whatsapp_outbound: 120,
-            email_sent: 45,
-            api_cost_usd: 1.23,
-          },
-        });
-      } else if (automation.trigger_event === 'whatsapp.inbound') {
-        Object.assign(testPayload, {
-          message_text: 'SIM',
-          message_id: 'test-msg-000',
-          interaction_id: null,
-        });
-      }
-
-      const response = await fetch(automation.webhook_url, {
-        method: automation.webhook_method || 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(automation.headers || {}),
-        },
-        body: JSON.stringify(testPayload),
+      const { data, error } = await supabase.functions.invoke('test-n8n-webhook', {
+        body: { automation_id: automation.id },
       });
 
-      if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`HTTP ${response.status}: ${body.slice(0, 200)}`);
+      if (error) throw new Error(error.message || 'Erro ao chamar Edge Function');
+      if (data?.status === 'error' || data?.status === 'timeout') {
+        throw new Error(data.error || `Webhook retornou ${data.status}`);
       }
 
-      return { status: response.status };
+      return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['n8n-automations'] });
+      queryClient.invalidateQueries({ queryKey: ['n8n-webhook-logs'] });
       toast({ title: 'Teste enviado com sucesso' });
     },
     onError: (error: any) => {

@@ -37,8 +37,11 @@ export default function Community() {
   });
   const { userStats, ranking, isLoading: gamificationLoading } = useGamification();
 
+  // Mentors and admins always have community access regardless of plan
+  const isMentorOrAdmin = user?.role === 'mentor' || user?.role === 'admin';
+
   // Check community access — wait for plan data before showing upgrade prompt
-  if (!planLoading && !hasFeature('community')) {
+  if (!planLoading && !isMentorOrAdmin && !hasFeature('community')) {
     return (
       <DashboardLayout>
         <div className="p-6 md:p-8">

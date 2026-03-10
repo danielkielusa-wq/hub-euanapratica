@@ -28,6 +28,7 @@ import {
   useBulkDeleteJobs,
   useEnrichJobs,
   parseJobsJSON,
+  parseJobsCSV,
 } from '@/hooks/useAdminJobs';
 import type { AdminJob } from '@/hooks/useAdminJobs';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
@@ -55,7 +56,8 @@ export default function AdminPrimeJobs() {
 
     try {
       const text = await file.text();
-      const { jobs, error } = parseJobsJSON(text);
+      const isCSV = file.name.toLowerCase().endsWith('.csv');
+      const { jobs, error } = isCSV ? parseJobsCSV(text) : parseJobsJSON(text);
 
       if (error) {
         setParseError(error);

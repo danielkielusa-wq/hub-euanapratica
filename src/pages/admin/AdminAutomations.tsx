@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer, Search } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -233,6 +233,30 @@ export default function AdminAutomations() {
   const [editTimeout, setEditTimeout] = useState('10000');
   const [editHeaders, setEditHeaders] = useState('{}');
   const [docsOpen, setDocsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const filteredAutomations = useMemo(() => {
+    return automations.filter((auto) => {
+      // Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch =
+          auto.display_name.toLowerCase().includes(q) ||
+          auto.trigger_event.toLowerCase().includes(q) ||
+          (auto.description || '').toLowerCase().includes(q) ||
+          (auto.category || '').toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+      // Status filter
+      if (statusFilter === 'active') return auto.enabled;
+      if (statusFilter === 'inactive') return !auto.enabled;
+      if (statusFilter === 'success' || statusFilter === 'error' || statusFilter === 'timeout' || statusFilter === 'skipped') {
+        return auto.last_status === statusFilter;
+      }
+      return true;
+    });
+  }, [automations, searchQuery, statusFilter]);
 
   const handleEdit = (auto: N8NAutomation) => {
     setEditingAutomation(auto);
@@ -290,9 +314,41 @@ export default function AdminAutomations() {
           </div>
         </div>
 
+        {/* Search & Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por nome, evento, categoria..."
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px] h-9 text-sm">
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="active">Ativas</SelectItem>
+              <SelectItem value="inactive">Inativas</SelectItem>
+              <SelectItem value="success">Ultimo: success</SelectItem>
+              <SelectItem value="error">Ultimo: error</SelectItem>
+              <SelectItem value="timeout">Ultimo: timeout</SelectItem>
+              <SelectItem value="skipped">Ultimo: skipped</SelectItem>
+            </SelectContent>
+          </Select>
+          {(searchQuery || statusFilter !== 'all') && (
+            <span className="text-xs text-gray-500">
+              {filteredAutomations.length} de {automations.length}
+            </span>
+          )}
+        </div>
+
         {/* Automation Cards */}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {automations.map((auto) => (
+          {filteredAutomations.map((auto) => (
             <Card key={auto.id} className={`relative transition-all ${auto.enabled ? 'ring-1 ring-blue-200' : 'opacity-75'}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -359,6 +415,13 @@ export default function AdminAutomations() {
           ))}
         </div>
 
+        {filteredAutomations.length === 0 && automations.length > 0 && (
+          <Card>
+            <CardContent className="py-12 text-center text-gray-500">
+              Nenhuma automacao encontrada para os filtros selecionados.
+            </CardContent>
+          </Card>
+        )}
         {automations.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center text-gray-500">
@@ -385,7 +448,7 @@ export default function AdminAutomations() {
               <Input
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
-                placeholder="https://n8n.euanapratica.com/webhook/..."
+                placeholder="https://n8n.sapunplugged.com/webhook/..."
                 className="font-mono text-sm"
               />
             </div>
@@ -600,19 +663,14 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell className="font-mono text-xs">analytics.daily</TableCell>
-              <TableCell className="text-xs">generate-daily-analytics</TableCell>
-              <TableCell className="text-xs">Resumo diario com metricas + texto IA + link do dashboard</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-mono text-xs">intelligence.weekly_report</TableCell>
-              <TableCell className="text-xs">generate-weekly-report</TableCell>
-              <TableCell className="text-xs">Relatorio semanal de inteligencia de vendas</TableCell>
-            </TableRow>
-            <TableRow>
               <TableCell className="font-mono text-xs">report.generated</TableCell>
               <TableCell className="text-xs">dispatch-report-webhook</TableCell>
               <TableCell className="text-xs">Relatorio de diagnostico gerado com sucesso</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">report.accessed</TableCell>
+              <TableCell className="text-xs">handle-report-accessed</TableCell>
+              <TableCell className="text-xs">Lead abriu o relatorio pela primeira vez (cria follow-up task)</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-mono text-xs">subscription.*</TableCell>
@@ -628,6 +686,41 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
               <TableCell className="font-mono text-xs">whatsapp.inbound</TableCell>
               <TableCell className="text-xs">receive-whatsapp-webhook</TableCell>
               <TableCell className="text-xs">Mensagem WhatsApp recebida de lead conhecido</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">mentoria.interest</TableCell>
+              <TableCell className="text-xs">receive-mentoria-waitlist</TableCell>
+              <TableCell className="text-xs">Lead entrou na lista de espera da mentoria em grupo</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">cart.abandoned</TableCell>
+              <TableCell className="text-xs">check-abandoned-carts</TableCell>
+              <TableCell className="text-xs">Carrinho abandonado detectado (servico visualizado sem compra)</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">manychat.trigger_flow</TableCell>
+              <TableCell className="text-xs">trigger-manychat-flow</TableCell>
+              <TableCell className="text-xs">Disparo de fluxo ManyChat com template HSM</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">sdr.send_whatsapp</TableCell>
+              <TableCell className="text-xs">sdr-execute-outreach</TableCell>
+              <TableCell className="text-xs">SDR envia mensagem WhatsApp para prospect</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">sdr.send_linkedin</TableCell>
+              <TableCell className="text-xs">sdr-execute-outreach</TableCell>
+              <TableCell className="text-xs">SDR envia mensagem LinkedIn para prospect</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">analytics.daily</TableCell>
+              <TableCell className="text-xs">generate-daily-analytics</TableCell>
+              <TableCell className="text-xs">Resumo diario com metricas + texto IA + link do dashboard</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-mono text-xs">intelligence.weekly_report</TableCell>
+              <TableCell className="text-xs">generate-weekly-report</TableCell>
+              <TableCell className="text-xs">Relatorio semanal de inteligencia de vendas</TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -667,6 +760,7 @@ Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`}
           <li><strong>Status "error"</strong>: N8N retornou erro HTTP — verifique os logs no N8N</li>
           <li><strong>Automacao nunca dispara</strong>: Verifique se esta ativa (toggle) e se o evento correspondente ocorreu</li>
           <li><strong>N8N nao recebe webhook</strong>: Verifique firewall, HTTPS/SSL, e se a URL esta correta</li>
+          <li><strong>"Failed to fetch" no teste</strong>: O botao "Testar" usa um proxy server-side (Edge Function). Se persistir, verifique se a funcao <code>test-n8n-webhook</code> esta deployada</li>
           <li><strong>Cron nao dispara</strong>: Verifique se <code>invoke_edge_function</code> e <code>app_configs</code> (supabase_edge_url, internal_function_secret) estao configurados</li>
         </ul>
       </section>

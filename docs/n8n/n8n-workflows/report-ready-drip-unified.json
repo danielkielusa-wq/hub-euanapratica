@@ -1,0 +1,1146 @@
+{
+  "name": "ENP - Notificacao Relatorio Pronto (D0-D14 Unificado)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "report-ready",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500],
+      "id": "f1a00001-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "report-ready"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrair dados do webhook e preparar variaveis globais\nconst body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    lead_id: body.lead_id,\n    lead_name: body.lead_name || 'Ola',\n    lead_email: body.lead_email,\n    lead_phone: body.lead_phone || null,\n    access_token: body.access_token,\n    report_link: body.report_link,\n    lead_temperature: body.lead_temperature || null,\n    lead_priority_score: body.lead_priority_score || null,\n    primary_product: body.primary_product || 'Plano Pro',\n    is_test: body.test === true,\n    // Pre-rendered email templates from dispatch-report-webhook\n    email_d0_subject: body.email_d0_subject || null,\n    email_d0_body_html: body.email_d0_body_html || null,\n    email_d3_subject: body.email_d3_subject || null,\n    email_d3_body_html: body.email_d3_body_html || null,\n    email_d7_subject: body.email_d7_subject || null,\n    email_d7_body_html: body.email_d7_body_html || null,\n    email_d14_subject: body.email_d14_subject || null,\n    email_d14_body_html: body.email_d14_body_html || null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 500],
+      "id": "f1a00001-0001-4000-8000-000000000002",
+      "name": "Parse Payload"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "lead_interactions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $json.lead_id }}"
+            },
+            {
+              "keyName": "metadata->>template_name",
+              "keyValue": "report_ready_teaser"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [720, 500],
+      "id": "f1a00001-0001-4000-8000-000000000003",
+      "name": "Check Dedup (D0 ja enviado?)",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "dedup-check",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 500],
+      "id": "f1a00001-0001-4000-8000-000000000004",
+      "name": "Primeiro Envio?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1200, 680],
+      "id": "f1a00001-0001-4000-8000-000000000099",
+      "name": "STOP - Duplicado"
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1200, 500],
+      "id": "f1a00001-0001-4000-8000-000000000005",
+      "name": "Wait 60min (anti-spam)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-phone",
+              "leftValue": "={{ $('Parse Payload').item.json.lead_phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1440, 500],
+      "id": "f1a00001-0001-4000-8000-000000000006",
+      "name": "Tem Telefone?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-whatsapp",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"report_ready_teaser\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 380],
+      "id": "f1a00001-0001-4000-8000-000000000007",
+      "name": "D0 - WhatsApp Teaser",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1940, 380],
+      "id": "f1a00001-0001-4000-8000-000000000008",
+      "name": "Wait 24h (resposta WA)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "lead_interactions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('Parse Payload').item.json.lead_id }}"
+            },
+            {
+              "keyName": "type",
+              "keyValue": "whatsapp_sent"
+            },
+            {
+              "keyName": "metadata->>template_name",
+              "keyValue": "report_ready_link"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2180, 380],
+      "id": "f1a00001-0001-4000-8000-000000000009",
+      "name": "Link WA ja enviado?",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "link-not-sent",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2420, 380],
+      "id": "f1a00001-0001-4000-8000-000000000010",
+      "name": "Link NAO enviado?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-lead-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"report_ready\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2700, 300],
+      "id": "f1a00001-0001-4000-8000-000000000011",
+      "name": "D0 - Email Fallback (Report Ready)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-lead-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"report_ready\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 640],
+      "id": "f1a00001-0001-4000-8000-000000000012",
+      "name": "D0 - Email Direto (Sem Telefone)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2700, 460],
+      "id": "f1a00001-0001-4000-8000-000000000030",
+      "name": "No Action (Link ja enviado)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3000, 500],
+      "id": "f1a00001-0001-4000-8000-000000000013",
+      "name": "Merge D0"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "days"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3240, 500],
+      "id": "f1a00001-0001-4000-8000-000000000014",
+      "name": "Wait 3 dias"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "subscriptions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Parse Payload').item.json.lead_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [3480, 500],
+      "id": "f1a00001-0001-4000-8000-000000000015",
+      "name": "Check Assinatura D3",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "no-subscription-d3",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3720, 500],
+      "id": "f1a00001-0001-4000-8000-000000000016",
+      "name": "Ainda nao assinou? (D3)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [3960, 680],
+      "id": "f1a00001-0001-4000-8000-000000000098",
+      "name": "STOP - Converteu (D3)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-lead-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"drip_report_d3\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3960, 500],
+      "id": "f1a00001-0001-4000-8000-000000000017",
+      "name": "D3 - Email Dicas",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 4,
+        "unit": "days"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4200, 500],
+      "id": "f1a00001-0001-4000-8000-000000000018",
+      "name": "Wait 4 dias (D3-D7)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "subscriptions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Parse Payload').item.json.lead_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [4440, 500],
+      "id": "f1a00001-0001-4000-8000-000000000019",
+      "name": "Check Assinatura D7",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "no-subscription-d7",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [4680, 500],
+      "id": "f1a00001-0001-4000-8000-000000000020",
+      "name": "Ainda nao assinou? (D7)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [4920, 680],
+      "id": "f1a00001-0001-4000-8000-000000000097",
+      "name": "STOP - Converteu (D7)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-lead-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"drip_report_d7\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4920, 400],
+      "id": "f1a00001-0001-4000-8000-000000000021",
+      "name": "D7 - Email Plano de Acao",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-hot",
+              "leftValue": "={{ $('Parse Payload').item.json.lead_temperature }}",
+              "rightValue": "quente|muito-quente",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "has-phone-d7",
+              "leftValue": "={{ $('Parse Payload').item.json.lead_phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [5160, 400],
+      "id": "f1a00001-0001-4000-8000-000000000022",
+      "name": "Lead Quente + Telefone? (D7)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-whatsapp",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"drip_report_d7_wa\",\n  \"variables\": {\n    \"{{leadName}}\": \"{{ $('Parse Payload').item.json.lead_name }}\",\n    \"{{reportLink}}\": \"{{ $('Parse Payload').item.json.report_link }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5400, 300],
+      "id": "f1a00001-0001-4000-8000-000000000023",
+      "name": "D7 - WhatsApp Bonus (Lead Quente)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [5640, 500],
+      "id": "f1a00001-0001-4000-8000-000000000024",
+      "name": "Merge D7"
+    },
+    {
+      "parameters": {
+        "amount": 7,
+        "unit": "days"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [5880, 500],
+      "id": "f1a00001-0001-4000-8000-000000000025",
+      "name": "Wait 7 dias (D7-D14)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "subscriptions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Parse Payload').item.json.lead_id }}"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [6120, 500],
+      "id": "f1a00001-0001-4000-8000-000000000026",
+      "name": "Check Assinatura D14",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "SHEFLfQdt2th2mQd",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "no-subscription-d14",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [6360, 500],
+      "id": "f1a00001-0001-4000-8000-000000000027",
+      "name": "Ainda nao assinou? (D14)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [6600, 680],
+      "id": "f1a00001-0001-4000-8000-000000000096",
+      "name": "STOP - Converteu (D14)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://seqgnxynrcylxsdzbloa.supabase.co/functions/v1/send-lead-email",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $credentials.internalSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_id\": \"{{ $('Parse Payload').item.json.lead_id }}\",\n  \"template_name\": \"drip_report_d14\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [6600, 500],
+      "id": "f1a00001-0001-4000-8000-000000000028",
+      "name": "D14 - Email Ultima Chance + Oferta",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INTERNAL_SECRET_CRED_ID",
+          "name": "Supabase Internal Secret"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Payload": {
+      "main": [
+        [
+          {
+            "node": "Check Dedup (D0 ja enviado?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dedup (D0 ja enviado?)": {
+      "main": [
+        [
+          {
+            "node": "Primeiro Envio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Primeiro Envio?": {
+      "main": [
+        [
+          {
+            "node": "Wait 60min (anti-spam)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STOP - Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60min (anti-spam)": {
+      "main": [
+        [
+          {
+            "node": "Tem Telefone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Telefone?": {
+      "main": [
+        [
+          {
+            "node": "D0 - WhatsApp Teaser",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "D0 - Email Direto (Sem Telefone)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D0 - WhatsApp Teaser": {
+      "main": [
+        [
+          {
+            "node": "Wait 24h (resposta WA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 24h (resposta WA)": {
+      "main": [
+        [
+          {
+            "node": "Link WA ja enviado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link WA ja enviado?": {
+      "main": [
+        [
+          {
+            "node": "Link NAO enviado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link NAO enviado?": {
+      "main": [
+        [
+          {
+            "node": "D0 - Email Fallback (Report Ready)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action (Link ja enviado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D0 - Email Fallback (Report Ready)": {
+      "main": [
+        [
+          {
+            "node": "Merge D0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Action (Link ja enviado)": {
+      "main": [
+        [
+          {
+            "node": "Merge D0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D0 - Email Direto (Sem Telefone)": {
+      "main": [
+        [
+          {
+            "node": "Merge D0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge D0": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 dias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 dias": {
+      "main": [
+        [
+          {
+            "node": "Check Assinatura D3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Assinatura D3": {
+      "main": [
+        [
+          {
+            "node": "Ainda nao assinou? (D3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ainda nao assinou? (D3)": {
+      "main": [
+        [
+          {
+            "node": "D3 - Email Dicas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STOP - Converteu (D3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D3 - Email Dicas": {
+      "main": [
+        [
+          {
+            "node": "Wait 4 dias (D3-D7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4 dias (D3-D7)": {
+      "main": [
+        [
+          {
+            "node": "Check Assinatura D7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Assinatura D7": {
+      "main": [
+        [
+          {
+            "node": "Ainda nao assinou? (D7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ainda nao assinou? (D7)": {
+      "main": [
+        [
+          {
+            "node": "D7 - Email Plano de Acao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STOP - Converteu (D7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D7 - Email Plano de Acao": {
+      "main": [
+        [
+          {
+            "node": "Lead Quente + Telefone? (D7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Quente + Telefone? (D7)": {
+      "main": [
+        [
+          {
+            "node": "D7 - WhatsApp Bonus (Lead Quente)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge D7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "D7 - WhatsApp Bonus (Lead Quente)": {
+      "main": [
+        [
+          {
+            "node": "Merge D7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge D7": {
+      "main": [
+        [
+          {
+            "node": "Wait 7 dias (D7-D14)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 7 dias (D7-D14)": {
+      "main": [
+        [
+          {
+            "node": "Check Assinatura D14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Assinatura D14": {
+      "main": [
+        [
+          {
+            "node": "Ainda nao assinou? (D14)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ainda nao assinou? (D14)": {
+      "main": [
+        [
+          {
+            "node": "D14 - Email Ultima Chance + Oferta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STOP - Converteu (D14)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ENP",
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T00:00:00.000Z"
+    },
+    {
+      "name": "Lead Nurturing",
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T00:00:00.000Z"
+    },
+    {
+      "name": "Drip D0-D14",
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2026-03-09T00:00:00.000Z",
+  "versionId": "2"
+}

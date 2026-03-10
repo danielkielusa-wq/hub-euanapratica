@@ -9,6 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig } from "./apiConfigService.ts";
+import { generateUnsubscribeToken, generateUnsubscribeLink } from "./emailCampaignService.ts";
 
 interface EmailTemplate {
   id: string;
@@ -112,15 +113,35 @@ export async function sendTemplatedEmail(
       };
     }
 
+    // Auto-inject {{unsubscribeLink}} if template uses it but caller didn't provide it
+    const enhancedVars = { ...variables };
+    if (
+      (template.body_html.includes("{{unsubscribeLink}}") || template.subject.includes("{{unsubscribeLink}}")) &&
+      !enhancedVars["{{unsubscribeLink}}"]
+    ) {
+      try {
+        const recipientEmail = (Array.isArray(to) ? to[0] : to).toLowerCase().trim();
+        const token = await generateUnsubscribeToken(supabase, recipientEmail);
+        enhancedVars["{{unsubscribeLink}}"] = generateUnsubscribeLink(token);
+      } catch {
+        // Fallback: remove the placeholder so it doesn't show raw {{unsubscribeLink}}
+        enhancedVars["{{unsubscribeLink}}"] = "#";
+      }
+    }
+
     // Perform variable substitution
     let subject = template.subject;
     let body = template.body_html;
 
-    for (const [key, value] of Object.entries(variables)) {
+    for (const [key, value] of Object.entries(enhancedVars)) {
       const regex = new RegExp(escapeRegex(key), 'g');
       subject = subject.replace(regex, value);
       body = body.replace(regex, value);
     }
+
+    // Clean up any unreplaced {{variables}} so they don't appear as literal text
+    subject = subject.replace(/\{\{[a-zA-Z_]+\}\}/g, "");
+    body = body.replace(/\{\{[a-zA-Z_]+\}\}/g, "");
 
     // Get Resend API config
     const resendConfig = await getApiConfig("resend_email");

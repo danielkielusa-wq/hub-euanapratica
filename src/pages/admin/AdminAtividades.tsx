@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, ListTodo, CalendarDays, Check, SkipForward, ExternalLink, Filter } from 'lucide-react';
+import { Loader2, ListTodo, CalendarDays, Check, SkipForward, ExternalLink, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -102,7 +101,7 @@ type CategoryFilter = 'all' | 'overdue' | 'today' | 'thisWeek' | 'later' | 'noDu
 
 export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: AtividadesViewMode }) {
   const leadBasePath = viewMode === 'assistant' ? '/assistant/leads' : '/admin/leads';
-  const navigate = useNavigate();
+  const openLead = (task: GlobalTask) => window.open(`${leadBasePath}/${task.lead_id}`, '_blank');
   const { data: tasks = [], isLoading } = useAllPendingTasks();
   const { data: completedTasks = [] } = useRecentCompletedTasks();
   const updateTaskStatus = useUpdateTaskStatus();
@@ -200,7 +199,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                   borderColor="border-l-emerald-500"
                   tasks={completedTasks}
                   onComplete={() => {}}
-                  onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                  onNavigate={openLead}
                   readOnly
                 />
               ) : (
@@ -215,7 +214,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                     borderColor="border-l-red-500"
                     tasks={overdue}
                     onComplete={handleComplete}
-                    onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                    onNavigate={openLead}
                   />
                 )}
                 {(categoryFilter === 'all' || categoryFilter === 'today') && todayTasks.length > 0 && (
@@ -225,7 +224,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                     borderColor="border-l-amber-500"
                     tasks={todayTasks}
                     onComplete={handleComplete}
-                    onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                    onNavigate={openLead}
                   />
                 )}
                 {(categoryFilter === 'all' || categoryFilter === 'thisWeek') && thisWeek.length > 0 && (
@@ -235,7 +234,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                     borderColor="border-l-blue-500"
                     tasks={thisWeek}
                     onComplete={handleComplete}
-                    onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                    onNavigate={openLead}
                   />
                 )}
                 {(categoryFilter === 'all' || categoryFilter === 'later') && later.length > 0 && (
@@ -245,7 +244,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                     borderColor="border-l-green-500"
                     tasks={later}
                     onComplete={handleComplete}
-                    onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                    onNavigate={openLead}
                   />
                 )}
                 {(categoryFilter === 'all' || categoryFilter === 'noDue') && noDue.length > 0 && (
@@ -255,7 +254,7 @@ export default function AdminAtividades({ viewMode = 'admin' }: { viewMode?: Ati
                     borderColor="border-l-gray-400"
                     tasks={noDue}
                     onComplete={handleComplete}
-                    onNavigate={(task) => navigate(`${leadBasePath}/${task.lead_id}`)}
+                    onNavigate={openLead}
                   />
                 )}
               </>
@@ -306,6 +305,14 @@ function TaskSection({
   readOnly?: boolean;
 }) {
   const tz = useUserTimezone();
+  const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
+  function toggleDesc(id: string) {
+    setExpandedDesc(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   return (
     <div>
       <h3 className={cn('text-sm font-semibold mb-3 flex items-center gap-2', titleColor)}>
@@ -336,7 +343,21 @@ function TaskSection({
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800">{task.title}</p>
                     {task.description && (
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{task.description}</p>
+                      <div className="mt-0.5">
+                        <p className={cn('text-xs text-gray-500', !expandedDesc.has(task.id) && 'line-clamp-2')}>
+                          {task.description}
+                        </p>
+                        {task.description.length > 120 && (
+                          <button
+                            onClick={() => toggleDesc(task.id)}
+                            className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5 mt-0.5"
+                          >
+                            {expandedDesc.has(task.id)
+                              ? <><ChevronUp className="w-3 h-3" /> menos</>
+                              : <><ChevronDown className="w-3 h-3" /> mais</>}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <Button

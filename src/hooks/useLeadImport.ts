@@ -199,6 +199,7 @@ export function useLeadImport() {
           name: lead.data.Nome.trim(),
           email,
           phone: lead.data.telefone?.trim() || null,
+          country_code: lead.data.country_code?.trim() || lead.data.pais?.trim() || null,
           area: lead.data.Area?.trim() || null,
           atuacao: lead.data['Atuação']?.trim() || null,
           trabalha_internacional: lead.data['trabalha internacional']?.toLowerCase() === 'sim',

@@ -7,6 +7,7 @@
  */
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { triggerEmailAutomation } from "./emailCampaignService.ts";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -100,6 +101,28 @@ export async function checkUnifiedCredits(
   const features = row.features ?? {};
   const allowed = remaining >= cost;
 
+  // Trigger upgrade nudge email when credits exhausted
+  if (!allowed) {
+    // Fetch user email for the automation (best-effort)
+    adminSupabase
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data: profile }) => {
+        if (profile?.email) {
+          triggerEmailAutomation("credits.exhausted", {
+            user_id: userId,
+            email: profile.email,
+            user_name: profile.full_name,
+            remaining: 0,
+            monthly_credits: monthlyCredits,
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }
+
   return {
     allowed,
     remaining,
@@ -135,7 +158,11 @@ export async function recordCreditUsage(
         credits_used: creditsUsed,
       });
 
-      if (!error) return true;
+      if (!error) {
+        // Check usage milestones (fire-and-forget, never blocks)
+        checkUsageMilestone(adminSupabase, userId).catch(() => {});
+        return true;
+      }
     } catch (err) {
     }
     if (attempt < maxRetries - 1) {
@@ -143,4 +170,38 @@ export async function recordCreditUsage(
     }
   }
   return false;
+}
+
+/**
+ * Checks if user hit a usage milestone (5, 10, 25) and triggers email automation.
+ * Best-effort, never throws.
+ */
+async function checkUsageMilestone(
+  adminSupabase: SupabaseClient,
+  userId: string
+): Promise<void> {
+  const MILESTONES = [5, 10, 25];
+
+  const { count } = await adminSupabase
+    .from("usage_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  const totalUsage = count || 0;
+  if (!MILESTONES.includes(totalUsage)) return;
+
+  const { data: profile } = await adminSupabase
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile?.email) {
+    await triggerEmailAutomation("usage.milestone", {
+      user_id: userId,
+      email: profile.email,
+      user_name: profile.full_name,
+      milestone: totalUsage,
+    });
+  }
 }

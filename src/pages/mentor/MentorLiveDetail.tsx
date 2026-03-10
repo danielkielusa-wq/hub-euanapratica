@@ -299,123 +299,121 @@ export default function MentorLiveDetail() {
             </div>
           </CardHeader>
           <CardContent>
-            {(loadingRegs || loadingGuests) ? (
+            {/* Registered participants */}
+            {loadingRegs ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
                   <Skeleton key={i} className="h-12 w-full rounded-lg" />
                 ))}
               </div>
-            ) : totalParticipants === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">Nenhum participante ainda.</p>
-            ) : (
-              <>
-                {/* Registered participants */}
-                {registrations && registrations.length > 0 && (
-                  <div className="divide-y">
-                    {registrations.map((reg) => (
-                      <div key={reg.id} className="flex items-center gap-3 py-3">
-                        <Checkbox
-                          checked={reg.attended}
-                          onCheckedChange={(checked) =>
-                            toggleAttended.mutate({
-                              registrationId: reg.id,
-                              attended: !!checked,
-                            })
-                          }
-                        />
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={reg.profile?.profile_photo_url || undefined} />
-                          <AvatarFallback className="text-xs bg-gray-100">
-                            {(reg.profile?.full_name || '?')
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {reg.profile?.full_name || 'Usuário'}
-                          </p>
-                          <p className="text-xs text-gray-400 truncate">
-                            {reg.profile?.email}
-                          </p>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {format(parseISO(reg.registered_at), 'dd/MM HH:mm')}
-                        </div>
-                        {reg.attended && (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                            Presente
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Guest participants */}
-                {guests && guests.length > 0 && (
-                  <>
-                    {registrations && registrations.length > 0 && (
-                      <div className="border-t border-dashed mt-4 pt-4">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                          Participantes Convidados ({guests.length})
-                        </p>
-                      </div>
-                    )}
-                    <div className="divide-y">
-                      {guests.map((guest) => (
-                        <div key={guest.id} className="flex items-center gap-3 py-3">
-                          <Checkbox
-                            checked={guest.attended}
-                            onCheckedChange={(checked) =>
-                              toggleGuestAttended.mutate({
-                                guestId: guest.id,
-                                attended: !!checked,
-                              })
-                            }
-                          />
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs bg-amber-50 text-amber-700">
-                              {guest.name
-                                .split(' ')
-                                .map(n => n[0])
-                                .join('')
-                                .slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {guest.name}
-                              </p>
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                Convidado
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-400 truncate">{guest.email}</p>
-                          </div>
-                          {guest.attended && (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                              Presente
-                            </span>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-gray-400 hover:text-red-500"
-                            onClick={() => removeGuest.mutate(guest.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
+            ) : registrations && registrations.length > 0 ? (
+              <div className="divide-y">
+                {registrations.map((reg) => (
+                  <div key={reg.id} className="flex items-center gap-3 py-3">
+                    <Checkbox
+                      checked={reg.attended}
+                      onCheckedChange={(checked) =>
+                        toggleAttended.mutate({
+                          registrationId: reg.id,
+                          attended: !!checked,
+                        })
+                      }
+                    />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={reg.profile?.profile_photo_url || undefined} />
+                      <AvatarFallback className="text-xs bg-gray-100">
+                        {(reg.profile?.full_name || '?')
+                          .split(' ')
+                          .map(n => n[0])
+                          .join('')
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {reg.profile?.full_name || 'Usuário'}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {reg.profile?.email}
+                      </p>
                     </div>
-                  </>
-                )}
+                    <div className="text-xs text-gray-400">
+                      {format(parseISO(reg.registered_at), 'dd/MM HH:mm')}
+                    </div>
+                    {reg.attended && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        Presente
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : !loadingGuests && (!guests || guests.length === 0) ? (
+              <p className="text-sm text-gray-400 py-4 text-center">Nenhum participante ainda.</p>
+            ) : null}
+
+            {/* Guest participants */}
+            {loadingGuests ? (
+              <div className="space-y-3 mt-4">
+                <Skeleton className="h-12 w-full rounded-lg" />
+              </div>
+            ) : guests && guests.length > 0 ? (
+              <>
+                <div className="border-t border-dashed mt-4 pt-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    Participantes Convidados ({guests.length})
+                  </p>
+                </div>
+                <div className="divide-y">
+                  {guests.map((guest) => (
+                    <div key={guest.id} className="flex items-center gap-3 py-3">
+                      <Checkbox
+                        checked={guest.attended}
+                        onCheckedChange={(checked) =>
+                          toggleGuestAttended.mutate({
+                            guestId: guest.id,
+                            attended: !!checked,
+                          })
+                        }
+                      />
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="text-xs bg-amber-50 text-amber-700">
+                          {guest.name
+                            .split(' ')
+                            .map(n => n[0])
+                            .join('')
+                            .slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {guest.name}
+                          </p>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            Convidado
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{guest.email}</p>
+                      </div>
+                      {guest.attended && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          Presente
+                        </span>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-gray-400 hover:text-red-500"
+                        onClick={() => removeGuest.mutate(guest.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>

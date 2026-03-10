@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 interface LeadFormData {
   nome: string;
   whatsapp: string;
+  country_code: string;
   email: string;
   consentimento_marketing: boolean;
   cargo_atual: string;
@@ -43,7 +44,7 @@ interface Country {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INITIAL_FORM_DATA: LeadFormData = {
-  nome: '', whatsapp: '', email: '', consentimento_marketing: false,
+  nome: '', whatsapp: '', country_code: 'BR', email: '', consentimento_marketing: false,
   cargo_atual: '', area_profissional: '', anos_experiencia: '', nivel_ingles: '', trabalha_internacional: '',
   objetivo: '', status_visto: '', prazo_movimento: '', composicao_familiar: '',
   faixa_renda: '', faixa_investimento: '', principal_obstaculo: '', maior_duvida: '',
@@ -239,6 +240,7 @@ function Step1Personal({
         if (raw.startsWith(c.dial) && raw.length > c.dial.length) {
           setSelectedCountry(c);
           setLocalPhone(formatLocalPhone(raw.slice(c.dial.length), c));
+          onChange('country_code', c.code);
           return;
         }
       }
@@ -249,6 +251,7 @@ function Step1Personal({
     setSelectedCountry(country);
     setShowCountries(false);
     setLocalPhone('');
+    onChange('country_code', country.code);
   };
 
   const handlePhoneChange = (val: string) => {

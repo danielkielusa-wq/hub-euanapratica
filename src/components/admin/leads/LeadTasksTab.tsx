@@ -70,7 +70,16 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
   const [showCompleted, setShowCompleted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LeadTask | null>(null);
   const [expandedWA, setExpandedWA] = useState<Set<string>>(new Set());
+  const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function toggleDesc(id: string) {
+    setExpandedDesc(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function toggleWA(id: string) {
     setExpandedWA(prev => {
@@ -148,7 +157,21 @@ export function LeadTasksTab({ tasks, leadId, onAddTask, onSuggestTasks, onUpdat
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">{task.title}</p>
                         {task.description && (
-                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{task.description}</p>
+                          <div className="mt-0.5">
+                            <p className={cn('text-xs text-gray-500', !expandedDesc.has(task.id) && 'line-clamp-2')}>
+                              {task.description}
+                            </p>
+                            {task.description.length > 120 && (
+                              <button
+                                onClick={() => toggleDesc(task.id)}
+                                className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5 mt-0.5"
+                              >
+                                {expandedDesc.has(task.id)
+                                  ? <><ChevronUp className="w-3 h-3" /> menos</>
+                                  : <><ChevronDown className="w-3 h-3" /> mais</>}
+                              </button>
+                            )}
+                          </div>
                         )}
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           <Badge variant="outline" className={cn('text-[10px] border', TYPE_STYLES[task.type] || '')}>

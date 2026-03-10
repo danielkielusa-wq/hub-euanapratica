@@ -174,34 +174,30 @@ export function useDeleteLive() {
 
 /**
  * Fetch registrations for a live (mentor view with profiles)
+ * Uses RPC to join registrations + profiles in a single query
  */
 export function useLiveRegistrations(liveId: string | undefined) {
   return useQuery({
     queryKey: ['live-registrations', liveId],
     queryFn: async (): Promise<LiveRegistrationWithProfile[]> => {
       const { data, error } = await supabase
-        .from('live_registrations')
-        .select('*')
-        .eq('live_id', liveId!)
-        .order('registered_at', { ascending: false });
+        .rpc('get_live_registrations_with_profiles', { p_live_id: liveId! });
 
       if (error) throw error;
       if (!data?.length) return [];
 
-      // Fetch profiles
-      const userIds = data.map((r: any) => r.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, profile_photo_url')
-        .in('id', userIds);
-
-      const profileMap = new Map(
-        (profiles || []).map((p: any) => [p.id, p])
-      );
-
-      return data.map((r: any) => ({
-        ...r,
-        profile: profileMap.get(r.user_id) || null,
+      return data.map((row: any) => ({
+        id: row.id,
+        live_id: row.live_id,
+        user_id: row.user_id,
+        registered_at: row.registered_at,
+        attended: row.attended,
+        payment_status: row.payment_status,
+        profile: {
+          full_name: row.full_name || '',
+          email: row.email || '',
+          profile_photo_url: row.profile_photo_url,
+        },
       }));
     },
     enabled: !!liveId,

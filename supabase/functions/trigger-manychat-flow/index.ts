@@ -17,6 +17,7 @@ import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { normalizePhone } from "../_shared/whatsappService.ts";
+import { formatLeadFirstName } from "../_shared/nameUtils.ts";
 
 interface FlowVariable {
   key: string;
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
       : "";
 
     const autoVars: Record<string, string> = {
-      leadName: lead.name || "Cliente",
+      leadName: formatLeadFirstName(lead.name),
       reportLink,
       leadEmail: lead.email || "",
       leadPhone: lead.phone || "",
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
     // 6. Dispatch to N8N
     await dispatchN8NWebhook("manychat.trigger_flow", {
       lead_id: lead.id,
-      lead_name: lead.name || "Cliente",
+      lead_name: formatLeadFirstName(lead.name),
       lead_email: lead.email || "",
       lead_phone: normalizedPhone,
       flow_name,

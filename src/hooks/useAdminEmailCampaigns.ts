@@ -625,6 +625,47 @@ export function useTestEmailAutomation() {
   });
 }
 
+// ── Automation Send History ──────────────────────────────────────────
+
+export interface EmailLogEntry {
+  id: string;
+  recipient: string;
+  template_name: string;
+  subject: string | null;
+  status: string;
+  error_message: string | null;
+  resend_id: string | null;
+  created_at: string | null;
+}
+
+export function useAutomationHistory(automation: EmailAutomation | null) {
+  const templateNames: string[] = [];
+  if (automation) {
+    if (automation.is_drip && automation.drip_steps?.length) {
+      templateNames.push(...automation.drip_steps.map(s => s.template_name));
+    } else if (automation.template_name) {
+      templateNames.push(automation.template_name);
+    }
+  }
+
+  return useQuery({
+    queryKey: ['automation-history', automation?.id, templateNames],
+    queryFn: async () => {
+      if (!templateNames.length) return [];
+      const { data, error } = await (supabase as any)
+        .from('email_logs')
+        .select('id, recipient, template_name, subject, status, error_message, resend_id, created_at')
+        .in('template_name', templateNames)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data as EmailLogEntry[];
+    },
+    enabled: !!automation && templateNames.length > 0,
+    staleTime: 15000,
+  });
+}
+
 // ── Email Templates (for campaign template picker) ─────────────────
 
 export function useEmailTemplatesList() {

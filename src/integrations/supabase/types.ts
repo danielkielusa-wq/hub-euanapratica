@@ -665,6 +665,7 @@ export type Database = {
           budget_gap: string | null
           can_apply_jobs: boolean | null
           consentimento_marketing: boolean | null
+          country_code: string | null
           created_at: string | null
           critical_blockers: string[] | null
           device: string | null
@@ -770,6 +771,7 @@ export type Database = {
           budget_gap?: string | null
           can_apply_jobs?: boolean | null
           consentimento_marketing?: boolean | null
+          country_code?: string | null
           created_at?: string | null
           critical_blockers?: string[] | null
           device?: string | null
@@ -875,6 +877,7 @@ export type Database = {
           budget_gap?: string | null
           can_apply_jobs?: boolean | null
           consentimento_marketing?: boolean | null
+          country_code?: string | null
           created_at?: string | null
           critical_blockers?: string[] | null
           device?: string | null
@@ -1992,6 +1995,326 @@ export type Database = {
         }
         Relationships: []
       }
+      email_automations: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          drip_steps: Json | null
+          enabled: boolean | null
+          id: string
+          is_drip: boolean | null
+          last_triggered_at: string | null
+          metadata: Json | null
+          name: string
+          template_name: string | null
+          template_variables: Json | null
+          total_sent: number | null
+          total_skipped: number | null
+          trigger_condition: Json | null
+          trigger_cron: string | null
+          trigger_event: string | null
+          trigger_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          drip_steps?: Json | null
+          enabled?: boolean | null
+          id?: string
+          is_drip?: boolean | null
+          last_triggered_at?: string | null
+          metadata?: Json | null
+          name: string
+          template_name?: string | null
+          template_variables?: Json | null
+          total_sent?: number | null
+          total_skipped?: number | null
+          trigger_condition?: Json | null
+          trigger_cron?: string | null
+          trigger_event?: string | null
+          trigger_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          drip_steps?: Json | null
+          enabled?: boolean | null
+          id?: string
+          is_drip?: boolean | null
+          last_triggered_at?: string | null
+          metadata?: Json | null
+          name?: string
+          template_name?: string | null
+          template_variables?: Json | null
+          total_sent?: number | null
+          total_skipped?: number | null
+          trigger_condition?: Json | null
+          trigger_cron?: string | null
+          trigger_event?: string | null
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      email_campaign_contacts: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          email: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          position: number
+          processed_at: string | null
+          recipient_name: string | null
+          resend_id: string | null
+          skip_reason: string | null
+          status: string
+          user_id: string | null
+          variables: Json | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          email: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          position?: number
+          processed_at?: string | null
+          recipient_name?: string | null
+          resend_id?: string | null
+          skip_reason?: string | null
+          status?: string
+          user_id?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          email?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          position?: number
+          processed_at?: string | null
+          recipient_name?: string | null
+          resend_id?: string | null
+          skip_reason?: string | null
+          status?: string
+          user_id?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_contacts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaign_events: {
+        Row: {
+          automation_id: string | null
+          campaign_contact_id: string | null
+          campaign_id: string | null
+          created_at: string | null
+          email: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          link_url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          campaign_contact_id?: string | null
+          campaign_id?: string | null
+          created_at?: string | null
+          email: string
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          link_url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          campaign_contact_id?: string | null
+          campaign_id?: string | null
+          created_at?: string | null
+          email?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          link_url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_events_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "email_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_events_campaign_contact_id_fkey"
+            columns: ["campaign_contact_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaign_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaigns: {
+        Row: {
+          audience_filters: Json | null
+          audience_type: string
+          completed_at: string | null
+          contacts_failed: number | null
+          contacts_per_cycle: number
+          contacts_queued: number | null
+          contacts_sent: number | null
+          contacts_skipped: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          error_rate: number | null
+          id: string
+          last_cycle_at: string | null
+          metadata: Json | null
+          name: string
+          paused_at: string | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string
+          template_name: string
+          template_variables: Json | null
+          total_contacts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          audience_filters?: Json | null
+          audience_type: string
+          completed_at?: string | null
+          contacts_failed?: number | null
+          contacts_per_cycle?: number
+          contacts_queued?: number | null
+          contacts_sent?: number | null
+          contacts_skipped?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          error_rate?: number | null
+          id?: string
+          last_cycle_at?: string | null
+          metadata?: Json | null
+          name: string
+          paused_at?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          template_name: string
+          template_variables?: Json | null
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          audience_filters?: Json | null
+          audience_type?: string
+          completed_at?: string | null
+          contacts_failed?: number | null
+          contacts_per_cycle?: number
+          contacts_queued?: number | null
+          contacts_sent?: number | null
+          contacts_skipped?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          error_rate?: number | null
+          id?: string
+          last_cycle_at?: string | null
+          metadata?: Json | null
+          name?: string
+          paused_at?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string
+          template_name?: string
+          template_variables?: Json | null
+          total_contacts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      email_drip_enrollments: {
+        Row: {
+          automation_id: string
+          created_at: string | null
+          current_step: number
+          email: string
+          id: string
+          lead_id: string | null
+          next_send_at: string
+          recipient_name: string | null
+          status: string
+          steps_completed: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          automation_id: string
+          created_at?: string | null
+          current_step?: number
+          email: string
+          id?: string
+          lead_id?: string | null
+          next_send_at: string
+          recipient_name?: string | null
+          status?: string
+          steps_completed?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          automation_id?: string
+          created_at?: string | null
+          current_step?: number
+          email?: string
+          id?: string
+          lead_id?: string | null
+          next_send_at?: string
+          recipient_name?: string | null
+          status?: string
+          steps_completed?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drip_enrollments_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "email_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           created_at: string | null
@@ -2081,6 +2404,48 @@ export type Database = {
           variables?: Json | null
         }
         Relationships: []
+      }
+      email_unsubscribes: {
+        Row: {
+          automation_id: string | null
+          campaign_id: string | null
+          email: string
+          metadata: Json | null
+          source: string
+          unsubscribed_at: string
+        }
+        Insert: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          email: string
+          metadata?: Json | null
+          source?: string
+          unsubscribed_at?: string
+        }
+        Update: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          email?: string
+          metadata?: Json | null
+          source?: string
+          unsubscribed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_unsubscribes_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "email_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_unsubscribes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrollment_history: {
         Row: {
@@ -3098,6 +3463,47 @@ export type Database = {
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_guest_participants: {
+        Row: {
+          added_by: string
+          attended: boolean
+          created_at: string
+          email: string
+          id: string
+          live_id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          added_by: string
+          attended?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          live_id: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          added_by?: string
+          attended?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          live_id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_guest_participants_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "lives"
             referencedColumns: ["id"]
           },
         ]
@@ -6466,6 +6872,20 @@ export type Database = {
         Args: { p_page_key: string }
         Returns: {
           value: string
+        }[]
+      }
+      get_live_registrations_with_profiles: {
+        Args: { p_live_id: string }
+        Returns: {
+          attended: boolean
+          email: string
+          full_name: string
+          id: string
+          live_id: string
+          payment_status: string
+          profile_photo_url: string
+          registered_at: string
+          user_id: string
         }[]
       }
       get_masked_api_configs: {

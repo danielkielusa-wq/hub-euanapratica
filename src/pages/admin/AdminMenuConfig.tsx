@@ -32,13 +32,14 @@ const STUDENT_ITEMS: MenuItemDef[] = [
 ];
 
 const MENTOR_ITEMS: MenuItemDef[] = [
-  { key: 'dashboard',        label: 'Dashboard',         group: 'GESTÃO' },
-  { key: 'espacos',          label: 'Meus Espaços',      group: 'GESTÃO' },
-  { key: 'agendamentos',     label: 'Agendamentos',      group: 'GESTÃO' },
-  { key: 'disponibilidade',  label: 'Disponibilidade',   group: 'GESTÃO' },
-  { key: 'agenda',           label: 'Agenda',            group: 'GESTÃO' },
-  { key: 'tarefas',          label: 'Tarefas',           group: 'GESTÃO' },
-  { key: 'biblioteca',       label: 'Biblioteca',        group: 'CONTEÚDO' },
+  { key: 'dashboard',        label: 'Dashboard',         group: 'VISÃO GERAL' },
+  { key: 'agenda',           label: 'Agenda',            group: 'VISÃO GERAL' },
+  { key: 'disponibilidade',  label: 'Disponibilidade',   group: 'VISÃO GERAL' },
+  { key: 'espacos',          label: 'Meus Espaços',      group: 'ENSINO' },
+  { key: 'lives',            label: 'Lives',             group: 'ENSINO' },
+  { key: 'tarefas',          label: 'Tarefas',           group: 'ENSINO' },
+  { key: 'biblioteca',       label: 'Biblioteca',        group: 'ENSINO' },
+  { key: 'comunidade',       label: 'Comunidade',        group: 'COMUNIDADE' },
   { key: 'perfil',           label: 'Perfil',            group: 'MINHA CONTA' },
   { key: 'suporte',          label: 'Suporte',           group: 'MINHA CONTA' },
 ];

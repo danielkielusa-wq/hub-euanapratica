@@ -14,7 +14,7 @@ Every automated transactional email the platform sends is listed here. You have 
 - **Email body** — full visual editing with the drag-and-drop Unlayer editor
 - **On/off toggle** — disable any template without deleting it
 
-### The 12 Templates
+### Transactional Templates (12)
 
 | Template Name | When It Sends |
 |---------------|--------------|
@@ -30,6 +30,30 @@ Every automated transactional email the platform sends is listed here. You have 
 | Agendamento - Cancelado | When a booking is cancelled |
 | Agendamento - Não Comparecimento | When a student misses a session |
 | Espaço - Convite | When a mentor invites a student |
+
+### Activation Drip Templates (8) — NEW
+
+Automated drip sequences that onboard users into the platform tools. See [activation-drips.md](activation-drips.md) for full documentation.
+
+**Free/Basic Users (5 emails, D3-D14):**
+
+| Template Name | Day | What It Promotes |
+|---------------|-----|-----------------|
+| Ativacao Free D3 - Seus Creditos | D3 | Overview of 5 free credits and all 3 tools |
+| Ativacao Free D5 - Title Translator | D5 | Job title translation (1 credit) |
+| Ativacao Free D7 - Prime Jobs | D7 | Visa-sponsoring job search (1 credit) |
+| Ativacao Free D10 - ResumePass AI | D10 | AI resume optimization (3 credits) |
+| Ativacao Free D14 - Upgrade Pro | D14 | Upgrade CTA: Pro plan benefits |
+
+**Pro/VIP Subscribers (3 new + 2 existing, D1-D10):**
+
+| Template Name | Day | What It Promotes |
+|---------------|-----|-----------------|
+| Onboarding D1 - Boas-vindas | D1 | Feature overview (existing) |
+| Onboarding D3 - Primeira Feature | D3 | ResumePass AI (existing) |
+| Ativacao Pro D5 - Title Translator | D5 | Job title translation |
+| Ativacao Pro D7 - Prime Jobs | D7 | Visa-sponsoring job search |
+| Ativacao Pro D10 - Comunidade e Mentoria | D10 | Community + mentorship |
 
 ---
 
@@ -78,6 +102,20 @@ Each template supports dynamic variables that are automatically filled in when t
 | `{{meetingLinkSection}}` | Meeting link button (auto-inserted when available) |
 | `{{oldDateSection}}` | Previous date block shown in reschedule emails |
 | `{{cancellationReasonSection}}` | Cancellation reason block (shown when provided) |
+
+### Activation Drip Emails (Free)
+| Variable | What It Shows |
+|----------|--------------|
+| `{{firstName}}` | User's first name |
+| `{{trackingPixel}}` | Open tracking (auto-inserted, do not remove) |
+| `{{unsubscribeLink}}` | Unsubscribe link (auto-inserted, do not remove) |
+
+### Activation Drip Emails (Pro/VIP)
+| Variable | What It Shows |
+|----------|--------------|
+| `{{recipientName}}` | Subscriber's full name |
+| `{{trackingPixel}}` | Open tracking (auto-inserted, do not remove) |
+| `{{unsubscribeLink}}` | Unsubscribe link (auto-inserted, do not remove) |
 
 ### Espaco Invitation
 | Variable | What It Shows |

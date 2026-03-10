@@ -16,11 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  useMentorEspaco, 
-  useEspacoStats, 
+import {
+  useMentorEspaco,
+  useEspacoStats,
   useEspacoStudents,
-  useArchiveEspaco
+  useArchiveEspaco,
+  useRemoveStudent
 } from '@/hooks/useMentorEspacos';
 import { useSessions } from '@/hooks/useSessions';
 import { useAssignments } from '@/hooks/useAssignments';
@@ -38,9 +39,8 @@ import {
 } from '@/components/espacos/detail';
 import { InviteStudentModal } from '@/components/mentor/InviteStudentModal';
 import { 
-  Plus, 
-  Eye, 
-  MoreHorizontal, 
+  Plus,
+  MoreHorizontal,
   UserMinus,
   Archive,
   RefreshCw,
@@ -60,6 +60,7 @@ export default function MentorEspacoDetail() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   
   const archiveMutation = useArchiveEspaco();
+  const removeStudentMutation = useRemoveStudent();
   const { data: espaco, isLoading: espacoLoading } = useMentorEspaco(id || '');
   const { data: stats } = useEspacoStats(id || '');
   const { data: students } = useEspacoStudents(id || '');
@@ -315,12 +316,18 @@ export default function MentorEspacoDetail() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem className="gap-2 cursor-pointer">
-                                    <Eye className="h-4 w-4" />
-                                    Ver Perfil
-                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="gap-2 cursor-pointer text-destructive">
+                                  <DropdownMenuItem
+                                    className="gap-2 cursor-pointer text-destructive"
+                                    onClick={() => {
+                                      if (window.confirm(`Remover ${student.fullName} deste espaço?`)) {
+                                        removeStudentMutation.mutate({
+                                          enrollmentId: student.id,
+                                          espacoId: id!,
+                                        });
+                                      }
+                                    }}
+                                  >
                                     <UserMinus className="h-4 w-4" />
                                     Remover
                                   </DropdownMenuItem>

@@ -45,7 +45,11 @@ Deno.serve(async (req: Request) => {
       .limit(50); // Process in batches
 
     if (viewsError) {
-      throw viewsError;
+      console.error("landing_page_views query error:", viewsError);
+      return new Response(
+        JSON.stringify({ error: "Query error", details: viewsError.message }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
     }
 
     if (!views || views.length === 0) {
@@ -124,8 +128,10 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("check-abandoned-carts error:", err);
+    const details = err instanceof Error ? err.message : JSON.stringify(err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }

@@ -1,4 +1,4 @@
-import { User, MapPin, Clock, Phone, Mail, Globe, Smartphone, Tag, Calendar, Package, DollarSign, ArrowRight, ExternalLink } from 'lucide-react';
+import { User, MapPin, Clock, Phone, Mail, Globe, Smartphone, Tag, Calendar, Package, DollarSign, ArrowRight, ExternalLink, Flag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,13 @@ interface LeadOverviewTabProps {
   lead: CareerEvaluation;
   viewMode?: 'admin' | 'assistant';
 }
+
+const COUNTRY_NAMES: Record<string, string> = {
+  BR: 'Brasil', US: 'Estados Unidos', PT: 'Portugal', GB: 'Reino Unido', UK: 'Reino Unido',
+  CA: 'Canadá', DE: 'Alemanha', FR: 'França', ES: 'Espanha', IT: 'Itália',
+  AU: 'Austrália', NZ: 'Nova Zelândia', IE: 'Irlanda', NL: 'Holanda', CH: 'Suíça',
+  JP: 'Japão', MX: 'México', AR: 'Argentina', CL: 'Chile', CO: 'Colômbia',
+};
 
 const ROTA_STEPS = [
   { letter: 'R', title: 'Realidade & Direção', color: 'bg-red-500' },
@@ -65,6 +72,7 @@ export function LeadOverviewTab({ lead, viewMode = 'admin' }: LeadOverviewTabPro
             <InfoRow label="Nome" value={lead.name} icon={User} />
             <InfoRow label="Email" value={lead.email} icon={Mail} />
             <InfoRow label="Telefone" value={lead.phone} icon={Phone} />
+            <InfoRow label="País" value={lead.country_code ? (COUNTRY_NAMES[lead.country_code] || lead.country_code) : undefined} icon={Flag} />
             <InfoRow label="Área" value={lead.area} icon={MapPin} />
             <InfoRow label="Atuação" value={lead.atuacao} icon={MapPin} />
             <InfoRow label="Canal preferido" value={lead.preferred_communication} icon={Smartphone} />

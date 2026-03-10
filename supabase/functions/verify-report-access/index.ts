@@ -184,7 +184,8 @@ serve(async (req) => {
       // Check email match (case-insensitive)
       if (evaluation.email.toLowerCase() !== email.toLowerCase()) {
         // Log failed attempt for rate limiting (CRIT-4)
-        await supabase
+        // fire-and-forget: log failed attempt for rate limiting
+        supabase
           .from("analytics_events")
           .insert({
             user_id: evaluation.user_id,
@@ -195,7 +196,7 @@ serve(async (req) => {
               token_hash: token.slice(0, 8),
               source: "public_report",
             }
-          }).catch(() => {}); // fire-and-forget
+          }).then(() => {});
 
         // Generic error message (MED-6: same message for not found and wrong email)
         return new Response(
@@ -232,6 +233,19 @@ serve(async (req) => {
             access_count: newAccessCount,
           }
         });
+
+      // Log lead_interaction for every access (first access also triggers PG → handle-report-accessed)
+      supabase.from("lead_interactions").insert({
+        lead_id: evaluation.id,
+        type: "report_viewed",
+        notes: newAccessCount === 1
+          ? "Primeiro acesso ao relatório"
+          : `Acesso #${newAccessCount} ao relatório`,
+        metadata: {
+          source: "public_report",
+          access_count: newAccessCount,
+        },
+      }).then(() => {});
 
       await supabase
         .from("audit_events")
@@ -274,6 +288,7 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
+    console.error("verify-report-access error:", error);
     // MED-6: Generic error message, never expose internals
     return new Response(
       JSON.stringify({ error: "Erro interno do servidor" }),

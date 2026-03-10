@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
+import { triggerEmailAutomation } from "../_shared/emailCampaignService.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -51,17 +52,31 @@ serve(async (req) => {
         : rawTemp.includes("quente") || rawTemp.includes("hot") ? "quente"
         : rawTemp || null);
 
-    const reportLink = ev.access_token
-      ? `https://hub.euanapratica.com/report/${ev.access_token}`
+    const resolvedName = ev.name ?? lead_name ?? "Olá";
+    const resolvedEmail = ev.email ?? lead_email ?? "";
+    const resolvedAccessToken = ev.access_token ?? access_token;
+    const reportLink = resolvedAccessToken
+      ? `https://hub.euanapratica.com/report/${resolvedAccessToken}`
       : null;
 
+    // 1. Trigger in-platform drip automation (D0-D14 email sequence)
+    // This enrolls the lead in "Drip Pós-Diagnóstico" which handles
+    // D0/D3/D7/D14 via sendCampaignEmail (with logging, unsubscribe, tracking)
+    triggerEmailAutomation("report.completed", {
+      lead_id: ev.id,
+      email: resolvedEmail,
+      lead_name: resolvedName,
+      access_token: resolvedAccessToken,
+    });
+
+    // 2. Dispatch N8N webhook for non-email actions (CRM, WhatsApp, lead scoring)
     await dispatchN8NWebhook("report.generated", {
       // Identity
       lead_id:             ev.id,
-      lead_name:           ev.name ?? lead_name,
-      lead_email:          ev.email ?? lead_email,
+      lead_name:           resolvedName,
+      lead_email:          resolvedEmail,
       lead_phone:          ev.phone ?? lead_phone ?? null,
-      access_token:        ev.access_token ?? access_token,
+      access_token:        resolvedAccessToken,
       report_link:         reportLink,
       // User data (raw form answers)
       area:                userData.area ?? null,

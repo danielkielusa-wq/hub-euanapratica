@@ -307,6 +307,32 @@ export function useEspacoTimeline(espacoId: string) {
   });
 }
 
+// Remove student from espaco
+export function useRemoveStudent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ enrollmentId, espacoId }: { enrollmentId: string; espacoId: string }) => {
+      const { error } = await supabase
+        .from('user_espacos')
+        .delete()
+        .eq('id', enrollmentId);
+
+      if (error) throw error;
+      return { enrollmentId, espacoId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['espaco-students', data.espacoId] });
+      queryClient.invalidateQueries({ queryKey: ['espaco-stats', data.espacoId] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-espacos'] });
+      toast.success('Aluno removido do espaço');
+    },
+    onError: () => {
+      toast.error('Erro ao remover aluno');
+    },
+  });
+}
+
 // Get next 3 sessions
 export function useEspacoUpcomingSessions(espacoId: string) {
   return useQuery({

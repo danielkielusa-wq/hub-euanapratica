@@ -125,21 +125,25 @@ function formatEmailHtml(dayIndex: number, date: Date, tasks: AgendaTask[]): str
 <html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f2ede8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <div style="max-width:560px;margin:32px auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.08);">
+  <!-- Logo -->
+  <div style="text-align:center;padding:24px 32px 8px;background:#ffffff;">
+    <img src="https://hub.euanapratica.com/logo-enp.png" alt="EUA Na Prática" width="160" style="max-width:160px;height:auto;display:inline-block;" />
+  </div>
   <!-- Header -->
   <div style="background:#0f0d0a;padding:28px 32px 24px;">
     <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#5a5045;margin-bottom:6px;">ENP Hub · Planejamento</div>
-    <div style="font-size:24px;font-weight:700;color:#f0e6d3;line-height:1.2;">📅 ${DAY_NAMES[dayIndex]}</div>
+    <div style="font-size:24px;font-weight:700;color:#f0e6d3;line-height:1.2;">${DAY_NAMES[dayIndex]}</div>
     <div style="font-size:13px;color:#7a6e61;margin-top:4px;">${dateStr}</div>
   </div>
   <!-- Body -->
   <div style="padding:24px 32px 28px;">
     <!-- Morning -->
-    <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8a70;margin-bottom:12px;">🌅 Manhã</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8a70;margin-bottom:12px;">Manhã</div>
     ${morning.map(renderTask).join("")}
     <!-- Divider -->
     <div style="height:1px;background:#e8e1d5;margin:20px 0;"></div>
     <!-- Evening -->
-    <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8a70;margin-bottom:12px;">🌙 Final do dia</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#9a8a70;margin-bottom:12px;">Final do dia</div>
     ${evening.map(renderTask).join("")}
     <!-- CTA -->
     <div style="text-align:center;margin-top:28px;">
@@ -241,7 +245,7 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             from: "ENP Hub <noreply@euanapratica.com>",
             to: [adminEmail],
-            subject: `📅 Agenda de ${DAY_NAMES[dayIndex]} — ${dateStr}`,
+            subject: `Agenda de ${DAY_NAMES[dayIndex]} — ${dateStr}`,
             html: htmlBody,
           }),
         });

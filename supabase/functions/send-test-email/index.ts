@@ -8,6 +8,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
 import { getApiConfig } from "../_shared/apiConfigService.ts";
+import { generateUnsubscribeToken, generateUnsubscribeLink } from "../_shared/emailCampaignService.ts";
 
 interface SendTestEmailRequest {
   template_name: string;
@@ -59,15 +60,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Variable substitution
+    // Variable substitution — skip auto-injected vars (handled below)
+    const AUTO_INJECTED = new Set(["{{unsubscribeLink}}", "{{trackingPixel}}"]);
     let subject = template.subject;
     let body = template.body_html;
 
     for (const [key, value] of Object.entries(variables || {})) {
+      if (AUTO_INJECTED.has(key)) continue;
       const regex = new RegExp(escapeRegex(key), "g");
       subject = subject.replace(regex, value);
       body = body.replace(regex, value);
     }
+
+    // Auto-inject: real unsubscribe link + clean tracking pixel
+    const unsubToken = await generateUnsubscribeToken(supabase, to);
+    const unsubLink = generateUnsubscribeLink(unsubToken);
+    body = body.replace(/\{\{unsubscribeLink\}\}/g, unsubLink);
+    body = body.replace(/\{\{trackingPixel\}\}/g, "");
 
     // Prefix subject with [TESTE]
     subject = `[TESTE] ${subject}`;

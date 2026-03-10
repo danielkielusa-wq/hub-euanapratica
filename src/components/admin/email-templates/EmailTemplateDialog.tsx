@@ -14,9 +14,10 @@ interface EmailTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template?: EmailTemplate | null;
+  isClone?: boolean;
 }
 
-export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTemplateDialogProps) {
+export function EmailTemplateDialog({ open, onOpenChange, template, isClone }: EmailTemplateDialogProps) {
   const { createTemplate, updateTemplate, isSaving } = useAdminEmailTemplates();
   const emailEditorRef = useRef<EditorRef>(null);
 
@@ -28,13 +29,14 @@ export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTempl
   const [formVariables, setFormVariables] = useState('');
   const [editorLoaded, setEditorLoaded] = useState(false);
 
+  const isEditing = !!template && !isClone;
+
   // Reset form when dialog opens/closes or template changes
   useEffect(() => {
     if (open) {
       if (template) {
-        // Edit mode
-        setFormName(template.name);
-        setFormDisplayName(template.display_name);
+        setFormName(isClone ? `${template.name}_copy` : template.name);
+        setFormDisplayName(isClone ? `${template.display_name} (Cópia)` : template.display_name);
         setFormSubject(template.subject);
         setFormCategory(template.category || '');
         setFormDescription(template.description || '');
@@ -50,12 +52,42 @@ export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTempl
       }
       setEditorLoaded(false);
     }
-  }, [open, template]);
+  }, [open, template, isClone]);
 
   // Load design into editor when it's ready
   useEffect(() => {
-    if (editorLoaded && template?.design_json) {
-      emailEditorRef.current?.editor?.loadDesign(template.design_json);
+    if (editorLoaded && template) {
+      if (template.design_json) {
+        emailEditorRef.current?.editor?.loadDesign(template.design_json);
+      } else if (template.body_html) {
+        // Fallback: load body_html as a single HTML block so the user can see and edit it
+        emailEditorRef.current?.editor?.loadDesign({
+          body: {
+            rows: [{
+              cells: [1],
+              columns: [{
+                contents: [{
+                  type: 'html',
+                  values: {
+                    html: template.body_html,
+                  },
+                }],
+                values: {},
+              }],
+              values: {
+                backgroundColor: '',
+                padding: '0px',
+                columnsBackgroundColor: '',
+              },
+            }],
+            values: {
+              backgroundColor: '#F4F4F5',
+              contentWidth: '600px',
+              fontFamily: { label: 'Arial', value: 'arial,helvetica,sans-serif' },
+            },
+          },
+        });
+      }
     }
   }, [editorLoaded, template]);
 
@@ -88,8 +120,8 @@ export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTempl
       };
 
       try {
-        if (template) {
-          await updateTemplate(template.id, input);
+        if (isEditing) {
+          await updateTemplate(template!.id, input);
         } else {
           await createTemplate(input);
         }
@@ -104,7 +136,7 @@ export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTempl
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-[24px] max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{template ? 'Editar Template' : 'Novo Template'}</DialogTitle>
+          <DialogTitle>{isClone ? 'Clonar Template' : isEditing ? 'Editar Template' : 'Novo Template'}</DialogTitle>
           <DialogDescription>
             Configure o template de email usando o editor visual abaixo
           </DialogDescription>
@@ -129,7 +161,7 @@ export function EmailTemplateDialog({ open, onOpenChange, template }: EmailTempl
                 value={formName}
                 onChange={(e) => setFormName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
                 className="rounded-xl font-mono"
-                disabled={!!template} // Can't change name after creation
+                disabled={isEditing} // Can't change name after creation
               />
             </div>
           </div>

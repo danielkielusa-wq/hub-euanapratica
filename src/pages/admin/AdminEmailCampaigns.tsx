@@ -30,6 +30,7 @@ import { AutomationConfigDialog } from '@/components/admin/email-campaigns/Autom
 import { AutomationEnrollmentsSheet } from '@/components/admin/email-campaigns/AutomationEnrollmentsSheet';
 import { UnsubscribesSheet } from '@/components/admin/email-campaigns/UnsubscribesSheet';
 import { TestAutomationDialog } from '@/components/admin/email-campaigns/TestAutomationDialog';
+import { AutomationHistorySheet } from '@/components/admin/email-campaigns/AutomationHistorySheet';
 
 // ── Status labels/colors ───────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default function AdminEmailCampaigns() {
   const [enrollmentsAutomation, setEnrollmentsAutomation] = useState<EmailAutomation | null>(null);
   const [unsubscribesOpen, setUnsubscribesOpen] = useState(false);
   const [testAutomation, setTestAutomation] = useState<EmailAutomation | null>(null);
+  const [historyAutomation, setHistoryAutomation] = useState<EmailAutomation | null>(null);
 
   const { data: campaigns = [], isLoading: campaignsLoading, refetch: refetchCampaigns } = useCampaigns();
   const { data: stats } = useCampaignStats();
@@ -174,6 +176,7 @@ export default function AdminEmailCampaigns() {
                     onConfigure={() => setConfigAutomation(automation)}
                     onViewEnrollments={() => setEnrollmentsAutomation(automation)}
                     onTest={() => setTestAutomation(automation)}
+                    onViewHistory={() => setHistoryAutomation(automation)}
                   />
                 ))}
               </div>
@@ -204,6 +207,11 @@ export default function AdminEmailCampaigns() {
         automation={testAutomation}
         open={!!testAutomation}
         onOpenChange={(open) => !open && setTestAutomation(null)}
+      />
+      <AutomationHistorySheet
+        automation={historyAutomation}
+        open={!!historyAutomation}
+        onOpenChange={(open) => !open && setHistoryAutomation(null)}
       />
     </DashboardLayout>
   );
@@ -313,12 +321,14 @@ function AutomationCard({
   onConfigure,
   onViewEnrollments,
   onTest,
+  onViewHistory,
 }: {
   automation: EmailAutomation;
   onToggle: (enabled: boolean) => void;
   onConfigure: () => void;
   onViewEnrollments: () => void;
   onTest: () => void;
+  onViewHistory: () => void;
 }) {
   const triggerColor = TRIGGER_COLORS[automation.trigger_type] || '';
   const triggerLabel = TRIGGER_LABELS[automation.trigger_type] || automation.trigger_type;
@@ -360,9 +370,12 @@ function AutomationCard({
           </p>
         )}
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           <Button variant="outline" size="sm" onClick={onConfigure}>
             <Settings2 className="h-3.5 w-3.5 mr-1" /> Configurar
+          </Button>
+          <Button variant="outline" size="sm" onClick={onViewHistory}>
+            <BarChart3 className="h-3.5 w-3.5 mr-1" /> Historico
           </Button>
           {automation.is_drip && (
             <Button variant="outline" size="sm" onClick={onViewEnrollments}>

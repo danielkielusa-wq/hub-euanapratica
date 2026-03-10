@@ -16,6 +16,8 @@ export interface LeadCSVRow {
   impediment?: string;
   impedmentother?: string;
   'main concern'?: string;
+  country_code?: string;
+  pais?: string;
   relatorio: string;
 }
 
@@ -25,6 +27,7 @@ export interface CareerEvaluation {
   name: string;
   email: string;
   phone?: string;
+  country_code?: string;
   area?: string;
   atuacao?: string;
   trabalha_internacional?: boolean;

@@ -12,8 +12,8 @@ export type StudentMenuKey =
   | 'pricing' | 'assinatura' | 'perfil' | 'pedidos' | 'suporte';
 
 export type MentorMenuKey =
-  | 'dashboard' | 'espacos' | 'agendamentos' | 'disponibilidade' | 'agenda' | 'tarefas'
-  | 'biblioteca'
+  | 'dashboard' | 'espacos' | 'disponibilidade' | 'agenda' | 'tarefas'
+  | 'biblioteca' | 'lives' | 'comunidade'
   | 'perfil' | 'suporte';
 
 export type MenuVisibilityConfig = {
@@ -29,8 +29,8 @@ const DEFAULT_CONFIG: MenuVisibilityConfig = {
     pricing: true, assinatura: true, perfil: true, pedidos: true, suporte: true,
   },
   mentor: {
-    dashboard: true, espacos: true, agendamentos: true, disponibilidade: true, agenda: true, tarefas: true,
-    biblioteca: true,
+    dashboard: true, espacos: true, disponibilidade: true, agenda: true, tarefas: true,
+    biblioteca: true, lives: true, comunidade: true,
     perfil: true, suporte: true,
   },
 };

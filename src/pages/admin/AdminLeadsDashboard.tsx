@@ -132,19 +132,30 @@ export default function AdminLeadsDashboard({ viewMode = 'admin' }: { viewMode?:
   const [page, setPage] = useState(1);
   const [prioritiesOpen, setPrioritiesOpen] = useState(false);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const [interactionCounts, setInteractionCounts] = useState<Record<string, number>>({});
   const deleteLead = useDeleteLead();
   const leadDetailPath = isAssistant ? '/assistant/leads' : '/admin/leads';
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('career_evaluations')
-        .select('id,created_at,name,email,phone,area,phase_name,phase_emoji,rota_letter,lead_temperature,recommended_product_name,investment_range,impediment,access_token,processing_status,readiness_score,estimated_ltv,has_budget,has_english_barrier,has_experience_barrier,has_financial_barrier,has_family_barrier,has_visa_barrier,has_time_barrier,has_clarity_barrier,access_count')
-        .order('created_at', { ascending: false })
-        .limit(1000);
-      if (error) throw error;
-      setAllData((data as LeadRow[]) || []);
+      const [leadsResult, interactionsResult] = await Promise.all([
+        supabase
+          .from('career_evaluations')
+          .select('id,created_at,name,email,phone,area,phase_name,phase_emoji,rota_letter,lead_temperature,recommended_product_name,investment_range,impediment,access_token,processing_status,readiness_score,estimated_ltv,has_budget,has_english_barrier,has_experience_barrier,has_financial_barrier,has_family_barrier,has_visa_barrier,has_time_barrier,has_clarity_barrier,access_count')
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        supabase
+          .from('lead_interactions')
+          .select('lead_id'),
+      ]);
+      if (leadsResult.error) throw leadsResult.error;
+      setAllData((leadsResult.data as LeadRow[]) || []);
+      const counts: Record<string, number> = {};
+      (interactionsResult.data || []).forEach(r => {
+        counts[r.lead_id] = (counts[r.lead_id] || 0) + 1;
+      });
+      setInteractionCounts(counts);
       setLastUpdate(new Date().toLocaleTimeString('pt-BR'));
     } catch {
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
@@ -585,12 +596,26 @@ export default function AdminLeadsDashboard({ viewMode = 'admin' }: { viewMode?:
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {pageSlice.map(d => (
-                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => navigate(`${leadDetailPath}/${d.id}`)}>
+                  <tr key={d.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => window.open(`${leadDetailPath}/${d.id}`, '_blank')}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
-                          {(d.name || '?').charAt(0)}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative w-8 h-8 shrink-0">
+                              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xs">
+                                {(d.name || '?').charAt(0)}
+                              </div>
+                              {(interactionCounts[d.id] || 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white" />
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {(interactionCounts[d.id] || 0) > 0 && (
+                            <TooltipContent side="right" className="text-xs">
+                              {interactionCounts[d.id]} {interactionCounts[d.id] === 1 ? 'interação registrada' : 'interações registradas'}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                         <div>
                           <p className="text-sm font-bold text-gray-900">{d.name || '—'}</p>
                           <p className="text-[10px] text-gray-400 font-medium">{d.email || '—'}</p>

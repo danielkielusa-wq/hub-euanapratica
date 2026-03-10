@@ -24,6 +24,7 @@ import MentorAgenda from "./pages/mentor/MentorAgenda";
 import MentorEspacos from "./pages/mentor/MentorEspacos";
 import MentorEspacoDetail from "./pages/mentor/MentorEspacoDetail";
 import MentorCreateEspaco from "./pages/mentor/MentorCreateEspaco";
+import MentorEditEspaco from "./pages/mentor/MentorEditEspaco";
 import MentorAssignments from "./pages/mentor/MentorAssignments";
 import CreateAssignment from "./pages/mentor/CreateAssignment";
 import EditAssignment from "./pages/mentor/EditAssignment";
@@ -110,7 +111,6 @@ const AdminHubConfig = lazy(() => import("./pages/admin/AdminHubConfig"));
 const AdminContentStudio = lazy(() => import("./pages/admin/AdminContentStudio"));
 const AdminSDR = lazy(() => import("./pages/admin/AdminSDR"));
 const MentorDisponibilidade = lazy(() => import("./pages/mentor/MentorDisponibilidade"));
-const MentorAgendamentos = lazy(() => import("./pages/mentor/MentorAgendamentos"));
 const MentorLives = lazy(() => import("./pages/mentor/MentorLives"));
 const MentorCreateLive = lazy(() => import("./pages/mentor/MentorCreateLive"));
 const MentorLiveDetail = lazy(() => import("./pages/mentor/MentorLiveDetail"));
@@ -363,16 +363,17 @@ function AppRoutes() {
           <MentorCreateEspaco />
         </ProtectedRoute>
       } />
+      <Route path="/mentor/espacos/:id/editar" element={
+        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
+          <MentorEditEspaco />
+        </ProtectedRoute>
+      } />
       <Route path="/mentor/espacos/:id" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorEspacoDetail />
         </ProtectedRoute>
       } />
-      <Route path="/mentor/agendamentos" element={
-        <ProtectedRoute allowedRoles={['mentor', 'admin']}>
-          <MentorAgendamentos />
-        </ProtectedRoute>
-      } />
+      <Route path="/mentor/agendamentos" element={<Navigate to="/mentor/agenda" replace />} />
       <Route path="/mentor/disponibilidade" element={
         <ProtectedRoute allowedRoles={['mentor', 'admin']}>
           <MentorDisponibilidade />
