@@ -111,6 +111,11 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
       }
       if (!data?.success) throw new Error(data?.message || 'Falha ao enviar');
 
+      // Standalone functions return emailsSent count — check it
+      if (standaloneFunction && data?.emailsSent === 0) {
+        throw new Error(data?.message || 'Nenhum email enviado. Verifique os logs.');
+      }
+
       toast({
         title: 'Email de teste enviado',
         description: `Enviado para ${email} com sucesso.`,

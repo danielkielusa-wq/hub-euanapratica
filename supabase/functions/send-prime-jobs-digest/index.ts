@@ -253,68 +253,72 @@ Deno.serve(async (req) => {
     );
     const template = templateRows && templateRows.length > 0 ? templateRows[0] : null;
 
-    // Fetch subscribers
-    let subQuery = supabase
-      .from("user_subscriptions")
-      .select("user_id, plan_id, plans(id, features)")
-      .eq("status", "active");
+    // Build recipients list — skip subscriber query entirely for test_email
+    let recipients: { email: string; full_name: string; isPremium: boolean }[];
 
-    if (user_ids && user_ids.length > 0) {
-      subQuery = subQuery.in("user_id", user_ids);
-    }
+    if (test_email) {
+      recipients = [{ email: test_email, full_name: "Test User", isPremium: true }];
+    } else {
+      let subQuery = supabase
+        .from("user_subscriptions")
+        .select("user_id, plan_id, plans(id, features)")
+        .eq("status", "active");
 
-    const { data: subs, error: subsError } = await subQuery;
+      if (user_ids && user_ids.length > 0) {
+        subQuery = subQuery.in("user_id", user_ids);
+      }
 
-    if (subsError) {
-      console.error("send-prime-jobs-digest subs error:", subsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch subscriptions", details: subsError.message }),
-        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-      );
-    }
+      const { data: subs, error: subsError } = await subQuery;
 
-    if (!subs || subs.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, message: "No active subscribers", emailsSent: 0 }),
-        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
-      );
-    }
+      if (subsError) {
+        console.error("send-prime-jobs-digest subs error:", subsError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch subscriptions", details: subsError.message }),
+          { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
 
-    const subUserIds = subs.map((s: any) => s.user_id);
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", subUserIds);
+      if (!subs || subs.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "No active subscribers", emailsSent: 0 }),
+          { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
 
-    if (profilesError) {
-      console.error("send-prime-jobs-digest profiles error:", profilesError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch profiles", details: profilesError.message }),
-        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-      );
-    }
+      const subUserIds = subs.map((s: any) => s.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", subUserIds);
 
-    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      if (profilesError) {
+        console.error("send-prime-jobs-digest profiles error:", profilesError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch profiles", details: profilesError.message }),
+          { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
 
-    const recipients = test_email
-      ? [{ email: test_email, full_name: "Test User", isPremium: true }]
-      : subs.map((sub: any) => {
-          const profile = profileMap.get(sub.user_id);
-          if (!profile?.email) return null;
-          const planId = sub.plan_id || "basic";
-          const isPremium = planId === "pro" || planId === "vip";
-          return {
-            email: profile.email,
-            full_name: profile.full_name,
-            isPremium,
-          };
-        }).filter(Boolean) as { email: string; full_name: string; isPremium: boolean }[];
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
-    if (recipients.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, message: "No eligible recipients", emailsSent: 0 }),
-        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
-      );
+      recipients = subs.map((sub: any) => {
+        const profile = profileMap.get(sub.user_id);
+        if (!profile?.email) return null;
+        const planId = sub.plan_id || "basic";
+        const isPremium = planId === "pro" || planId === "vip";
+        return {
+          email: profile.email,
+          full_name: profile.full_name,
+          isPremium,
+        };
+      }).filter(Boolean) as { email: string; full_name: string; isPremium: boolean }[];
+
+      if (recipients.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "No eligible recipients", emailsSent: 0 }),
+          { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     let emailsSent = 0;
