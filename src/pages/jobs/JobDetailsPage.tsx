@@ -128,15 +128,15 @@ export default function JobDetailsPage() {
   };
 
   const handleShare = async () => {
-    const url = window.location.href;
+    const shareUrl = `${window.location.origin}/vaga/${id}`;
     logEvent({
       event_type: 'prime_jobs_share',
       entity_type: 'prime_job',
       entity_id: job?.id || null,
-      metadata: { url }
+      metadata: { url: shareUrl }
     });
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       toast.success('Link copiado!', {
         description: 'Compartilhe esta vaga com seus amigos.',
       });

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
@@ -187,6 +187,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
   
   return <>{children}</>;
+}
+
+function JobShareRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/prime-jobs/${id}`} replace />;
 }
 
 function AppRoutes() {
@@ -729,6 +734,8 @@ function AppRoutes() {
       } />
       {/* Public-accessible: wrapper shows preview for unauthenticated, full for authenticated */}
       <Route path="/prime-jobs/:id" element={<JobDetailsWrapper />} />
+      {/* Share URL alias — Vercel rewrite handles this server-side for OG tags; client-side redirect as fallback */}
+      <Route path="/vaga/:id" element={<JobShareRedirect />} />
       <Route path="/prime-jobs/bookmarks" element={
         <ProtectedRoute allowedRoles={['student', 'mentor', 'admin']}>
           <ServiceGuard serviceRoute="/prime-jobs/bookmarks">

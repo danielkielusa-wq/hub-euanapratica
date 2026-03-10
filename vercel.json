@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/vaga/:id",
+      "destination": "/api/og/prime-jobs/:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
