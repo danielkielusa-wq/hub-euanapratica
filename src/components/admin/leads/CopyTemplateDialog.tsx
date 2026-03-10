@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useManyChatFlows } from '@/hooks/useManyChatFlows';
 import { useToast } from '@/hooks/use-toast';
+import { formatLeadFirstName } from '@/lib/nameUtils';
 
 const USE_CASE_COLORS: Record<string, string> = {
   report: 'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -45,7 +46,7 @@ export function CopyTemplateDialog({ open, onOpenChange, lead }: CopyTemplateDia
   const [copied, setCopied] = useState<string | null>(null);
 
   const autoVars = useMemo(() => ({
-    leadName: lead.name || 'Cliente',
+    leadName: formatLeadFirstName(lead.name),
     leadEmail: lead.email || '',
     leadPhone: lead.phone || '',
     reportLink: lead.access_token

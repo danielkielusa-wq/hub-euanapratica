@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useManyChatTriggerableFlows, useTriggerManyChatFlow } from '@/hooks/useManyChatFlows';
 import type { ManyChatFlow } from '@/hooks/useManyChatFlows';
 import type { CareerEvaluation } from '@/types/leads';
+import { formatLeadFirstName } from '@/lib/nameUtils';
 
 interface SendManyChatFlowDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ export function SendManyChatFlowDialog({ open, onOpenChange, lead }: SendManyCha
 
   // Build auto variables
   const autoVars = useMemo(() => ({
-    leadName: lead.name || 'Cliente',
+    leadName: formatLeadFirstName(lead.name),
     reportLink: (lead as any).access_token
       ? `https://hub.euanapratica.com/report/${(lead as any).access_token}`
       : '',

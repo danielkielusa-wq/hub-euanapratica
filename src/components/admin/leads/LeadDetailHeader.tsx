@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useUpdateLeadPhone } from '@/hooks/useAdminLeadDetail';
 import { SendManyChatFlowDialog } from './SendManyChatFlowDialog';
 import { CopyTemplateDialog } from './CopyTemplateDialog';
+import { SendLeadEmailDialog } from './SendLeadEmailDialog';
 import type { CareerEvaluation } from '@/types/leads';
 
 interface LeadDetailHeaderProps {
@@ -41,6 +42,7 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
   const [editPhone, setEditPhone] = useState(lead.phone || '');
   const [manyChatOpen, setManyChatOpen] = useState(false);
   const [copyTemplateOpen, setCopyTemplateOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
   const cleanPhone = (lead.phone || '').replace(/\D/g, '');
   const hasPhone = cleanPhone.length >= 10;
@@ -80,6 +82,7 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
         <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
           <span>{lead.email}</span>
           {lead.area && <><span className="text-gray-300">·</span><span>{lead.area}</span></>}
+          {lead.country_code && <><span className="text-gray-300">·</span><span>{lead.country_code}</span></>}
           <span className="text-gray-300">·</span>
           <Popover open={phoneEditOpen} onOpenChange={setPhoneEditOpen}>
             <PopoverTrigger asChild>
@@ -165,7 +168,7 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
           variant="outline"
           size="sm"
           className="h-8 text-xs rounded-xl gap-1.5"
-          onClick={() => window.open(`mailto:${lead.email}`, '_blank')}
+          onClick={() => setEmailDialogOpen(true)}
         >
           <Mail className="w-3.5 h-3.5" />
           Email
@@ -209,6 +212,11 @@ export function LeadDetailHeader({ lead, onAddNote, onAddTask, viewMode = 'admin
       <CopyTemplateDialog
         open={copyTemplateOpen}
         onOpenChange={setCopyTemplateOpen}
+        lead={lead}
+      />
+      <SendLeadEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
         lead={lead}
       />
     </div>
