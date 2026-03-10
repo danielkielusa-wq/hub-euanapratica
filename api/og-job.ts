@@ -106,7 +106,7 @@ export default async function handler(request: Request) {
   <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(ogDescription)}" />
   <meta name="twitter:image" content="${ogImage}" />
-  <meta http-equiv="refresh" content="0;url=${canonicalUrl}" />
+  <script>window.location.replace("${canonicalUrl}");</script>
 </head>
 <body>
   <p>Redirecionando para <a href="${canonicalUrl}">${esc(job.title)} — Prime Jobs</a>...</p>
