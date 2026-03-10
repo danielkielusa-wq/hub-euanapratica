@@ -39,6 +39,7 @@ const AdminEnrollments = lazy(() => import("./pages/admin/AdminEnrollments"));
 const AdminHubServices = lazy(() => import("./pages/admin/AdminHubServices"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminFeedback = lazy(() => import("./pages/admin/AdminFeedback"));
+const AdminWaitlist = lazy(() => import("./pages/admin/AdminWaitlist"));
 import StudentLibrary from "./pages/library/StudentLibrary";
 const AdminGlobalLibrary = lazy(() => import("./pages/admin/AdminGlobalLibrary"));
 import GlobalLibrary from "./pages/library/GlobalLibrary";
@@ -46,6 +47,7 @@ const AdminE2ETests = lazy(() => import("./pages/admin/AdminE2ETests"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminApis = lazy(() => import("./pages/admin/AdminApis"));
 const AdminEmailTemplates = lazy(() => import("./pages/admin/AdminEmailTemplates"));
+const AdminEmailCampaigns = lazy(() => import("./pages/admin/AdminEmailCampaigns"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
 const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
@@ -62,6 +64,7 @@ import MyOrders from "./pages/orders/MyOrders";
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminLeadsImport = lazy(() => import("./pages/admin/AdminLeadsImport"));
 import PublicReport from "./pages/report/PublicReport";
+const EmailUnsubscribed = lazy(() => import("./pages/EmailUnsubscribed"));
 import ThankYouRota60 from "./pages/thankyou/ThankYouRota60";
 import ThankYouCurriculo from "./pages/thankyou/ThankYouCurriculo";
 import NotFound from "./pages/NotFound";
@@ -497,6 +500,11 @@ function AppRoutes() {
           <AdminFeedback />
         </ProtectedRoute>
       } />
+      <Route path="/admin/lista-espera" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWaitlist />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/menu-config" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminMenuConfig />
@@ -520,6 +528,11 @@ function AppRoutes() {
       <Route path="/admin/email-templates" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminEmailTemplates />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/campanhas-email" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminEmailCampaigns />
         </ProtectedRoute>
       } />
       <Route path="/admin/assinaturas" element={
@@ -645,6 +658,9 @@ function AppRoutes() {
 
       {/* Public Report Access (no auth required) */}
       <Route path="/report/:token" element={<PublicReport />} />
+
+      {/* Email unsubscribe confirmation (public, redirected from Edge Function) */}
+      <Route path="/email/unsubscribed" element={<EmailUnsubscribed />} />
 
       {/* Lead Form (public, no auth - served on report.euanapratica.com) */}
       <Route path="/avaliar" element={<LeadFormPage />} />
