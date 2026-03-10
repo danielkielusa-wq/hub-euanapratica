@@ -40,6 +40,13 @@ const DEFAULT_VALUES: Record<string, string> = {
   '{{meetingLink}}': 'https://meet.google.com/test-meeting',
 };
 
+// Templates that have a standalone Edge Function with test_email support.
+// For these, the dialog calls the function directly instead of send-test-email,
+// so all dynamic variables (job cards, etc.) are generated with real data.
+const STANDALONE_TEST_FUNCTIONS: Record<string, string> = {
+  'prime_jobs_digest': 'send-prime-jobs-digest',
+};
+
 function getDefaultValue(variable: string): string {
   return DEFAULT_VALUES[variable] || `Valor de teste`;
 }
@@ -66,21 +73,32 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
     }
   }, [template]);
 
+  const standaloneFunction = template ? STANDALONE_TEST_FUNCTIONS[template.name] : null;
+
   const handleSend = async () => {
     if (!template || !email) return;
 
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-test-email', {
-        body: {
-          template_name: template.name,
-          to: email,
-          variables,
-        },
-      });
+      let data: any;
+      let error: any;
+
+      if (standaloneFunction) {
+        // Call the standalone function with test_email — it generates all dynamic content
+        ({ data, error } = await supabase.functions.invoke(standaloneFunction, {
+          body: { test_email: email },
+        }));
+      } else {
+        ({ data, error } = await supabase.functions.invoke('send-test-email', {
+          body: {
+            template_name: template.name,
+            to: email,
+            variables,
+          },
+        }));
+      }
 
       if (error) {
-        // Extract actual error message from the function response
         let message = error.message;
         try {
           const body = error.context && typeof error.context.json === 'function'
@@ -111,7 +129,9 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
 
   if (!template) return null;
 
-  const templateVars = template.variables || [];
+  // Filter out auto-injected variables — these are handled by the Edge Function
+  const AUTO_INJECTED = ['{{unsubscribeLink}}', '{{trackingPixel}}'];
+  const templateVars = (template.variables || []).filter((v: string) => !AUTO_INJECTED.includes(v));
 
   return (
     <Dialog open={!!template} onOpenChange={onClose}>
@@ -147,28 +167,37 @@ export function SendTestEmailDialog({ template, onClose }: SendTestEmailDialogPr
             <span>O assunto será prefixado com <strong>[TESTE]</strong> para diferenciar de envios reais.</span>
           </div>
 
-          {/* Variables */}
-          {templateVars.length > 0 && (
-            <div className="space-y-3">
-              <Label>Variáveis do Template</Label>
-              {templateVars.map((v: string) => (
-                <div key={v} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs font-mono shrink-0">{v}</Badge>
-                  </div>
-                  <Input
-                    value={variables[v] || ''}
-                    onChange={(e) => setVariables(prev => ({ ...prev, [v]: e.target.value }))}
-                    className="rounded-xl text-sm"
-                    placeholder={`Valor para ${v}`}
-                  />
-                </div>
-              ))}
+          {/* Variables — hidden for standalone templates (auto-generated with real data) */}
+          {standaloneFunction ? (
+            <div className="flex items-start gap-2 rounded-xl bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>As variaveis deste template (vagas, dica da semana, etc.) serao preenchidas automaticamente com dados reais do sistema.</span>
             </div>
-          )}
+          ) : (
+            <>
+              {templateVars.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Variaveis do Template</Label>
+                  {templateVars.map((v: string) => (
+                    <div key={v} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono shrink-0">{v}</Badge>
+                      </div>
+                      <Input
+                        value={variables[v] || ''}
+                        onChange={(e) => setVariables(prev => ({ ...prev, [v]: e.target.value }))}
+                        className="rounded-xl text-sm"
+                        placeholder={`Valor para ${v}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          {templateVars.length === 0 && (
-            <p className="text-sm text-muted-foreground">Este template não possui variáveis.</p>
+              {templateVars.length === 0 && (
+                <p className="text-sm text-muted-foreground">Este template nao possui variaveis.</p>
+              )}
+            </>
           )}
         </div>
 
