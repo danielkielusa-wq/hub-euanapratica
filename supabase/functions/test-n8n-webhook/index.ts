@@ -357,6 +357,34 @@ Deno.serve(async (req) => {
         service_id: "00000000-0000-0000-0000-000000000003",
         service_name: "Mentoria Individual 1:1",
       });
+    } else if (auto.trigger_event === "group_content.generated") {
+      Object.assign(testPayload, {
+        id: "00000000-0000-0000-0000-000000000000",
+        date: new Date().toISOString().slice(0, 10),
+        model: "gpt-4o-mini",
+        contents: [
+          {
+            type: "insight",
+            title: "💡 Insight do dia",
+            body: "Essa semana, 73% dos brasileiros que fizeram o diagnóstico de carreira tinham experiência forte mas currículo fraco pro mercado americano. Se você tá aplicando e não recebe retorno, talvez não seja sua qualificação — é como você tá apresentando ela."
+          },
+          {
+            type: "question",
+            title: "❓ Pergunta pro grupo",
+            body: "Quem aqui já tentou traduzir o currículo pro formato americano e sentiu que \"perdeu\" experiência na tradução? Conta aí 👇"
+          },
+          {
+            type: "cta",
+            title: "🔗 Dica rápida",
+            body: "Pra quem ainda não fez: tem um diagnóstico gratuito que analisa seu perfil pro mercado EUA em 5 minutos. Posso mandar o link aqui pra quem quiser."
+          }
+        ],
+      });
+      // Remove generic lead fields not relevant to this event
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
     } else if (auto.trigger_event === "order.refunded") {
       Object.assign(testPayload, {
         user_id: "00000000-0000-0000-0000-000000000001",
@@ -367,6 +395,54 @@ Deno.serve(async (req) => {
         service_name: "Mentoria Individual 1:1",
         refund_event: "refund",
       });
+    } else if (auto.trigger_event === "content.published" || auto.trigger_event === "content.*") {
+      Object.assign(testPayload, {
+        platform: "x",
+        post_url: "https://x.com/euanapratica/status/1234567890",
+        post_id: "1234567890",
+        post_text: "87% dos profissionais qualificados estao estagnados e acham que estao crescendo...",
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        piece_title: "5 Sinais de Que Sua Carreira Esta Estagnada",
+        piece_format: "youtube",
+        published_at: new Date().toISOString(),
+        platforms: {
+          linkedin: { status: "published", post_url: "https://www.linkedin.com/feed/update/urn:li:share:765432", post_id: "urn:li:share:765432", published_at: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
+          x: { status: "published", post_url: "https://x.com/euanapratica/status/1234567890", post_id: "1234567890", published_at: new Date().toISOString() },
+          threads: { status: "scheduled", post_url: null, post_id: null, published_at: null },
+        },
+        post_links: [
+          { platform: "linkedin", url: "https://www.linkedin.com/feed/update/urn:li:share:765432" },
+          { platform: "x", url: "https://x.com/euanapratica/status/1234567890" },
+        ],
+        all_platforms_published: false,
+      });
+      // Remove generic lead fields
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
+    } else if (auto.trigger_event === "content.all_platforms_published") {
+      Object.assign(testPayload, {
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        piece_title: "5 Sinais de Que Sua Carreira Esta Estagnada",
+        piece_format: "youtube",
+        platforms: {
+          linkedin: { status: "published", post_url: "https://www.linkedin.com/feed/update/urn:li:share:765432", post_id: "urn:li:share:765432", published_at: new Date(Date.now() - 60 * 60 * 1000).toISOString() },
+          x: { status: "published", post_url: "https://x.com/euanapratica/status/1234567890", post_id: "1234567890", published_at: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
+          threads: { status: "published", post_url: "https://www.threads.net/@euanapratica/post/ABC123", post_id: "12345678901234567", published_at: new Date().toISOString() },
+        },
+        post_links: [
+          { platform: "linkedin", url: "https://www.linkedin.com/feed/update/urn:li:share:765432" },
+          { platform: "x", url: "https://x.com/euanapratica/status/1234567890" },
+          { platform: "threads", url: "https://www.threads.net/@euanapratica/post/ABC123" },
+        ],
+        completed_at: new Date().toISOString(),
+      });
+      // Remove generic lead fields
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
     }
 
     // Dispatch server-side (no CORS issues)

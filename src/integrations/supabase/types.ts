@@ -1174,6 +1174,57 @@ export type Database = {
           },
         ]
       }
+      content_assets: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          piece_id: string
+          position: number | null
+          public_url: string | null
+          storage_path: string
+          template_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          piece_id: string
+          position?: number | null
+          public_url?: string | null
+          storage_path: string
+          template_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          piece_id?: string
+          position?: number | null
+          public_url?: string | null
+          storage_path?: string
+          template_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_assets_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "content_pieces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_assets_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "content_visual_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_generation_logs: {
         Row: {
           created_at: string
@@ -1343,6 +1394,165 @@ export type Database = {
           },
         ]
       }
+      content_pieces: {
+        Row: {
+          carousel_slides: Json | null
+          created_at: string
+          created_by: string | null
+          cta: string | null
+          duration_estimate_seconds: number | null
+          format: string
+          generation_duration_ms: number | null
+          hook_variations: Json | null
+          id: string
+          input_reference: string | null
+          input_text: string | null
+          input_type: string
+          model_used: string | null
+          platform_context: Json | null
+          scheduled_for: string | null
+          script_sections: Json | null
+          seo_metadata: Json | null
+          social_posts: Json | null
+          status: string
+          title: string | null
+          tokens_used: number | null
+          tone: string
+          trending_topic_id: string | null
+          updated_at: string
+          use_platform_data: boolean
+          virality_score: number | null
+        }
+        Insert: {
+          carousel_slides?: Json | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          duration_estimate_seconds?: number | null
+          format?: string
+          generation_duration_ms?: number | null
+          hook_variations?: Json | null
+          id?: string
+          input_reference?: string | null
+          input_text?: string | null
+          input_type?: string
+          model_used?: string | null
+          platform_context?: Json | null
+          scheduled_for?: string | null
+          script_sections?: Json | null
+          seo_metadata?: Json | null
+          social_posts?: Json | null
+          status?: string
+          title?: string | null
+          tokens_used?: number | null
+          tone?: string
+          trending_topic_id?: string | null
+          updated_at?: string
+          use_platform_data?: boolean
+          virality_score?: number | null
+        }
+        Update: {
+          carousel_slides?: Json | null
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          duration_estimate_seconds?: number | null
+          format?: string
+          generation_duration_ms?: number | null
+          hook_variations?: Json | null
+          id?: string
+          input_reference?: string | null
+          input_text?: string | null
+          input_type?: string
+          model_used?: string | null
+          platform_context?: Json | null
+          scheduled_for?: string | null
+          script_sections?: Json | null
+          seo_metadata?: Json | null
+          social_posts?: Json | null
+          status?: string
+          title?: string | null
+          tokens_used?: number | null
+          tone?: string
+          trending_topic_id?: string | null
+          updated_at?: string
+          use_platform_data?: boolean
+          virality_score?: number | null
+        }
+        Relationships: []
+      }
+      content_publications: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          media_asset_ids: string[] | null
+          metadata: Json | null
+          piece_id: string
+          platform: string
+          platform_post_id: string | null
+          platform_post_url: string | null
+          post_text: string
+          published_at: string | null
+          retry_count: number | null
+          scheduled_at: string | null
+          social_account_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          media_asset_ids?: string[] | null
+          metadata?: Json | null
+          piece_id: string
+          platform: string
+          platform_post_id?: string | null
+          platform_post_url?: string | null
+          post_text: string
+          published_at?: string | null
+          retry_count?: number | null
+          scheduled_at?: string | null
+          social_account_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          media_asset_ids?: string[] | null
+          metadata?: Json | null
+          piece_id?: string
+          platform?: string
+          platform_post_id?: string | null
+          platform_post_url?: string | null
+          post_text?: string
+          published_at?: string | null
+          retry_count?: number | null
+          scheduled_at?: string | null
+          social_account_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_publications_piece_id_fkey"
+            columns: ["piece_id"]
+            isOneToOne: false
+            referencedRelation: "content_pieces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_publications_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_scripts: {
         Row: {
           body_sections: Json
@@ -1460,6 +1670,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      content_trending_cache: {
+        Row: {
+          angle: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          keywords: string[] | null
+          raw_data: Json | null
+          relevance_score: number | null
+          source: string | null
+          summary: string | null
+          topic: string
+          virality_potential: number | null
+        }
+        Insert: {
+          angle?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          keywords?: string[] | null
+          raw_data?: Json | null
+          relevance_score?: number | null
+          source?: string | null
+          summary?: string | null
+          topic: string
+          virality_potential?: number | null
+        }
+        Update: {
+          angle?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          keywords?: string[] | null
+          raw_data?: Json | null
+          relevance_score?: number | null
+          source?: string | null
+          summary?: string | null
+          topic?: string
+          virality_potential?: number | null
+        }
+        Relationships: []
+      }
+      content_visual_templates: {
+        Row: {
+          colors: Json | null
+          created_at: string
+          css: string
+          display_name: string
+          fonts: Json | null
+          html_template: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          preview_url: string | null
+          type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          colors?: Json | null
+          created_at?: string
+          css?: string
+          display_name: string
+          fonts?: Json | null
+          html_template: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          preview_url?: string | null
+          type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          colors?: Json | null
+          created_at?: string
+          css?: string
+          display_name?: string
+          fonts?: Json | null
+          html_template?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          preview_url?: string | null
+          type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
       }
       course_lesson_attachments: {
         Row: {
@@ -2673,6 +2976,7 @@ export type Database = {
           espaco_id: string
           id: string
           name: string
+          owner_user_id: string | null
           parent_id: string | null
           updated_at: string | null
         }
@@ -2683,6 +2987,7 @@ export type Database = {
           espaco_id: string
           id?: string
           name: string
+          owner_user_id?: string | null
           parent_id?: string | null
           updated_at?: string | null
         }
@@ -2693,6 +2998,7 @@ export type Database = {
           espaco_id?: string
           id?: string
           name?: string
+          owner_user_id?: string | null
           parent_id?: string | null
           updated_at?: string | null
         }
@@ -3614,6 +3920,9 @@ export type Database = {
           og_image_url: string | null
           price: number
           recording_url: string | null
+          reminder_15m_sent_at: string | null
+          reminder_1h_sent_at: string | null
+          reminder_24h_sent_at: string | null
           scheduled_at: string
           slug: string
           status: Database["public"]["Enums"]["live_status"]
@@ -3637,6 +3946,9 @@ export type Database = {
           og_image_url?: string | null
           price?: number
           recording_url?: string | null
+          reminder_15m_sent_at?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           scheduled_at: string
           slug: string
           status?: Database["public"]["Enums"]["live_status"]
@@ -3660,6 +3972,9 @@ export type Database = {
           og_image_url?: string | null
           price?: number
           recording_url?: string | null
+          reminder_15m_sent_at?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           scheduled_at?: string
           slug?: string
           status?: Database["public"]["Enums"]["live_status"]
@@ -5161,7 +5476,10 @@ export type Database = {
           recording_url: string | null
           recurrence_pattern: Json | null
           status: Database["public"]["Enums"]["session_status"] | null
+          summary: string | null
+          summary_visible: boolean
           title: string
+          transcript: string | null
           updated_at: string | null
         }
         Insert: {
@@ -5183,7 +5501,10 @@ export type Database = {
           recording_url?: string | null
           recurrence_pattern?: Json | null
           status?: Database["public"]["Enums"]["session_status"] | null
+          summary?: string | null
+          summary_visible?: boolean
           title: string
+          transcript?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -5205,7 +5526,10 @@ export type Database = {
           recording_url?: string | null
           recurrence_pattern?: Json | null
           status?: Database["public"]["Enums"]["session_status"] | null
+          summary?: string | null
+          summary_visible?: boolean
           title?: string
+          transcript?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -5217,6 +5541,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_accounts: {
+        Row: {
+          access_token: string
+          account_id: string | null
+          account_name: string | null
+          connected_by: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          platform: string
+          refresh_token: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          account_id?: string | null
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          platform: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          account_id?: string | null
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          platform?: string
+          refresh_token?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       submission_messages: {
         Row: {
@@ -6613,6 +6985,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_list_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          command: string
+          jobid: number
+          jobname: string
+          schedule: string
+        }[]
+      }
       admin_reset_user_usage: { Args: { p_user_id: string }; Returns: boolean }
       admin_update_api_credentials: {
         Args: { p_api_key: string; p_credentials_json: Json }
@@ -6704,6 +7086,16 @@ export type Database = {
             }
             Returns: string
           }
+      create_mention_notification: {
+        Args: {
+          p_action_url?: string
+          p_author_name: string
+          p_mentioned_user_id: string
+          p_session_id?: string
+          p_session_title: string
+        }
+        Returns: undefined
+      }
       generate_career_report_from_profile: {
         Args: { p_user_id: string }
         Returns: {
@@ -6815,6 +7207,14 @@ export type Database = {
           name: string
           subject: string
           variables: Json
+        }[]
+      }
+      get_espaco_members: {
+        Args: { p_espaco_id: string }
+        Returns: {
+          full_name: string
+          id: string
+          profile_photo_url: string
         }[]
       }
       get_full_plan_access: {
@@ -7257,6 +7657,7 @@ export type Database = {
         | "png"
         | "jpg"
         | "link"
+        | "note"
       invitation_status: "pending" | "accepted" | "expired" | "cancelled"
       live_access_type: "free" | "paid" | "subscribers" | "pro" | "vip"
       live_status:
@@ -7291,6 +7692,13 @@ export type Database = {
         | "booking_cancelled"
         | "booking_rescheduled"
         | "espaco_invitation"
+        | "espaco_invitation_sent"
+        | "espaco_new_assignment"
+        | "espaco_assignment_reviewed"
+        | "espaco_new_submission"
+        | "espaco_student_enrolled"
+        | "espaco_new_material"
+        | "mention"
       review_result: "approved" | "revision" | "rejected"
       session_status: "scheduled" | "live" | "completed" | "cancelled"
       submission_status: "draft" | "submitted" | "reviewed"
@@ -7468,7 +7876,17 @@ export const Constants = {
         "discarded",
       ],
       feedback_type: ["bug", "enhancement"],
-      file_type: ["pdf", "docx", "xlsx", "pptx", "zip", "png", "jpg", "link"],
+      file_type: [
+        "pdf",
+        "docx",
+        "xlsx",
+        "pptx",
+        "zip",
+        "png",
+        "jpg",
+        "link",
+        "note",
+      ],
       invitation_status: ["pending", "accepted", "expired", "cancelled"],
       live_access_type: ["free", "paid", "subscribers", "pro", "vip"],
       live_status: [
@@ -7504,6 +7922,13 @@ export const Constants = {
         "booking_cancelled",
         "booking_rescheduled",
         "espaco_invitation",
+        "espaco_invitation_sent",
+        "espaco_new_assignment",
+        "espaco_assignment_reviewed",
+        "espaco_new_submission",
+        "espaco_student_enrolled",
+        "espaco_new_material",
+        "mention",
       ],
       review_result: ["approved", "revision", "rejected"],
       session_status: ["scheduled", "live", "completed", "cancelled"],

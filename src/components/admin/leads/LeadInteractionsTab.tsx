@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, Mail, Phone, StickyNote, RefreshCw, Eye, Sparkles, Plus, Filter, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MessageSquare, Mail, Phone, StickyNote, RefreshCw, Eye, Sparkles, Plus, Filter, MoreHorizontal, Pencil, Trash2, Users, FileText, CalendarCheck, CalendarX, CreditCard, UserX } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,13 @@ const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string; bgC
   ai_suggestion_completed: { label: 'IA Concluída', icon: Sparkles, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   manychat_flow_sent: { label: 'ManyChat Flow', icon: MessageSquare, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
   manychat_reply: { label: 'ManyChat Resposta', icon: MessageSquare, color: 'text-teal-600', bgColor: 'bg-teal-100' },
+  group_enrollment: { label: 'Inscrito em Grupo', icon: Users, color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
+  report_generated: { label: 'Relatório Gerado', icon: FileText, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  booking_created: { label: 'Sessão Agendada', icon: CalendarCheck, color: 'text-sky-600', bgColor: 'bg-sky-100' },
+  booking_completed: { label: 'Sessão Concluída', icon: CalendarCheck, color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
+  booking_no_show: { label: 'Não Compareceu', icon: CalendarX, color: 'text-red-600', bgColor: 'bg-red-100' },
+  subscription_activated: { label: 'Assinou', icon: CreditCard, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  subscription_cancelled: { label: 'Cancelou Assinatura', icon: UserX, color: 'text-rose-600', bgColor: 'bg-rose-100' },
 };
 
 function formatRelativeTime(dateStr: string, tz: string): string {

@@ -111,6 +111,10 @@ const JOB_DESCRIPTIONS: Record<string, { label: string; help: string }> = {
     label: 'Lembrete de live 15min antes',
     help: 'Ultimo aviso antes da live comecar. Prioriza o botao de entrar na live. Roda a cada 5 minutos. Usa coluna reminder_15m_sent_at para evitar duplicatas.',
   },
+  'generate-group-content-daily': {
+    label: 'Conteudo diario para grupo WhatsApp/Telegram',
+    help: 'Gera textos prontos por IA para copiar e colar no grupo. Usa dados anonimos dos diagnosticos. Configuravel em /admin/conteudo-grupo (LLM, prompt, qtd). Dispara webhook group_content.generated para N8N/Telegram.',
+  },
 };
 
 const JOB_CATEGORIES: Record<string, string> = {
@@ -119,6 +123,7 @@ const JOB_CATEGORIES: Record<string, string> = {
   'send-prime-jobs': 'Email',
   'check-abandoned': 'Campanha',
   'generate-content': 'Conteudo',
+  'generate-group': 'Conteudo',
   'check-unfinished': 'Lives',
   'send-live-reminder': 'Lives',
   'generate-weekly': 'Inteligencia',

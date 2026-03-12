@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, TrendingUp, Flame, DollarSign, ShieldAlert, CalendarDays, MessageSquare, Eye, BarChart3, ListTodo, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,8 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
   const isAssistant = viewMode === 'assistant';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
 
   const { data: lead, isLoading } = useLeadDetail(id!);
   const { data: interactions = [] } = useLeadInteractions(id!);
@@ -123,7 +125,7 @@ export default function AdminLeadDetail({ viewMode = 'admin' }: { viewMode?: Lea
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
+        <Tabs defaultValue={initialTab} className="space-y-4">
           <TabsList className="bg-white/80 backdrop-blur-sm border border-gray-100 rounded-2xl p-1 flex-wrap h-auto">
             <TabsTrigger value="overview" className="rounded-xl text-xs gap-1.5 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">
               <Eye className="w-3.5 h-3.5" /> Visão Geral

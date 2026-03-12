@@ -37,10 +37,28 @@ function buildDesktopSteps(assessmentIncomplete: boolean): DriveStep[] {
       },
     },
     {
+      element: '[data-tour="sidebar-meu-hub"]',
+      popover: {
+        title: 'Meu Hub',
+        description: 'Sua central de controle. Volte aqui para ver suas ferramentas e descobrir novidades.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
       element: '[data-tour="sidebar-comunidade"]',
       popover: {
         title: 'Comunidade',
         description: 'Conecte-se com outros profissionais brasileiros no exterior. Faça perguntas, compartilhe experiências e amplie seu networking.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tour="sidebar-explore"]',
+      popover: {
+        title: 'Catálogo de Serviços',
+        description: 'Explore mentorias, cursos, consultorias e outros serviços disponíveis para alavancar sua carreira.',
         side: 'right',
         align: 'start',
       },
@@ -59,24 +77,6 @@ function buildDesktopSteps(assessmentIncomplete: boolean): DriveStep[] {
       popover: {
         title: 'Title Translator',
         description: 'Traduza cargos e títulos brasileiros para os equivalentes no mercado internacional com IA.',
-        side: 'right',
-        align: 'start',
-      },
-    },
-    {
-      element: '[data-tour="sidebar-explore"]',
-      popover: {
-        title: 'Catálogo de Serviços',
-        description: 'Explore mentorias, cursos, consultorias e outros serviços disponíveis para alavancar sua carreira.',
-        side: 'right',
-        align: 'start',
-      },
-    },
-    {
-      element: '[data-tour="sidebar-meu-hub"]',
-      popover: {
-        title: 'Meu Hub',
-        description: 'Sua central de controle. Volte aqui para ver suas ferramentas e descobrir novidades.',
         side: 'right',
         align: 'start',
       },
@@ -154,27 +154,40 @@ export function DashboardTour({ assessmentIncomplete = false, onOpenAssessment }
     const timeoutId = setTimeout(() => {
       tourStartedRef.current = true;
 
-      const driverObj = driver({
-        showProgress: true,
-        animate: true,
-        allowClose: true,
-        overlayColor: 'rgba(0, 0, 0, 0.6)',
-        stagePadding: 8,
-        stageRadius: 16,
-        popoverClass: 'enp-tour-popover',
-        progressText: '{{current}} de {{total}}',
-        nextBtnText: 'Próximo',
-        prevBtnText: 'Anterior',
-        doneBtnText: 'Finalizar',
-        steps: isDesktop ? desktopSteps : mobileSteps,
-        onDestroyStarted: (_el, _step, { driver: d }) => {
-          updateTourState.mutate({ tour_completed: true });
-          d.destroy();
-        },
-      });
+      // Expand all collapsed sidebar groups so driver.js can find tour elements
+      if (isDesktop) {
+        document.querySelectorAll<HTMLButtonElement>('nav button[class*="tracking-wider"]').forEach(btn => {
+          const container = btn.nextElementSibling as HTMLElement | null;
+          if (container && container.classList.contains('max-h-0')) {
+            btn.click();
+          }
+        });
+      }
 
-      driverRef.current = driverObj;
-      driverObj.drive();
+      // Small delay for React to re-render expanded groups
+      setTimeout(() => {
+        const driverObj = driver({
+          showProgress: true,
+          animate: true,
+          allowClose: true,
+          overlayColor: 'rgba(0, 0, 0, 0.6)',
+          stagePadding: 8,
+          stageRadius: 16,
+          popoverClass: 'enp-tour-popover',
+          progressText: '{{current}} de {{total}}',
+          nextBtnText: 'Próximo',
+          prevBtnText: 'Anterior',
+          doneBtnText: 'Finalizar',
+          steps: isDesktop ? desktopSteps : mobileSteps,
+          onDestroyStarted: (_el, _step, { driver: d }) => {
+            updateTourState.mutate({ tour_completed: true });
+            d.destroy();
+          },
+        });
+
+        driverRef.current = driverObj;
+        driverObj.drive();
+      }, 100);
     }, TOUR_DELAY_MS);
 
     // CTA button clicks (delegated)

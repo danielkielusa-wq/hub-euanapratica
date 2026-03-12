@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Search, Webhook, Copy, CheckCircle2, ChevronDown, ChevronRight,
   Zap, CreditCard, FileText, MessageSquare, ShoppingCart, BarChart3,
-  Brain, Users, ExternalLink, CalendarCheck, Video, Package,
+  Brain, Users, ExternalLink, CalendarCheck, Video, Package, Sparkles,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +31,7 @@ interface WebhookField {
 
 interface WebhookEvent {
   event: string;
-  category: 'report' | 'subscription' | 'lead' | 'notification' | 'campaign' | 'analytics' | 'intelligence' | 'booking' | 'live' | 'order';
+  category: 'report' | 'subscription' | 'lead' | 'notification' | 'campaign' | 'analytics' | 'intelligence' | 'booking' | 'live' | 'order' | 'content';
   origin: string;
   trigger: string;
   description: string;
@@ -928,6 +928,139 @@ const WEBHOOK_EVENTS: WebhookEvent[] = [
       refund_event: 'refunded',
     },
   },
+
+  // ── Content ─────────────────────────────────────────────────
+  {
+    event: 'group_content.generated',
+    category: 'content',
+    origin: 'generate-group-content',
+    trigger: 'Admin clica "Gerar Agora" ou cron diario gera conteudo para o grupo de WhatsApp',
+    description: 'Disparado apos a IA gerar os textos diarios para o grupo de WhatsApp. Contem o array de conteudos gerados (tipo, titulo, body), a data alvo e o modelo LLM utilizado.',
+    fields: [
+      { name: 'id', type: 'uuid', description: 'ID do registro em group_content_suggestions' },
+      { name: 'date', type: 'string', description: 'Data alvo no formato YYYY-MM-DD' },
+      { name: 'contents', type: 'array', description: 'Array de objetos {type, title, body} gerados pela IA' },
+      { name: 'model', type: 'string', description: 'Modelo LLM utilizado (ex: gpt-4o-mini, claude-3-haiku)' },
+    ],
+    example: {
+      event: 'group_content.generated',
+      timestamp: '2026-03-12T09:00:00.000Z',
+      source: 'enp_hub_supabase',
+      id: 'gc1a2b3c4-...',
+      date: '2026-03-12',
+      contents: [
+        { type: 'hook', title: 'Dado do dia', body: 'Voce sabia que 73% dos brasileiros...' },
+        { type: 'poll', title: 'Enquete', body: 'Qual seu maior medo sobre trabalhar nos EUA?' },
+        { type: 'tool_tip', title: 'Dica rapida', body: 'Quem fez o diagnostico sabe...' },
+      ],
+      model: 'gpt-4o-mini',
+    },
+  },
+  {
+    event: 'content.published',
+    category: 'content',
+    origin: 'publish-content',
+    trigger: 'Admin publica conteudo no LinkedIn, X ou Threads via Content Factory',
+    description: 'Disparado apos publicacao bem-sucedida em uma rede social. Inclui status de TODAS as plataformas do mesmo conteudo e links de todos os posts ja publicados — ideal para montar mensagem de grupo WhatsApp com todos os links.',
+    fields: [
+      { name: 'platform', type: 'string', description: 'Plataforma que acabou de publicar: "linkedin", "x" ou "threads"' },
+      { name: 'post_url', type: 'string', description: 'URL publica do post recem-publicado' },
+      { name: 'post_id', type: 'string', description: 'ID do post na plataforma' },
+      { name: 'post_text', type: 'string', description: 'Texto do post (truncado em 500 chars)' },
+      { name: 'piece_id', type: 'uuid', description: 'ID do content_piece de origem' },
+      { name: 'piece_title', type: 'string', description: 'Titulo do conteudo original' },
+      { name: 'piece_format', type: 'string', description: 'Formato do conteudo (youtube, reels, carousel, etc.)' },
+      { name: 'published_at', type: 'string', description: 'Timestamp ISO da publicacao' },
+      { name: 'platforms', type: 'object', description: 'Status de TODAS as plataformas: { linkedin: { status, post_url, post_id, published_at }, x: {...}, threads: {...} }' },
+      { name: 'post_links', type: 'array', description: 'Lista de { platform, url } de todos os posts ja publicados — use para montar mensagem de WhatsApp' },
+      { name: 'all_platforms_published', type: 'boolean', description: 'true quando TODAS as plataformas do piece estao publicadas' },
+    ],
+    example: {
+      event: 'content.published',
+      timestamp: '2026-03-12T15:30:00.000Z',
+      source: 'enp_hub_supabase',
+      platform: 'x',
+      post_url: 'https://x.com/euanapratica/status/1234567890',
+      post_id: '1234567890',
+      post_text: '87% dos profissionais qualificados estao estagnados...',
+      piece_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      piece_title: '5 Sinais de Que Sua Carreira Esta Estagnada',
+      piece_format: 'youtube',
+      published_at: '2026-03-12T15:30:00.000Z',
+      platforms: {
+        linkedin: { status: 'published', post_url: 'https://www.linkedin.com/feed/update/urn:li:share:765432', post_id: 'urn:li:share:765432', published_at: '2026-03-12T15:00:00.000Z' },
+        x: { status: 'published', post_url: 'https://x.com/euanapratica/status/1234567890', post_id: '1234567890', published_at: '2026-03-12T15:30:00.000Z' },
+        threads: { status: 'scheduled', post_url: null, post_id: null, published_at: null },
+      },
+      post_links: [
+        { platform: 'linkedin', url: 'https://www.linkedin.com/feed/update/urn:li:share:765432' },
+        { platform: 'x', url: 'https://x.com/euanapratica/status/1234567890' },
+      ],
+      all_platforms_published: false,
+    },
+  },
+  {
+    event: 'content.all_platforms_published',
+    category: 'content',
+    origin: 'publish-content',
+    trigger: 'Ultima plataforma de um conteudo e publicada com sucesso (ex: X, Threads e LinkedIn todos publicados)',
+    description: 'Disparado apenas quando TODAS as publicacoes de um conteudo estao completas. Perfeito para enviar mensagem consolidada no grupo de WhatsApp ou Telegram com todos os links de uma vez.',
+    fields: [
+      { name: 'piece_id', type: 'uuid', description: 'ID do content_piece de origem' },
+      { name: 'piece_title', type: 'string', description: 'Titulo do conteudo original' },
+      { name: 'piece_format', type: 'string', description: 'Formato do conteudo' },
+      { name: 'platforms', type: 'object', description: 'Status de cada plataforma: { linkedin: { status, post_url, post_id, published_at }, ... }' },
+      { name: 'post_links', type: 'array', description: 'Lista de { platform, url } de TODOS os posts publicados' },
+      { name: 'completed_at', type: 'string', description: 'Timestamp ISO de quando a ultima plataforma foi publicada' },
+    ],
+    example: {
+      event: 'content.all_platforms_published',
+      timestamp: '2026-03-12T20:00:00.000Z',
+      source: 'enp_hub_supabase',
+      piece_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      piece_title: '5 Sinais de Que Sua Carreira Esta Estagnada',
+      piece_format: 'youtube',
+      platforms: {
+        linkedin: { status: 'published', post_url: 'https://www.linkedin.com/feed/update/urn:li:share:765432', post_id: 'urn:li:share:765432', published_at: '2026-03-12T15:00:00.000Z' },
+        x: { status: 'published', post_url: 'https://x.com/euanapratica/status/1234567890', post_id: '1234567890', published_at: '2026-03-12T15:30:00.000Z' },
+        threads: { status: 'published', post_url: 'https://www.threads.net/@euanapratica/post/ABC123', post_id: '12345678901234567', published_at: '2026-03-12T20:00:00.000Z' },
+      },
+      post_links: [
+        { platform: 'linkedin', url: 'https://www.linkedin.com/feed/update/urn:li:share:765432' },
+        { platform: 'x', url: 'https://x.com/euanapratica/status/1234567890' },
+        { platform: 'threads', url: 'https://www.threads.net/@euanapratica/post/ABC123' },
+      ],
+      completed_at: '2026-03-12T20:00:00.000Z',
+    },
+  },
+  {
+    event: 'content.publish_failed',
+    category: 'content',
+    origin: 'publish-content',
+    trigger: 'Publicacao no LinkedIn, X ou Threads falha (erro de API, token expirado, etc.)',
+    description: 'Disparado quando uma publicacao falha. Contem a plataforma, titulo do conteudo, mensagem de erro e se eh retentavel. Ideal para alertas no Telegram ou monitoramento.',
+    fields: [
+      { name: 'platform', type: 'string', description: 'Plataforma onde falhou: "linkedin", "x" ou "threads"' },
+      { name: 'piece_id', type: 'uuid', description: 'ID do content_piece de origem' },
+      { name: 'piece_title', type: 'string', description: 'Titulo do conteudo original' },
+      { name: 'error', type: 'string', description: 'Mensagem de erro detalhada' },
+      { name: 'retryable', type: 'boolean', description: 'Se o erro eh retentavel (429, 500, timeout)' },
+      { name: 'retry_count', type: 'number', description: 'Numero de tentativas ate o momento' },
+      { name: 'failed_at', type: 'string', description: 'Timestamp ISO da falha' },
+    ],
+    example: {
+      event: 'content.publish_failed',
+      timestamp: '2026-03-12T15:30:00.000Z',
+      source: 'enp_hub_supabase',
+      platform: 'x',
+      piece_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      piece_title: '5 Sinais de Que Sua Carreira Esta Estagnada',
+      error: 'X tweet failed (402): insufficient credits',
+      retryable: false,
+      retry_count: 1,
+      failed_at: '2026-03-12T15:30:00.000Z',
+    },
+  },
 ];
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -941,6 +1074,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Reac
   booking: { label: 'Agendamento', color: 'bg-teal-50 text-teal-700 border-teal-200', icon: <CalendarCheck className="w-3.5 h-3.5" /> },
   live: { label: 'Live', color: 'bg-rose-50 text-rose-700 border-rose-200', icon: <Video className="w-3.5 h-3.5" /> },
   order: { label: 'Pedido', color: 'bg-orange-50 text-orange-700 border-orange-200', icon: <Package className="w-3.5 h-3.5" /> },
+  content: { label: 'Conteudo', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: <Sparkles className="w-3.5 h-3.5" /> },
 };
 
 // ── Event Card Component ─────────────────────────────────────────────

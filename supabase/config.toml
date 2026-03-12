@@ -234,3 +234,18 @@ verify_jwt = false
 
 [functions.content-generate]
 verify_jwt = false
+
+[functions.generate-social-post]
+verify_jwt = false
+
+[functions.content-carousel-generate]
+verify_jwt = false
+
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.publish-content]
+verify_jwt = false
+
+[functions.generate-group-content]
+verify_jwt = false

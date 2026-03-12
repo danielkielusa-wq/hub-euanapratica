@@ -77,6 +77,16 @@ export interface ContentPiece {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  carousel_slides: CarouselSlide[] | null;
+}
+
+export interface CarouselSlide {
+  slide_number: number;
+  slide_type: 'cover' | 'content' | 'data' | 'cta';
+  headline: string;
+  body: string;
+  accent_text: string;
+  footnote: string;
 }
 
 export type ContentFormat = 'short' | 'long_video' | 'carousel' | 'stories';
@@ -106,6 +116,8 @@ export interface ContentFactoryConfig {
   generate_api_key: string;
   trending_prompt: string;
   generate_prompt: string;
+  social_api_key: string;
+  social_prompt: string;
 }
 
 // ── Queries ──────────────────────────────────────────────────────────────
@@ -138,6 +150,8 @@ export function useContentFactoryConfig() {
           'content_factory_generate_api_key',
           'content_factory_trending_prompt',
           'content_factory_generate_prompt',
+          'content_factory_social_api_key',
+          'content_factory_social_prompt',
         ]);
       if (error) throw error;
       const map: Record<string, string> = {};
@@ -147,6 +161,8 @@ export function useContentFactoryConfig() {
         generate_api_key: map['content_factory_generate_api_key'] || 'openai_api',
         trending_prompt: map['content_factory_trending_prompt'] || '',
         generate_prompt: map['content_factory_generate_prompt'] || '',
+        social_api_key: map['content_factory_social_api_key'] || 'openai_api',
+        social_prompt: map['content_factory_social_prompt'] || '',
       };
     },
   });
@@ -163,6 +179,8 @@ export function useSaveContentFactoryConfig() {
         ...(config.generate_api_key !== undefined && { content_factory_generate_api_key: config.generate_api_key }),
         ...(config.trending_prompt !== undefined && { content_factory_trending_prompt: config.trending_prompt }),
         ...(config.generate_prompt !== undefined && { content_factory_generate_prompt: config.generate_prompt }),
+        ...(config.social_api_key !== undefined && { content_factory_social_api_key: config.social_api_key }),
+        ...(config.social_prompt !== undefined && { content_factory_social_prompt: config.social_prompt }),
       }).map(([key, value]) => ({ key, value }));
 
       for (const row of upserts) {
@@ -291,16 +309,20 @@ export function useGenerateContent() {
         body: input,
       });
       if (error) {
-        const resp = (error as any).context;
-        if (resp?.json) {
-          try {
-            const body = await resp.json();
-            throw new Error(body?.error || error.message);
-          } catch (e) {
-            if (e instanceof Error && e.message !== error.message) throw e;
+        let detail = error.message;
+        try {
+          const resp = (error as any).context;
+          if (resp?.json) {
+            const body = await Promise.race([
+              resp.json(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+            ]);
+            detail = (body as any)?.error || detail;
           }
+        } catch {
+          // ignore — use original error.message
         }
-        throw error;
+        throw new Error(detail);
       }
       if (data?.error) throw new Error(data.error);
       return data;
@@ -311,6 +333,39 @@ export function useGenerateContent() {
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao gerar conteudo', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export interface UpdatePieceInput {
+  id: string;
+  title?: string;
+  hook_variations?: HookVariation[];
+  script_sections?: ScriptSection[];
+  cta?: string;
+  social_posts?: SocialPost[];
+  seo_metadata?: SeoMetadata;
+  status?: string;
+}
+
+export function useUpdatePiece() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, ...fields }: UpdatePieceInput) => {
+      const { error } = await (supabase as any)
+        .from('content_pieces')
+        .update(fields)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content-factory-pieces'] });
+      toast({ title: 'Conteudo salvo' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     },
   });
 }

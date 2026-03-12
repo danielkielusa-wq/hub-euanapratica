@@ -100,16 +100,16 @@ export const COUNTRIES = [
 
 export const TARGET_COUNTRIES = [
   { code: 'US', name: 'Estados Unidos' },
-  { code: 'CA', name: 'Canadá' },
-  { code: 'GB', name: 'Reino Unido' },
-  { code: 'AU', name: 'Austrália' },
   { code: 'DE', name: 'Alemanha' },
-  { code: 'PT', name: 'Portugal' },
+  { code: 'AU', name: 'Austrália' },
+  { code: 'CA', name: 'Canadá' },
+  { code: 'ES', name: 'Espanha' },
+  { code: 'FR', name: 'França' },
+  { code: 'NL', name: 'Holanda' },
   { code: 'IE', name: 'Irlanda' },
   { code: 'NZ', name: 'Nova Zelândia' },
-  { code: 'FR', name: 'França' },
-  { code: 'ES', name: 'Espanha' },
-  { code: 'NL', name: 'Holanda' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'GB', name: 'Reino Unido' },
   { code: 'CH', name: 'Suíça' },
 ];
 

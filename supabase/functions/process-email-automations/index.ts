@@ -295,7 +295,35 @@ async function handleDripProcessor(
         .eq("id", enrollment.id);
     }
 
-    if (result.emailSent) sent++;
+    if (result.emailSent) {
+      sent++;
+
+      // Log to lead_interactions for CRM timeline (best-effort)
+      if (enrollment.lead_id) {
+        try {
+          await supabase
+            .from("lead_interactions" as any)
+            .insert({
+              lead_id: enrollment.lead_id,
+              type: "email_sent",
+              content: `Email drip: ${step.template_name} (step ${currentStep + 1}/${dripSteps.length})`,
+              direction: "outbound",
+              channel: "email",
+              metadata: {
+                template_name: step.template_name,
+                email_sent: true,
+                recipient: enrollment.email,
+                automation_name: automation.name,
+                step_number: currentStep + 1,
+                total_steps: dripSteps.length,
+                source: "drip_processor",
+              },
+            } as any);
+        } catch (_) {
+          // best-effort, don't block drip processing
+        }
+      }
+    }
 
     // Update automation stats
     await supabase

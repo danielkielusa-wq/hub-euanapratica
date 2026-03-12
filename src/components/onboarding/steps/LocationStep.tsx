@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OnboardingProfile, COUNTRIES, TARGET_COUNTRIES } from '@/types/onboarding';
+import { STATES_BY_COUNTRY } from '@/data/statesByCountry';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Navigation } from 'lucide-react';
 
@@ -18,6 +19,8 @@ interface LocationStepProps {
 }
 
 export function LocationStep({ data, onChange, errors }: LocationStepProps) {
+  const stateOptions = data.current_country ? STATES_BY_COUNTRY[data.current_country] : undefined;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Title */}
@@ -48,7 +51,11 @@ export function LocationStep({ data, onChange, errors }: LocationStepProps) {
               </Label>
               <Select
                 value={data.current_country || ''}
-                onValueChange={(value) => onChange('current_country', value)}
+                onValueChange={(value) => {
+                  onChange('current_country', value);
+                  // Clear state when country changes (previous state is no longer valid)
+                  onChange('current_state', '');
+                }}
               >
                 <SelectTrigger className={errors.current_country ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Selecione um país" />
@@ -66,18 +73,36 @@ export function LocationStep({ data, onChange, errors }: LocationStepProps) {
               )}
             </div>
 
-            {/* State */}
+            {/* State - dropdown if we have data, text input otherwise */}
             <div className="space-y-2">
               <Label htmlFor="current_state" className="text-sm font-medium">
                 Estado / Província
               </Label>
-              <Input
-                id="current_state"
-                type="text"
-                value={data.current_state || ''}
-                onChange={(e) => onChange('current_state', e.target.value)}
-                placeholder="Ex: São Paulo, California"
-              />
+              {stateOptions ? (
+                <Select
+                  value={data.current_state || ''}
+                  onValueChange={(value) => onChange('current_state', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o estado / província" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stateOptions.map((state) => (
+                      <SelectItem key={state.code} value={state.name}>
+                        {state.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="current_state"
+                  type="text"
+                  value={data.current_state || ''}
+                  onChange={(e) => onChange('current_state', e.target.value)}
+                  placeholder="Ex: São Paulo, California"
+                />
+              )}
             </div>
 
             {/* City */}

@@ -70,7 +70,14 @@ export function PersonalInfoStep({ data, onChange, errors }: PersonalInfoStepPro
           <input
             type="date"
             value={data.birth_date || ''}
-            onChange={(e) => onChange('birth_date', e.target.value)}
+            min="1920-01-01"
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => {
+              const val = e.target.value;
+              const year = val.split('-')[0];
+              if (year && year.length > 4) return;
+              onChange('birth_date', val);
+            }}
             className={`w-full rounded-xl border-0 bg-muted/50 px-4 py-3.5 text-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 ${
               errors.birth_date ? 'ring-2 ring-destructive' : ''
             }`}
