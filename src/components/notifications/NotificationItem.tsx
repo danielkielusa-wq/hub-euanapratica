@@ -3,7 +3,7 @@ import {
   BookOpen, Award, GraduationCap, Coins, CheckCircle,
   XCircle, AlertTriangle, CalendarCheck, CalendarX,
   CalendarClock, Users, Bell, HandMetal, Film, CalendarPlus,
-  AlarmClock,
+  AlarmClock, AtSign,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,6 +34,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   'bell': Bell,
   'hand-metal': HandMetal,
   'film': Film,
+  'at-sign': AtSign,
 };
 
 const CATEGORY_COLORS: Record<string, string> = {

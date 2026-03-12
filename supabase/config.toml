@@ -1,5 +1,20 @@
 project_id = "seqgnxynrcylxsdzbloa"
 
+[functions.generate-session-prep]
+verify_jwt = false
+
+[functions.generate-session-summary]
+verify_jwt = false
+
+[functions.generate-student-suggestion]
+verify_jwt = false
+
+[functions.dispatch-espaco-notification]
+verify_jwt = false
+
+[functions.check-espaco-deadlines]
+verify_jwt = false
+
 [functions.test-n8n-webhook]
 verify_jwt = false
 
@@ -49,6 +64,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-booking-rescheduled]
+verify_jwt = false
+
+[functions.send-booking-completed]
 verify_jwt = false
 
 [functions.send-booking-reminder]
@@ -139,6 +157,9 @@ verify_jwt = false
 [functions.run-content-pipeline]
 verify_jwt = false
 
+[functions.send-live-reminder]
+verify_jwt = false
+
 [functions.send-live-notification]
 verify_jwt = false
 
@@ -164,6 +185,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.enrich-jobs]
+verify_jwt = false
+
+[functions.translate-job]
 verify_jwt = false
 
 [functions.send-contact-form]
@@ -200,4 +224,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.handle-report-accessed]
+verify_jwt = false
+
+[functions.resend-webhook]
+verify_jwt = false
+
+[functions.content-trending]
+verify_jwt = false
+
+[functions.content-generate]
 verify_jwt = false

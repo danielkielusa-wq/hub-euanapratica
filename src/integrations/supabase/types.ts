@@ -2131,6 +2131,8 @@ export type Database = {
           id: string
           ip_address: string | null
           link_url: string | null
+          metadata: Json | null
+          resend_email_id: string | null
           user_agent: string | null
         }
         Insert: {
@@ -2143,6 +2145,8 @@ export type Database = {
           id?: string
           ip_address?: string | null
           link_url?: string | null
+          metadata?: Json | null
+          resend_email_id?: string | null
           user_agent?: string | null
         }
         Update: {
@@ -2155,6 +2159,8 @@ export type Database = {
           id?: string
           ip_address?: string | null
           link_url?: string | null
+          metadata?: Json | null
+          resend_email_id?: string | null
           user_agent?: string | null
         }
         Relationships: [
@@ -3183,6 +3189,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      landing_page_views: {
+        Row: {
+          converted: boolean | null
+          converted_at: string | null
+          id: string
+          reminder_sent_at: string | null
+          service_id: string
+          session_id: string
+          user_id: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          converted?: boolean | null
+          converted_at?: string | null
+          id?: string
+          reminder_sent_at?: string | null
+          service_id: string
+          session_id: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          converted?: boolean | null
+          converted_at?: string | null
+          id?: string
+          reminder_sent_at?: string | null
+          service_id?: string
+          session_id?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_page_views_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "hub_services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_interactions: {
         Row: {
@@ -4505,6 +4561,7 @@ export type Database = {
           principal_obstaculo: string | null
           profile_photo_url: string | null
           resume_url: string | null
+          special_badge: string | null
           status: string | null
           status_visto: string | null
           target_country: string | null
@@ -4543,6 +4600,7 @@ export type Database = {
           principal_obstaculo?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
+          special_badge?: string | null
           status?: string | null
           status_visto?: string | null
           target_country?: string | null
@@ -4581,6 +4639,7 @@ export type Database = {
           principal_obstaculo?: string | null
           profile_photo_url?: string | null
           resume_url?: string | null
+          special_badge?: string | null
           status?: string | null
           status_visto?: string | null
           target_country?: string | null
@@ -6740,6 +6799,7 @@ export type Database = {
           full_name: string
           level: number
           profile_photo_url: string
+          special_badge: string
           total_points: number
           user_id: string
         }[]
@@ -6831,6 +6891,24 @@ export type Database = {
           count: number
         }[]
       }
+      get_job_public_preview: {
+        Args: { p_job_id: string }
+        Returns: {
+          category: string
+          company_name: string
+          created_at: string
+          experience_level: string
+          id: string
+          industry: string
+          is_featured: boolean
+          job_type: string
+          remote_type: string
+          salary_currency: string
+          salary_max: number
+          salary_min: number
+          title: string
+        }[]
+      }
       get_jobs_with_user_context: {
         Args: {
           p_category?: string
@@ -6844,7 +6922,7 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
-          apply_url: string
+          ai_enrichment: Json
           benefits: string
           category: string
           company_logo_url: string
@@ -6853,6 +6931,7 @@ export type Database = {
           description: string
           experience_level: string
           id: string
+          industry: string
           is_applied: boolean
           is_bookmarked: boolean
           is_featured: boolean
@@ -6863,6 +6942,7 @@ export type Database = {
           salary_currency: string
           salary_max: number
           salary_min: number
+          salary_notes: string
           tech_stack: string[]
           title: string
           total_count: number
@@ -6872,6 +6952,21 @@ export type Database = {
         Args: { p_page_key: string }
         Returns: {
           value: string
+        }[]
+      }
+      get_live_public_preview: {
+        Args: { p_slug: string }
+        Returns: {
+          access_type: Database["public"]["Enums"]["live_access_type"]
+          description: string
+          duration_minutes: number
+          mentor_name: string
+          og_image_url: string
+          scheduled_at: string
+          slug: string
+          status: Database["public"]["Enums"]["live_status"]
+          thumbnail_url: string
+          title: string
         }[]
       }
       get_live_registrations_with_profiles: {

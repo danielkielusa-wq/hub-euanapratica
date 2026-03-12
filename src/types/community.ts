@@ -27,6 +27,7 @@ export interface CommunityPost {
     id: string;
     full_name: string;
     profile_photo_url: string | null;
+    special_badge: string | null;
   };
   community_categories?: CommunityCategory;
   user_has_liked?: boolean;
@@ -45,6 +46,7 @@ export interface CommunityComment {
     id: string;
     full_name: string;
     profile_photo_url: string | null;
+    special_badge: string | null;
   };
   user_has_liked?: boolean;
   replies?: CommunityComment[];
@@ -71,6 +73,7 @@ export interface UserGamification {
     id: string;
     full_name: string;
     profile_photo_url: string | null;
+    special_badge: string | null;
   };
 }
 
@@ -111,6 +114,7 @@ export interface RankingMember {
   profile_photo_url: string | null;
   total_points: number;
   level: number;
+  special_badge: string | null;
 }
 
 // Level thresholds

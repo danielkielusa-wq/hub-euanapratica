@@ -11,6 +11,9 @@ export interface EspacoWithStats {
   status: string | null;
   mentor_id: string | null;
   cover_image_url: string | null;
+  gradient_preset: string | null;
+  gradient_start: string | null;
+  gradient_end: string | null;
   start_date: string | null;
   end_date: string | null;
   upcomingSessions: number;
@@ -46,6 +49,9 @@ export function useStudentEspacosWithStats() {
             status,
             mentor_id,
             cover_image_url,
+            gradient_preset,
+            gradient_start,
+            gradient_end,
             start_date,
             end_date
           )
@@ -169,6 +175,9 @@ export function useStudentEspacosWithStats() {
           status: espaco.status,
           mentor_id: espaco.mentor_id,
           cover_image_url: espaco.cover_image_url,
+          gradient_preset: espaco.gradient_preset,
+          gradient_start: espaco.gradient_start,
+          gradient_end: espaco.gradient_end,
           start_date: espaco.start_date,
           end_date: espaco.end_date,
           upcomingSessions,

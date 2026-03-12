@@ -8,50 +8,8 @@
  * Auth: admin-only (requireAdmin).
  */
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAdmin, getCorsHeaders } from "../_shared/authGuard.ts";
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-interface RenderedTemplate { subject: string; body_html: string }
-
-async function renderEmailTemplate(
-  supabase: SupabaseClient,
-  templateName: string,
-  variables: Record<string, string>
-): Promise<RenderedTemplate | null> {
-  const { data: rows } = await supabase.rpc("get_email_template_by_name", {
-    p_template_name: templateName,
-  });
-  const tpl = rows?.[0];
-  if (!tpl) return null;
-
-  let subject = tpl.subject as string;
-  let body_html = tpl.body_html as string;
-  for (const [key, value] of Object.entries(variables)) {
-    const regex = new RegExp(escapeRegex(key), "g");
-    subject = subject.replace(regex, value);
-    body_html = body_html.replace(regex, value);
-  }
-  return { subject, body_html };
-}
-
-async function renderDripTemplates(
-  supabase: SupabaseClient,
-  leadName: string,
-  reportLink: string
-): Promise<Record<string, RenderedTemplate | null>> {
-  const vars = { "{{leadName}}": leadName, "{{reportLink}}": reportLink };
-  const [d0, d3, d7, d14] = await Promise.all([
-    renderEmailTemplate(supabase, "report_ready", vars),
-    renderEmailTemplate(supabase, "drip_report_d3", { "{{leadName}}": leadName }),
-    renderEmailTemplate(supabase, "drip_report_d7", vars),
-    renderEmailTemplate(supabase, "drip_report_d14", { "{{leadName}}": leadName }),
-  ]);
-  return { d0, d3, d7, d14 };
-}
 
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -110,25 +68,30 @@ Deno.serve(async (req) => {
     };
 
     if (auto.trigger_event === "report.generated") {
-      const testReportLink = "https://hub.euanapratica.com/report/test-token-000";
-      const drip = await renderDripTemplates(supabase, "Lead Teste", testReportLink);
       Object.assign(testPayload, {
         access_token: "test-token-000",
-        report_link: testReportLink,
-        // Pre-rendered drip email templates (D0-D14)
-        email_d0_subject: drip.d0?.subject ?? null,
-        email_d0_body_html: drip.d0?.body_html ?? null,
-        email_d3_subject: drip.d3?.subject ?? null,
-        email_d3_body_html: drip.d3?.body_html ?? null,
-        email_d7_subject: drip.d7?.subject ?? null,
-        email_d7_body_html: drip.d7?.body_html ?? null,
-        email_d14_subject: drip.d14?.subject ?? null,
-        email_d14_body_html: drip.d14?.body_html ?? null,
+        report_link: "https://hub.euanapratica.com/report/test-token-000",
+        // User data (raw form answers)
+        area: "Tecnologia",
+        atuacao: "Desenvolvedor Full-Stack",
+        experiencia: "5-10 anos",
+        english_level: "avancado",
+        objetivo: "Trabalhar no exterior",
+        visa_status: "nenhum",
+        timeline: "6-12 meses",
+        family_status: "solteiro",
+        income_range: "10000-15000",
+        investment_range: "1000-3000",
+        impediment: "networking",
+        main_concern: "Validacao do curriculo internacional",
+        // AI-generated scoring & qualification
         readiness_score: 78,
         lead_temperature: "quente",
         lead_priority_score: 82,
         phase_id: "decolagem",
         phase_name: "Decolagem",
+        full_diagnosis: "Profissional de tech com perfil forte, precisa de orientacao estrategica para posicionamento internacional.",
+        recommended_product_tier: "mentoria_individual",
         is_tech_professional: true,
         is_senior_level: true,
         is_high_income: false,
@@ -143,8 +106,21 @@ Deno.serve(async (req) => {
         user_id: "00000000-0000-0000-0000-000000000000",
         plan_id: null,
         plan_name: "Pro",
+        offer_id: "OFFER-TEST-000",
+        ticto_status: "active",
         product_name: "ENP Hub Pro",
         paid_amount: 97.0,
+      });
+    } else if (auto.trigger_event === "subscription.cancelled") {
+      Object.assign(testPayload, {
+        user_id: "00000000-0000-0000-0000-000000000000",
+        email: "teste@example.com",
+        subscription_id: "00000000-0000-0000-0000-000000000000",
+        plan_id: null,
+        reason: "Nao estou usando o suficiente",
+        feedback: "Gostei do conteudo mas preciso focar em outra coisa agora",
+        was_active: true,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
     } else if (auto.trigger_event === "analytics.daily") {
       Object.assign(testPayload, {
@@ -153,15 +129,24 @@ Deno.serve(async (req) => {
         dashboard_url: "https://hub.euanapratica.com/admin/analytics",
         metrics: {
           new_leads: 15,
+          new_leads_yesterday: 12,
           new_signups: 3,
           active_subscriptions: 42,
           mrr_estimate: 8400,
+          new_subs_today: 1,
+          churn_count_30d: 3,
           churn_percent_30d: 2.4,
+          revenue_today_brl: 194,
           total_credits_used: 28,
           bookings_today: 5,
+          no_show_rate_30d: 8.5,
           community_posts: 8,
+          community_comments: 23,
           whatsapp_outbound: 120,
+          whatsapp_inbound: 34,
           email_sent: 45,
+          email_success_rate: 97.2,
+          page_views: 380,
           api_cost_usd: 1.23,
         },
       });
@@ -218,9 +203,24 @@ Deno.serve(async (req) => {
       });
     } else if (auto.trigger_event === "intelligence.weekly_report") {
       Object.assign(testPayload, {
-        report_period: "2026-03-03 a 2026-03-09",
-        ai_summary: "Resumo semanal de teste gerado pelo admin.",
-        dashboard_url: "https://hub.euanapratica.com/admin/analytics",
+        report_id: "00000000-0000-0000-0000-000000000000",
+        period: {
+          start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          end: new Date().toISOString().slice(0, 10),
+        },
+        executive_summary: "Semana com crescimento de 12% em leads qualificados. 3 novos assinantes Pro. Pipeline saudavel com 8 leads quentes.",
+        hot_leads_count: 8,
+        new_leads_count: 15,
+        bookings_this_week: 6,
+        revenue_this_week_brl: 1940,
+        alerts_count: 2,
+        opportunities_count: 4,
+        ai_analysis: {
+          executive_summary: "Semana com crescimento de 12% em leads qualificados.",
+          alerts: ["Churn rate subiu 0.5%", "2 no-shows esta semana"],
+          opportunities: ["Lead quente do setor financeiro", "3 leads com score > 80", "Upsell potencial mentoria VIP", "Cross-sell curriculo para assinantes Pro"],
+        },
+        report_url: "https://hub.euanapratica.com/admin/inteligencia-semanal",
       });
     } else if (auto.trigger_event.startsWith("sdr.")) {
       Object.assign(testPayload, {
@@ -229,6 +229,143 @@ Deno.serve(async (req) => {
         phone: "5511999999999",
         linkedin_url: "https://linkedin.com/in/teste",
         message: "Ola! Teste de mensagem SDR.",
+      });
+    } else if (auto.trigger_event === "booking.*" || auto.trigger_event === "booking.created") {
+      Object.assign(testPayload, {
+        booking_id: "00000000-0000-0000-0000-000000000000",
+        student_id: "00000000-0000-0000-0000-000000000001",
+        student_name: "Aluno Teste",
+        student_email: "aluno@example.com",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+        scheduled_start: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        scheduled_end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+        duration_minutes: 60,
+        meeting_link: "https://meet.google.com/abc-defg-hij",
+        student_notes: "Quero discutir meu plano de carreira.",
+      });
+    } else if (auto.trigger_event === "booking.cancelled" || auto.trigger_event === "booking.no_show") {
+      Object.assign(testPayload, {
+        booking_id: "00000000-0000-0000-0000-000000000000",
+        student_id: "00000000-0000-0000-0000-000000000001",
+        student_name: "Aluno Teste",
+        student_email: "aluno@example.com",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+        scheduled_start: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        status: auto.trigger_event === "booking.no_show" ? "no_show" : "cancelled",
+        cancellation_reason: "Conflito de agenda",
+      });
+    } else if (auto.trigger_event === "booking.rescheduled") {
+      Object.assign(testPayload, {
+        booking_id: "00000000-0000-0000-0000-000000000000",
+        student_id: "00000000-0000-0000-0000-000000000001",
+        student_name: "Aluno Teste",
+        student_email: "aluno@example.com",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+        old_scheduled_start: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        new_scheduled_start: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        new_scheduled_end: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+        duration_minutes: 60,
+      });
+    } else if (auto.trigger_event === "booking.completed") {
+      Object.assign(testPayload, {
+        booking_id: "00000000-0000-0000-0000-000000000000",
+        student_id: "00000000-0000-0000-0000-000000000001",
+        student_name: "Aluno Teste",
+        student_email: "aluno@example.com",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+        scheduled_start: new Date().toISOString(),
+        scheduled_end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        duration_minutes: 60,
+        mentor_notes: "Sessao produtiva, aluno progrediu no plano de carreira.",
+        completed_at: new Date().toISOString(),
+      });
+    } else if (auto.trigger_event === "live.*" || auto.trigger_event === "live.created") {
+      Object.assign(testPayload, {
+        live_id: "00000000-0000-0000-0000-000000000000",
+        title: "Como Alavancar sua Carreira em Tech",
+        slug: "como-alavancar-carreira-tech",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        scheduled_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        duration_minutes: 90,
+        meeting_link: "https://meet.google.com/abc-defg-hij",
+      });
+    } else if (auto.trigger_event === "live.started") {
+      Object.assign(testPayload, {
+        live_id: "00000000-0000-0000-0000-000000000000",
+        title: "Como Alavancar sua Carreira em Tech",
+        slug: "como-alavancar-carreira-tech",
+        meeting_link: "https://meet.google.com/abc-defg-hij",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        registration_count: 25,
+        scheduled_at: new Date().toISOString(),
+      });
+    } else if (auto.trigger_event === "live.registration") {
+      Object.assign(testPayload, {
+        live_id: "00000000-0000-0000-0000-000000000000",
+        title: "Como Alavancar sua Carreira em Tech",
+        slug: "como-alavancar-carreira-tech",
+        user_id: "00000000-0000-0000-0000-000000000001",
+        user_name: "Aluno Teste",
+        user_email: "aluno@example.com",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        scheduled_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        duration_minutes: 90,
+      });
+    } else if (auto.trigger_event === "live.completed") {
+      Object.assign(testPayload, {
+        live_id: "00000000-0000-0000-0000-000000000000",
+        title: "Como Alavancar sua Carreira em Tech",
+        slug: "como-alavancar-carreira-tech",
+        recording_url: "https://youtube.com/watch?v=test123",
+        total_participants: 18,
+        emails_sent: 18,
+      });
+    } else if (auto.trigger_event === "live.cancelled") {
+      Object.assign(testPayload, {
+        live_id: "00000000-0000-0000-0000-000000000000",
+        title: "Como Alavancar sua Carreira em Tech",
+        slug: "como-alavancar-carreira-tech",
+        mentor_id: "00000000-0000-0000-0000-000000000002",
+        mentor_name: "Mentor Teste",
+        scheduled_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        cancellation_reason: "Mentor com compromisso urgente",
+        registration_count: 12,
+      });
+    } else if (auto.trigger_event === "order.*" || auto.trigger_event === "order.paid") {
+      Object.assign(testPayload, {
+        user_id: "00000000-0000-0000-0000-000000000001",
+        email: "aluno@example.com",
+        product_name: "Mentoria Individual 1:1",
+        product_type: "one_time_service",
+        amount: 497.0,
+        currency: "BRL",
+        ticto_order_id: "TIC-TEST-000",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+      });
+    } else if (auto.trigger_event === "order.refunded") {
+      Object.assign(testPayload, {
+        user_id: "00000000-0000-0000-0000-000000000001",
+        email: "aluno@example.com",
+        product_type: "one_time_service",
+        ticto_order_id: "TIC-TEST-000",
+        service_id: "00000000-0000-0000-0000-000000000003",
+        service_name: "Mentoria Individual 1:1",
+        refund_event: "refund",
       });
     }
 

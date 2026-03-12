@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Loader2, Mail, Plus, RefreshCw, Pause, Play, XCircle,
-  Eye, Settings2, Users, Zap, Ban, BarChart3,
+  Eye, Settings2, Ban, BarChart3,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
@@ -26,11 +26,11 @@ import {
 } from '@/hooks/useAdminEmailCampaigns';
 import { CampaignWizardDialog } from '@/components/admin/email-campaigns/CampaignWizardDialog';
 import { CampaignContactsSheet } from '@/components/admin/email-campaigns/CampaignContactsSheet';
+import { CampaignEventsDialog } from '@/components/admin/email-campaigns/CampaignEventsDialog';
 import { AutomationConfigDialog } from '@/components/admin/email-campaigns/AutomationConfigDialog';
-import { AutomationEnrollmentsSheet } from '@/components/admin/email-campaigns/AutomationEnrollmentsSheet';
 import { UnsubscribesSheet } from '@/components/admin/email-campaigns/UnsubscribesSheet';
 import { TestAutomationDialog } from '@/components/admin/email-campaigns/TestAutomationDialog';
-import { AutomationHistorySheet } from '@/components/admin/email-campaigns/AutomationHistorySheet';
+import { AutomationEventsDialog } from '@/components/admin/email-campaigns/AutomationEventsDialog';
 
 // ── Status labels/colors ───────────────────────────────────────────
 
@@ -61,11 +61,11 @@ const TRIGGER_COLORS: Record<string, string> = {
 export default function AdminEmailCampaigns() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [contactsCampaign, setContactsCampaign] = useState<EmailCampaign | null>(null);
+  const [eventsCampaign, setEventsCampaign] = useState<EmailCampaign | null>(null);
   const [configAutomation, setConfigAutomation] = useState<EmailAutomation | null>(null);
-  const [enrollmentsAutomation, setEnrollmentsAutomation] = useState<EmailAutomation | null>(null);
   const [unsubscribesOpen, setUnsubscribesOpen] = useState(false);
   const [testAutomation, setTestAutomation] = useState<EmailAutomation | null>(null);
-  const [historyAutomation, setHistoryAutomation] = useState<EmailAutomation | null>(null);
+  const [eventsAutomation, setEventsAutomation] = useState<EmailAutomation | null>(null);
 
   const { data: campaigns = [], isLoading: campaignsLoading, refetch: refetchCampaigns } = useCampaigns();
   const { data: stats } = useCampaignStats();
@@ -144,6 +144,7 @@ export default function AdminEmailCampaigns() {
                     key={campaign.id}
                     campaign={campaign}
                     onViewContacts={() => setContactsCampaign(campaign)}
+                    onViewEvents={() => setEventsCampaign(campaign)}
                     onPause={() => pauseCampaign.mutate(campaign.id)}
                     onResume={() => resumeCampaign.mutate(campaign.id)}
                     onCancel={() => cancelCampaign.mutate(campaign.id)}
@@ -174,9 +175,8 @@ export default function AdminEmailCampaigns() {
                     automation={automation}
                     onToggle={(enabled) => toggleAutomation.mutate({ id: automation.id, enabled })}
                     onConfigure={() => setConfigAutomation(automation)}
-                    onViewEnrollments={() => setEnrollmentsAutomation(automation)}
                     onTest={() => setTestAutomation(automation)}
-                    onViewHistory={() => setHistoryAutomation(automation)}
+                    onViewEvents={() => setEventsAutomation(automation)}
                   />
                 ))}
               </div>
@@ -192,15 +192,15 @@ export default function AdminEmailCampaigns() {
         open={!!contactsCampaign}
         onOpenChange={(open) => !open && setContactsCampaign(null)}
       />
+      <CampaignEventsDialog
+        campaign={eventsCampaign}
+        open={!!eventsCampaign}
+        onOpenChange={(open) => !open && setEventsCampaign(null)}
+      />
       <AutomationConfigDialog
         automation={configAutomation}
         open={!!configAutomation}
         onOpenChange={(open) => !open && setConfigAutomation(null)}
-      />
-      <AutomationEnrollmentsSheet
-        automation={enrollmentsAutomation}
-        open={!!enrollmentsAutomation}
-        onOpenChange={(open) => !open && setEnrollmentsAutomation(null)}
       />
       <UnsubscribesSheet open={unsubscribesOpen} onOpenChange={setUnsubscribesOpen} />
       <TestAutomationDialog
@@ -208,10 +208,10 @@ export default function AdminEmailCampaigns() {
         open={!!testAutomation}
         onOpenChange={(open) => !open && setTestAutomation(null)}
       />
-      <AutomationHistorySheet
-        automation={historyAutomation}
-        open={!!historyAutomation}
-        onOpenChange={(open) => !open && setHistoryAutomation(null)}
+      <AutomationEventsDialog
+        automation={eventsAutomation}
+        open={!!eventsAutomation}
+        onOpenChange={(open) => !open && setEventsAutomation(null)}
       />
     </DashboardLayout>
   );
@@ -233,6 +233,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function CampaignCard({
   campaign,
   onViewContacts,
+  onViewEvents,
   onPause,
   onResume,
   onCancel,
@@ -240,6 +241,7 @@ function CampaignCard({
 }: {
   campaign: EmailCampaign;
   onViewContacts: () => void;
+  onViewEvents: () => void;
   onPause: () => void;
   onResume: () => void;
   onCancel: () => void;
@@ -284,6 +286,11 @@ function CampaignCard({
           <Button variant="outline" size="sm" onClick={onViewContacts}>
             <Eye className="h-3.5 w-3.5 mr-1" /> Contatos
           </Button>
+          {campaign.contacts_sent > 0 && (
+            <Button variant="outline" size="sm" onClick={onViewEvents}>
+              <BarChart3 className="h-3.5 w-3.5 mr-1" /> Metricas
+            </Button>
+          )}
           {['queued', 'processing'].includes(campaign.status) && (
             <Button variant="outline" size="sm" onClick={onPause}>
               <Pause className="h-3.5 w-3.5 mr-1" /> Pausar
@@ -319,16 +326,14 @@ function AutomationCard({
   automation,
   onToggle,
   onConfigure,
-  onViewEnrollments,
   onTest,
-  onViewHistory,
+  onViewEvents,
 }: {
   automation: EmailAutomation;
   onToggle: (enabled: boolean) => void;
   onConfigure: () => void;
-  onViewEnrollments: () => void;
   onTest: () => void;
-  onViewHistory: () => void;
+  onViewEvents: () => void;
 }) {
   const triggerColor = TRIGGER_COLORS[automation.trigger_type] || '';
   const triggerLabel = TRIGGER_LABELS[automation.trigger_type] || automation.trigger_type;
@@ -374,14 +379,9 @@ function AutomationCard({
           <Button variant="outline" size="sm" onClick={onConfigure}>
             <Settings2 className="h-3.5 w-3.5 mr-1" /> Configurar
           </Button>
-          <Button variant="outline" size="sm" onClick={onViewHistory}>
-            <BarChart3 className="h-3.5 w-3.5 mr-1" /> Historico
+          <Button variant="outline" size="sm" onClick={onViewEvents}>
+            <BarChart3 className="h-3.5 w-3.5 mr-1" /> Metricas
           </Button>
-          {automation.is_drip && (
-            <Button variant="outline" size="sm" onClick={onViewEnrollments}>
-              <Users className="h-3.5 w-3.5 mr-1" /> Enrollments
-            </Button>
-          )}
           {automation.trigger_type === 'event' && (
             <Button variant="outline" size="sm" onClick={onTest}>
               <Play className="h-3.5 w-3.5 mr-1" /> Testar

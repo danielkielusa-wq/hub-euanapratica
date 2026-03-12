@@ -32,12 +32,14 @@ interface SendTemplatedEmailOptions {
   variables: Record<string, string>;
   from?: string; // Optional override
   attachments?: EmailAttachment[]; // Optional file attachments (e.g. .ics calendar invites)
+  tags?: Array<{ name: string; value: string }>; // Resend tags for webhook correlation
 }
 
 interface EmailResult {
   success: boolean;
   message?: string;
   emailSent: boolean;
+  resendId?: string;
 }
 
 /**
@@ -171,6 +173,10 @@ export async function sendTemplatedEmail(
       emailPayload.attachments = options.attachments;
     }
 
+    if (options.tags?.length) {
+      emailPayload.tags = options.tags;
+    }
+
     const emailResponse = await fetch(`${resendConfig.base_url}/emails`, {
       method: "POST",
       headers: {
@@ -198,6 +204,7 @@ export async function sendTemplatedEmail(
       success: true,
       message: "Email sent successfully",
       emailSent: true,
+      resendId: emailResult.id,
     };
   } catch (error) {
     // Best-effort logging — create a fresh client if needed

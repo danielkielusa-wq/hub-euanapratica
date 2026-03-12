@@ -47,7 +47,7 @@ type FormData = z.infer<typeof formSchema>;
 
 interface AssignmentFormProps {
   assignment?: Assignment;
-  onSuccess?: () => void;
+  onSuccess?: (espacoId?: string) => void;
   defaultEspacoId?: string;
 }
 
@@ -106,7 +106,7 @@ export function AssignmentForm({ assignment, onSuccess, defaultEspacoId }: Assig
       await createAssignment.mutateAsync(payload);
     }
 
-    onSuccess?.();
+    onSuccess?.(data.espaco_id);
   };
 
   const isPending = createAssignment.isPending || updateAssignment.isPending;
@@ -154,7 +154,7 @@ export function AssignmentForm({ assignment, onSuccess, defaultEspacoId }: Assig
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Turma *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma turma" />

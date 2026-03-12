@@ -4,12 +4,14 @@ import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SidebarUserCardProps {
   onLogout: () => void;
+  collapsed?: boolean;
 }
 
-export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
+export function SidebarUserCard({ onLogout, collapsed }: SidebarUserCardProps) {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { planName, isVipPlan, isPremiumPlan, planId, theme } = usePlanAccess();
@@ -38,25 +40,77 @@ export function SidebarUserCard({ onLogout }: SidebarUserCardProps) {
     ? 'bg-gradient-to-br from-blue-500 to-blue-600'
     : 'bg-gradient-to-br from-gray-400 to-gray-500';
 
+  const avatarElement = profile?.profile_photo_url ? (
+    <img
+      src={profile.profile_photo_url}
+      alt={user.full_name || 'Avatar'}
+      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+    />
+  ) : (
+    <div className={cn(
+      "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0",
+      avatarClasses
+    )}>
+      {initials}
+    </div>
+  );
+
+  // Collapsed: icon-only avatar with tooltip
+  if (collapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <div className="p-2 border-t border-gray-100 hidden lg:flex flex-col items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={() => navigate('/perfil')} className="hover:opacity-80 transition-opacity">
+                {avatarElement}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              <p className="font-medium">{user.full_name || 'Usuário'}</p>
+              <p className="text-xs text-muted-foreground">{planName}</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(event) => { event.preventDefault(); onLogout(); }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>Sair</TooltipContent>
+          </Tooltip>
+        </div>
+        {/* Mobile: always show full card */}
+        <div className="lg:hidden p-4 border-t border-gray-100">
+          <div className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-xl mb-3">
+            {avatarElement}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{user.full_name || 'Usuário'}</p>
+              <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full", planBadgeClasses)}>{planName}</span>
+            </div>
+            <button type="button" onClick={(e) => { e.preventDefault(); onLogout(); }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Sair">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+          {!isVipPlan && (
+            <button onClick={() => navigate('/pricing')} className="w-full py-2.5 px-4 border-2 border-blue-600 text-blue-600 text-xs font-bold uppercase tracking-wide rounded-xl hover:bg-blue-50 transition-colors">
+              Upgrade para VIP
+            </button>
+          )}
+        </div>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <div className="p-4 border-t border-gray-100">
       {/* User Card */}
       <div className="flex items-center gap-3 p-3 bg-gray-50/80 rounded-xl mb-3">
-        {/* Avatar */}
-        {profile?.profile_photo_url ? (
-          <img
-            src={profile.profile_photo_url}
-            alt={user.full_name || 'Avatar'}
-            className="w-10 h-10 rounded-full object-cover"
-          />
-        ) : (
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
-            avatarClasses
-          )}>
-            {initials}
-          </div>
-        )}
+        {avatarElement}
 
         {/* Name and Plan */}
         <div className="flex-1 min-w-0">

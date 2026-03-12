@@ -25,7 +25,7 @@ export function useCommunityComments(postId: string) {
         .from('community_comments')
         .select(`
           *,
-          profiles:user_id (id, full_name, profile_photo_url)
+          profiles:user_id (id, full_name, profile_photo_url, special_badge)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
@@ -102,7 +102,7 @@ export function useCommunityComments(postId: string) {
         })
         .select(`
           *,
-          profiles:user_id (id, full_name, profile_photo_url)
+          profiles:user_id (id, full_name, profile_photo_url, special_badge)
         `)
         .single();
 

@@ -26,6 +26,7 @@ interface EmailResult {
   success: boolean;
   message?: string;
   emailSent: boolean;
+  resendId?: string;
 }
 
 interface AudienceResult {
@@ -117,28 +118,6 @@ export function generateUnsubscribeLink(token: string): string {
 }
 
 // =============================================
-// Tracking
-// =============================================
-
-export function generateTrackingPixel(contactId: string, email: string): string {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const e = encodeURIComponent(email);
-  const url = `${supabaseUrl}/functions/v1/track-email-event?t=open&id=${contactId}&e=${e}`;
-  return `<img src="${url}" width="1" height="1" style="display:none" alt="" />`;
-}
-
-export function wrapLinkForTracking(
-  originalUrl: string,
-  contactId: string,
-  email: string
-): string {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const e = encodeURIComponent(email);
-  const u = encodeURIComponent(originalUrl);
-  return `${supabaseUrl}/functions/v1/track-email-event?t=click&id=${contactId}&e=${e}&url=${u}`;
-}
-
-// =============================================
 // Unsubscribe Check
 // =============================================
 
@@ -170,22 +149,27 @@ export async function sendCampaignEmail(
     return { success: true, emailSent: false, message: "Unsubscribed" };
   }
 
-  // Generate tracking + unsubscribe variables
+  // Generate unsubscribe variables
   const enhancedVars = { ...variables };
 
-  // Always set trackingPixel (empty string if no contact ID) to avoid literal {{trackingPixel}} in email
-  enhancedVars["{{trackingPixel}}"] = campaignContactId
-    ? generateTrackingPixel(campaignContactId, normalizedEmail)
-    : "";
+  // Clear trackingPixel placeholder — open tracking is now handled by Resend natively
+  enhancedVars["{{trackingPixel}}"] = "";
 
   const unsubToken = await generateUnsubscribeToken(supabase, normalizedEmail, campaignId, automationId);
   enhancedVars["{{unsubscribeLink}}"] = generateUnsubscribeLink(unsubToken);
+
+  // Build Resend tags for webhook correlation
+  const tags: Array<{ name: string; value: string }> = [];
+  if (campaignId) tags.push({ name: "campaign_id", value: campaignId });
+  if (campaignContactId) tags.push({ name: "contact_id", value: campaignContactId });
+  if (automationId) tags.push({ name: "automation_id", value: automationId });
 
   // Delegate to sendTemplatedEmail
   return sendTemplatedEmail({
     templateName,
     to: normalizedEmail,
     variables: enhancedVars,
+    tags,
   });
 }
 
@@ -446,6 +430,7 @@ export async function processCampaignCycle(
         .from("email_campaign_contacts")
         .update({
           status: "sent",
+          resend_id: emailResult.resendId || null,
           processed_at: new Date().toISOString(),
         })
         .eq("id", contact.id);

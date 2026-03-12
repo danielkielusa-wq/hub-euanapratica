@@ -6,6 +6,10 @@
       "destination": "/api/og-job?id=:id"
     },
     {
+      "source": "/live/:slug",
+      "destination": "/api/og-live?slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

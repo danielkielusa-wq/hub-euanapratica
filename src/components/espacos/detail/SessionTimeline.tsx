@@ -3,28 +3,44 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SessionDiscussionButton } from '@/components/sessions/SessionDiscussionButton';
-import { Video, Clock, Download, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { Video, Clock, Download, Calendar, Copy, Check, Edit3, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { CalendarActions } from '@/components/sessions/CalendarActions';
 
 interface Session {
   id: string;
   title: string;
   datetime: string;
+  duration_minutes?: number | null;
   meeting_link?: string | null;
   recording_url?: string | null;
+  summary?: string | null;
+  summary_visible?: boolean;
   status?: 'scheduled' | 'live' | 'completed' | 'cancelled' | null;
   description?: string | null;
+  espaco_id?: string | null;
 }
 
 interface SessionTimelineProps {
   sessions: Session[] | undefined;
   isLoading?: boolean;
+  isMentor?: boolean;
 }
 
-export function SessionTimeline({ sessions, isLoading }: SessionTimelineProps) {
+export function SessionTimeline({ sessions, isLoading, isMentor = false }: SessionTimelineProps) {
   const navigate = useNavigate();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
+
+  const handleCopyLink = (id: string, link: string) => {
+    navigator.clipboard.writeText(link);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   if (isLoading) {
     return (
@@ -123,16 +139,34 @@ export function SessionTimeline({ sessions, isLoading }: SessionTimelineProps) {
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap">
                       {session.meeting_link && !isPast && (
-                        <Button
-                          size="sm"
-                          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
-                          asChild
-                        >
-                          <a href={session.meeting_link} target="_blank" rel="noopener noreferrer">
-                            <Video className="h-4 w-4 mr-1.5" />
-                            Participar da Sessão
-                          </a>
-                        </Button>
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-xl px-2"
+                                onClick={() => handleCopyLink(session.id, session.meeting_link!)}
+                              >
+                                {copiedId === session.id
+                                  ? <Check className="h-4 w-4 text-emerald-500" />
+                                  : <Copy className="h-4 w-4" />
+                                }
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copiar link da sessão</TooltipContent>
+                          </Tooltip>
+                          <Button
+                            size="sm"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                            asChild
+                          >
+                            <a href={session.meeting_link} target="_blank" rel="noopener noreferrer">
+                              <Video className="h-4 w-4 mr-1.5" />
+                              Participar da Sessão
+                            </a>
+                          </Button>
+                        </>
                       )}
                       {session.recording_url && (
                         <Button
@@ -146,11 +180,57 @@ export function SessionTimeline({ sessions, isLoading }: SessionTimelineProps) {
                           </a>
                         </Button>
                       )}
-                      <SessionDiscussionButton 
+                      <SessionDiscussionButton
                         sessionId={session.id}
                         sessionTitle={session.title}
+                        espacoId={session.espaco_id ?? undefined}
                       />
+                      {!isPast && (
+                        <CalendarActions session={session} />
+                      )}
+                      {isMentor && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl gap-1.5"
+                              onClick={() => navigate(`/mentor/sessao/${session.id}`)}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                              Editar
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Editar sessão</TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
+
+                    {/* Summary Section — visible to students when published */}
+                    {isPast && session.summary && session.summary_visible && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                          onClick={() => setExpandedSummary(
+                            expandedSummary === session.id ? null : session.id
+                          )}
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          Resumo da Sessão
+                          {expandedSummary === session.id ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        {expandedSummary === session.id && (
+                          <div className="mt-2 p-3 rounded-lg bg-muted/50 text-sm text-foreground whitespace-pre-wrap">
+                            {session.summary}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

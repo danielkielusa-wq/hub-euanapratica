@@ -31,7 +31,7 @@ export default function Community() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { activeCategories, isLoading: categoriesLoading } = useCommunityCategories();
-  const { posts, isLoading: postsLoading, createPost, toggleLike } = useCommunityPosts({
+  const { posts, isLoading: postsLoading, createPost, editPost, toggleLike, deletePost } = useCommunityPosts({
     categoryId: selectedCategory,
     filter: sortBy,
   });
@@ -196,6 +196,8 @@ export default function Community() {
                     key={post.id}
                     post={post}
                     onLike={toggleLike}
+                    onEdit={editPost}
+                    onDelete={deletePost}
                   />
                 ))}
               </div>

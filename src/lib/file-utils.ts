@@ -1,12 +1,13 @@
 import { FileType } from '@/types/library';
-import { 
-  FileText, 
-  FileSpreadsheet, 
-  Presentation, 
-  Image, 
-  Archive, 
-  Link, 
-  File 
+import {
+  FileText,
+  FileSpreadsheet,
+  Presentation,
+  Image,
+  Archive,
+  Link,
+  File,
+  StickyNote,
 } from 'lucide-react';
 
 export const FILE_TYPE_ICONS: Record<FileType, typeof FileText> = {
@@ -18,6 +19,7 @@ export const FILE_TYPE_ICONS: Record<FileType, typeof FileText> = {
   jpg: Image,
   zip: Archive,
   link: Link,
+  note: StickyNote,
 };
 
 export const FILE_TYPE_LABELS: Record<FileType, string> = {
@@ -29,6 +31,7 @@ export const FILE_TYPE_LABELS: Record<FileType, string> = {
   jpg: 'Imagem JPG',
   zip: 'Arquivo ZIP',
   link: 'Link Externo',
+  note: 'Nota',
 };
 
 export const FILE_TYPE_COLORS: Record<FileType, string> = {
@@ -40,6 +43,7 @@ export const FILE_TYPE_COLORS: Record<FileType, string> = {
   jpg: 'text-purple-500',
   zip: 'text-yellow-600',
   link: 'text-cyan-500',
+  note: 'text-amber-500',
 };
 
 export function formatFileSize(bytes: number | null): string {

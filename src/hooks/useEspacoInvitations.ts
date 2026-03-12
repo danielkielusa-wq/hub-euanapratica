@@ -183,6 +183,20 @@ export function useEnrollExistingStudent() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['espaco-students', variables.espacoId] });
       queryClient.invalidateQueries({ queryKey: ['mentor-espaco', variables.espacoId] });
+
+      // Fire-and-forget: notify mentor + student via dispatch-espaco-notification
+      supabase.functions.invoke('dispatch-espaco-notification', {
+        body: {
+          event: 'espaco_student_enrolled',
+          espacoId: variables.espacoId,
+          data: {
+            studentName: 'Novo aluno',
+            studentId: variables.userId,
+            espacoUrl: `${window.location.origin}/dashboard/espacos/${variables.espacoId}`,
+          },
+        },
+      });
+
       toast({
         title: 'Aluno matriculado!',
         description: 'O aluno foi adicionado ao espaço com sucesso.',

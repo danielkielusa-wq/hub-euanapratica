@@ -1,4 +1,4 @@
-import { TrendingUp, Users, Heart, MessageSquare } from 'lucide-react';
+import { TrendingUp, Users, Heart, MessageSquare, Crown } from 'lucide-react';
 import { RankingMember, CommunityPost } from '@/types/community';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
@@ -124,8 +124,15 @@ export function RankingSidebar({ ranking, posts, isLoading }: RankingSidebarProp
                     )}
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-800 dark:text-foreground text-sm">
-                      {member.full_name}
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-gray-800 dark:text-foreground text-sm">
+                        {member.full_name}
+                      </span>
+                      {member.special_badge && (
+                        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[9px] font-bold uppercase tracking-wider rounded border border-amber-200 dark:border-amber-500/20">
+                          <Crown size={8} /> {member.special_badge}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-muted-foreground">
                       {member.total_points} XP

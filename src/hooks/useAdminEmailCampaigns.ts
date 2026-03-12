@@ -526,23 +526,25 @@ export function useCampaignStats() {
         stats.totalFailed += c.contacts_failed || 0;
       }
 
-      // Open/click rates from events
-      const { count: openCount } = await (supabase as any)
+      // Unique open/click rates from events (count distinct emails)
+      const { data: eventRows } = await (supabase as any)
         .from('email_campaign_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_type', 'open');
+        .select('event_type, email')
+        .in('event_type', ['open', 'click']);
 
-      const { count: clickCount } = await (supabase as any)
-        .from('email_campaign_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_type', 'click');
+      const uniqueOpens = new Set<string>();
+      const uniqueClicks = new Set<string>();
+      for (const row of eventRows || []) {
+        if (row.event_type === 'open') uniqueOpens.add(row.email);
+        if (row.event_type === 'click') uniqueClicks.add(row.email);
+      }
 
       return {
         ...stats,
-        opens: openCount || 0,
-        clicks: clickCount || 0,
-        openRate: stats.totalSent > 0 ? ((openCount || 0) / stats.totalSent * 100) : 0,
-        clickRate: stats.totalSent > 0 ? ((clickCount || 0) / stats.totalSent * 100) : 0,
+        opens: uniqueOpens.size,
+        clicks: uniqueClicks.size,
+        openRate: stats.totalSent > 0 ? (uniqueOpens.size / stats.totalSent * 100) : 0,
+        clickRate: stats.totalSent > 0 ? (uniqueClicks.size / stats.totalSent * 100) : 0,
       };
     },
   });
@@ -664,6 +666,97 @@ export function useAutomationHistory(automation: EmailAutomation | null) {
     enabled: !!automation && templateNames.length > 0,
     staleTime: 15000,
   });
+}
+
+// ── Campaign Events (per-campaign tracking) ─────────────────────────
+
+export interface EmailCampaignEvent {
+  id: string;
+  campaign_id: string | null;
+  campaign_contact_id: string | null;
+  automation_id: string | null;
+  event_type: string;
+  email: string;
+  link_url: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  resend_email_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface CampaignEventStats {
+  opens: number;
+  uniqueOpens: number;
+  clicks: number;
+  uniqueClicks: number;
+  bounces: number;
+  complaints: number;
+  delivered: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+}
+
+export function useCampaignEvents(campaignId: string | null) {
+  return useQuery<EmailCampaignEvent[]>({
+    queryKey: ['campaign-events', campaignId],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('email_campaign_events')
+        .select('*')
+        .eq('campaign_id', campaignId!)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data || []) as EmailCampaignEvent[];
+    },
+    staleTime: 15000,
+  });
+}
+
+export function useAutomationEvents(automationId: string | null) {
+  return useQuery<EmailCampaignEvent[]>({
+    queryKey: ['automation-events', automationId],
+    enabled: !!automationId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('email_campaign_events')
+        .select('*')
+        .eq('automation_id', automationId!)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data || []) as EmailCampaignEvent[];
+    },
+    staleTime: 15000,
+  });
+}
+
+export function computeEventStats(events: EmailCampaignEvent[], totalSent: number): CampaignEventStats {
+  const opens = events.filter(e => e.event_type === 'open').length;
+  const clicks = events.filter(e => e.event_type === 'click').length;
+  const bounces = events.filter(e => e.event_type === 'bounce').length;
+  const complaints = events.filter(e => e.event_type === 'complaint').length;
+  const delivered = events.filter(e => e.event_type === 'delivered').length;
+
+  const uniqueOpenEmails = new Set(events.filter(e => e.event_type === 'open').map(e => e.email));
+  const uniqueClickEmails = new Set(events.filter(e => e.event_type === 'click').map(e => e.email));
+
+  const base = totalSent || 1;
+  return {
+    opens,
+    uniqueOpens: uniqueOpenEmails.size,
+    clicks,
+    uniqueClicks: uniqueClickEmails.size,
+    bounces,
+    complaints,
+    delivered,
+    openRate: (uniqueOpenEmails.size / base) * 100,
+    clickRate: (uniqueClickEmails.size / base) * 100,
+    bounceRate: (bounces / base) * 100,
+  };
 }
 
 // ── Email Templates (for campaign template picker) ─────────────────

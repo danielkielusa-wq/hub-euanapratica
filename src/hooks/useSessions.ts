@@ -17,6 +17,9 @@ export interface Session {
   meeting_link: string | null;
   status: 'scheduled' | 'live' | 'completed' | 'cancelled' | null;
   recording_url: string | null;
+  transcript: string | null;
+  summary: string | null;
+  summary_visible: boolean;
   is_recurring: boolean | null;
   recurrence_pattern: Json | null;
   created_by: string | null;
@@ -67,27 +70,13 @@ export function useSessions(espacoId?: string) {
   });
 }
 
-// Student agenda sessions filtered by enrolled espacos
+// Student agenda sessions filtered by enrolled espacos (RLS handles filtering)
 export function useStudentAgendaSessions() {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['sessions', 'student-agenda', user?.id],
     queryFn: async () => {
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('user_espacos')
-        .select('espaco_id')
-        .eq('user_id', user!.id)
-        .eq('status', 'active');
-
-      if (enrollError) throw enrollError;
-
-      if (!enrollments || enrollments.length === 0) {
-        return [] as Session[];
-      }
-
-      const espacoIds = enrollments.map(e => e.espaco_id);
-
       const { data, error } = await supabase
         .from('sessions')
         .select(`
@@ -97,7 +86,7 @@ export function useStudentAgendaSessions() {
             name
           )
         `)
-        .in('espaco_id', espacoIds)
+        .not('espaco_id', 'is', null)
         .order('datetime', { ascending: true });
 
       if (error) throw error;
@@ -242,6 +231,9 @@ interface UpdateSessionInput {
   is_recurring?: boolean;
   recurrence_pattern?: Json | null;
   recording_url?: string | null;
+  transcript?: string | null;
+  summary?: string | null;
+  summary_visible?: boolean;
   capacity?: number | null;
   is_public?: boolean;
   price?: number;
@@ -264,6 +256,9 @@ export function useUpdateSession() {
       if (updates.is_recurring !== undefined) updateData.is_recurring = updates.is_recurring;
       if (updates.recurrence_pattern !== undefined) updateData.recurrence_pattern = updates.recurrence_pattern;
       if (updates.recording_url !== undefined) updateData.recording_url = updates.recording_url;
+      if (updates.transcript !== undefined) updateData.transcript = updates.transcript;
+      if (updates.summary !== undefined) updateData.summary = updates.summary;
+      if (updates.summary_visible !== undefined) updateData.summary_visible = updates.summary_visible;
       if (updates.capacity !== undefined) updateData.capacity = updates.capacity;
       if (updates.is_public !== undefined) updateData.is_public = updates.is_public;
       if (updates.price !== undefined) updateData.price = updates.price;
@@ -387,33 +382,22 @@ export function useAllStudentCalendarEvents() {
   return useQuery({
     queryKey: ['student-calendar-events', user?.id],
     queryFn: async (): Promise<CalendarEvent[]> => {
-      // Fetch enrolled Espaços
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('user_espacos')
-        .select('espaco_id')
-        .eq('user_id', user!.id)
-        .eq('status', 'active');
+      // Query sessions directly — RLS policy "Students can read sessions from enrolled espacos"
+      // handles filtering via is_enrolled_in_espaco(auth.uid(), espaco_id).
+      // This avoids the indirection through user_espacos which could silently return empty.
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('sessions')
+        .select(`*, espacos (id, name)`)
+        .not('espaco_id', 'is', null)
+        .order('datetime', { ascending: true });
 
-      if (enrollError) throw enrollError;
+      if (sessionsError) throw sessionsError;
 
-      let sessionEvents: CalendarEvent[] = [];
-
-      if (enrollments && enrollments.length > 0) {
-        const espacoIds = enrollments.map(e => e.espaco_id);
-        const { data: sessions, error: sessionsError } = await supabase
-          .from('sessions')
-          .select(`*, espacos (id, name)`)
-          .in('espaco_id', espacoIds)
-          .order('datetime', { ascending: true });
-
-        if (sessionsError) throw sessionsError;
-
-        sessionEvents = (sessions ?? []).map(s => ({
-          kind: 'session' as const,
-          data: s as Session,
-          datetime: s.datetime,
-        }));
-      }
+      const sessionEvents: CalendarEvent[] = (sessions ?? []).map(s => ({
+        kind: 'session' as const,
+        data: s as Session,
+        datetime: s.datetime,
+      }));
 
       // Fetch student's confirmed 1:1 bookings
       const { data: bookings, error: bookingsError } = await supabase

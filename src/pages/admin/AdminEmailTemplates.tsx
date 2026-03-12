@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -448,6 +449,19 @@ export default function AdminEmailTemplates() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortColumn, setSortColumn] = useState<SortColumn>('display_name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open editor when navigated with ?edit=template_name
+  useEffect(() => {
+    const editName = searchParams.get('edit');
+    if (editName && templates.length > 0 && !editingTemplate) {
+      const match = templates.find(t => t.name === editName);
+      if (match) {
+        setEditingTemplate(match);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, templates, editingTemplate, setSearchParams]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {

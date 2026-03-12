@@ -1,30 +1,44 @@
 import { useState } from 'react';
 import { CommunityPost } from '@/types/community';
-import { Heart, MessageSquare, MoreHorizontal, Share2, Flame, MapPin } from 'lucide-react';
+import { Heart, MessageSquare, MoreHorizontal, Share2, Flame, MapPin, Crown, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { usePostUpsell } from '@/hooks/usePostUpsell';
+import { useAuth } from '@/contexts/AuthContext';
 import { UpsellCard } from './UpsellCard';
 import { InlineComments } from './InlineComments';
 import { toast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const TRENDING_THRESHOLD = 10;
 
 interface PostCardProps {
   post: CommunityPost;
   onLike: (postId: string) => void;
+  onEdit?: (postId: string, title: string, content: string) => Promise<unknown>;
   onDelete?: (postId: string) => void;
   showFull?: boolean;
 }
 
-export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
+export function PostCard({ post, onLike, onEdit, onDelete, showFull = false }: PostCardProps) {
+  const { user } = useAuth();
   const { logEvent } = useAnalytics();
   const { data: upsellData } = usePostUpsell(post.id);
   const [showComments, setShowComments] = useState(false);
   const [isExpanded, setIsExpanded] = useState(showFull);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isSaving, setIsSaving] = useState(false);
+  const isAuthor = user?.id === post.user_id;
   const author = post.profiles;
   const category = post.community_categories;
   const initials = author?.full_name
@@ -75,65 +89,133 @@ export function PostCard({ post, onLike, showFull = false }: PostCardProps) {
             )}
           </div>
           <div>
-            <h4 className="font-bold text-gray-800 dark:text-foreground text-sm">
-              {author?.full_name || 'Anonimo'}
-            </h4>
+            <div className="flex items-center gap-1.5">
+              <h4 className="font-bold text-gray-800 dark:text-foreground text-sm">
+                {author?.full_name || 'Anonimo'}
+              </h4>
+              {author?.special_badge && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[10px] font-bold uppercase tracking-wider rounded-md border border-amber-200 dark:border-amber-500/20">
+                  <Crown size={10} /> {author.special_badge}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 dark:text-muted-foreground">{timeAgo}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="text-gray-400 hover:text-gray-600 dark:hover:text-foreground">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
+        {isAuthor && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-gray-400 hover:text-gray-600 dark:hover:text-foreground">
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                  <Pencil className="w-4 h-4 mr-2" /> Editar
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600"
+                  onClick={() => onDelete(post.id)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Content */}
-      <div>
-        <Link
-          to={`/comunidade/${post.id}`}
-          className="group/link"
-          onClick={() =>
-            logEvent({
-              event_type: 'community_post_open',
-              entity_type: 'community_post',
-              entity_id: post.id,
-              metadata: { source: 'card' },
-            })
-          }
-        >
-          <h3 className="text-sm font-bold text-gray-800 dark:text-foreground mb-1 leading-tight group-hover/link:text-indigo-600 transition-colors">
-            {post.title}
-          </h3>
-        </Link>
-        <p className="text-sm text-gray-700 dark:text-foreground/80 leading-relaxed mb-4 whitespace-pre-line">
-          {content}
-          {hasMore && (
+      {isEditing ? (
+        <div className="space-y-3 mb-4">
+          <input
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full px-3 py-2 text-sm font-bold border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-gray-800 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-gray-700 dark:text-foreground/80 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+          />
+          <div className="flex gap-2">
+            <button
+              disabled={isSaving || !editTitle.trim() || !editContent.trim()}
+              onClick={async () => {
+                if (!onEdit) return;
+                setIsSaving(true);
+                await onEdit(post.id, editTitle.trim(), editContent.trim());
+                setIsSaving(false);
+                setIsEditing(false);
+              }}
+              className="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
             <button
               onClick={() => {
-                setIsExpanded(true);
-                logEvent({
-                  event_type: 'community_post_open',
-                  entity_type: 'community_post',
-                  entity_id: post.id,
-                  metadata: { source: 'expand' },
-                });
+                setEditTitle(post.title);
+                setEditContent(post.content);
+                setIsEditing(false);
               }}
-              className="text-indigo-600 font-medium hover:underline"
+              className="px-4 py-1.5 text-sm font-medium text-gray-600 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg"
             >
-              ... ver mais
+              Cancelar
             </button>
-          )}
-          {isExpanded && !showFull && post.content.length > 200 && (
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="text-indigo-600 font-medium hover:underline ml-1"
-            >
-              ver menos
-            </button>
-          )}
-        </p>
-      </div>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Link
+            to={`/comunidade/${post.id}`}
+            className="group/link"
+            onClick={() =>
+              logEvent({
+                event_type: 'community_post_open',
+                entity_type: 'community_post',
+                entity_id: post.id,
+                metadata: { source: 'card' },
+              })
+            }
+          >
+            <h3 className="text-sm font-bold text-gray-800 dark:text-foreground mb-1 leading-tight group-hover/link:text-indigo-600 transition-colors">
+              {post.title}
+            </h3>
+          </Link>
+          <p className="text-sm text-gray-700 dark:text-foreground/80 leading-relaxed mb-4 whitespace-pre-line">
+            {content}
+            {hasMore && (
+              <button
+                onClick={() => {
+                  setIsExpanded(true);
+                  logEvent({
+                    event_type: 'community_post_open',
+                    entity_type: 'community_post',
+                    entity_id: post.id,
+                    metadata: { source: 'expand' },
+                  });
+                }}
+                className="text-indigo-600 font-medium hover:underline"
+              >
+                ... ver mais
+              </button>
+            )}
+            {isExpanded && !showFull && post.content.length > 200 && (
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="text-indigo-600 font-medium hover:underline ml-1"
+              >
+                ver menos
+              </button>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Post Image */}
       {post.image_url && (

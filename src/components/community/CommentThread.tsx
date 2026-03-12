@@ -3,7 +3,7 @@ import { CommunityComment } from '@/types/community';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, Reply, Trash2, Loader2 } from 'lucide-react';
+import { Heart, Reply, Trash2, Loader2, Crown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -77,6 +77,11 @@ export function CommentThread({
               <span className="font-semibold text-sm text-foreground">
                 {author?.full_name || 'Anônimo'}
               </span>
+              {author?.special_badge && (
+                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[9px] font-bold uppercase tracking-wider rounded border border-amber-200 dark:border-amber-500/20">
+                  <Crown size={8} /> {author.special_badge}
+                </span>
+              )}
               <span className="text-xs text-muted-foreground">
                 {timeAgo}
               </span>

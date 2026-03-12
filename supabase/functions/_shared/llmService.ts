@@ -283,11 +283,18 @@ async function callOpenAI(
   signal: AbortSignal,
 ): Promise<{ content: string; inputTokens: number | null; outputTokens: number | null }> {
   const baseUrl = config.base_url || "https://api.openai.com/v1";
+  const isOpenRouter = (baseUrl || "").toLowerCase().includes("openrouter.ai");
+
+  // OpenRouter (Perplexity, etc.) doesn't support response_format — use prompt instruction instead
+  let systemPrompt = options.systemPrompt;
+  if (isOpenRouter && (options.jsonMode || options.responseFormat)) {
+    systemPrompt += "\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanations, just pure JSON.";
+  }
 
   const body: Record<string, unknown> = {
     model,
     messages: [
-      { role: "system", content: options.systemPrompt },
+      { role: "system", content: systemPrompt },
       { role: "user", content: options.userMessage },
     ],
   };
@@ -296,17 +303,20 @@ async function callOpenAI(
     body.max_tokens = options.maxTokens;
   }
 
-  if (options.responseFormat) {
-    body.response_format = {
-      type: "json_schema",
-      json_schema: {
-        name: options.responseFormat.name,
-        schema: options.responseFormat.schema,
-        strict: options.responseFormat.strict,
-      },
-    };
-  } else if (options.jsonMode) {
-    body.response_format = { type: "json_object" };
+  // Only send response_format for native OpenAI API (not OpenRouter)
+  if (!isOpenRouter) {
+    if (options.responseFormat) {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: {
+          name: options.responseFormat.name,
+          schema: options.responseFormat.schema,
+          strict: options.responseFormat.strict,
+        },
+      };
+    } else if (options.jsonMode) {
+      body.response_format = { type: "json_object" };
+    }
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {

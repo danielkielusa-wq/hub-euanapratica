@@ -93,6 +93,13 @@ export function useCompleteBooking() {
       queryClient.invalidateQueries({ queryKey: ['user-hub-services'] });
       queryClient.invalidateQueries({ queryKey: ['my-hub'] });
 
+      // Dispatch booking.completed webhook (fire-and-forget)
+      supabase.functions.invoke('send-booking-completed', {
+        body: { booking_id: variables.booking_id },
+      }).then(({ error }) => {
+        if (error) console.error('Booking completed webhook error:', error);
+      });
+
       toast({
         title: 'Sessão concluída',
         description: 'A sessão foi marcada como concluída.',

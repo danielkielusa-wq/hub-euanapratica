@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
+import { MentionTextarea } from './MentionTextarea';
+import type { EspacoMember } from '@/hooks/useEspacoMembers';
 
 interface PostComposerProps {
   onSubmit: (content: string) => Promise<void>;
   isSubmitting?: boolean;
+  members?: EspacoMember[];
 }
 
-export function PostComposer({ onSubmit, isSubmitting = false }: PostComposerProps) {
+export function PostComposer({ onSubmit, isSubmitting = false, members = [] }: PostComposerProps) {
   const [content, setContent] = useState('');
 
   const handleSubmit = async () => {
     if (!content.trim() || isSubmitting) return;
-    
+
     try {
       await onSubmit(content);
       setContent('');
@@ -30,12 +32,13 @@ export function PostComposer({ onSubmit, isSubmitting = false }: PostComposerPro
 
   return (
     <div className="flex gap-2 items-end">
-      <Textarea
+      <MentionTextarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
         onKeyDown={handleKeyDown}
-        placeholder="Escreva sua dúvida ou comentário..."
-        className="bg-muted/50 rounded-xl min-h-[60px] max-h-[120px] resize-none border-border/40 focus-visible:ring-primary/30"
+        members={members}
+        placeholder="Escreva sua dúvida ou comentário... Use @ para mencionar"
+        className="min-h-[80px] max-h-[150px]"
         maxLength={1000}
         disabled={isSubmitting}
       />
@@ -44,7 +47,7 @@ export function PostComposer({ onSubmit, isSubmitting = false }: PostComposerPro
         size="icon"
         disabled={!content.trim() || isSubmitting}
         onClick={handleSubmit}
-        className="rounded-xl h-[60px] w-[48px] shrink-0"
+        className="rounded-xl h-[80px] w-[48px] shrink-0"
       >
         {isSubmitting ? (
           <Loader2 className="h-5 w-5 animate-spin" />

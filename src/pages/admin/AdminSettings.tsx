@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, Menu, Image, Upload, Loader2, X, BarChart2 } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, Menu, Image, Upload, Loader2, X, BarChart2, Video } from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
@@ -118,6 +118,13 @@ export default function AdminSettings() {
   const [daModel, setDaModel] = useState('');
   const [hasDaChanges, setHasDaChanges] = useState(false);
 
+  // Mentor AI config (session summary, session prep, student suggestions)
+  const [mentorSummaryPrompt, setMentorSummaryPrompt] = useState('');
+  const [mentorPrepPrompt, setMentorPrepPrompt] = useState('');
+  const [mentorSuggestionPrompt, setMentorSuggestionPrompt] = useState('');
+  const [mentorApiConfig, setMentorApiConfig] = useState('openai_api');
+  const [hasMentorChanges, setHasMentorChanges] = useState(false);
+
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
     if (resumeValue) setResumePrompt(resumeValue);
@@ -189,6 +196,16 @@ export default function AdminSettings() {
     if (daApiValue) setDaApiConfig(daApiValue);
     const daModelValue = getConfigValue('daily_analytics_model');
     if (daModelValue) setDaModel(daModelValue);
+
+    // Load Mentor AI configs
+    const mentorSummaryValue = getConfigValue('ai_session_summary_prompt');
+    if (mentorSummaryValue) setMentorSummaryPrompt(mentorSummaryValue);
+    const mentorPrepValue = getConfigValue('ai_session_prep_prompt');
+    if (mentorPrepValue) setMentorPrepPrompt(mentorPrepValue);
+    const mentorSuggestionValue = getConfigValue('ai_student_suggestion_prompt');
+    if (mentorSuggestionValue) setMentorSuggestionPrompt(mentorSuggestionValue);
+    const mentorApiValue = getConfigValue('ai_mentor_api_config_key');
+    if (mentorApiValue) setMentorApiConfig(mentorApiValue);
   }, [configs]);
 
   useEffect(() => {
@@ -294,6 +311,19 @@ export default function AdminSettings() {
     );
   }, [daPrompt, daApiConfig, daModel, configs]);
 
+  useEffect(() => {
+    const origSummary = getConfigValue('ai_session_summary_prompt') || '';
+    const origPrep = getConfigValue('ai_session_prep_prompt') || '';
+    const origSuggestion = getConfigValue('ai_student_suggestion_prompt') || '';
+    const origApi = getConfigValue('ai_mentor_api_config_key') || 'openai_api';
+    setHasMentorChanges(
+      (mentorSummaryPrompt !== origSummary && mentorSummaryPrompt !== '') ||
+      (mentorPrepPrompt !== origPrep && mentorPrepPrompt !== '') ||
+      (mentorSuggestionPrompt !== origSuggestion && mentorSuggestionPrompt !== '') ||
+      mentorApiConfig !== origApi
+    );
+  }, [mentorSummaryPrompt, mentorPrepPrompt, mentorSuggestionPrompt, mentorApiConfig, configs]);
+
   const handleSaveDailyAnalytics = async () => {
     await Promise.all([
       updateConfig('daily_analytics_prompt', daPrompt),
@@ -301,6 +331,16 @@ export default function AdminSettings() {
       updateConfig('daily_analytics_model', daModel),
     ]);
     setHasDaChanges(false);
+  };
+
+  const handleSaveMentorAI = async () => {
+    await Promise.all([
+      updateConfig('ai_session_summary_prompt', mentorSummaryPrompt),
+      updateConfig('ai_session_prep_prompt', mentorPrepPrompt),
+      updateConfig('ai_student_suggestion_prompt', mentorSuggestionPrompt),
+      updateConfig('ai_mentor_api_config_key', mentorApiConfig),
+    ]);
+    setHasMentorChanges(false);
   };
 
   const handleSaveResume = async () => {
@@ -411,6 +451,7 @@ export default function AdminSettings() {
             <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
             <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg"><ListTodo className="h-4 w-4" />Sugestão de Tarefas</TabsTrigger>
             <TabsTrigger value="daily-analytics" className="gap-2 rounded-lg"><BarChart2 className="h-4 w-4" />Analytics Diario</TabsTrigger>
+            <TabsTrigger value="mentor-ai" className="gap-2 rounded-lg"><Video className="h-4 w-4" />Mentor IA</TabsTrigger>
             <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
             <TabsTrigger value="branding" className="gap-2 rounded-lg"><Image className="h-4 w-4" />Identidade Visual</TabsTrigger>
           </TabsList>
@@ -1472,6 +1513,68 @@ export default function AdminSettings() {
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="mentor-ai" className="space-y-6">
+            <Card className="rounded-[24px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Video className="h-5 w-5" />Mentor IA — Prompts de Sessão</CardTitle>
+                <CardDescription>Configure os prompts usados pelo assistente de IA do mentor para gerar resumos de sessão, briefings pré-sessão e sugestões de engajamento.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Provedor de IA (API)</Label>
+                  <Select value={mentorApiConfig} onValueChange={(v) => setMentorApiConfig(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {apis?.map((api) => (
+                        <SelectItem key={api.api_key} value={api.api_key}>{api.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Usado para todas as funcionalidades de IA do mentor (resumo, prep, sugestões)</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Prompt — Resumo Pós-Sessão</Label>
+                  <Textarea
+                    className="min-h-[160px] font-mono text-sm"
+                    value={mentorSummaryPrompt}
+                    onChange={(e) => setMentorSummaryPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para gerar resumos de sessão..."
+                  />
+                  <p className="text-xs text-muted-foreground">Chave: ai_session_summary_prompt — Usado quando o mentor gera um resumo após a sessão (com transcript opcional)</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Prompt — Briefing Pré-Sessão</Label>
+                  <Textarea
+                    className="min-h-[160px] font-mono text-sm"
+                    value={mentorPrepPrompt}
+                    onChange={(e) => setMentorPrepPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para gerar briefing pré-sessão..."
+                  />
+                  <p className="text-xs text-muted-foreground">Chave: ai_session_prep_prompt — Usado para gerar briefing com dados de presença e progresso da turma</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Prompt — Sugestões por Aluno</Label>
+                  <Textarea
+                    className="min-h-[160px] font-mono text-sm"
+                    value={mentorSuggestionPrompt}
+                    onChange={(e) => setMentorSuggestionPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para sugestões de engajamento por aluno..."
+                  />
+                  <p className="text-xs text-muted-foreground">Chave: ai_student_suggestion_prompt — Sugere ações personalizadas para melhorar o engajamento de cada aluno</p>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveMentorAI} disabled={!hasMentorChanges || isSaving} className="rounded-[12px] gap-2">
+                    <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

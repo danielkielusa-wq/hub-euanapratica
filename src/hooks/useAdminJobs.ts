@@ -376,7 +376,7 @@ export function useImportJobs() {
 
       return { inserted, updated, skipped, errors, total: jobs.length };
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-job-imports'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['prime-jobs-stats'] });
@@ -391,6 +391,34 @@ export function useImportJobs() {
         toast.success(`Importação concluída!`, {
           description: `${result.inserted} inseridas, ${result.updated} atualizadas`,
         });
+      }
+
+      // Auto-enrich new jobs that don't have ai_enrichment yet
+      if (result.inserted > 0 || result.updated > 0) {
+        try {
+          const { data: unenriched } = await supabase
+            .from('jobs')
+            .select('id')
+            .is('ai_enrichment', null)
+            .eq('is_active', true);
+
+          if (unenriched && unenriched.length > 0) {
+            const ids = unenriched.map((j: { id: string }) => j.id);
+            toast.info(`Enriquecendo ${ids.length} vagas com IA...`, { duration: 5000 });
+            supabase.functions.invoke('enrich-jobs', {
+              body: { job_ids: ids },
+            }).then(({ data, error }) => {
+              if (error || !data?.success) {
+                toast.error('Erro ao enriquecer vagas automaticamente');
+              } else {
+                toast.success(`${data.enriched} vagas enriquecidas com IA`);
+                queryClient.invalidateQueries({ queryKey: ['jobs'] });
+              }
+            });
+          }
+        } catch {
+          // Silent — enrichment is best-effort
+        }
       }
     },
     onError: (error: Error) => {

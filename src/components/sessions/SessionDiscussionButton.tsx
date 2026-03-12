@@ -8,13 +8,15 @@ import { cn } from '@/lib/utils';
 interface SessionDiscussionButtonProps {
   sessionId: string;
   sessionTitle: string;
+  espacoId?: string;
   className?: string;
 }
 
-export function SessionDiscussionButton({ 
-  sessionId, 
+export function SessionDiscussionButton({
+  sessionId,
   sessionTitle,
-  className 
+  espacoId,
+  className
 }: SessionDiscussionButtonProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { data: postCount = 0 } = useSessionPostCount(sessionId);
@@ -47,6 +49,7 @@ export function SessionDiscussionButton({
         onClose={() => setIsDrawerOpen(false)}
         sessionId={sessionId}
         sessionTitle={sessionTitle}
+        espacoId={espacoId}
       />
     </>
   );

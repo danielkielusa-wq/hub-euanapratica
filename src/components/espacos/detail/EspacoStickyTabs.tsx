@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 import { Eye, Calendar, FileText, FolderOpen, Upload, MessageCircle, Users, Settings } from 'lucide-react';
 
 interface TabItem {
@@ -37,6 +38,7 @@ export function EspacoStickyTabs({
     { value: 'assignments', label: 'Tarefas', icon: <FileText className="h-4 w-4" />, badge: pendingTasks > 0 ? pendingTasks : undefined },
     { value: 'library', label: 'Materiais', icon: <FolderOpen className="h-4 w-4" />, badge: materialsCount > 0 ? materialsCount : undefined },
     { value: 'my-files', label: 'Meus Arquivos', icon: <Upload className="h-4 w-4" />, badge: myFilesCount > 0 ? myFilesCount : undefined },
+    { value: 'discussao', label: 'Discussão', icon: <MessageCircle className="h-4 w-4" />, badge: discussionCount > 0 ? discussionCount : undefined },
   ];
 
   const mentorTabs: TabItem[] = showMentorTabs ? [
@@ -55,24 +57,33 @@ export function EspacoStickyTabs({
               key={tab.value}
               onClick={() => onTabChange(tab.value)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-full",
+                "relative flex items-center gap-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-200 rounded-full",
                 activeTab === tab.value
-                  ? "bg-primary text-primary-foreground"
+                  ? "text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              {tab.icon}
-              <span>{tab.label}</span>
-              {tab.badge !== undefined && (
-                <span className={cn(
-                  "ml-1 px-2 py-0.5 text-xs font-semibold rounded-full",
-                  activeTab === tab.value
-                    ? "bg-primary-foreground/20 text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {tab.badge}
-                </span>
+              {activeTab === tab.value && (
+                <motion.div
+                  layoutId="espacoActiveTab"
+                  className="absolute inset-0 bg-primary rounded-full"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
+                />
               )}
+              <span className="relative z-10 flex items-center gap-2">
+                {tab.icon}
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className={cn(
+                    "ml-1 px-2 py-0.5 text-xs font-semibold rounded-full",
+                    activeTab === tab.value
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {tab.badge}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer, Search } from 'lucide-react';
+import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer, Search, Plus, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,8 @@ import {
   useWebhookLogs,
   useToggleAutomation,
   useUpdateAutomation,
+  useCreateAutomation,
+  useDeleteAutomation,
   useTestAutomation,
   useCronSchedule,
   useUpdateCronSchedule,
@@ -225,6 +227,8 @@ export default function AdminAutomations() {
   const { data: automations = [], isLoading, refetch } = useAutomations();
   const toggleAutomation = useToggleAutomation();
   const updateAutomation = useUpdateAutomation();
+  const createAutomation = useCreateAutomation();
+  const deleteAutomation = useDeleteAutomation();
   const testAutomation = useTestAutomation();
 
   const [editingAutomation, setEditingAutomation] = useState<N8NAutomation | null>(null);
@@ -235,6 +239,14 @@ export default function AdminAutomations() {
   const [docsOpen, setDocsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [newTriggerEvent, setNewTriggerEvent] = useState('');
+  const [newWebhookUrl, setNewWebhookUrl] = useState('');
+  const [newCategory, setNewCategory] = useState('general');
+  const [newDescription, setNewDescription] = useState('');
+  const [deletingAutomation, setDeletingAutomation] = useState<N8NAutomation | null>(null);
 
   const filteredAutomations = useMemo(() => {
     return automations.filter((auto) => {
@@ -280,6 +292,39 @@ export default function AdminAutomations() {
     }, { onSuccess: () => setEditingAutomation(null) });
   };
 
+  const resetCreateForm = () => {
+    setNewName('');
+    setNewDisplayName('');
+    setNewTriggerEvent('');
+    setNewWebhookUrl('');
+    setNewCategory('general');
+    setNewDescription('');
+  };
+
+  const handleCreate = () => {
+    if (!newName.trim() || !newDisplayName.trim() || !newTriggerEvent.trim()) return;
+    createAutomation.mutate({
+      name: newName.trim(),
+      display_name: newDisplayName.trim(),
+      trigger_event: newTriggerEvent.trim(),
+      webhook_url: newWebhookUrl.trim() || null,
+      category: newCategory,
+      description: newDescription.trim() || undefined,
+    }, {
+      onSuccess: () => {
+        setCreateOpen(false);
+        resetCreateForm();
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!deletingAutomation) return;
+    deleteAutomation.mutate(deletingAutomation.id, {
+      onSuccess: () => setDeletingAutomation(null),
+    });
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -310,6 +355,9 @@ export default function AdminAutomations() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setDocsOpen(true)}>
               <HelpCircle className="w-4 h-4 mr-1" /> Documentacao
+            </Button>
+            <Button size="sm" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
+              <Plus className="w-4 h-4 mr-1" /> Criar Automacao
             </Button>
           </div>
         </div>
@@ -408,6 +456,14 @@ export default function AdminAutomations() {
                   </Button>
                   <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setLogsAutomation(auto)}>
                     <ScrollText className="w-3.5 h-3.5 mr-1" /> Logs
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => setDeletingAutomation(auto)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </CardContent>
@@ -508,6 +564,109 @@ export default function AdminAutomations() {
           <DocsContent />
         </SheetContent>
       </Sheet>
+
+      {/* Create Dialog */}
+      <Dialog open={createOpen} onOpenChange={(open) => { if (!open) setCreateOpen(false); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Criar Nova Automacao</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Nome interno (slug unico)</Label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="ex: notify_new_booking"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div>
+              <Label>Nome de exibicao</Label>
+              <Input
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="ex: Notificar Novo Agendamento"
+              />
+            </div>
+            <div>
+              <Label>Evento trigger</Label>
+              <Input
+                value={newTriggerEvent}
+                onChange={(e) => setNewTriggerEvent(e.target.value)}
+                placeholder="ex: booking.created ou booking.*"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">Use * para wildcard (ex: booking.* captura todos os eventos de booking)</p>
+            </div>
+            <div>
+              <Label>Webhook URL (N8N)</Label>
+              <Input
+                value={newWebhookUrl}
+                onChange={(e) => setNewWebhookUrl(e.target.value)}
+                placeholder="https://n8n.exemplo.com/webhook/..."
+                className="font-mono text-sm"
+              />
+            </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={newCategory} onValueChange={setNewCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descricao (opcional)</Label>
+              <Textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="Descreva o que esta automacao faz..."
+                className="h-16"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleCreate}
+              disabled={createAutomation.isPending || !newName.trim() || !newDisplayName.trim() || !newTriggerEvent.trim()}
+            >
+              {createAutomation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingAutomation} onOpenChange={(open) => { if (!open) setDeletingAutomation(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remover Automacao</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            Tem certeza que deseja remover <strong>{deletingAutomation?.display_name}</strong>?
+            Os logs de webhook serao mantidos, mas a automacao nao sera mais disparada.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingAutomation(null)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteAutomation.isPending}
+            >
+              {deleteAutomation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+              Remover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

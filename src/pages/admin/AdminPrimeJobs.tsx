@@ -17,6 +17,8 @@ import {
   RotateCcw,
   Save,
   TrendingUp,
+  Eye,
+  Languages,
 } from 'lucide-react';
 import { JSONUploadZone } from '@/components/admin/jobs/JSONUploadZone';
 import { JobImportPreview } from '@/components/admin/jobs/JobImportPreview';
@@ -178,6 +180,9 @@ export default function AdminPrimeJobs() {
             <TabsTrigger value="config" className="rounded-lg font-bold">
               <Settings size={16} className="mr-2" /> Configurações
             </TabsTrigger>
+            <TabsTrigger value="translation" className="rounded-lg font-bold">
+              <Languages size={16} className="mr-2" /> Tradução
+            </TabsTrigger>
             <TabsTrigger value="upsell" className="rounded-lg font-bold">
               <TrendingUp size={16} className="mr-2" /> Upsell
             </TabsTrigger>
@@ -329,6 +334,7 @@ export default function AdminPrimeJobs() {
                         job={job}
                         isSelected={selectedJobIds.has(job.id)}
                         onToggleSelect={() => toggleSelectJob(job.id)}
+                        onView={() => window.open(`/prime-jobs/${job.id}`, '_blank')}
                         onDelete={() => {
                           if (confirm(`Deletar "${job.title}"?`)) deleteJob.mutate(job.id, { onSuccess: () => refetch() });
                         }}
@@ -386,6 +392,11 @@ export default function AdminPrimeJobs() {
           {/* TAB: Configurações */}
           <TabsContent value="config">
             <EnrichmentConfigTab />
+          </TabsContent>
+
+          {/* TAB: Tradução */}
+          <TabsContent value="translation">
+            <TranslationConfigTab />
           </TabsContent>
 
           {/* TAB: Upsell */}
@@ -621,6 +632,195 @@ function EnrichmentConfigTab() {
   );
 }
 
+// ── Sub-component: Translation Config Tab ─────────────────────
+
+const DEFAULT_TRANSLATION_PROMPT = `You are a professional translator specializing in job listings.
+Translate the following job listing content from English to Brazilian Portuguese (pt-BR).
+
+Rules:
+- Keep the translation natural and professional, as if written originally in Portuguese
+- Preserve any formatting (line breaks, bullet points, markdown)
+- Keep proper nouns, company names, technology names, and acronyms in English
+- Do NOT translate section headers — only translate the content provided
+- Return ONLY the translated text, no explanations or notes`;
+
+function TranslationConfigTab() {
+  const { getConfigValue, updateConfig, isLoading: configLoading, isSaving } = useAppConfigs();
+  const { apis, isLoading: apisLoading } = useAdminApis();
+
+  const [selectedApiKey, setSelectedApiKey] = useState('openai_api');
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_TRANSLATION_PROMPT);
+  const [maxTokens, setMaxTokens] = useState(4000);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (configLoading || loaded) return;
+    const raw = getConfigValue('translation_config');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        setSelectedApiKey(parsed.api_key || 'openai_api');
+        setSystemPrompt(parsed.system_prompt || DEFAULT_TRANSLATION_PROMPT);
+        setMaxTokens(parsed.max_tokens || 4000);
+      } catch {
+        // Use defaults
+      }
+    }
+    setLoaded(true);
+  }, [configLoading, getConfigValue, loaded]);
+
+  const llmApis = apis.filter((api) => {
+    if (!api.is_active || !api.base_url) return false;
+    const url = api.base_url.toLowerCase();
+    return (
+      url.includes('openai.com') ||
+      url.includes('anthropic.com') ||
+      url.includes('openrouter.ai') ||
+      url.includes('googleapis.com') ||
+      url.includes('azure.com')
+    );
+  });
+
+  const selectedApi = apis.find((a) => a.api_key === selectedApiKey);
+  const modelName = selectedApi?.parameters?.model || 'default';
+
+  const handleSave = async () => {
+    try {
+      const config = {
+        api_key: selectedApiKey,
+        system_prompt: systemPrompt,
+        max_tokens: maxTokens,
+      };
+      await updateConfig('translation_config', JSON.stringify(config));
+      toast.success('Configuração de tradução salva!');
+    } catch {
+      toast.error('Erro ao salvar configuração');
+    }
+  };
+
+  const handleReset = () => {
+    setSystemPrompt(DEFAULT_TRANSLATION_PROMPT);
+    setSelectedApiKey('openai_api');
+    setMaxTokens(4000);
+    toast.info('Valores resetados para o padrão. Clique em Salvar para aplicar.');
+  };
+
+  if (configLoading || apisLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900">LLM / API para Tradução</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Modelo de IA usado para traduzir descrições de vagas para PT-BR
+            </p>
+          </div>
+          {selectedApi && (
+            <Badge variant="outline" className="text-blue-600 border-blue-200 font-bold">
+              Modelo: {modelName}
+            </Badge>
+          )}
+        </div>
+
+        <select
+          value={selectedApiKey}
+          onChange={(e) => setSelectedApiKey(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          {llmApis.map((api) => (
+            <option key={api.api_key} value={api.api_key}>
+              {api.name} — {api.parameters?.model || 'modelo padrão'}
+            </option>
+          ))}
+          {llmApis.length === 0 && (
+            <option disabled>Nenhuma API LLM configurada</option>
+          )}
+        </select>
+
+        {llmApis.length === 0 && (
+          <p className="text-sm text-amber-600">
+            Configure pelo menos uma API LLM em{' '}
+            <a href="/admin/configuracoes-apis" className="underline font-bold">
+              APIs Externas
+            </a>
+          </p>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900">System Prompt</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Instruções enviadas ao LLM para traduzir o conteúdo da vaga
+            </p>
+          </div>
+          <span className="text-xs text-gray-400 font-mono">
+            {systemPrompt.length} caracteres
+          </span>
+        </div>
+
+        <textarea
+          value={systemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          rows={12}
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+          placeholder="Cole o system prompt aqui..."
+        />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div>
+          <h3 className="font-bold text-gray-900">Max Tokens</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Limite de tokens na resposta (recomendado: 4000 para traduções longas)
+          </p>
+        </div>
+        <input
+          type="number"
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(Number(e.target.value) || 4000)}
+          min={500}
+          max={8000}
+          className="w-32 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Button
+          onClick={handleReset}
+          variant="outline"
+          className="rounded-xl text-gray-500"
+        >
+          <RotateCcw size={14} className="mr-2" />
+          Resetar Padrão
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
+        >
+          {isSaving ? (
+            <Loader2 size={14} className="mr-2 animate-spin" />
+          ) : (
+            <Save size={14} className="mr-2" />
+          )}
+          Salvar Configuração
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Sub-component: Upsell Config Tab ─────────────────────────
 
 function UpsellConfigTab() {
@@ -813,11 +1013,13 @@ function JobRow({
   job,
   isSelected,
   onToggleSelect,
+  onView,
   onDelete,
 }: {
   job: AdminJob;
   isSelected: boolean;
   onToggleSelect: () => void;
+  onView: () => void;
   onDelete: () => void;
 }) {
   const salaryStr = job.salary_min
@@ -846,12 +1048,22 @@ function JobRow({
         )}
       </td>
       <td className="px-4 py-3">
-        <button
-          onClick={onDelete}
-          className="text-gray-400 hover:text-red-500 transition-colors"
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onView}
+            title="Visualizar vaga"
+            className="text-gray-400 hover:text-brand-600 transition-colors"
+          >
+            <Eye size={16} />
+          </button>
+          <button
+            onClick={onDelete}
+            title="Deletar vaga"
+            className="text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </td>
     </tr>
   );

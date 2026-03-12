@@ -1,27 +1,36 @@
 import { Calendar, FileText, FolderOpen, Users, ClipboardCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 15, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } },
+};
 
 interface MetricCardProps {
   icon: React.ReactNode;
   label: string;
   value: number | string;
   iconBg: string;
-  delay?: number;
 }
 
-function MetricCard({ icon, label, value, iconBg, delay = 0 }: MetricCardProps) {
+function MetricCard({ icon, label, value, iconBg }: MetricCardProps) {
   return (
-    <div 
+    <motion.div
+      variants={cardVariants}
       className={cn(
         "flex-shrink-0 snap-start",
         "w-[140px] md:w-auto md:flex-1",
         "p-4 rounded-2xl",
         "bg-card/70 dark:bg-card/50 backdrop-blur-sm",
         "border border-border/40",
-        "shadow-sm hover:shadow-md transition-shadow duration-200",
-        "animate-fade-slide-up"
+        "shadow-sm hover:shadow-md transition-shadow duration-200"
       )}
-      style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-3">
         <div className={cn("p-2.5 rounded-xl", iconBg)}>
@@ -32,7 +41,7 @@ function MetricCard({ icon, label, value, iconBg, delay = 0 }: MetricCardProps) 
           <p className="text-xl font-bold text-foreground">{value}</p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -106,18 +115,28 @@ export function EspacoMetricsRow({
   return (
     <div className="px-4 py-4">
       {/* Mobile: Horizontal Scroll */}
-      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 md:hidden">
-        {metrics.map((metric, idx) => (
-          <MetricCard key={metric.label} {...metric} delay={idx * 50} />
+      <motion.div
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 md:hidden"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {metrics.map((metric) => (
+          <MetricCard key={metric.label} {...metric} />
         ))}
-      </div>
-      
+      </motion.div>
+
       {/* Desktop: Grid - Expanded for ultra-wide */}
-      <div className="hidden md:grid md:grid-cols-4 gap-4 max-w-6xl mx-auto">
-        {metrics.map((metric, idx) => (
-          <MetricCard key={metric.label} {...metric} delay={idx * 50} />
+      <motion.div
+        className="hidden md:grid md:grid-cols-4 gap-4 max-w-6xl mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {metrics.map((metric) => (
+          <MetricCard key={metric.label} {...metric} />
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

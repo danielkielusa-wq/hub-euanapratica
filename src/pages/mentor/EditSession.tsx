@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +7,8 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Form,
   FormControl,
@@ -23,17 +25,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, ArrowLeft, Loader2 } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, Loader2, Clock, Sparkles, Upload, Eye, EyeOff, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEspacos } from '@/hooks/useEspacos';
 import { useSession, useUpdateSession, useDeleteSession } from '@/hooks/useSessions';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { getTimezoneLabel } from '@/lib/timezone';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +87,15 @@ export default function EditSession() {
   const { data: espacos } = useEspacos();
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
+  const userTimezone = useUserTimezone();
+
+  // Post-session state
+  const [transcript, setTranscript] = useState('');
+  const [summary, setSummary] = useState('');
+  const [summaryVisible, setSummaryVisible] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingPostSession, setIsSavingPostSession] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<SessionFormData>({
     resolver: zodResolver(sessionSchema),
@@ -110,6 +124,10 @@ export default function EditSession() {
         recording_url: session.recording_url || '',
         status: session.status || 'scheduled',
       });
+      // Load post-session fields
+      setTranscript(session.transcript || '');
+      setSummary(session.summary || '');
+      setSummaryVisible(session.summary_visible ?? false);
     }
   }, [session, form]);
 
@@ -145,6 +163,70 @@ export default function EditSession() {
         description: 'Não foi possível salvar as alterações. Tente novamente.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      setTranscript(text);
+      toast({ title: 'Transcript carregado', description: file.name });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!id || !session?.espaco_id) return;
+    if (!transcript.trim()) {
+      toast({ title: 'Insira o transcript', description: 'Cole ou faça upload do transcript da sessão antes de gerar o resumo.', variant: 'destructive' });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-session-summary', {
+        body: {
+          sessionId: id,
+          espacoId: session.espaco_id,
+          mentorNotes: session.description || '',
+          transcript: transcript.trim(),
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setSummary(data.summary);
+      toast({ title: 'Resumo gerado!', description: `Via ${data.provider} (${data.model})` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast({ title: 'Erro ao gerar resumo', description: message, variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSavePostSession = async () => {
+    if (!id) return;
+    setIsSavingPostSession(true);
+    try {
+      await updateSession.mutateAsync({
+        id,
+        transcript: transcript || null,
+        summary: summary || null,
+        summary_visible: summaryVisible,
+        recording_url: form.getValues('recording_url') || null,
+      });
+      toast({ title: 'Pós-sessão salvo!', description: summaryVisible ? 'Resumo visível para os alunos.' : 'Resumo salvo (não visível para alunos).' });
+    } catch {
+      toast({ title: 'Erro ao salvar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setIsSavingPostSession(false);
     }
   };
 
@@ -372,6 +454,15 @@ export default function EditSession() {
                   />
                 </div>
 
+                {/* Timezone Notice */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Fuso horário: <strong>{getTimezoneLabel(userTimezone)}</strong>.
+                    Você pode alterar nas configurações do seu perfil.
+                  </span>
+                </div>
+
                 {/* Duration */}
                 <FormField
                   control={form.control}
@@ -475,6 +566,142 @@ export default function EditSession() {
             </Form>
           </CardContent>
         </Card>
+        {/* Post-Session Card — only for completed sessions */}
+        {(session.status === 'completed' || form.watch('status') === 'completed') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Pós-Sessão
+              </CardTitle>
+              <CardDescription>
+                Transcript, resumo por IA e link da gravação
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Recording URL (contextually placed here for completed sessions) */}
+              <div className="space-y-2">
+                <Label htmlFor="post-recording-url">Link da Gravação</Label>
+                <Input
+                  id="post-recording-url"
+                  type="url"
+                  placeholder="https://zoom.us/rec/... ou https://drive.google.com/..."
+                  {...form.register('recording_url')}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cole o link do Zoom, Google Drive ou outra plataforma
+                </p>
+              </div>
+
+              {/* Transcript Input */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="transcript">Transcript da Sessão</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt,.vtt,.srt"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      Upload .txt/.vtt/.srt
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  id="transcript"
+                  placeholder="Cole aqui o transcript da sessão (Zoom, Google Meet, etc.)..."
+                  className="min-h-[120px] resize-y font-mono text-sm"
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                />
+                {transcript && (
+                  <p className="text-xs text-muted-foreground">
+                    {transcript.length.toLocaleString()} caracteres
+                  </p>
+                )}
+              </div>
+
+              {/* Generate Summary Button */}
+              <Button
+                type="button"
+                onClick={handleGenerateSummary}
+                disabled={isGenerating || !transcript.trim()}
+                className="w-full"
+              >
+                {isGenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                {isGenerating ? 'Gerando resumo...' : 'Gerar Resumo com IA'}
+              </Button>
+
+              {/* Summary Preview */}
+              {summary && (
+                <div className="space-y-2">
+                  <Label htmlFor="summary">Resumo Gerado</Label>
+                  <Textarea
+                    id="summary"
+                    className="min-h-[200px] resize-y"
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Edite o resumo antes de salvar, se necessário
+                  </p>
+                </div>
+              )}
+
+              {/* Visibility Toggle */}
+              {summary && (
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label className="flex items-center gap-2">
+                      {summaryVisible ? (
+                        <Eye className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      Visível para alunos
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {summaryVisible
+                        ? 'Os alunos podem ver o resumo e o link da gravação'
+                        : 'Apenas você pode ver o resumo por enquanto'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={summaryVisible}
+                    onCheckedChange={setSummaryVisible}
+                  />
+                </div>
+              )}
+
+              {/* Save Post-Session */}
+              <Button
+                type="button"
+                onClick={handleSavePostSession}
+                disabled={isSavingPostSession || (!transcript.trim() && !summary)}
+                variant="outline"
+                className="w-full"
+              >
+                {isSavingPostSession && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Salvar Pós-Sessão
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -42,9 +42,10 @@ const categoryLabels: Record<string, string> = {
 
 interface SpotlightSearchProps {
   onNavigate?: () => void;
+  collapsed?: boolean;
 }
 
-export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
+export function SpotlightSearch({ onNavigate, collapsed }: SpotlightSearchProps) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -190,8 +191,18 @@ export function SpotlightSearch({ onNavigate }: SpotlightSearchProps) {
   }, {} as Record<string, SearchResult[]>);
 
   return (
-    <div className="relative px-4 py-3">
-      <div className="relative">
+    <div className={cn("relative", collapsed ? "lg:px-2 lg:py-2 px-4 py-3" : "px-4 py-3")}>
+      {/* Collapsed: icon-only search button (desktop) */}
+      {collapsed && (
+        <button
+          onClick={() => { inputRef.current?.focus(); setIsOpen(true); }}
+          className="hidden lg:flex w-10 h-10 mx-auto items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
+          title="Busca rápida (Ctrl+K)"
+        >
+          <Search className="w-[18px] h-[18px]" />
+        </button>
+      )}
+      <div className={cn("relative", collapsed && "lg:hidden")}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           ref={inputRef}

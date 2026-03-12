@@ -87,6 +87,66 @@ export function useWebhookLogs(automationId?: string | null, limit = 50) {
   });
 }
 
+// ── Mutation: Create automation ────────────────────────────────────
+export function useCreateAutomation() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: {
+      name: string;
+      display_name: string;
+      trigger_event: string;
+      webhook_url?: string | null;
+      category?: string;
+      description?: string;
+    }) => {
+      const { error } = await (supabase as any)
+        .from('n8n_automations')
+        .insert({
+          ...input,
+          enabled: false,
+          webhook_method: 'POST',
+          headers: {},
+          timeout_ms: 10000,
+          max_retries: 3,
+          metadata: {},
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['n8n-automations'] });
+      toast({ title: 'Automacao criada com sucesso' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao criar automacao', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+// ── Mutation: Delete automation ────────────────────────────────────
+export function useDeleteAutomation() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('n8n_automations')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['n8n-automations'] });
+      toast({ title: 'Automacao removida' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
 // ── Mutation: Toggle enabled ────────────────────────────────────────
 export function useToggleAutomation() {
   const queryClient = useQueryClient();
@@ -170,6 +230,27 @@ export function useTestAutomation() {
     onError: (error: any) => {
       toast({ title: 'Erro no teste', description: error.message, variant: 'destructive' });
     },
+  });
+}
+
+// ── Query: All cron jobs ──────────────────────────────────────────────
+export interface CronJob {
+  jobid: number;
+  jobname: string;
+  schedule: string;
+  command: string;
+  active: boolean;
+}
+
+export function useAllCronJobs() {
+  return useQuery<CronJob[]>({
+    queryKey: ['cron-jobs-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_list_cron_jobs');
+      if (error) throw error;
+      return (data || []) as CronJob[];
+    },
+    staleTime: 60_000,
   });
 }
 

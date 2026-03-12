@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
 import { buildBookingCalendarData } from "../_shared/calendarService.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 interface BookingRescheduledRequest {
   booking_id: string;
@@ -137,6 +138,21 @@ Deno.serve(async (req) => {
       });
       mentorEmailSent = !!mentorResult.emailSent;
     }
+
+    // Dispatch N8N webhook (fire-and-forget)
+    dispatchN8NWebhook("booking.rescheduled", {
+      booking_id,
+      student_id: booking.student?.id ?? null,
+      student_name: booking.student?.full_name ?? null,
+      student_email: booking.student?.email ?? null,
+      mentor_id: booking.mentor?.id ?? null,
+      mentor_name: booking.mentor?.full_name ?? null,
+      service_id: booking.service?.id ?? null,
+      service_name: booking.service?.name ?? null,
+      old_scheduled_start: old_datetime ?? null,
+      new_scheduled_start: booking.scheduled_start,
+      new_scheduled_end: booking.scheduled_end,
+    }, supabase);
 
     return new Response(
       JSON.stringify({

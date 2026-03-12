@@ -496,9 +496,15 @@ export function useAdminCompleteBooking() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['session-credits'] });
+      // Dispatch booking.completed webhook (fire-and-forget)
+      supabase.functions.invoke('send-booking-completed', {
+        body: { booking_id: variables.booking_id },
+      }).then(({ error }) => {
+        if (error) console.error('Booking completed webhook error:', error);
+      });
       toast.success('Sessão marcada como concluída!');
     },
     onError: (error) => {
@@ -525,7 +531,9 @@ export function useAdminMarkNoShow() {
       queryClient.invalidateQueries({ queryKey: ['session-credits'] });
       supabase.functions.invoke('send-booking-cancelled', {
         body: { booking_id: variables.booking_id },
-      }).catch(() => {});
+      }).then(({ error }) => {
+        if (error) console.error('Booking no-show email error:', error);
+      });
       toast.success('Marcado como no-show!');
     },
     onError: (error) => {

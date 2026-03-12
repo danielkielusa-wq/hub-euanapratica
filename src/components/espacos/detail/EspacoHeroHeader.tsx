@@ -28,12 +28,19 @@ interface Espaco {
   max_students?: number | null;
 }
 
+interface StudentAvatar {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+}
+
 interface EspacoHeroHeaderProps {
   espaco: Espaco;
   nextSession?: Session | null;
   role?: 'student' | 'mentor';
   sessionsCount?: number;
   studentsCount?: number;
+  studentAvatars?: StudentAvatar[];
   onSettingsClick?: () => void;
   onInviteClick?: () => void;
 }
@@ -46,12 +53,13 @@ const categoryLabels: Record<string, string> = {
   course: 'CURSO',
 };
 
-export function EspacoHeroHeader({ 
-  espaco, 
-  nextSession, 
+export function EspacoHeroHeader({
+  espaco,
+  nextSession,
   role = 'student',
   sessionsCount = 0,
   studentsCount = 0,
+  studentAvatars = [],
   onSettingsClick,
   onInviteClick
 }: EspacoHeroHeaderProps) {
@@ -60,9 +68,11 @@ export function EspacoHeroHeader({
   const backPath = role === 'mentor' ? '/mentor/espacos' : '/dashboard/espacos';
   const categoryLabel = categoryLabels[espaco.category || 'group_mentoring'] || 'ESPAÇO';
 
-  // Resolve background gradient
-  const gradientStyle = espaco.cover_image_url
-    ? { backgroundImage: `linear-gradient(to bottom right, rgba(79, 70, 229, 0.9), rgba(139, 92, 246, 0.9)), url(${espaco.cover_image_url})` }
+  const hasCoverImage = !!espaco.cover_image_url;
+
+  // Resolve background: cover image takes priority over gradient
+  const gradientStyle = hasCoverImage
+    ? { backgroundImage: `url(${espaco.cover_image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { background: resolveGradient(
         espaco.gradient_preset,
         espaco.gradient_start,
@@ -80,6 +90,10 @@ export function EspacoHeroHeader({
       className="relative bg-cover bg-center"
       style={gradientStyle}
     >
+      {/* Dark overlay for cover images to ensure text readability */}
+      {hasCoverImage && (
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 to-black/75" />
+      )}
       <div className="relative z-10 px-6 py-8 lg:px-8">
         {/* Top Row: Back + Category Badge */}
         <div className="flex items-start justify-between mb-6">
@@ -130,7 +144,30 @@ export function EspacoHeroHeader({
             
             <div className="flex items-center gap-4 text-primary-foreground/80 text-sm">
               <div className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
+                {/* Stacked Avatars */}
+                {studentAvatars.length > 0 ? (
+                  <div className="flex -space-x-2 mr-1.5">
+                    {studentAvatars.slice(0, 3).map((s) => (
+                      <div
+                        key={s.id}
+                        className="w-6 h-6 rounded-full border-2 border-primary-foreground/30 bg-primary-foreground/20 flex items-center justify-center text-[8px] font-bold text-primary-foreground overflow-hidden shrink-0"
+                      >
+                        {s.photoUrl ? (
+                          <img src={s.photoUrl} alt={s.name} className="w-full h-full object-cover" />
+                        ) : (
+                          s.name.split(' ').map(n => n[0]).join('').slice(0, 2)
+                        )}
+                      </div>
+                    ))}
+                    {(studentsCount || 0) > 3 && (
+                      <div className="w-6 h-6 rounded-full border-2 border-primary-foreground/30 bg-primary-foreground/20 flex items-center justify-center text-[8px] font-bold text-primary-foreground z-10 shrink-0">
+                        +{(studentsCount || 0) - 3}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Users className="h-4 w-4" />
+                )}
                 <span>{studentsCount || espaco.max_students || 0} Alunos</span>
               </div>
               <span>•</span>

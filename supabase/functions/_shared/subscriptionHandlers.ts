@@ -53,6 +53,7 @@ export interface TictoSubscriptionPayload {
 
 export interface MatchedPlan {
   id: string;
+  name: string;
   ticto_offer_id_monthly: string | null;
   ticto_offer_id_annual: string | null;
 }

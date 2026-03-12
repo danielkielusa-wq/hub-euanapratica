@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,10 +30,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, ArrowLeft, Loader2, Users, Globe } from 'lucide-react';
+import { CalendarIcon, ArrowLeft, Loader2, Users, Globe, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEspacos } from '@/hooks/useEspacos';
 import { useCreateSession } from '@/hooks/useSessions';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { getTimezoneLabel } from '@/lib/timezone';
 import { toast } from '@/hooks/use-toast';
 
 type EventType = 'espaco_session' | 'standalone';
@@ -60,6 +62,12 @@ const sessionSchema = z
 
 type SessionFormData = z.infer<typeof sessionSchema>;
 
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h}:${m}`;
+});
+
 const DURATION_OPTIONS = [
   { value: 30, label: '30 minutos' },
   { value: 45, label: '45 minutos' },
@@ -70,9 +78,12 @@ const DURATION_OPTIONS = [
 
 export default function CreateSession() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedEspaco = searchParams.get('espaco') || undefined;
   const [eventType, setEventType] = useState<EventType>('espaco_session');
   const { data: espacos, isLoading: espacosLoading } = useEspacos();
   const createSession = useCreateSession();
+  const userTimezone = useUserTimezone();
 
   const form = useForm<SessionFormData>({
     resolver: zodResolver(sessionSchema),
@@ -81,6 +92,7 @@ export default function CreateSession() {
       description: '',
       time: '10:00',
       duration_minutes: 60,
+      espaco_id: preselectedEspaco,
       is_recurring: false,
       notify_students: true,
       meeting_link: '',
@@ -127,7 +139,7 @@ export default function CreateSession() {
             : 'A sessão foi agendada com sucesso.',
       });
 
-      navigate('/mentor/agenda');
+      navigate(preselectedEspaco ? `/mentor/espacos/${preselectedEspaco}` : '/mentor/agenda');
     } catch {
       toast({
         title: 'Erro ao criar',
@@ -280,7 +292,7 @@ export default function CreateSession() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{isStandalone ? 'Espaço (opcional)' : 'Espaço *'}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue
@@ -360,15 +372,33 @@ export default function CreateSession() {
                     control={form.control}
                     name="time"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Horário *</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Horario *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[280px]">
+                            {TIME_OPTIONS.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+
+                {/* Timezone Notice */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Fuso horário: <strong>{getTimezoneLabel(userTimezone)}</strong>.
+                    Você pode alterar nas configurações do seu perfil.
+                  </span>
                 </div>
 
                 {/* Duration */}

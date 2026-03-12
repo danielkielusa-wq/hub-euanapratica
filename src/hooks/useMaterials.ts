@@ -105,6 +105,38 @@ export function useMaterialsByEspaco(espacoId: string, visibilityScope?: Visibil
   });
 }
 
+// Hook para buscar materiais pessoais (de pastas com owner_user_id = user.id)
+export function usePersonalMaterials(espacoId: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['personal-materials', espacoId, user?.id],
+    queryFn: async () => {
+      // Buscar apenas pastas pessoais do usuário
+      const { data: folders, error: foldersError } = await supabase
+        .from('folders')
+        .select('id')
+        .eq('espaco_id', espacoId)
+        .eq('owner_user_id', user!.id);
+
+      if (foldersError) throw foldersError;
+      if (!folders?.length) return [];
+
+      const folderIds = folders.map(f => f.id);
+
+      const { data, error } = await supabase
+        .from('materials')
+        .select('*')
+        .in('folder_id', folderIds)
+        .order('uploaded_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Material[];
+    },
+    enabled: !!user && !!espacoId,
+  });
+}
+
 export function useMaterial(materialId: string) {
   const { user } = useAuth();
 
@@ -188,9 +220,27 @@ export function useCreateMaterial() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['materials'] });
       queryClient.invalidateQueries({ queryKey: ['materials', variables.folder_id] });
+
+      // Fire-and-forget: notify enrolled students about new material
+      supabase
+        .from('folders')
+        .select('espaco_id')
+        .eq('id', variables.folder_id)
+        .single()
+        .then(({ data: folder }) => {
+          if (folder?.espaco_id) {
+            supabase.functions.invoke('dispatch-espaco-notification', {
+              body: {
+                event: 'espaco_new_material',
+                espacoId: folder.espaco_id,
+                data: { materialTitle: data.title || data.filename },
+              },
+            });
+          }
+        });
     },
   });
 }
@@ -228,10 +278,31 @@ export function useCreateMaterialWithOwner() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['materials'] });
       queryClient.invalidateQueries({ queryKey: ['materials-espaco'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-materials'] });
       queryClient.invalidateQueries({ queryKey: ['materials', variables.folder_id] });
+
+      // Fire-and-forget: notify enrolled students about new material (only for space-wide visibility)
+      if (variables.visibility_scope === 'space_all') {
+        supabase
+          .from('folders')
+          .select('espaco_id')
+          .eq('id', variables.folder_id)
+          .single()
+          .then(({ data: folder }) => {
+            if (folder?.espaco_id) {
+              supabase.functions.invoke('dispatch-espaco-notification', {
+                body: {
+                  event: 'espaco_new_material',
+                  espacoId: folder.espaco_id,
+                  data: { materialTitle: data.title || data.filename },
+                },
+              });
+            }
+          });
+      }
     },
   });
 }
@@ -253,6 +324,8 @@ export function useUpdateMaterial() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['materials'] });
+      queryClient.invalidateQueries({ queryKey: ['materials-espaco'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-materials'] });
       queryClient.invalidateQueries({ queryKey: ['material', variables.id] });
     },
   });
@@ -280,6 +353,8 @@ export function useDeleteMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materials'] });
+      queryClient.invalidateQueries({ queryKey: ['materials-espaco'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-materials'] });
     },
   });
 }

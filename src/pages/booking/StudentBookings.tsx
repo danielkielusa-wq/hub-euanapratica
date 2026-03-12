@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { BookingCard } from '@/components/booking/BookingCard';
+import { LiveEventCard } from '@/components/booking/LiveEventCard';
 import { EmptyBookings } from '@/components/booking/EmptyBookings';
 import { RescheduleModal } from '@/components/booking/RescheduleModal';
 import { CancelModal } from '@/components/booking/CancelModal';
 import { useBookings, useBookingStats } from '@/hooks/useBookings';
+import { useMyLives } from '@/hooks/useMyLives';
+import { useStudentSessions } from '@/hooks/useStudentSessions';
+import { SessionEventCard } from '@/components/booking/SessionEventCard';
 import {
   useBookingPoliciesMap,
   resolvePolicyForBooking,
@@ -19,8 +23,15 @@ import {
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { BookingWithDetails, BookingStatus } from '@/types/booking';
+import type { Live } from '@/types/live';
+import type { Session as DashboardSession } from '@/types/dashboard';
 
-type StatusFilter = 'all' | BookingStatus;
+type StatusFilter = 'all' | BookingStatus | 'live' | 'session';
+
+type UnifiedItem =
+  | { type: 'booking'; data: BookingWithDetails; date: Date }
+  | { type: 'live'; data: Live; date: Date }
+  | { type: 'session'; data: DashboardSession; date: Date };
 
 const PAGE_SIZE = 3;
 
@@ -38,6 +49,8 @@ export default function StudentBookings() {
   const { data: pastBookings } = useBookings('past');
   const { data: stats } = useBookingStats();
   const { data: policiesMap } = useBookingPoliciesMap();
+  const { data: myLives, isLoading: loadingLives } = useMyLives();
+  const { data: espacoSessions, isLoading: loadingSessions } = useStudentSessions();
 
   // Merge upcoming + past for the full list
   const allBookings = useMemo(() => {
@@ -46,42 +59,82 @@ export default function StudentBookings() {
     return [...upcoming, ...past];
   }, [upcomingBookings, pastBookings]);
 
-  const isLoading = loadingUpcoming;
+  // Unified list: bookings + lives + espaco sessions sorted by date
+  const allItems = useMemo<UnifiedItem[]>(() => {
+    const items: UnifiedItem[] = allBookings.map(b => ({
+      type: 'booking' as const,
+      data: b,
+      date: new Date(b.scheduled_start),
+    }));
+    (myLives || []).forEach(ml => {
+      items.push({
+        type: 'live' as const,
+        data: ml.live,
+        date: new Date(ml.live.scheduled_at),
+      });
+    });
+    (espacoSessions || []).forEach(s => {
+      items.push({
+        type: 'session' as const,
+        data: s,
+        date: s.date,
+      });
+    });
+    items.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return items;
+  }, [allBookings, myLives, espacoSessions]);
 
-  // Filter bookings
-  const filteredBookings = useMemo(() => {
-    let result = allBookings;
+  const isLoading = loadingUpcoming || loadingLives || loadingSessions;
+
+  // Filter unified items
+  const filteredItems = useMemo(() => {
+    let result = allItems;
 
     // Status filter
-    if (statusFilter !== 'all') {
-      result = result.filter(b => b.status === statusFilter);
+    if (statusFilter === 'live') {
+      result = result.filter(item => item.type === 'live');
+    } else if (statusFilter === 'session') {
+      result = result.filter(item => item.type === 'session');
+    } else if (statusFilter !== 'all') {
+      result = result.filter(item =>
+        item.type === 'booking' && item.data.status === statusFilter
+      );
     }
 
     // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(b =>
-        b.service?.name?.toLowerCase().includes(q) ||
-        b.mentor?.full_name?.toLowerCase().includes(q)
-      );
+      result = result.filter(item => {
+        if (item.type === 'booking') {
+          return (
+            item.data.service?.name?.toLowerCase().includes(q) ||
+            item.data.mentor?.full_name?.toLowerCase().includes(q)
+          );
+        }
+        if (item.type === 'session') {
+          return (
+            item.data.title.toLowerCase().includes(q) ||
+            item.data.cohortName.toLowerCase().includes(q)
+          );
+        }
+        return item.data.title.toLowerCase().includes(q);
+      });
     }
 
     // Date filter from calendar
     if (selectedCalendarDate) {
-      result = result.filter(b =>
-        isSameDay(new Date(b.scheduled_start), selectedCalendarDate)
-      );
+      result = result.filter(item => isSameDay(item.date, selectedCalendarDate));
     }
 
     return result;
-  }, [allBookings, statusFilter, searchQuery, selectedCalendarDate]);
+  }, [allItems, statusFilter, searchQuery, selectedCalendarDate]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
-  const paginatedBookings = useMemo(() => {
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredBookings.slice(start, start + PAGE_SIZE);
-  }, [filteredBookings, currentPage]);
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, currentPage]);
 
   // Reset page when filters change
   const resetPage = () => setCurrentPage(1);
@@ -97,20 +150,28 @@ export default function StudentBookings() {
 
   const eventDates = useMemo(() => {
     const dates = new Set<string>();
-    allBookings.forEach(b => {
-      dates.add(new Date(b.scheduled_start).toDateString());
+    allItems.forEach(item => {
+      dates.add(item.date.toDateString());
     });
     return dates;
-  }, [allBookings]);
+  }, [allItems]);
 
   // Filter counts
   const filterCounts = useMemo(() => {
-    const counts = { all: allBookings.length, confirmed: 0, completed: 0, cancelled: 0, no_show: 0 };
-    allBookings.forEach(b => {
-      if (b.status in counts) counts[b.status as BookingStatus]++;
+    const counts = { all: allItems.length, confirmed: 0, completed: 0, cancelled: 0, no_show: 0, live: 0, session: 0 };
+    allItems.forEach(item => {
+      if (item.type === 'booking' && item.data.status in counts) {
+        counts[item.data.status as BookingStatus]++;
+      }
+      if (item.type === 'live') {
+        counts.live++;
+      }
+      if (item.type === 'session') {
+        counts.session++;
+      }
     });
     return counts;
-  }, [allBookings]);
+  }, [allItems]);
 
   const getLimits = (booking: BookingWithDetails) => {
     if (!policiesMap || !stats) return null;
@@ -230,6 +291,20 @@ export default function StudentBookings() {
                   active={statusFilter === 'cancelled'}
                   onClick={() => { setStatusFilter('cancelled'); resetPage(); }}
                 />
+                <FilterItem
+                  label="Sessões de Espaço"
+                  count={filterCounts.session}
+                  colorDot="bg-indigo-500"
+                  active={statusFilter === 'session'}
+                  onClick={() => { setStatusFilter('session'); resetPage(); }}
+                />
+                <FilterItem
+                  label="Lives"
+                  count={filterCounts.live}
+                  colorDot="bg-purple-500"
+                  active={statusFilter === 'live'}
+                  onClick={() => { setStatusFilter('live'); resetPage(); }}
+                />
               </div>
             </div>
           </div>
@@ -263,28 +338,34 @@ export default function StudentBookings() {
                   <Skeleton key={i} className="h-28 w-full rounded-lg" />
                 ))}
               </div>
-            ) : filteredBookings.length > 0 ? (
+            ) : filteredItems.length > 0 ? (
               <div className="divide-y divide-gray-50 dark:divide-white/5">
-                {paginatedBookings.map(booking => (
-                  <BookingCard
-                    key={booking.id}
-                    booking={booking}
-                    limits={getLimits(booking)}
-                    onReschedule={setRescheduleBooking}
-                    onCancel={setCancelBooking}
-                    onJoinMeeting={handleJoinMeeting}
-                  />
-                ))}
+                {paginatedItems.map(item =>
+                  item.type === 'booking' ? (
+                    <BookingCard
+                      key={`booking-${item.data.id}`}
+                      booking={item.data}
+                      limits={getLimits(item.data)}
+                      onReschedule={setRescheduleBooking}
+                      onCancel={setCancelBooking}
+                      onJoinMeeting={handleJoinMeeting}
+                    />
+                  ) : item.type === 'session' ? (
+                    <SessionEventCard key={`session-${item.data.id}`} session={item.data} />
+                  ) : (
+                    <LiveEventCard key={`live-${item.data.id}`} live={item.data} />
+                  )
+                )}
               </div>
             ) : (
               <EmptyBookings type={statusFilter === 'cancelled' || statusFilter === 'completed' ? 'past' : 'upcoming'} />
             )}
 
             {/* Pagination */}
-            {filteredBookings.length > PAGE_SIZE && (
+            {filteredItems.length > PAGE_SIZE && (
               <div className="p-4 border-t border-gray-100 dark:border-white/10 flex items-center justify-between">
                 <span className="text-xs text-gray-400 dark:text-muted-foreground">
-                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredBookings.length)} de {filteredBookings.length}
+                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredItems.length)} de {filteredItems.length}
                 </span>
                 <div className="flex items-center gap-1">
                   <button
@@ -320,7 +401,7 @@ export default function StudentBookings() {
             )}
 
             {/* Show all link when filtering by date */}
-            {selectedCalendarDate && filteredBookings.length > 0 && (
+            {selectedCalendarDate && filteredItems.length > 0 && (
               <div className="p-4 border-t border-gray-100 dark:border-white/10 flex justify-center">
                 <button
                   onClick={() => { setSelectedCalendarDate(null); resetPage(); }}

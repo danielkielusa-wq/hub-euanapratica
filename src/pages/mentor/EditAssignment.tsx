@@ -59,7 +59,13 @@ export default function EditAssignment() {
         {/* Form */}
         <AssignmentForm 
           assignment={assignment} 
-          onSuccess={() => navigate('/mentor/tarefas')} 
+          onSuccess={(espacoId) => {
+            if (espacoId) {
+              navigate(`/mentor/espacos/${espacoId}?tab=assignments`);
+            } else {
+              navigate('/mentor/tarefas');
+            }
+          }}
         />
       </div>
     </DashboardLayout>

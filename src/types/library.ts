@@ -1,4 +1,4 @@
-export type FileType = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'zip' | 'png' | 'jpg' | 'link';
+export type FileType = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'zip' | 'png' | 'jpg' | 'link' | 'note';
 export type AccessLevel = 'public' | 'restricted';
 export type VisibilityScope = 'space_all' | 'mentor_and_owner';
 
@@ -8,6 +8,7 @@ export interface Folder {
   description: string | null;
   parent_id: string | null;
   espaco_id: string;
+  owner_user_id: string | null;
   display_order: number;
   created_at: string;
   updated_at: string;

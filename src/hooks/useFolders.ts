@@ -15,6 +15,7 @@ export function useFolders(espacoId?: string) {
           *,
           espacos (name)
         `)
+        .is('owner_user_id', null)
         .order('display_order', { ascending: true })
         .order('name', { ascending: true });
 
@@ -30,21 +31,49 @@ export function useFolders(espacoId?: string) {
   });
 }
 
+export function usePersonalFolders(espacoId: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['personal-folders', espacoId, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('folders')
+        .select(`
+          *,
+          espacos (name)
+        `)
+        .eq('espaco_id', espacoId)
+        .eq('owner_user_id', user!.id)
+        .order('display_order', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      return data as Folder[];
+    },
+    enabled: !!user && !!espacoId,
+  });
+}
+
+const buildTree = (items: Folder[], parentId: string | null = null): Folder[] => {
+  return items
+    .filter(item => item.parent_id === parentId)
+    .map(item => ({
+      ...item,
+      children: buildTree(items, item.id),
+    }))
+    .sort((a, b) => a.display_order - b.display_order);
+};
+
 export function useFolderTree(espacoId?: string) {
   const { data: folders, ...rest } = useFolders(espacoId);
-
-  const buildTree = (items: Folder[], parentId: string | null = null): Folder[] => {
-    return items
-      .filter(item => item.parent_id === parentId)
-      .map(item => ({
-        ...item,
-        children: buildTree(items, item.id),
-      }))
-      .sort((a, b) => a.display_order - b.display_order);
-  };
-
   const tree = folders ? buildTree(folders) : [];
+  return { data: tree, folders, ...rest };
+}
 
+export function usePersonalFolderTree(espacoId: string) {
+  const { data: folders, ...rest } = usePersonalFolders(espacoId);
+  const tree = folders ? buildTree(folders) : [];
   return { data: tree, folders, ...rest };
 }
 
@@ -104,6 +133,7 @@ export function useCreateFolder() {
       description?: string;
       parent_id?: string | null;
       espaco_id: string;
+      owner_user_id?: string | null;
       display_order?: number;
     }) => {
       const { data, error } = await supabase
@@ -117,6 +147,7 @@ export function useCreateFolder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-folders'] });
     },
   });
 }
@@ -138,6 +169,7 @@ export function useUpdateFolder() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-folders'] });
       queryClient.invalidateQueries({ queryKey: ['folder', variables.id] });
     },
   });
@@ -157,6 +189,7 @@ export function useDeleteFolder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-folders'] });
     },
   });
 }
@@ -177,6 +210,7 @@ export function useReorderFolders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-folders'] });
     },
   });
 }

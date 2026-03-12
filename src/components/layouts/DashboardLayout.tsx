@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeedbackFloatingButton } from '@/components/feedback/FeedbackFloatingButton';
 import { AdminAssistantButton } from '@/components/admin/assistant';
@@ -25,6 +25,9 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
   const { user, logout, isImpersonating } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
+  });
   const { logoHorizontal } = usePlatformLogo();
   const { planId, planName, planAccess, isLoading: planLoading } = usePlanAccess();
 
@@ -39,6 +42,14 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
   };
 
   const closeSidebar = () => setSidebarOpen(false);
+
+  const toggleCollapsed = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebar-collapsed', String(next)); } catch {}
+      return next;
+    });
+  };
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -77,11 +88,11 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
       
       {/* Sidebar - Floating Glassmorphism Design */}
       <aside className={cn(
-        "fixed top-0 left-0 h-full z-40 transition-transform duration-300 ease-out",
+        "fixed top-0 left-0 h-full z-40 transition-all duration-300 ease-out",
         // Desktop: Floating with margin
         "lg:m-4 lg:h-[calc(100vh-32px)]",
-        // Width
-        "w-[300px]",
+        // Width — collapsed on desktop = 72px, expanded = 300px
+        sidebarCollapsed ? "lg:w-[72px] w-[300px]" : "w-[300px]",
         // Glassmorphism style
         "bg-white/95 backdrop-blur-xl",
         "border border-gray-100/80",
@@ -90,17 +101,29 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
         // Mobile behavior
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Header with Logo */}
           <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100/80">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className={cn("flex items-center", sidebarCollapsed && "lg:hidden")}>
               <img
                 src={logoHorizontal}
                 alt="EUA na Prática"
                 className="h-8 w-auto object-contain"
               />
             </Link>
-            
+
+            {/* Collapse toggle — Desktop only */}
+            <button
+              onClick={toggleCollapsed}
+              className={cn(
+                "hidden lg:flex p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors",
+                sidebarCollapsed && "mx-auto"
+              )}
+              title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+            >
+              {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
+
             {/* Close button - Mobile only */}
             <button
               onClick={closeSidebar}
@@ -109,15 +132,15 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Spotlight Search */}
-          <SpotlightSearch onNavigate={closeSidebar} />
-          
+          <SpotlightSearch onNavigate={closeSidebar} collapsed={sidebarCollapsed} />
+
           {/* Navigation Groups */}
-          <SidebarNav onNavigate={closeSidebar} />
-          
+          <SidebarNav onNavigate={closeSidebar} collapsed={sidebarCollapsed} />
+
           {/* User Card Footer */}
-          <SidebarUserCard onLogout={handleLogout} />
+          <SidebarUserCard onLogout={handleLogout} collapsed={sidebarCollapsed} />
         </div>
       </aside>
       
@@ -131,8 +154,9 @@ export function DashboardLayout({ children, rootClassName, contentClassName }: D
       
       {/* Main content */}
       <main className={cn(
-        // Desktop: margin for floating sidebar
-        "lg:ml-[332px] min-h-screen",
+        // Desktop: margin for floating sidebar (300+32 or 72+32)
+        sidebarCollapsed ? "lg:ml-[104px]" : "lg:ml-[332px]",
+        "min-h-screen transition-[margin] duration-300 ease-out",
         // Mobile: padding for fixed header
         "pt-16 lg:pt-0",
         // Impersonation adjustment

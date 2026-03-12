@@ -194,29 +194,62 @@ export function useSessionPostCount(sessionId: string | undefined) {
   });
 }
 
+interface MentionMember {
+  id: string;
+  full_name: string;
+}
+
+interface CreatePostParams {
+  sessionId: string;
+  content: string;
+  sessionTitle?: string;
+  members?: MentionMember[];
+  espacoId?: string;
+}
+
 // Create a new post
 export function useCreatePost() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
+    mutationFn: async ({ sessionId, content, sessionTitle, members, espacoId }: CreatePostParams) => {
       if (!user) throw new Error('User not authenticated');
 
       const isMentor = user.role === 'mentor' || user.role === 'admin';
+      const trimmedContent = content.trim();
 
       const { data, error } = await supabase
         .from('session_posts')
         .insert({
           session_id: sessionId,
           user_id: user.id,
-          content: content.trim(),
+          content: trimmedContent,
           is_mentor_post: isMentor
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Fire mention notifications (fire-and-forget)
+      if (members && members.length > 0 && sessionTitle) {
+        const authorName = user.user_metadata?.full_name || 'Alguém';
+        const actionUrl = espacoId ? `/dashboard/espacos/${espacoId}?tab=discussao` : null;
+        const mentionedMembers = members.filter(
+          m => trimmedContent.includes(`@${m.full_name}`) && m.id !== user.id
+        );
+        for (const m of mentionedMembers) {
+          supabase.rpc('create_mention_notification', {
+            p_mentioned_user_id: m.id,
+            p_author_name: authorName,
+            p_session_title: sessionTitle,
+            p_session_id: sessionId,
+            p_action_url: actionUrl,
+          }).then(() => {});
+        }
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {

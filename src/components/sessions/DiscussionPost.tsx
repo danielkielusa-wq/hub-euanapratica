@@ -15,6 +15,21 @@ interface DiscussionPostProps {
   onDelete: (postId: string) => Promise<void>;
 }
 
+function renderContentWithMentions(content: string) {
+  // Match @Name (captures multi-word names like "@John Doe")
+  const parts = content.split(/(@\S+(?:\s\S+)?)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@') && part.length > 1) {
+      return (
+        <span key={i} className="font-semibold text-primary bg-primary/10 rounded px-0.5">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export function DiscussionPost({ post, onVote, onDelete }: DiscussionPostProps) {
   const { user } = useAuth();
   const [isVoting, setIsVoting] = useState(false);
@@ -95,7 +110,7 @@ export function DiscussionPost({ post, onVote, onDelete }: DiscussionPostProps) 
       
       {/* Content */}
       <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed mb-3">
-        {post.content}
+        {renderContentWithMentions(post.content)}
       </p>
       
       {/* Actions: Upvote Button + Delete */}

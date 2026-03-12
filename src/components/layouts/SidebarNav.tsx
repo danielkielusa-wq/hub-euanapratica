@@ -44,12 +44,15 @@ import {
   Bell,
   CalendarDays,
   Target,
+  Webhook,
+  Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { UpgradeModal } from '@/components/curriculo/UpgradeModal';
 import { useMenuVisibility } from '@/hooks/useMenuVisibility';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NavItem {
   label: string;
@@ -201,7 +204,7 @@ const adminNavGroups: NavGroup[] = [
   {
     label: 'FERRAMENTAS AI',
     items: [
-      { label: 'Content Studio', href: '/admin/content-studio', icon: Video, badge: { text: 'AI', variant: 'ai' as const } },
+      { label: 'Content Factory', href: '/admin/content-factory', icon: Zap, badge: { text: 'AI', variant: 'ai' as const } },
       { label: 'AI SDR', href: '/admin/sdr', icon: Target, badge: { text: 'AI', variant: 'ai' as const } },
       { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
     ],
@@ -252,6 +255,8 @@ const adminNavGroups: NavGroup[] = [
     label: 'AUTOMAÇÃO & APIs',
     items: [
       { label: 'Automacoes N8N', href: '/admin/automacoes', icon: Zap },
+      { label: 'Cron Jobs', href: '/admin/cron-jobs', icon: Timer },
+      { label: 'Webhooks & Eventos', href: '/admin/webhook-docs', icon: Webhook },
       { label: 'APIs Externas', href: '/admin/configuracoes-apis', icon: Link2 },
       { label: 'Custos de API', href: '/admin/custos-api', icon: DollarSign },
     ],
@@ -302,9 +307,10 @@ const badgeClasses = {
 
 interface SidebarNavProps {
   onNavigate?: () => void;
+  collapsed?: boolean;
 }
 
-export function SidebarNav({ onNavigate }: SidebarNavProps) {
+export function SidebarNav({ onNavigate, collapsed }: SidebarNavProps) {
   const location = useLocation();
   const { user } = useAuth();
   const { hasAccess: canAccessCommunity, isLoading: communityAccessLoading } = useServiceAccess('/comunidade');
@@ -378,125 +384,147 @@ export function SidebarNav({ onNavigate }: SidebarNavProps) {
   };
 
   return (
-    <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-hide">
-      {navGroups.map((group, groupIdx) => {
-        const isExpanded = group.noHeader ? true : expandedGroups.has(group.label);
-        const hasActiveItem = group.items.some(item => isActive(item.href));
+    <TooltipProvider delayDuration={0}>
+      <nav className="flex-1 px-3 py-2 overflow-y-auto scrollbar-hide">
+        {navGroups.map((group, groupIdx) => {
+          const isExpanded = group.noHeader ? true : expandedGroups.has(group.label);
+          const hasActiveItem = group.items.some(item => isActive(item.href));
 
-        return (
-          <div key={group.label} className={cn(groupIdx > 0 && "mt-2")}>
-            {/* Collapsible Group Header — hidden for standalone (noHeader) items */}
-            {!group.noHeader && (
-              <button
-                onClick={() => toggleGroup(group.label)}
+          return (
+            <div key={group.label} className={cn(groupIdx > 0 && "mt-2")}>
+              {/* Collapsible Group Header — hidden when sidebar collapsed or standalone items */}
+              {!group.noHeader && !collapsed && (
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150",
+                    hasActiveItem
+                      ? "text-blue-600"
+                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                  )}
+                >
+                  <span>{group.label}</span>
+                  <ChevronRight className={cn(
+                    "w-3.5 h-3.5 transition-transform duration-200",
+                    isExpanded && "rotate-90"
+                  )} />
+                </button>
+              )}
+
+              {/* Collapsed: thin separator between groups */}
+              {!group.noHeader && collapsed && groupIdx > 0 && (
+                <div className="hidden lg:block mx-2 my-1 border-t border-gray-100" />
+              )}
+
+              {/* Group Items */}
+              <div
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150",
-                  hasActiveItem
-                    ? "text-blue-600"
-                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
+                  !group.noHeader && !collapsed && "overflow-hidden transition-all duration-200 ease-in-out",
+                  !group.noHeader && !collapsed && (isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0")
                 )}
               >
-                <span>{group.label}</span>
-                <ChevronRight className={cn(
-                  "w-3.5 h-3.5 transition-transform duration-200",
-                  isExpanded && "rotate-90"
-                )} />
-              </button>
-            )}
+                <ul className={cn("space-y-0.5 pb-1", collapsed && "lg:flex lg:flex-col lg:items-center")}>
+                  {group.items.map((item) => {
+                    const active = isActive(item.href);
+                    const Icon = item.icon;
 
-            {/* Group Items */}
-            <div
-              className={cn(
-                !group.noHeader && "overflow-hidden transition-all duration-200 ease-in-out",
-                !group.noHeader && (isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0")
-              )}
-            >
-              <ul className="space-y-0.5 pb-1">
-                {group.items.map((item) => {
-                  const active = isActive(item.href);
-                  const Icon = item.icon;
+                    const isCommunityRoute = item.href === '/comunidade';
+                    const isMentorOrAdmin = user?.role === 'mentor' || user?.role === 'admin';
+                    const blockCommunityAccess = isCommunityRoute && !isMentorOrAdmin && !communityAccessLoading && !canAccessCommunity;
 
-                  const isCommunityRoute = item.href === '/comunidade';
-                  const isMentorOrAdmin = user?.role === 'mentor' || user?.role === 'admin';
-                  const blockCommunityAccess = isCommunityRoute && !isMentorOrAdmin && !communityAccessLoading && !canAccessCommunity;
-
-                  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-                    if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {
-                      event.preventDefault();
-                      if (!communityAccessLoading) {
-                        setShowUpgradeModal(true);
+                    const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+                      if (isCommunityRoute && (communityAccessLoading || blockCommunityAccess)) {
+                        event.preventDefault();
+                        if (!communityAccessLoading) {
+                          setShowUpgradeModal(true);
+                        }
+                        return;
                       }
-                      return;
-                    }
-                    onNavigate?.();
-                  };
+                      onNavigate?.();
+                    };
 
-                  const linkClass = cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150",
-                    item.isSpecial
-                      ? active
-                        ? "bg-indigo-50 text-indigo-600"
-                        : "text-indigo-600 hover:bg-indigo-50/50"
-                      : active
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-600 hover:bg-gray-50"
-                  );
+                    const linkClass = cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150",
+                      collapsed && "lg:justify-center lg:px-0 lg:py-2 lg:w-10 lg:h-10",
+                      item.isSpecial
+                        ? active
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-indigo-600 hover:bg-indigo-50/50"
+                        : active
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-50"
+                    );
 
-                  const linkContent = (
-                    <>
-                      <Icon className={cn(
-                        "w-[18px] h-[18px] flex-shrink-0",
-                        item.isSpecial && !active && "text-indigo-500"
-                      )} />
-                      <span className="flex-1">{item.label}</span>
-                      {item.badge && (
-                        <span className={cn(
-                          "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
-                          badgeClasses[item.badge.variant]
-                        )}>
-                          {item.badge.text}
-                        </span>
-                      )}
-                    </>
-                  );
+                    const linkContent = (
+                      <>
+                        <Icon className={cn(
+                          "w-[18px] h-[18px] flex-shrink-0",
+                          item.isSpecial && !active && "text-indigo-500"
+                        )} />
+                        <span className={cn("flex-1", collapsed && "lg:hidden")}>{item.label}</span>
+                        {item.badge && (
+                          <span className={cn(
+                            "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full tracking-wide",
+                            badgeClasses[item.badge.variant],
+                            collapsed && "lg:hidden"
+                          )}>
+                            {item.badge.text}
+                          </span>
+                        )}
+                      </>
+                    );
 
-                  return (
-                    <li key={item.href + item.label}>
-                      {item.isExternal ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={linkClass}
-                        >
-                          {linkContent}
-                        </a>
-                      ) : (
-                        <Link
-                          to={item.href}
-                          onClick={handleClick}
-                          className={linkClass}
-                          data-tour={item.tourId || undefined}
-                        >
-                          {linkContent}
-                        </Link>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                    const linkElement = item.isExternal ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={linkClass}
+                      >
+                        {linkContent}
+                      </a>
+                    ) : (
+                      <Link
+                        to={item.href}
+                        onClick={handleClick}
+                        className={linkClass}
+                        data-tour={item.tourId || undefined}
+                      >
+                        {linkContent}
+                      </Link>
+                    );
+
+                    return (
+                      <li key={item.href + item.label}>
+                        {collapsed ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {linkElement}
+                            </TooltipTrigger>
+                            <TooltipContent side="right" sideOffset={8} className="hidden lg:block">
+                              <p>{item.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          linkElement
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
 
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        currentPlanId={planId}
-        reason="upgrade"
-      />
-    </nav>
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          currentPlanId={planId}
+          reason="upgrade"
+        />
+      </nav>
+    </TooltipProvider>
   );
 }
 

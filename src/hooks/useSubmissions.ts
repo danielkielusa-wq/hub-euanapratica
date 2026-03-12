@@ -86,7 +86,11 @@ export function useSubmitAssignment() {
         file_name: data.file_name || null,
         file_size: data.file_size || null,
         text_content: data.text_content || null,
-        submitted_at: new Date().toISOString()
+        submitted_at: new Date().toISOString(),
+        reviewed_by: null,
+        reviewed_at: null,
+        review_result: null,
+        feedback: null,
       };
 
       const { data: submission, error } = await supabase
@@ -101,10 +105,31 @@ export function useSubmitAssignment() {
       if (error) throw error;
       return submission;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['submission', variables.assignment_id] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       toast.success('Tarefa entregue com sucesso!');
+
+      // Fire-and-forget: notify mentor about new submission
+      supabase.from('assignments').select('espaco_id, title').eq('id', variables.assignment_id).single()
+        .then(({ data: assignment }) => {
+          if (assignment) {
+            supabase.from('profiles').select('full_name').eq('id', user!.id).single()
+              .then(({ data: profile }) => {
+                supabase.functions.invoke('dispatch-espaco-notification', {
+                  body: {
+                    event: 'espaco_new_submission',
+                    espacoId: assignment.espaco_id,
+                    data: {
+                      studentName: profile?.full_name || 'Aluno',
+                      assignmentTitle: assignment.title,
+                      assignmentId: variables.assignment_id,
+                    },
+                  },
+                });
+              });
+          }
+        });
     },
     onError: (error) => {
       toast.error('Erro ao entregar tarefa');
@@ -238,6 +263,25 @@ export function useSubmitFeedback() {
       queryClient.invalidateQueries({ queryKey: ['assignment-submissions', data.assignment_id] });
       queryClient.invalidateQueries({ queryKey: ['submission', data.assignment_id] });
       toast.success('Feedback enviado com sucesso!');
+
+      // Fire-and-forget: notify the student
+      supabase.from('assignments').select('espaco_id, title').eq('id', data.assignment_id).single()
+        .then(({ data: assignment }) => {
+          if (assignment) {
+            supabase.functions.invoke('dispatch-espaco-notification', {
+              body: {
+                event: 'espaco_assignment_reviewed',
+                espacoId: assignment.espaco_id,
+                data: {
+                  studentId: data.user_id,
+                  assignmentTitle: assignment.title,
+                  assignmentId: data.assignment_id,
+                  reviewResult: data.review_result,
+                },
+              },
+            });
+          }
+        });
     },
     onError: (error) => {
       toast.error('Erro ao enviar feedback');

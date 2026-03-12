@@ -16,6 +16,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSessionPosts, useCreatePost, useVotePost, useDeletePost } from '@/hooks/useSessionPosts';
+import { useEspacoMembers } from '@/hooks/useEspacoMembers';
 import { EmptyDiscussionState } from './EmptyDiscussionState';
 import { DiscussionPost } from './DiscussionPost';
 import { PostComposer } from './PostComposer';
@@ -25,22 +26,31 @@ interface SessionDiscussionDrawerProps {
   onClose: () => void;
   sessionId: string;
   sessionTitle: string;
+  espacoId?: string;
 }
 
-export function SessionDiscussionDrawer({ 
-  open, 
-  onClose, 
-  sessionId, 
-  sessionTitle 
+export function SessionDiscussionDrawer({
+  open,
+  onClose,
+  sessionId,
+  sessionTitle,
+  espacoId,
 }: SessionDiscussionDrawerProps) {
   const isMobile = useIsMobile();
   const { data: posts, isLoading } = useSessionPosts(sessionId);
+  const { data: members = [] } = useEspacoMembers(espacoId);
   const createPost = useCreatePost();
   const votePost = useVotePost();
   const deletePost = useDeletePost();
 
   const handleCreatePost = async (content: string) => {
-    await createPost.mutateAsync({ sessionId, content });
+    await createPost.mutateAsync({
+      sessionId,
+      content,
+      sessionTitle,
+      members,
+      espacoId,
+    });
   };
 
   const handleVote = async (postId: string, hasVoted: boolean) => {
@@ -52,7 +62,7 @@ export function SessionDiscussionDrawer({
   };
 
   const content = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Posts Feed - Scrollable */}
       <ScrollArea className="flex-1 px-4 py-4">
         {isLoading ? (
@@ -92,9 +102,10 @@ export function SessionDiscussionDrawer({
       
       {/* Composer - Fixed Bottom */}
       <div className="p-4 bg-background/80 backdrop-blur-md border-t border-border/40">
-        <PostComposer 
+        <PostComposer
           onSubmit={handleCreatePost}
           isSubmitting={createPost.isPending}
+          members={members}
         />
       </div>
     </div>
@@ -103,7 +114,7 @@ export function SessionDiscussionDrawer({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <DrawerContent className="h-[90vh] max-h-[90vh]">
+        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col">
           <DrawerHeader className="border-b border-border/40 pb-4">
             <DrawerTitle className="text-lg font-semibold">{sessionTitle}</DrawerTitle>
             <DrawerDescription className="text-sm text-muted-foreground">
@@ -120,7 +131,7 @@ export function SessionDiscussionDrawer({
     <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-lg p-0 flex flex-col"
+        className="w-full sm:max-w-xl p-0 flex flex-col"
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
           <SheetTitle className="text-lg font-semibold">{sessionTitle}</SheetTitle>

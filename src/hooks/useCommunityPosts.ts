@@ -32,7 +32,7 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
         .from('community_posts')
         .select(`
           *,
-          profiles:user_id (id, full_name, profile_photo_url),
+          profiles:user_id (id, full_name, profile_photo_url, special_badge),
           community_categories:category_id (*)
         `)
         .limit(limit);
@@ -112,7 +112,7 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
         .insert(insertData)
         .select(`
           *,
-          profiles:user_id (id, full_name, profile_photo_url),
+          profiles:user_id (id, full_name, profile_photo_url, special_badge),
           community_categories:category_id (*)
         `)
         .single();
@@ -222,6 +222,36 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
     }
   };
 
+  const editPost = async (postId: string, title: string, content: string) => {
+    if (!user) {
+      toast({ title: 'Você precisa estar logado', variant: 'destructive' });
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .update({ title, content })
+        .eq('id', postId)
+        .eq('user_id', user.id)
+        .select(`
+          *,
+          profiles:user_id (id, full_name, profile_photo_url, special_badge),
+          community_categories:category_id (*)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...data } : p));
+      toast({ title: 'Discussão atualizada!' });
+      return data;
+    } catch (err: any) {
+      toast({ title: 'Erro ao editar', description: err.message, variant: 'destructive' });
+      return null;
+    }
+  };
+
   const deletePost = async (postId: string) => {
     try {
       const { error } = await supabase
@@ -244,6 +274,7 @@ export function useCommunityPosts(options: UseCommunityPostsOptions = {}) {
     error,
     refetch: fetchPosts,
     createPost,
+    editPost,
     toggleLike,
     deletePost,
   };

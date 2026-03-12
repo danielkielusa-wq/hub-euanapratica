@@ -179,9 +179,20 @@ export function useCreateAssignment() {
       if (error) throw error;
       return assignment;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       toast.success('Tarefa criada com sucesso!');
+
+      // Notify enrolled students if created as published
+      if (data?.status === 'published' && data?.espaco_id) {
+        supabase.functions.invoke('dispatch-espaco-notification', {
+          body: {
+            event: 'espaco_new_assignment',
+            espacoId: data.espaco_id,
+            data: { assignmentTitle: data.title, assignmentId: data.id },
+          },
+        });
+      }
     },
     onError: (error) => {
       toast.error('Erro ao criar tarefa');
@@ -284,10 +295,23 @@ export function usePublishAssignment() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, id) => {
+    onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: ['assignment', id] });
       toast.success('Tarefa publicada com sucesso!');
+
+      // Fire-and-forget: notify enrolled students
+      if (data?.espaco_id) {
+        supabase.functions.invoke('dispatch-espaco-notification', {
+          body: {
+            event: 'espaco_new_assignment',
+            espacoId: data.espaco_id,
+            data: { assignmentTitle: data.title, assignmentId: data.id },
+          },
+        }).then(({ error }) => {
+          if (error) console.warn('Notification dispatch failed:', error);
+        });
+      }
     },
     onError: (error) => {
       toast.error('Erro ao publicar tarefa');

@@ -17,7 +17,7 @@ export function useGamification() {
     try {
       const { data, error } = await supabase
         .from('user_gamification')
-        .select('*, profiles:user_id (id, full_name, profile_photo_url)')
+        .select('*, profiles:user_id (id, full_name, profile_photo_url, special_badge)')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -30,7 +30,7 @@ export function useGamification() {
         // No gamification row yet — fetch profile separately for the card
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, full_name, profile_photo_url')
+          .select('id, full_name, profile_photo_url, special_badge')
           .eq('id', user.id)
           .maybeSingle();
 

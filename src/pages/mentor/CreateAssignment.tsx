@@ -7,12 +7,12 @@ import { ArrowLeft, FileEdit } from 'lucide-react';
 export default function CreateAssignment() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const espacoIdFromUrl = searchParams.get('espaco_id');
+  const espacoIdFromUrl = searchParams.get('espaco') || searchParams.get('espaco_id');
 
-  const handleSuccess = () => {
-    // If we came from a specific espaco, go back there
-    if (espacoIdFromUrl) {
-      navigate(`/mentor/espacos/${espacoIdFromUrl}?tab=assignments`);
+  const handleSuccess = (espacoId?: string) => {
+    const targetEspaco = espacoIdFromUrl || espacoId;
+    if (targetEspaco) {
+      navigate(`/mentor/espacos/${targetEspaco}?tab=assignments`);
     } else {
       navigate('/mentor/tarefas');
     }

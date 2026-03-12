@@ -11,22 +11,7 @@ export function useStudentUpcomingSessions(limit = 3) {
   return useQuery({
     queryKey: ['student-sessions', 'upcoming', limit, user?.id],
     queryFn: async (): Promise<Session[]> => {
-      // Primeiro buscar espaços onde o aluno está matriculado
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('user_espacos')
-        .select('espaco_id')
-        .eq('user_id', user!.id)
-        .eq('status', 'active');
-
-      if (enrollError) throw enrollError;
-
-      if (!enrollments || enrollments.length === 0) {
-        return [];
-      }
-
-      const espacoIds = enrollments.map(e => e.espaco_id);
-
-      // Buscar sessões dos espaços matriculados
+      // Query sessions directly — RLS policy handles filtering via is_enrolled_in_espaco
       const { data: sessions, error } = await supabase
         .from('sessions')
         .select(`
@@ -40,7 +25,7 @@ export function useStudentUpcomingSessions(limit = 3) {
             name
           )
         `)
-        .in('espaco_id', espacoIds)
+        .not('espaco_id', 'is', null)
         .gte('datetime', now)
         .in('status', ['scheduled', 'live'])
         .order('datetime', { ascending: true })
@@ -69,21 +54,7 @@ export function useStudentSessions() {
   return useQuery({
     queryKey: ['student-sessions', 'all', user?.id],
     queryFn: async (): Promise<Session[]> => {
-      // Buscar espacos onde o aluno esta matriculado
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('user_espacos')
-        .select('espaco_id')
-        .eq('user_id', user!.id)
-        .eq('status', 'active');
-
-      if (enrollError) throw enrollError;
-
-      if (!enrollments || enrollments.length === 0) {
-        return [];
-      }
-
-      const espacoIds = enrollments.map(e => e.espaco_id);
-
+      // Query sessions directly — RLS policy handles filtering via is_enrolled_in_espaco
       const { data: sessions, error } = await supabase
         .from('sessions')
         .select(`
@@ -97,7 +68,7 @@ export function useStudentSessions() {
             name
           )
         `)
-        .in('espaco_id', espacoIds)
+        .not('espaco_id', 'is', null)
         .order('datetime', { ascending: true });
 
       if (error) throw error;

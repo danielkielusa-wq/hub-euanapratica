@@ -13,6 +13,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, getCorsHeaders } from "../_shared/authGuard.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 interface ThankYouRequest {
   live_id: string;
@@ -146,6 +147,16 @@ Deno.serve(async (req) => {
         errors.push(`${recipient.email}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+
+    // Dispatch N8N webhook for live.completed (fire-and-forget)
+    dispatchN8NWebhook("live.completed", {
+      live_id: live.id,
+      title: live.title,
+      slug: live.slug,
+      recording_url: live.recording_url ?? null,
+      total_participants: uniqueRecipients.length,
+      emails_sent: emailsSent,
+    }, supabase);
 
     return new Response(
       JSON.stringify({

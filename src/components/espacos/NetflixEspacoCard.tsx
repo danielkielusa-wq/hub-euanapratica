@@ -37,7 +37,6 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
   const hasImage = !!espaco.cover_image_url;
   const isMentor = role === 'mentor';
 
-  // Resolve gradient with preset support
   const backgroundGradient = resolveGradient(
     (espaco as any).gradient_preset,
     (espaco as any).gradient_start,
@@ -45,7 +44,6 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
     espaco.id
   );
 
-  // Get mentor-specific stats if available
   const mentorEspaco = espaco as MentorEspacoWithStats;
   const enrolledCount = mentorEspaco.enrolled_count;
 
@@ -85,95 +83,88 @@ export function NetflixEspacoCard({ espaco, role = 'student' }: NetflixEspacoCar
       {/* Dark Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-      {/* Status Badge */}
-      <Badge 
-        className={cn(
-          'absolute top-4 right-4 px-3 py-1 text-xs font-medium rounded-full shadow-lg',
-          status.className
-        )}
-      >
-        {status.label}
-      </Badge>
-
-      {/* Category Badge (top-left) */}
-      {espaco.category && (
-        <Badge 
-          variant="secondary"
-          className="absolute top-4 left-4 px-2 py-0.5 text-xs bg-white/20 text-white backdrop-blur-sm rounded-full"
-        >
-          {categoryLabels[espaco.category] || espaco.category}
-        </Badge>
-      )}
-
-      {/* Content Overlay */}
-      <div className="absolute inset-x-0 bottom-0 p-5 flex flex-col">
-        {/* Title */}
-        <h3 className="font-bold text-white text-xl font-sans leading-tight mb-2 line-clamp-2">
-          {espaco.name}
-        </h3>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-white/80 text-sm mb-3">
-          {isMentor && enrolledCount !== undefined ? (
-            <>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                <span>{espaco.upcomingSessions} sessões</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <ClipboardList className="h-4 w-4" />
-                <span>{espaco.pendingAssignments} correções</span>
-              </div>
-            </>
+      {/* Full-card flex layout — badges top, content bottom, never overlap */}
+      <div className="absolute inset-0 flex flex-col p-4">
+        {/* Top row: badges */}
+        <div className="flex items-start justify-between gap-2 shrink-0">
+          {espaco.category ? (
+            <Badge
+              variant="secondary"
+              className="px-2 py-0.5 text-xs bg-white/20 text-white backdrop-blur-sm rounded-full truncate max-w-[60%]"
+            >
+              {categoryLabels[espaco.category] || espaco.category}
+            </Badge>
           ) : (
-            <>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                <span>{espaco.upcomingSessions} sessões</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <ClipboardList className="h-4 w-4" />
-                <span>{espaco.pendingAssignments} tarefas</span>
-              </div>
-            </>
+            <span />
           )}
-        </div>
-
-        {/* Access Button - appears on hover */}
-        <div
-          className={cn(
-            'transition-all duration-200 overflow-hidden',
-            isHovered ? 'max-h-12 opacity-100 translate-y-0' : 'max-h-0 opacity-0 translate-y-2'
-          )}
-        >
-          <Button
-            size="sm"
+          <Badge
             className={cn(
-              "w-full font-medium rounded-xl shadow-lg",
-              isMentor 
-                ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              'px-3 py-1 text-xs font-medium rounded-full shadow-lg shrink-0',
+              status.className
             )}
           >
-            {isMentor ? (
-              <>
-                <Settings className="h-4 w-4 mr-1" />
-                Gerenciar
-              </>
-            ) : (
-              <>
-                Acessar
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
+            {status.label}
+          </Badge>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1 min-h-4" />
+
+        {/* Bottom: title + stats + button */}
+        <div className="shrink-0">
+          <h3 className="font-bold text-white text-lg font-sans leading-snug mb-2 line-clamp-2">
+            {espaco.name}
+          </h3>
+
+          <div className="flex items-center gap-4 text-white/80 text-sm mb-3">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              <span>{espaco.upcomingSessions} sessoes</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ClipboardList className="h-4 w-4" />
+              <span>
+                {espaco.pendingAssignments} {isMentor && enrolledCount !== undefined ? 'correcoes' : 'tarefas'}
+              </span>
+            </div>
+          </div>
+
+          {/* Access Button - appears on hover */}
+          <div
+            className={cn(
+              'transition-all duration-200 overflow-hidden',
+              isHovered ? 'max-h-12 opacity-100 translate-y-0' : 'max-h-0 opacity-0 translate-y-2'
             )}
-          </Button>
+          >
+            <Button
+              size="sm"
+              className={cn(
+                "w-full font-medium rounded-xl shadow-lg",
+                isMentor
+                  ? "bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              )}
+            >
+              {isMentor ? (
+                <>
+                  <Settings className="h-4 w-4 mr-1" />
+                  Gerenciar
+                </>
+              ) : (
+                <>
+                  Acessar
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Progress Bar - thin line at the very bottom */}
+      {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/30">
-        <Progress 
-          value={espaco.progressPercent} 
+        <Progress
+          value={espaco.progressPercent}
           className="h-full rounded-none [&>div]:rounded-none"
         />
       </div>

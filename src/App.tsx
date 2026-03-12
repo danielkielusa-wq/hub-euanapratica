@@ -100,6 +100,8 @@ const AdminIdeaKanban = lazy(() => import("./pages/admin/AdminIdeaKanban"));
 const AdminLeadDetail = lazy(() => import("./pages/admin/AdminLeadDetail"));
 const AdminAtividades = lazy(() => import("./pages/admin/AdminAtividades"));
 const AdminAutomations = lazy(() => import("./pages/admin/AdminAutomations"));
+const AdminCronJobs = lazy(() => import("./pages/admin/AdminCronJobs"));
+const AdminWebhookDocs = lazy(() => import("./pages/admin/AdminWebhookDocs"));
 const AdminManyChatFlows = lazy(() => import("./pages/admin/AdminManyChatFlows"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
 const AdminPrimeJobs = lazy(() => import("./pages/admin/AdminPrimeJobs"));
@@ -109,6 +111,7 @@ const AdminAgendamentos = lazy(() => import("./pages/admin/AdminAgendamentos"));
 const AdminMenuConfig = lazy(() => import("./pages/admin/AdminMenuConfig"));
 const AdminHubConfig = lazy(() => import("./pages/admin/AdminHubConfig"));
 const AdminContentStudio = lazy(() => import("./pages/admin/AdminContentStudio"));
+const AdminContentFactory = lazy(() => import("./pages/admin/AdminContentFactory"));
 const AdminSDR = lazy(() => import("./pages/admin/AdminSDR"));
 const MentorDisponibilidade = lazy(() => import("./pages/mentor/MentorDisponibilidade"));
 const MentorLives = lazy(() => import("./pages/mentor/MentorLives"));
@@ -621,6 +624,16 @@ function AppRoutes() {
           <AdminAutomations />
         </ProtectedRoute>
       } />
+      <Route path="/admin/cron-jobs" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminCronJobs />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/webhook-docs" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminWebhookDocs />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/manychat-flows" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminManyChatFlows />
@@ -639,6 +652,11 @@ function AppRoutes() {
       <Route path="/admin/content-studio" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminContentStudio />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/content-factory" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminContentFactory />
         </ProtectedRoute>
       } />
       <Route path="/admin/sdr" element={

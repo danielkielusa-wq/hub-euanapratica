@@ -73,10 +73,19 @@ export function useCreateLive() {
       if (error) throw error;
       return data as Live;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mentor-lives'] });
       queryClient.invalidateQueries({ queryKey: ['lives'] });
       toast({ title: 'Live criada!', description: 'Sua live foi criada com sucesso.' });
+
+      // Dispatch live.created webhook (fire-and-forget)
+      supabase.functions
+        .invoke('send-live-notification', {
+          body: { live_id: data.id, notification_type: 'created' },
+        })
+        .then(({ error }) => {
+          if (error) console.error('Live created webhook error:', error);
+        });
     },
     onError: (error: Error) => {
       if (error.message.includes('lives_slug_key')) {

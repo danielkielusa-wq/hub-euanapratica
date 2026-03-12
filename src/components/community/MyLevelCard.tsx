@@ -1,6 +1,6 @@
 import { UserGamification, getNextLevelProgress, getLevelTitle } from '@/types/community';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings } from 'lucide-react';
+import { Settings, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface MyLevelCardProps {
@@ -68,7 +68,12 @@ export function MyLevelCard({ userStats, isLoading }: MyLevelCardProps) {
         </div>
 
         <h3 className="mt-3 font-bold text-gray-800 dark:text-foreground">{fullName}</h3>
-        <p className="text-xs text-gray-500 dark:text-muted-foreground mb-4">
+        {userStats.profiles?.special_badge && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[10px] font-bold uppercase tracking-wider rounded-md border border-amber-200 dark:border-amber-500/20">
+            <Crown size={10} /> {userStats.profiles.special_badge}
+          </span>
+        )}
+        <p className="text-xs text-gray-500 dark:text-muted-foreground mb-4 mt-1">
           Nivel {userStats.level} &bull; {title}
         </p>
 

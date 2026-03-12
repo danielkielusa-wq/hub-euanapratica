@@ -62,7 +62,7 @@ export default function PostDetail() {
         .from('community_posts')
         .select(`
           *,
-          profiles:user_id (id, full_name, profile_photo_url),
+          profiles:user_id (id, full_name, profile_photo_url, special_badge),
           community_categories:category_id (*)
         `)
         .eq('id', postId)
@@ -159,6 +159,46 @@ export default function PostDetail() {
     }
   };
 
+  const editPost = async (targetPostId: string, title: string, content: string) => {
+    if (!user) return null;
+    try {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .update({ title, content })
+        .eq('id', targetPostId)
+        .eq('user_id', user.id)
+        .select(`
+          *,
+          profiles:user_id (id, full_name, profile_photo_url, special_badge),
+          community_categories:category_id (*)
+        `)
+        .single();
+      if (error) throw error;
+      setPost(prev => prev ? { ...prev, ...data } : prev);
+      toast({ title: 'Discussão atualizada!' });
+      return data;
+    } catch (err: any) {
+      toast({ title: 'Erro ao editar', description: err.message, variant: 'destructive' });
+      return null;
+    }
+  };
+
+  const deletePost = async (targetPostId: string) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', targetPostId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: 'Discussão removida!' });
+      window.location.href = '/comunidade';
+    } catch (err: any) {
+      toast({ title: 'Erro ao remover', description: err.message, variant: 'destructive' });
+    }
+  };
+
   if (postLoading) {
     return (
       <DashboardLayout>
@@ -182,7 +222,7 @@ export default function PostDetail() {
 
         {post ? (
           <div className="space-y-8">
-            <PostCard post={post} onLike={toggleLike} showFull />
+            <PostCard post={post} onLike={toggleLike} onEdit={editPost} onDelete={deletePost} showFull />
             
             <div className="bg-card rounded-[24px] p-6 border border-border/50">
               <h3 className="font-bold text-foreground mb-6">

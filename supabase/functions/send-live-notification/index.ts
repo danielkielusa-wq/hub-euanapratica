@@ -12,10 +12,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { requireAuthOrInternal, validateInternalCall, validateUserAuth, getCorsHeaders } from "../_shared/authGuard.ts";
 import { generateICS, getGoogleCalendarUrl, utf8ToBase64 } from "../_shared/calendarService.ts";
+import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 
 // --- Request types ---
 
-type NotificationType = "going_live" | "registration";
+type NotificationType = "going_live" | "registration" | "created";
 
 interface LiveNotificationRequest {
   live_id: string;
@@ -89,6 +90,31 @@ Deno.serve(async (req) => {
     const meetingLink = live.meeting_link || livePageLink;
 
     // Route to the correct handler
+    if (notification_type === "created") {
+      // Webhook-only: no email sent, just dispatch N8N webhook
+      const { data: mentor } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", live.mentor_id)
+        .single();
+
+      await dispatchN8NWebhook("live.created", {
+        live_id: live.id,
+        title: live.title,
+        slug: live.slug,
+        mentor_id: live.mentor_id,
+        mentor_name: mentor?.full_name ?? null,
+        scheduled_at: live.scheduled_at,
+        duration_minutes: live.duration_minutes,
+        meeting_link: meetingLink,
+      }, supabase);
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
     if (notification_type === "registration") {
       return await handleRegistration(supabase, live, user_id!, origin, livePageLink, cors);
     }
@@ -162,6 +188,17 @@ async function handleGoingLive(
       errors.push(`${profile.email}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  // Dispatch N8N webhook for live.started (fire-and-forget)
+  dispatchN8NWebhook("live.started", {
+    live_id: live.id,
+    title: live.title,
+    slug: live.slug,
+    meeting_link: meetingLink,
+    mentor_id: live.mentor_id,
+    registration_count: profiles.length,
+    scheduled_at: live.scheduled_at,
+  }, supabase);
 
   return new Response(
     JSON.stringify({
@@ -273,6 +310,20 @@ async function handleRegistration(
       },
     ],
   });
+
+  // Dispatch N8N webhook for live.registration (fire-and-forget)
+  dispatchN8NWebhook("live.registration", {
+    live_id: live.id,
+    title: live.title,
+    slug: live.slug,
+    user_id: userId,
+    user_name: profile.full_name ?? null,
+    user_email: profile.email,
+    mentor_id: live.mentor_id,
+    mentor_name: mentorName,
+    scheduled_at: live.scheduled_at,
+    duration_minutes: live.duration_minutes,
+  }, supabase);
 
   return new Response(
     JSON.stringify({

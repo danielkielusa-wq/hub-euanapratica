@@ -65,7 +65,7 @@ serve(async (req) => {
     if (offerId) {
       const { data } = await supabase
         .from("plans")
-        .select("id, ticto_offer_id_monthly, ticto_offer_id_annual")
+        .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
         .or(`ticto_offer_id_monthly.eq.${offerId},ticto_offer_id_annual.eq.${offerId}`)
         .maybeSingle();
       matchedPlan = data;
@@ -75,7 +75,7 @@ serve(async (req) => {
     if (!matchedPlan && productId) {
       const { data } = await supabase
         .from("plans")
-        .select("id, ticto_offer_id_monthly, ticto_offer_id_annual")
+        .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
         .or(`ticto_offer_id_monthly.eq.${productId},ticto_offer_id_annual.eq.${productId}`)
         .maybeSingle();
       matchedPlan = data;
@@ -268,6 +268,19 @@ serve(async (req) => {
           } else {
           }
 
+          // Dispatch order.paid webhook for live purchase
+          dispatchN8NWebhook("order.paid", {
+            user_id: profile.id,
+            email: customerEmail,
+            product_name: payload.item?.product_name || liveData.title || "Live",
+            product_type: "live",
+            amount: parseFloat(amountInCurrency),
+            currency: "BRL",
+            ticto_order_id: transactionId,
+            live_id: liveData.id,
+            live_title: liveData.title,
+          }, supabase);
+
           // Log and return early — live purchase handled
           await supabase.from("payment_logs").upsert({
             user_id: profile.id,
@@ -384,6 +397,19 @@ serve(async (req) => {
         if (orderError) {
         } else {
         }
+
+        // Dispatch order.paid webhook for hub service purchase
+        dispatchN8NWebhook("order.paid", {
+          user_id: profile.id,
+          email: customerEmail,
+          product_name: payload.item?.product_name || service.name || "Servico",
+          product_type: "one_time_service",
+          amount: parseFloat(amountInCurrency),
+          currency: "BRL",
+          ticto_order_id: transactionId,
+          service_id: service.id,
+          service_name: service.name,
+        }, supabase);
       } else {
       }
 
@@ -454,6 +480,17 @@ serve(async (req) => {
           if (orderUpdateError) {
           } else {
           }
+
+          // Dispatch order.refunded webhook for hub service
+          dispatchN8NWebhook("order.refunded", {
+            user_id: profile.id,
+            email: customerEmail,
+            product_type: "one_time_service",
+            ticto_order_id: transactionId,
+            service_id: service.id,
+            service_name: service.name,
+            refund_event: eventStatus,
+          }, supabase);
         }
 
         // ---- LIVES REFUND FALLBACK ----
@@ -477,6 +514,16 @@ serve(async (req) => {
               .update({ status: "refunded", updated_at: new Date().toISOString() })
               .eq("user_id", profile.id)
               .eq("ticto_order_id", transactionId);
+
+            // Dispatch order.refunded webhook for live
+            dispatchN8NWebhook("order.refunded", {
+              user_id: profile.id,
+              email: customerEmail,
+              product_type: "live",
+              ticto_order_id: transactionId,
+              live_id: liveData.id,
+              refund_event: eventStatus,
+            }, supabase);
           }
         }
 

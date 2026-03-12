@@ -11,6 +11,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendTemplatedEmail } from "../_shared/emailTemplateService.ts";
 import { getCorsHeaders } from "../_shared/authGuard.ts";
+import { createNotification } from "../_shared/notificationService.ts";
 
 interface InvitationRequest {
   espaco_id: string;
@@ -26,6 +27,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("[send-espaco-invitation] Function invoked");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -67,6 +69,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { espaco_id, email, invited_name }: InvitationRequest = await req.json();
+    console.log("[send-espaco-invitation] Request:", { espaco_id, email, invited_name, userId });
 
     if (!espaco_id || !email) {
       return new Response(
@@ -140,18 +143,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (existingInvitation) {
-      if (existingInvitation.status === "pending") {
-        return new Response(
-          JSON.stringify({
-            error: "Conflict",
-            code: "INVITATION_EXISTS",
-            message: "Já existe um convite pendente para este email."
-          }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Update existing invitation to pending
+      // Refresh existing invitation (pending or expired/cancelled) — resend email
       const { error: updateError } = await supabase
         .from("espaco_invitations")
         .update({
@@ -227,11 +219,42 @@ Deno.serve(async (req) => {
       });
 
       emailSent = result.emailSent;
-
-      if (result.emailSent) {
-      } else {
-      }
+      console.log("[send-espaco-invitation] Email result:", JSON.stringify(result));
+    } else {
+      console.log("[send-espaco-invitation] No token/link, skipping email", { token: invitation?.token, inviteLink });
     }
+
+    // Notify the invited user (if they already have an account)
+    const { data: existingUser } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .single();
+
+    console.log("[send-espaco-invitation] Existing user lookup:", { email: email.toLowerCase(), found: !!existingUser, userId: existingUser?.id });
+
+    if (existingUser) {
+      await createNotification({
+        userId: existingUser.id,
+        type: "espaco_invitation",
+        title: `Convite: ${espaco.name}`,
+        message: `${mentorProfile?.full_name || "Um mentor"} convidou você para o espaço "${espaco.name}"`,
+        actionUrl: inviteLink || `/dashboard/espacos`,
+        category: "scheduling",
+      });
+      console.log("[send-espaco-invitation] Notification created for invited user:", existingUser.id);
+    }
+
+    // Notify the mentor who sent the invite
+    await createNotification({
+      userId,
+      type: "espaco_invitation_sent",
+      title: `Convite enviado`,
+      message: `Convite para ${invited_name || email} no espaço "${espaco.name}" foi ${emailSent ? "enviado por email" : "criado"}`,
+      actionUrl: `/mentor/espacos/${espaco_id}`,
+      category: "scheduling",
+    });
+    console.log("[send-espaco-invitation] Notification created for mentor:", userId);
 
     return new Response(
       JSON.stringify({
@@ -244,8 +267,9 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("[send-espaco-invitation] UNCAUGHT ERROR:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", message: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
