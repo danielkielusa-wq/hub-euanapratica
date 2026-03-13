@@ -63,12 +63,14 @@ export async function dispatchN8NWebhook(
     // Query active automations matching this event
     // Supports exact match ("report.generated") and wildcard prefix ("subscription.*")
     const eventPrefix = triggerEvent.split(".")[0];
+    const wildcardEvent = `${eventPrefix}.*`;
 
+    // Use .in() with safe parameterized values instead of .or() string interpolation
     const { data: automations, error } = await sb
       .from("n8n_automations")
       .select("id, name, webhook_url, webhook_method, headers, timeout_ms, max_retries, metadata")
       .eq("enabled", true)
-      .or(`trigger_event.eq.${triggerEvent},trigger_event.eq.${eventPrefix}.*`);
+      .in("trigger_event", [triggerEvent, wildcardEvent]);
 
     if (error) {
       return;
@@ -96,6 +98,42 @@ export async function dispatchN8NWebhook(
   }
 }
 
+// ── URL Safety ──────────────────────────────────────────────────────
+
+/** Block private/internal IPs and non-HTTPS schemes to prevent SSRF */
+function isUrlSafe(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    // Only allow http(s) schemes
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    // Block obvious private/internal hostnames
+    const hostname = url.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "0.0.0.0" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      hostname === "metadata.google.internal" ||
+      hostname === "169.254.169.254"
+    ) return false;
+    // Block private IP ranges (10.x, 172.16-31.x, 192.168.x)
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const [, a, b] = ipv4Match.map(Number);
+      if (a === 10) return false;
+      if (a === 172 && b >= 16 && b <= 31) return false;
+      if (a === 192 && b === 168) return false;
+      if (a === 169 && b === 254) return false; // link-local / cloud metadata
+      if (a === 0) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ── Single Dispatch ──────────────────────────────────────────────────
 
 async function dispatchSingle(
@@ -112,6 +150,17 @@ async function dispatchSingle(
       error: "No webhook_url configured",
     });
     return { automation_name: automation.name, status: "skipped" };
+  }
+
+  // SSRF protection: validate webhook URL before dispatching
+  if (!isUrlSafe(automation.webhook_url)) {
+    console.error(`[n8n] Blocked unsafe webhook URL for automation "${automation.name}": ${automation.webhook_url}`);
+    await logResult(supabase, automation, triggerEvent, payload, {
+      automation_name: automation.name,
+      status: "error",
+      error: "Blocked: webhook URL points to private/internal address",
+    });
+    return { automation_name: automation.name, status: "error", error: "Blocked: unsafe URL" };
   }
 
   const startTime = Date.now();

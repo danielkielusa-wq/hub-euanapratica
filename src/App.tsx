@@ -112,6 +112,7 @@ const AdminMenuConfig = lazy(() => import("./pages/admin/AdminMenuConfig"));
 const AdminHubConfig = lazy(() => import("./pages/admin/AdminHubConfig"));
 const AdminContentStudio = lazy(() => import("./pages/admin/AdminContentStudio"));
 const AdminContentFactory = lazy(() => import("./pages/admin/AdminContentFactory"));
+const AdminContentPipeline = lazy(() => import("./pages/admin/AdminContentPipeline"));
 const AdminSDR = lazy(() => import("./pages/admin/AdminSDR"));
 const AdminConteudoGrupo = lazy(() => import("./pages/admin/AdminConteudoGrupo"));
 const MentorDisponibilidade = lazy(() => import("./pages/mentor/MentorDisponibilidade"));
@@ -658,6 +659,11 @@ function AppRoutes() {
       <Route path="/admin/content-factory" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminContentFactory />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/content-pipeline" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminContentPipeline />
         </ProtectedRoute>
       } />
       <Route path="/admin/sdr" element={

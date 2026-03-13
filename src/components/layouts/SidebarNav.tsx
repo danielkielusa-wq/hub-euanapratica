@@ -47,6 +47,7 @@ import {
   Webhook,
   Timer,
   Sparkles,
+  Kanban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -206,6 +207,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'FERRAMENTAS AI',
     items: [
       { label: 'Content Factory', href: '/admin/content-factory', icon: Zap, badge: { text: 'AI', variant: 'ai' as const } },
+      { label: 'Content Pipeline', href: '/admin/content-pipeline', icon: Kanban },
       { label: 'AI SDR', href: '/admin/sdr', icon: Target, badge: { text: 'AI', variant: 'ai' as const } },
       { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
       { label: 'Conteúdo Grupo', href: '/admin/conteudo-grupo', icon: Sparkles, badge: { text: 'IA', variant: 'ai' as const } },

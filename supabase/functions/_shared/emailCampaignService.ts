@@ -59,7 +59,11 @@ async function getUnsubscribeSecret(supabase: SupabaseClient): Promise<string> {
     .select("value")
     .eq("key", "email_unsubscribe_secret")
     .single();
-  return data?.value || "enp-unsub-fallback";
+  if (!data?.value) {
+    console.error("[emailCampaign] CRITICAL: email_unsubscribe_secret not found in app_configs");
+    throw new Error("email_unsubscribe_secret not configured in app_configs");
+  }
+  return data.value;
 }
 
 async function hmacSign(data: string, secret: string): Promise<string> {

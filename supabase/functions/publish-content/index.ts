@@ -88,13 +88,11 @@ async function publishSingle(publicationId: string) {
     .update({ status: "publishing" })
     .eq("id", publicationId);
 
-  // Fetch social account
-  const { data: account } = await supabase
-    .from("social_accounts")
-    .select("*")
-    .eq("platform", pub.platform)
-    .eq("is_active", true)
-    .single();
+  // Fetch social account with decrypted tokens
+  const { data: accountRows } = await supabase.rpc("get_decrypted_social_account", {
+    p_platform: pub.platform,
+  });
+  const account = accountRows?.[0] ?? null;
 
   if (!account) {
     await supabase

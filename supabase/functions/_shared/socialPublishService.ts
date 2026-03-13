@@ -515,7 +515,28 @@ export async function publishToThreads(
 
   // Publish the container
   const postId = await publishThreadsContainer(refreshedAccount, containerId);
-  const postUrl = `https://www.threads.net/@${refreshedAccount.account_name || "user"}/post/${postId}`;
+
+  // Wait a moment for Threads to index the post, then fetch the real permalink
+  let postUrl = `https://www.threads.net/@${refreshedAccount.account_name || "user"}/post/${postId}`;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await new Promise((r) => setTimeout(r, attempt * 2000)); // 2s, 4s, 6s
+      const permalinkResp = await fetch(
+        `https://graph.threads.net/v1.0/${postId}?fields=permalink&access_token=${refreshedAccount.access_token}`,
+      );
+      const body = await permalinkResp.text();
+      console.log(`[publishToThreads] Permalink attempt ${attempt}: status=${permalinkResp.status} body=${body}`);
+      if (permalinkResp.ok) {
+        const permalinkData = JSON.parse(body);
+        if (permalinkData.permalink) {
+          postUrl = permalinkData.permalink;
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn(`[publishToThreads] Permalink attempt ${attempt} failed:`, (err as Error).message);
+    }
+  }
 
   return { postId, postUrl };
 }

@@ -52,7 +52,9 @@ export async function getCreditCosts(
     if (data?.value) {
       return JSON.parse(data.value) as CreditCosts;
     }
+    console.warn("[creditService] credit_costs key not found in app_configs — using defaults");
   } catch (err) {
+    console.error("[creditService] Failed to fetch credit_costs from app_configs:", err);
   }
   return { ...DEFAULT_CREDIT_COSTS };
 }

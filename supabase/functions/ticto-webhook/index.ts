@@ -4,13 +4,8 @@ import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { handleSubscriptionEvent } from "../_shared/subscriptionHandlers.ts";
 import { dispatchN8NWebhook } from "../_shared/n8nService.ts";
 import { triggerEmailAutomation } from "../_shared/emailCampaignService.ts";
-import { timingSafeEqual } from "../_shared/authGuard.ts";
+import { timingSafeEqual, getCorsHeaders } from "../_shared/authGuard.ts";
 import type { TictoSubscriptionPayload, MatchedPlan } from "../_shared/subscriptionHandlers.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ticto-token",
-};
 
 interface TictoPayload extends TictoSubscriptionPayload {
   [key: string]: unknown;
@@ -19,7 +14,7 @@ interface TictoPayload extends TictoSubscriptionPayload {
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -38,14 +33,14 @@ serve(async (req) => {
     if (!expectedToken) {
       return new Response(JSON.stringify({ error: "Webhook not configured" }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
     if (!receivedToken || !timingSafeEqual(receivedToken, expectedToken)) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -57,28 +52,46 @@ serve(async (req) => {
     );
 
     // 4. Determine if this is a SUBSCRIPTION or ONE-TIME purchase
-    const offerId = String(payload.item?.offer_id || "");
-    const productId = String(payload.item?.product_id || "");
+    const offerId = String(payload.item?.offer_id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    const productId = String(payload.item?.product_id || "").replace(/[^a-zA-Z0-9_-]/g, "");
 
     let matchedPlan: MatchedPlan | null = null;
 
     if (offerId) {
-      const { data } = await supabase
+      const { data: byMonthly } = await supabase
         .from("plans")
         .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
-        .or(`ticto_offer_id_monthly.eq.${offerId},ticto_offer_id_annual.eq.${offerId}`)
+        .eq("ticto_offer_id_monthly", offerId)
         .maybeSingle();
-      matchedPlan = data;
+      if (byMonthly) {
+        matchedPlan = byMonthly;
+      } else {
+        const { data: byAnnual } = await supabase
+          .from("plans")
+          .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
+          .eq("ticto_offer_id_annual", offerId)
+          .maybeSingle();
+        matchedPlan = byAnnual;
+      }
     }
 
     // Fallback: also try product_id against plan offers
     if (!matchedPlan && productId) {
-      const { data } = await supabase
+      const { data: byMonthly } = await supabase
         .from("plans")
         .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
-        .or(`ticto_offer_id_monthly.eq.${productId},ticto_offer_id_annual.eq.${productId}`)
+        .eq("ticto_offer_id_monthly", productId)
         .maybeSingle();
-      matchedPlan = data;
+      if (byMonthly) {
+        matchedPlan = byMonthly;
+      } else {
+        const { data: byAnnual } = await supabase
+          .from("plans")
+          .select("id, name, ticto_offer_id_monthly, ticto_offer_id_annual")
+          .eq("ticto_offer_id_annual", productId)
+          .maybeSingle();
+        matchedPlan = byAnnual;
+      }
     }
 
     // ================================================================
@@ -156,7 +169,7 @@ serve(async (req) => {
         JSON.stringify({ success: result.success, action: result.action }),
         {
           status: httpStatus,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -191,7 +204,7 @@ serve(async (req) => {
         });
         return new Response(JSON.stringify({ success: true, warning: "No customer email" }), {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
@@ -293,7 +306,7 @@ serve(async (req) => {
 
           return new Response(JSON.stringify({ success: true, status: eventStatus, type: "live_purchase" }), {
             status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           });
         }
       }
@@ -580,12 +593,12 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, status: eventStatus }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

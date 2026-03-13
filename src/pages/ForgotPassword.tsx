@@ -34,6 +34,7 @@ export default function ForgotPassword() {
       if (resetError) {
         // Não revelar se o email existe ou não por segurança
         // Sempre mostrar sucesso para evitar enumeração de emails
+        console.error('[ForgotPassword] resetPasswordForEmail error:', resetError.message, resetError.status);
       }
 
       // Sempre mostrar sucesso (por segurança)

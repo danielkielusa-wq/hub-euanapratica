@@ -27,24 +27,41 @@ Deno.serve(async (req: Request) => {
     const payload = await req.json();
     const { VideoLibraryId, VideoGuid, Status } = payload;
 
-    if (!VideoGuid || Status === undefined) {
+    // Sanitize VideoGuid to prevent path traversal in URLs
+    const safeGuidPattern = /^[a-zA-Z0-9-]+$/;
+    if (!VideoGuid || Status === undefined || !safeGuidPattern.test(String(VideoGuid))) {
       return new Response(
         JSON.stringify({ error: "Invalid payload" }),
         { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
-    // Validate library ID matches our config
+    // Validate library ID matches our config — reject if config is missing
+    let bunnyConfig;
     try {
-      const bunnyConfig = await getApiConfig("bunny_stream");
-      const configLibraryId = bunnyConfig.credentials.library_id;
-      if (configLibraryId && String(VideoLibraryId) !== String(configLibraryId)) {
-        return new Response(
-          JSON.stringify({ error: "Library ID mismatch" }),
-          { status: 403, headers: { ...cors, "Content-Type": "application/json" } }
-        );
-      }
+      bunnyConfig = await getApiConfig("bunny_stream");
     } catch (configErr) {
+      console.error("[bunny-webhook] bunny_stream config not found — rejecting request");
+      return new Response(
+        JSON.stringify({ error: "Webhook not configured" }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
+    const configLibraryId = bunnyConfig.credentials.library_id;
+    if (!configLibraryId) {
+      console.error("[bunny-webhook] library_id not set in bunny_stream config — rejecting");
+      return new Response(
+        JSON.stringify({ error: "Webhook library_id not configured" }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (String(VideoLibraryId) !== String(configLibraryId)) {
+      return new Response(
+        JSON.stringify({ error: "Library ID mismatch" }),
+        { status: 403, headers: { ...cors, "Content-Type": "application/json" } }
+      );
     }
 
     const supabase = createClient(

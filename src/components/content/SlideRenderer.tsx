@@ -5,6 +5,7 @@
 
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { toPng } from 'html-to-image';
+import DOMPurify from 'dompurify';
 
 // ── Logo base64 cache ─────────────────────────────────────────────────────
 const _logoCache: Record<string, string> = {};
@@ -99,7 +100,8 @@ export async function renderSlideToBlob(
       logoWhiteSrc,
       ...template.colors,
     };
-    const html = interpolate(template.html_template, vars);
+    const rawHtml = interpolate(template.html_template, vars);
+    const html = DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['style'], ADD_ATTR: ['class', 'style'] });
 
     const wrapper = document.createElement('div');
     wrapper.innerHTML = html;
@@ -156,7 +158,8 @@ export function SlidePreviewFrame({
     logoWhiteSrc,
     ...template.colors,
   };
-  const html = interpolate(template.html_template, vars);
+  const rawHtml = interpolate(template.html_template, vars);
+  const html = DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['style'], ADD_ATTR: ['class', 'style'] });
 
   return (
     <div

@@ -95,9 +95,9 @@ export default function Onboarding() {
 
   const getDashboardPath = useCallback(() => {
     // Check if there's a pending espaco_id from invitation flow
-    const pendingEspacoId = localStorage.getItem('pending_espaco_id');
+    const pendingEspacoId = sessionStorage.getItem('pending_espaco_id');
     if (pendingEspacoId) {
-      localStorage.removeItem('pending_espaco_id');
+      sessionStorage.removeItem('pending_espaco_id');
       return `/dashboard/espacos/${pendingEspacoId}`;
     }
 

@@ -8,8 +8,10 @@
  * USO EXCLUSIVO: Edge Functions com service_role key
  */
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getApiConfig, type ApiConfig } from "./apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl, type CostProvider } from "./apiCostService.ts";
+import { checkRateLimit } from "./rateLimitService.ts";
 
 // ── Public interfaces ────────────────────────────────────────
 
@@ -72,6 +74,21 @@ const RETRYABLE_ERROR_KEYWORDS = [
 export async function callLLM(options: CallLLMOptions): Promise<CallLLMResult> {
   const startTime = Date.now();
   const timeoutMs = options.timeoutMs ?? 55_000;
+
+  // 0. Rate limit check (per-user, per-function)
+  if (options.userId) {
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const rateCheck = await checkRateLimit(sb, options.userId, options.edgeFunction, {
+      maxRequests: 10,
+      windowSeconds: 60,
+    });
+    if (!rateCheck.allowed) {
+      throw new LLMError(rateCheck.message || "Rate limit exceeded", 429, false);
+    }
+  }
 
   // 1. Get primary config
   const primaryConfig = await getApiConfig(options.apiKey);

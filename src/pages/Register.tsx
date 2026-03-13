@@ -45,10 +45,10 @@ export default function Register() {
   // Store invitation token and espaco_id in localStorage for processing after registration
   useEffect(() => {
     if (invitationToken) {
-      localStorage.setItem('invitation_token', invitationToken);
+      sessionStorage.setItem('invitation_token', invitationToken);
     }
     if (espacoIdParam) {
-      localStorage.setItem('pending_espaco_id', espacoIdParam);
+      sessionStorage.setItem('pending_espaco_id', espacoIdParam);
     }
   }, [invitationToken, espacoIdParam]);
 
@@ -109,7 +109,7 @@ export default function Register() {
       });
 
       // Process invitation if token exists
-      const storedToken = localStorage.getItem('invitation_token');
+      const storedToken = sessionStorage.getItem('invitation_token');
       if (storedToken) {
         try {
           const { data: session } = await supabase.auth.getSession();
@@ -117,7 +117,7 @@ export default function Register() {
             await supabase.functions.invoke('process-invitation', {
               body: { token: storedToken },
             });
-            localStorage.removeItem('invitation_token');
+            sessionStorage.removeItem('invitation_token');
             toast({
               title: 'Conta criada!',
               description: 'Você foi matriculado no espaço automaticamente.',
