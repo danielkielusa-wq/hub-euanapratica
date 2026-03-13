@@ -14,6 +14,7 @@ export interface PriorityItem {
   score: number;
   priority_score: number;
   phase: string;
+  signal?: string;
   reason: string;
   suggested_action: string;
   suggested_message: string;

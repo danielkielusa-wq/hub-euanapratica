@@ -35,9 +35,15 @@ export function parseJsonArray(raw: string, wrapperKey?: string): any[] {
   }
 
   // 3. Extract JSON structure with regex and clean up
-  const jsonMatch = text.match(/[\[{][\s\S]*[\]}]/);
+  let jsonMatch = text.match(/[\[{][\s\S]*[\]}]/);
   if (!jsonMatch) {
-    throw new Error(`No JSON found in LLM response. Preview: ${text.slice(0, 300)}`);
+    // Truncated response with no closing bracket — try from first [ or {
+    const startMatch = text.match(/[\[{]/);
+    if (startMatch) {
+      jsonMatch = [text.slice(startMatch.index!)];
+    } else {
+      throw new Error(`No JSON found in LLM response. Preview: ${text.slice(0, 300)}`);
+    }
   }
 
   let cleaned = jsonMatch[0];
@@ -135,13 +141,28 @@ function extractArray(obj: any, wrapperKey?: string): any[] | null {
  * and closing all open brackets.
  */
 function repairTruncatedJson(text: string): string | null {
-  // Find the last complete object (ends with })
-  const lastCompleteObj = text.lastIndexOf("}");
-  if (lastCompleteObj === -1) return null;
+  // Strategy: find the last `},` or `}` that closes a complete array item,
+  // then slice there and close remaining brackets.
+  // We search backwards for `}` preceded by a complete key-value structure.
 
-  let truncated = text.slice(0, lastCompleteObj + 1);
+  // First, try finding the last `},` which marks end of a complete array element
+  let cutPoint = -1;
+  const lastCommaObj = text.lastIndexOf("},");
+  if (lastCommaObj !== -1) {
+    cutPoint = lastCommaObj + 1; // include the }
+  } else {
+    // Try last `}` that isn't inside an incomplete element
+    cutPoint = text.lastIndexOf("}");
+  }
 
-  // Count open/close brackets to determine what needs closing
+  if (cutPoint === -1) return null;
+
+  let truncated = text.slice(0, cutPoint + 1);
+
+  // Remove trailing comma if present
+  truncated = truncated.replace(/,\s*$/, "");
+
+  // Count brackets outside of strings to determine what needs closing
   let openBraces = 0;
   let openBrackets = 0;
   let inString = false;
@@ -158,8 +179,34 @@ function repairTruncatedJson(text: string): string | null {
     if (ch === "]") openBrackets--;
   }
 
-  // Remove trailing comma if present
-  truncated = truncated.replace(/,\s*$/, "");
+  // If inString is true, we're stuck inside an unclosed string.
+  // Backtrack further: find the last `}` before a clean boundary
+  if (inString) {
+    // Find the last `"}, ` or `"}]` pattern — a clean object close
+    const cleanClose = truncated.match(/.*"}\s*,?\s*/s);
+    if (cleanClose) {
+      const altPoint = truncated.lastIndexOf('"}');
+      if (altPoint !== -1) {
+        truncated = truncated.slice(0, altPoint + 2);
+        truncated = truncated.replace(/,\s*$/, "");
+        // Recount brackets
+        openBraces = 0;
+        openBrackets = 0;
+        inString = false;
+        escape = false;
+        for (const ch of truncated) {
+          if (escape) { escape = false; continue; }
+          if (ch === "\\") { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{") openBraces++;
+          if (ch === "}") openBraces--;
+          if (ch === "[") openBrackets++;
+          if (ch === "]") openBrackets--;
+        }
+      }
+    }
+  }
 
   // Close open brackets
   for (let i = 0; i < openBrackets; i++) truncated += "]";

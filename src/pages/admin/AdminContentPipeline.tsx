@@ -1,16 +1,20 @@
-import { useState, useRef, useCallback, useMemo, type DragEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useCallback, useMemo, useEffect, type DragEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { PieceEditModal } from '@/components/content/PieceEditModal';
 import {
   Lightbulb,
   FileText,
   Video,
-  Scissors,
   CheckCircle2,
   Rocket,
   Archive,
@@ -18,16 +22,17 @@ import {
   Clock,
   Image,
   ExternalLink,
-  ArrowRight,
   Filter,
   Copy,
-  ChevronRight,
   Megaphone,
-  X,
+  Save,
+  Loader2,
+  CalendarDays,
+  Send,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useContentPieces, useUpdatePieceStatus, type ContentPiece } from '@/hooks/useAdminContentFactory';
+import { useContentPieces, useUpdatePieceStatus, useUpdatePiece, useDeletePiece, useReorderPieces, type ContentPiece } from '@/hooks/useAdminContentFactory';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -46,6 +51,7 @@ const COLUMNS = [
 
 const FORMAT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   short: { label: 'Short', color: '#7C3AED', bg: '#EDE9FE' },
+  medium_video: { label: 'YT Médio', color: '#EA580C', bg: '#FFEDD5' },
   long_video: { label: 'YouTube', color: '#DC2626', bg: '#FEE2E2' },
   carousel: { label: 'Carrossel', color: '#2563EB', bg: '#DBEAFE' },
   stories: { label: 'Stories', color: '#EC4899', bg: '#FCE7F3' },
@@ -131,6 +137,7 @@ function viralityColor(score: number): string {
 const FILTERS = [
   { id: 'all', label: 'Todos' },
   { id: 'short', label: 'Shorts' },
+  { id: 'medium_video', label: 'YT Médio' },
   { id: 'long_video', label: 'YouTube' },
   { id: 'carousel', label: 'Carrossel' },
 ] as const;
@@ -139,21 +146,65 @@ const FILTERS = [
 
 export default function AdminContentPipeline() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: pieces, isLoading } = useContentPieces();
   const { data: pubMap } = usePublicationsByPiece();
   const { data: assetCounts } = useAssetCountsByPiece();
   const updateStatus = useUpdatePieceStatus();
+  const reorderPieces = useReorderPieces();
+  const deletePiece = useDeletePiece();
 
   const [formatFilter, setFormatFilter] = useState('all');
   const [showDiscarded, setShowDiscarded] = useState(false);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ col: string; index: number } | null>(null);
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const dragRef = useRef<{ id: string; from: string } | null>(null);
 
+  // Auto-open modal from ?piece=ID query param (e.g. from calendar invite link)
+  const [deepLinkPiece, setDeepLinkPiece] = useState<ContentPiece | null>(null);
+  const deepLinkPieceId = useRef<string | null>(null);
+
+  // Capture piece param on mount (before any re-renders clear it)
+  if (deepLinkPieceId.current === null) {
+    deepLinkPieceId.current = new URLSearchParams(window.location.search).get('piece') || '';
+  }
+
+  useEffect(() => {
+    const targetId = deepLinkPieceId.current;
+    if (!targetId || isLoading) return;
+
+    // Run once: clear the ref so this doesn't fire again
+    deepLinkPieceId.current = '';
+
+    // Clean URL without triggering React Router re-render
+    window.history.replaceState(null, '', window.location.pathname);
+
+    // Try local array first
+    const found = pieces?.find(p => p.id === targetId);
+    if (found) {
+      setSelectedPieceId(targetId);
+      return;
+    }
+
+    // Fetch individually if not in local array (e.g. filtered out)
+    (supabase as any)
+      .from('content_pieces')
+      .select('*')
+      .eq('id', targetId)
+      .single()
+      .then(({ data }: any) => {
+        if (data) {
+          setDeepLinkPiece(data);
+          setSelectedPieceId(targetId);
+        }
+      });
+  }, [pieces, isLoading]);
+
   const selectedPiece = useMemo(() => {
-    if (!selectedPieceId || !pieces) return null;
-    return pieces.find(p => p.id === selectedPieceId) || null;
-  }, [selectedPieceId, pieces]);
+    if (!selectedPieceId) return null;
+    return pieces?.find(p => p.id === selectedPieceId) || deepLinkPiece || null;
+  }, [selectedPieceId, pieces, deepLinkPiece]);
 
   // Filter pieces
   const filteredPieces = useMemo(() => {
@@ -183,7 +234,7 @@ export default function AdminContentPipeline() {
     });
   }, [showDiscarded, grouped]);
 
-  // ── Drag handlers (native HTML5, like Idea Kanban) ──
+  // ── Drag handlers ──
 
   const onDragStart = useCallback((e: DragEvent, id: string, from: string) => {
     dragRef.current = { id, from };
@@ -197,29 +248,79 @@ export default function AdminContentPipeline() {
     if (e.currentTarget instanceof HTMLElement) e.currentTarget.style.opacity = '1';
     dragRef.current = null;
     setDragOverCol(null);
+    setDropIndicator(null);
   }, []);
 
-  const onDragOver = useCallback((e: DragEvent, col: string) => {
+  const onDragOverCol = useCallback((e: DragEvent, col: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverCol(col);
   }, []);
 
-  const onDragLeave = useCallback((e: DragEvent, col: string) => {
+  const onDragLeaveCol = useCallback((e: DragEvent, col: string) => {
     const zone = e.currentTarget as HTMLElement;
     if (!zone.contains(e.relatedTarget as Node)) {
       setDragOverCol(prev => prev === col ? null : prev);
+      setDropIndicator(prev => prev?.col === col ? null : prev);
     }
+  }, []);
+
+  // Calculate drop index from mouse position over cards
+  const onDragOverCard = useCallback((e: DragEvent, col: string, cardIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const insertIndex = e.clientY < midY ? cardIndex : cardIndex + 1;
+    setDropIndicator({ col, index: insertIndex });
+    setDragOverCol(col);
   }, []);
 
   const onDrop = useCallback((e: DragEvent, toCol: string) => {
     e.preventDefault();
     setDragOverCol(null);
+    const indicator = dropIndicator;
+    setDropIndicator(null);
     const drag = dragRef.current;
-    if (!drag || drag.from === toCol) return;
-    updateStatus.mutate({ id: drag.id, status: toCol });
+    if (!drag) return;
     dragRef.current = null;
-  }, [updateStatus]);
+
+    const colCards = [...(grouped[toCol] || [])];
+    const isSameCol = drag.from === toCol;
+
+    if (isSameCol && !indicator) return; // no-op
+
+    // Remove dragged piece from source list if same column
+    const draggedPiece = filteredPieces.find(p => p.id === drag.id);
+    if (!draggedPiece) return;
+
+    let targetCards: ContentPiece[];
+    if (isSameCol) {
+      targetCards = colCards.filter(p => p.id !== drag.id);
+    } else {
+      targetCards = [...colCards];
+    }
+
+    // Insert at position
+    const insertAt = indicator?.col === toCol ? indicator.index : targetCards.length;
+    // Adjust insert index if same column and removing shifted indices
+    let adjustedInsert = insertAt;
+    if (isSameCol) {
+      const oldIndex = colCards.findIndex(p => p.id === drag.id);
+      if (oldIndex < insertAt) adjustedInsert = Math.max(0, insertAt - 1);
+    }
+    targetCards.splice(adjustedInsert, 0, draggedPiece);
+
+    // Build sort_order updates
+    const updates = targetCards.map((p, i) => ({
+      id: p.id,
+      sort_order: i,
+      ...(p.id === drag.id && !isSameCol ? { status: toCol } : {}),
+    }));
+
+    reorderPieces.mutate(updates);
+  }, [dropIndicator, grouped, filteredPieces, reorderPieces]);
 
   // ── Loading state ──
 
@@ -236,15 +337,16 @@ export default function AdminContentPipeline() {
 
   return (
     <DashboardLayout>
+      <div className="min-h-screen bg-muted/40">
       {/* Gradient bar */}
       <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #6366F1, #8B5CF6, #F59E0B, #10B981, #06B6D4)' }} />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-4">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-white dark:bg-card border-b border-border/50">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Content Pipeline</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {filteredPieces.length} conteúdos · Arraste entre colunas para atualizar o status
+            {filteredPieces.length} conteúdos · Arraste para mover entre colunas ou reordenar
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -269,7 +371,7 @@ export default function AdminContentPipeline() {
       </div>
 
       {/* Format filter tabs */}
-      <div className="flex items-center gap-1 px-4 sm:px-6 pb-3 border-b border-border/50 overflow-x-auto">
+      <div className="flex items-center gap-1 px-4 sm:px-6 py-3 bg-white dark:bg-card border-b border-border/50 overflow-x-auto">
         <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
         {FILTERS.map(f => {
           const active = formatFilter === f.id;
@@ -321,10 +423,10 @@ export default function AdminContentPipeline() {
 
                 {/* Drop zone */}
                 <div
-                  className="flex flex-col gap-2.5 min-h-[100px] rounded-xl p-1 transition-colors"
+                  className="flex flex-col gap-0 min-h-[100px] rounded-xl p-1 transition-colors"
                   style={{ backgroundColor: isOver ? col.color + '20' : 'transparent' }}
-                  onDragOver={(e) => onDragOver(e, col.id)}
-                  onDragLeave={(e) => onDragLeave(e, col.id)}
+                  onDragOver={(e) => onDragOverCol(e, col.id)}
+                  onDragLeave={(e) => onDragLeaveCol(e, col.id)}
                   onDrop={(e) => onDrop(e, col.id)}
                 >
                   {cards.length === 0 ? (
@@ -332,17 +434,31 @@ export default function AdminContentPipeline() {
                       {col.emptyLabel}
                     </div>
                   ) : (
-                    cards.map(piece => (
-                      <PipelineCard
-                        key={piece.id}
-                        piece={piece}
-                        publications={pubMap?.[piece.id]}
-                        assetCount={assetCounts?.[piece.id] || 0}
-                        colColor={col.color}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
-                        onClick={() => setSelectedPieceId(piece.id)}
-                      />
+                    cards.map((piece, cardIdx) => (
+                      <div key={piece.id}>
+                        {/* Drop indicator line above card */}
+                        {dropIndicator?.col === col.id && dropIndicator.index === cardIdx && (
+                          <div className="h-0.5 rounded-full mx-1 my-1" style={{ background: col.color }} />
+                        )}
+                        <div
+                          className="py-1"
+                          onDragOver={(e) => onDragOverCard(e, col.id, cardIdx)}
+                        >
+                          <PipelineCard
+                            piece={piece}
+                            publications={pubMap?.[piece.id]}
+                            assetCount={assetCounts?.[piece.id] || 0}
+                            colColor={col.color}
+                            onDragStart={onDragStart}
+                            onDragEnd={onDragEnd}
+                            onClick={() => setSelectedPieceId(piece.id)}
+                          />
+                        </div>
+                        {/* Drop indicator line after last card */}
+                        {dropIndicator?.col === col.id && dropIndicator.index === cardIdx + 1 && cardIdx === cards.length - 1 && (
+                          <div className="h-0.5 rounded-full mx-1 my-1" style={{ background: col.color }} />
+                        )}
+                      </div>
                     ))
                   )}
                 </div>
@@ -351,251 +467,25 @@ export default function AdminContentPipeline() {
           })}
         </div>
       </div>
-      {/* Detail Sheet */}
-      <Sheet open={!!selectedPieceId} onOpenChange={(open) => { if (!open) setSelectedPieceId(null); }}>
-        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-[480px] p-0 overflow-hidden">
+
+      {/* Edit Dialog */}
+      <Dialog open={!!selectedPieceId} onOpenChange={(open) => { if (!open) { setSelectedPieceId(null); setDeepLinkPiece(null); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
           {selectedPiece && (
-            <PieceDetailDrawer
+            <PieceEditModal
               piece={selectedPiece}
               publications={pubMap?.[selectedPiece.id]}
+              onClose={() => setSelectedPieceId(null)}
               onStatusChange={(status) => {
                 updateStatus.mutate({ id: selectedPiece.id, status });
               }}
-              onOpenFactory={() => {
-                setSelectedPieceId(null);
-                navigate('/admin/content-factory');
-              }}
+              onDelete={(id) => deletePiece.mutate(id)}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+      </div>
     </DashboardLayout>
-  );
-}
-
-// ── Piece Detail Drawer ──────────────────────────────────────────────
-
-interface PieceDetailDrawerProps {
-  piece: ContentPiece;
-  publications?: PubSummary[];
-  onStatusChange: (status: string) => void;
-  onOpenFactory: () => void;
-}
-
-function PieceDetailDrawer({ piece, publications, onStatusChange, onOpenFactory }: PieceDetailDrawerProps) {
-  const title = piece.title || piece.hook_variations?.[0]?.text?.slice(0, 80) || 'Sem título';
-  const fmt = FORMAT_CONFIG[piece.format];
-  const tone = TONE_CONFIG[piece.tone];
-  const colConfig = COLUMNS.find(c => c.id === piece.status);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard?.writeText(text);
-  };
-
-  // Deduplicate publications
-  const dedupedPubs = useMemo(() => {
-    if (!publications) return [];
-    const STATUS_PRIORITY: Record<string, number> = { published: 3, publishing: 2, scheduled: 1 };
-    const byPlatform = new Map<string, PubSummary>();
-    for (const pub of publications) {
-      const existing = byPlatform.get(pub.platform);
-      if (!existing || (STATUS_PRIORITY[pub.status] || 0) > (STATUS_PRIORITY[existing.status] || 0)) {
-        byPlatform.set(pub.platform, pub);
-      }
-    }
-    return Array.from(byPlatform.values());
-  }, [publications]);
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-border/50 flex-shrink-0">
-        <div className="flex items-center gap-2 mb-2">
-          {fmt && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: fmt.bg, color: fmt.color }}>
-              {fmt.label}
-            </span>
-          )}
-          {tone && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: tone.bg, color: tone.color }}>
-              {tone.label}
-            </span>
-          )}
-          {piece.virality_score > 0 && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: viralityColor(piece.virality_score) + '20', color: viralityColor(piece.virality_score) }}>
-              {piece.virality_score}%
-            </span>
-          )}
-        </div>
-        <h2 className="font-bold text-lg text-foreground leading-snug">{title}</h2>
-      </div>
-
-      {/* Body */}
-      <ScrollArea className="flex-1">
-        <div className="px-5 py-4 space-y-5">
-
-          {/* Status selector */}
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Status</label>
-            <div className="flex flex-wrap gap-1.5">
-              {COLUMNS.filter(c => c.id !== 'discarded').map(col => {
-                const active = piece.status === col.id;
-                const Icon = col.icon;
-                return (
-                  <button
-                    key={col.id}
-                    onClick={() => onStatusChange(col.id)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      active
-                        ? 'text-white shadow-sm'
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                    }`}
-                    style={active ? { background: col.color } : undefined}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {col.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Publications */}
-          {dedupedPubs.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Publicações</label>
-              <div className="space-y-1.5">
-                {dedupedPubs.map(pub => {
-                  const pl = PLATFORM_ICONS[pub.platform] || { label: pub.platform, color: '#6B7280' };
-                  const isPublished = pub.status === 'published';
-                  return (
-                    <div key={pub.platform} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs" style={{ color: pl.color }}>{pl.label}</span>
-                        <span className={`text-xs ${isPublished ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                          {pub.status}
-                        </span>
-                      </div>
-                      {pub.platform_post_url && (
-                        <a href={pub.platform_post_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-0.5">
-                          <ExternalLink className="w-3 h-3" /> Ver post
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Hooks */}
-          {piece.hook_variations?.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Hooks ({piece.hook_variations.length})
-              </label>
-              <div className="space-y-1.5">
-                {piece.hook_variations.map((hook, i) => (
-                  <div key={i} className="group relative p-2.5 rounded-lg bg-muted/30 text-sm leading-relaxed">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{hook.style}</span>
-                    <p className="mt-0.5">{hook.text}</p>
-                    <button
-                      onClick={() => copyToClipboard(hook.text)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Script sections */}
-          {piece.script_sections?.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Roteiro ({piece.script_sections.length} seções)
-                </label>
-                <button
-                  onClick={() => {
-                    const full = piece.script_sections.map(s => `## ${s.heading}\n${s.content}`).join('\n\n');
-                    copyToClipboard(full);
-                  }}
-                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-                >
-                  <Copy className="w-3 h-3" /> Copiar tudo
-                </button>
-              </div>
-              <div className="space-y-2">
-                {piece.script_sections.map((section, i) => (
-                  <div key={i} className="p-2.5 rounded-lg bg-muted/30">
-                    <p className="text-xs font-semibold text-foreground mb-1">{section.heading}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">{section.content}</p>
-                    {section.camera_note && (
-                      <p className="text-[10px] text-blue-500 mt-1 flex items-center gap-1">
-                        <Video className="w-3 h-3" /> {section.camera_note}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* CTA */}
-          {piece.cta && (
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CTA</label>
-              <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                <p className="text-sm text-emerald-700 dark:text-emerald-300">{piece.cta}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Social posts */}
-          {piece.social_posts?.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Posts sociais ({piece.social_posts.length})
-              </label>
-              <div className="space-y-2">
-                {piece.social_posts.map((post, i) => {
-                  const pl = PLATFORM_ICONS[post.platform] || { label: post.platform, color: '#6B7280' };
-                  return (
-                    <div key={i} className="group relative p-2.5 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[10px] font-bold" style={{ color: pl.color }}>{post.platform}</span>
-                        <span className="text-[10px] text-muted-foreground">{post.char_count} chars</span>
-                      </div>
-                      <p className="text-xs leading-relaxed line-clamp-6">{post.content}</p>
-                      {post.hashtags?.length > 0 && (
-                        <p className="text-[10px] text-primary mt-1">{post.hashtags.join(' ')}</p>
-                      )}
-                      <button
-                        onClick={() => copyToClipboard(post.content + (post.hashtags?.length ? '\n\n' + post.hashtags.join(' ') : ''))}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* Footer actions */}
-      <div className="px-5 py-3 border-t border-border/50 flex items-center gap-2 flex-shrink-0">
-        <Button variant="outline" size="sm" className="text-xs flex-1" onClick={onOpenFactory}>
-          <Megaphone className="w-3.5 h-3.5 mr-1" />
-          Abrir no Content Factory
-        </Button>
-      </div>
-    </div>
   );
 }
 
@@ -625,7 +515,7 @@ function PipelineCard({ piece, publications, assetCount, colColor, onDragStart, 
       onDragStart={(e) => { dragRefLocal.current = true; onDragStart(e, piece.id, piece.status); }}
       onDragEnd={(e) => { dragRefLocal.current = false; onDragEnd(e); }}
       onClick={() => { if (!dragRefLocal.current) onClick(); }}
-      className="bg-card rounded-[14px] border border-border/50 shadow-sm p-3 cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
+      className="bg-white dark:bg-card rounded-[14px] border border-border/50 shadow-sm p-3 cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
     >
       {/* Title */}
       <h3 className="font-semibold text-[13px] text-foreground leading-snug line-clamp-2 mb-1.5">
@@ -652,9 +542,36 @@ function PipelineCard({ piece, publications, assetCount, colColor, onDragStart, 
         )}
       </div>
 
+      {/* Date indicators */}
+      {(piece.production_date || piece.scheduled_for) && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {piece.production_date && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded">
+                  <Video className="w-3 h-3" />
+                  {format(new Date(piece.production_date + 'T12:00:00'), 'dd/MM')}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Gravação: {format(new Date(piece.production_date + 'T12:00:00'), 'dd/MM/yyyy')}</TooltipContent>
+            </Tooltip>
+          )}
+          {piece.scheduled_for && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-600 bg-cyan-50 dark:bg-cyan-950/30 px-1.5 py-0.5 rounded">
+                  <Send className="w-3 h-3" />
+                  {format(new Date(piece.scheduled_for.slice(0, 10) + 'T12:00:00'), 'dd/MM')}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Publicação: {format(new Date(piece.scheduled_for.slice(0, 10) + 'T12:00:00'), 'dd/MM/yyyy')}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      )}
+
       {/* Platform publication badges (deduplicated — one per platform, best status wins) */}
       {publications && publications.length > 0 && (() => {
-        // Deduplicate: keep best status per platform (published > scheduled > others)
         const STATUS_PRIORITY: Record<string, number> = { published: 3, publishing: 2, scheduled: 1 };
         const byPlatform = new Map<string, PubSummary>();
         for (const pub of publications) {

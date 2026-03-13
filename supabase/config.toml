@@ -249,3 +249,9 @@ verify_jwt = false
 
 [functions.generate-group-content]
 verify_jwt = false
+
+[functions.content-reminders]
+verify_jwt = false
+
+[functions.sync-content-calendar]
+verify_jwt = false

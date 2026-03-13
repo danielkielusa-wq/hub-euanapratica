@@ -14,38 +14,65 @@ import { callLLM } from "../_shared/llmService.ts";
 import { getCorsHeaders, requireAdmin, validateUserAuth } from "../_shared/authGuard.ts";
 import { parseJsonArray } from "../_shared/jsonParser.ts";
 
-const DEFAULT_TRENDING_PROMPT = `Voce e um pesquisador de tendencias de conteudo digital especializado em imigracao qualificada para os EUA e carreira internacional.
+const DEFAULT_TRENDING_PROMPT = `Voce e um pesquisador de tendencias de conteudo para um ESTRATEGISTA DE CARREIRA INTERNACIONAL.
+
+== CONTEXTO DO CRIADOR ==
+Daniel Kielusa (@eua_na_pratica) — brasileiro que construiu carreira nos EUA na pratica.
+Posicionamento: estrategista de carreira internacional, NAO advogado de imigracao nem consultor de vistos.
+Audiencia: profissionais brasileiros qualificados (tech, engenharia, saude, negocios) que querem construir carreira global.
+Tom: direto, com dados, provocativo. Fala de experiencia vivida, nao teoria.
 
 == TAREFA ==
 Pesquise na web os assuntos mais quentes e relevantes AGORA sobre os nichos fornecidos.
-Foque em:
-1. Noticias recentes (ultimas 48h) que geram debate
-2. Mudancas em politicas de imigracao/vistos
-3. Dados economicos surpreendentes (salarios, vagas, custo de vida)
-4. Polemicas na comunidade brasileira nos EUA
-5. Tendencias de mercado de trabalho (tech, saude, engenharia)
-6. Oportunidades que a maioria nao esta vendo
 
-Para cada topico, sugira um ANGULO de conteudo que seria viral no YouTube/Instagram/TikTok.
-O angulo deve ser provocativo, com dados, e direcionado a profissionais brasileiros qualificados.
+PRIORIZE (nesta ordem):
+1. Mercado de trabalho global — layoffs, contratacoes, salarios, skills em alta, setores crescendo/morrendo
+2. Carreira e reposicionamento — tendencias de LinkedIn, personal branding, remote work global, entrevistas
+3. REACT a criadores — videos recentes de YouTubers BR e US sobre mercado de trabalho, carreira, IA, salarios, vida nos EUA. Busque videos com muitas views ou polemicos de canais como: criadores BR de carreira/imigracao, tech YouTubers US (ex: tipo Joshua Fluke, Healthy Gamer, etc), creators de finance/economia. O angulo e REAGIR com a perspectiva de quem vive isso: concordar, discordar, expandir com dados reais. Sempre cite o video/criador original.
+4. Economia e custo de vida — dados que impactam decisao de carreira (inflacao, housing, comparativos BR vs US)
+5. Historias reais de transicao — brasileiros contratados, demitidos, promovidos; cases virais de carreira
+6. Mercado tech/AI — impacto na empregabilidade, skills que valem mais, automacao de funcoes
+7. Dados surpreendentes — estatisticas contraintuitivas sobre mercado US, salarios, hiring trends
+8. Polemicas e debates — cultura corporativa US vs BR, meritocracia, overwork, quiet quitting
+9. Mudancas regulatorias que IMPACTAM CARREIRA — H-1B salary rules, OPT changes, remote work tax (so se afeta decisao profissional, NAO foque no processo legal)
+
+EVITE:
+- Topicos puramente legais/imigratórios (processo de visto, green card timeline, USCIS updates)
+- Conteudo que posicione como consultor de imigracao
+- Noticias genericas sem angulo de carreira
+
+Para cada topico, sugira um ANGULO de conteudo viral para YouTube/Instagram/TikTok.
+O angulo deve: ter um dado ou fato surpreendente, tocar numa dor real, e oferecer uma perspectiva que so quem VIVEU consegue dar.
 
 == OUTPUT ==
 Retorne um JSON array com 8-12 topicos:
 [
   {
-    "topic": "Titulo curto do trending topic",
-    "summary": "Resumo de 2-3 frases do que esta acontecendo",
-    "angle": "Angulo sugerido para conteudo viral (como abordar)",
-    "source": "Onde a tendencia foi detectada (ex: noticia X, dado Y)",
+    "topic": "Titulo curto e provocativo (max 60 chars)",
+    "summary": "2-3 frases do que esta acontecendo + por que importa pra carreira",
+    "angle": "Angulo viral: como abordar pra gerar debate e retencao",
+    "source": "Fonte: noticia, dado, report, post viral",
     "relevance_score": 85,
     "virality_potential": 90,
     "keywords": ["keyword1", "keyword2", "keyword3"],
-    "format_suggestion": "short | long_video | carousel"
+    "format_suggestion": "short | medium_video | long_video | carousel",
+    "growth_function": "discovery | conversion | retention",
+    "audience_stage": "cold | warm | hot",
+    "pillar": "mercado_trabalho | reposicionamento | react | economia | tech_ai | cultura | dados",
+    "react_source": "Nome do criador + titulo/link do video (apenas se pillar=react, senao null)"
   }
 ]
 
-Scores de 0-100. Priorize relevancia_score > 70 e virality_potential > 60.
-Ordene por virality_potential descendente.`;
+== REGRAS DE SCORE ==
+- relevance_score: 0-100 (relevancia pra profissional brasileiro querendo carreira global)
+- virality_potential: 0-100 (potencial de gerar debate, saves, shares)
+- Priorize relevance_score > 70 e virality_potential > 60
+- Ordene por virality_potential descendente
+- growth_function: "discovery" = atrai novos (polemic/data), "conversion" = engaja quentes (how-to/strategy), "retention" = fideliza (deep-dive/community)
+- audience_stage: "cold" = nunca viu o canal, "warm" = ja segue, "hot" = considerando produtos
+- MIX IDEAL: ~50% discovery, ~30% conversion, ~20% retention
+- INCLUIR pelo menos 2-3 topicos com pillar "react" (sao os de maior potencial discovery)
+- Para react: virality_potential tende a ser alto (audiencia do criador original vira discovery), growth_function = "discovery", audience_stage = "cold"`;
 
 Deno.serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
@@ -112,7 +139,7 @@ Deno.serve(async (req: Request) => {
       apiKey,
       systemPrompt,
       userMessage,
-      maxTokens: 4000,
+      maxTokens: 6000,
       jsonMode: true,
       userId,
       edgeFunction: "content-trending",
@@ -135,6 +162,15 @@ Deno.serve(async (req: Request) => {
       relevance_score: Math.min(100, Math.max(0, t.relevance_score || 50)),
       virality_potential: Math.min(100, Math.max(0, t.virality_potential || 50)),
       keywords: t.keywords || [],
+      // V2 fields
+      growth_function: ["discovery", "conversion", "retention"].includes(t.growth_function) ? t.growth_function : null,
+      audience_stage: ["cold", "warm", "hot"].includes(t.audience_stage) ? t.audience_stage : null,
+      pillar: t.pillar || null,
+      authority_building: t.authority_building === true,
+      title_options: Array.isArray(t.title_options) ? t.title_options.map(String) : [],
+      thumbnail_concept: t.thumbnail_concept || null,
+      short_cuts: Array.isArray(t.short_cuts) ? t.short_cuts : [],
+      format_suggestion: t.format_suggestion || null,
       raw_data: t,
       expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
     }));

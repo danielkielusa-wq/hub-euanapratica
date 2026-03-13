@@ -21,6 +21,17 @@ const PRIORITY_STYLES: Record<string, string> = {
   low: 'border-l-gray-300',
 };
 
+const SIGNAL_LABELS: Record<string, { label: string; bg: string; text: string }> = {
+  whatsapp_reply: { label: 'Respondeu WhatsApp', bg: 'bg-green-100', text: 'text-green-700' },
+  report_multi_view: { label: 'Relatório 3x+', bg: 'bg-blue-100', text: 'text-blue-700' },
+  session_completed_upsell: { label: 'Sessão concluída', bg: 'bg-purple-100', text: 'text-purple-700' },
+  no_show: { label: 'No-show', bg: 'bg-red-100', text: 'text-red-700' },
+  subscription_cancelled: { label: 'Cancelou assinatura', bg: 'bg-rose-100', text: 'text-rose-700' },
+  new_high_score: { label: 'Lead quente novo', bg: 'bg-amber-100', text: 'text-amber-700' },
+  booking_upcoming: { label: 'Sessão agendada', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  follow_up_due: { label: 'Follow-up vencendo', bg: 'bg-orange-100', text: 'text-orange-700' },
+};
+
 interface PriorityCardProps {
   item: PriorityItem;
   isCompleted: boolean;
@@ -78,6 +89,13 @@ export function PriorityCard({ item, isCompleted, onMarkDone }: PriorityCardProp
           </span>
         </div>
       </div>
+
+      {/* Signal badge */}
+      {item.signal && SIGNAL_LABELS[item.signal] && (
+        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', SIGNAL_LABELS[item.signal].bg, SIGNAL_LABELS[item.signal].text)}>
+          {SIGNAL_LABELS[item.signal].label}
+        </Badge>
+      )}
 
       {/* Reason + action */}
       <div className="space-y-1">

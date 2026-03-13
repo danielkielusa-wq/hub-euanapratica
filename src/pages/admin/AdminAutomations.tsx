@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, ExternalLink, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer, Search, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Zap, Play, Settings2, ScrollText, RefreshCw, HelpCircle, Copy, CheckCircle2, XCircle, Clock, AlertTriangle, Timer, Search, Plus, Trash2, MoreVertical } from 'lucide-react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   useAutomations,
   useWebhookLogs,
@@ -233,9 +236,15 @@ export default function AdminAutomations() {
 
   const [editingAutomation, setEditingAutomation] = useState<N8NAutomation | null>(null);
   const [logsAutomation, setLogsAutomation] = useState<N8NAutomation | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editTriggerEvent, setEditTriggerEvent] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('general');
   const [editUrl, setEditUrl] = useState('');
   const [editTimeout, setEditTimeout] = useState('10000');
   const [editHeaders, setEditHeaders] = useState('{}');
+  const [editMaxRetries, setEditMaxRetries] = useState('3');
   const [docsOpen, setDocsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -270,11 +279,36 @@ export default function AdminAutomations() {
     });
   }, [automations, searchQuery, statusFilter]);
 
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Categories that actually have automations
+  const availableCategories = useMemo(() => {
+    const cats = new Set(automations.map(a => a.category || 'general'));
+    const order = Object.keys(CATEGORY_LABELS);
+    return Array.from(cats).sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+  }, [automations]);
+
+  // Apply category filter on top of search/status filters
+  const displayedAutomations = useMemo(() => {
+    if (categoryFilter === 'all') return filteredAutomations;
+    return filteredAutomations.filter(a => (a.category || 'general') === categoryFilter);
+  }, [filteredAutomations, categoryFilter]);
+
   const handleEdit = (auto: N8NAutomation) => {
     setEditingAutomation(auto);
+    setEditDisplayName(auto.display_name);
+    setEditName(auto.name);
+    setEditTriggerEvent(auto.trigger_event);
+    setEditDescription(auto.description || '');
+    setEditCategory(auto.category || 'general');
     setEditUrl(auto.webhook_url || '');
     setEditTimeout(String(auto.timeout_ms || 10000));
     setEditHeaders(JSON.stringify(auto.headers || {}, null, 2));
+    setEditMaxRetries(String(auto.max_retries ?? 3));
   };
 
   const handleSave = () => {
@@ -286,9 +320,15 @@ export default function AdminAutomations() {
 
     updateAutomation.mutate({
       id: editingAutomation.id,
+      display_name: editDisplayName.trim(),
+      name: editName.trim(),
+      trigger_event: editTriggerEvent.trim(),
+      description: editDescription.trim() || null,
+      category: editCategory,
       webhook_url: editUrl || null,
       timeout_ms: parseInt(editTimeout) || 10000,
       headers: parsedHeaders as Record<string, string>,
+      max_retries: parseInt(editMaxRetries) || 3,
     }, { onSuccess: () => setEditingAutomation(null) });
   };
 
@@ -337,7 +377,7 @@ export default function AdminAutomations() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -346,15 +386,12 @@ export default function AdminAutomations() {
               Automacoes N8N
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              {automations.filter(a => a.enabled).length} de {automations.length} ativas
+              Webhooks e integrações com N8N. {automations.filter(a => a.enabled).length} de {automations.length} ativas.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="w-4 h-4 mr-1" /> Atualizar
-            </Button>
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setDocsOpen(true)}>
-              <HelpCircle className="w-4 h-4 mr-1" /> Documentacao
+              <HelpCircle className="w-4 h-4 mr-1" /> Docs
             </Button>
             <Button size="sm" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
               <Plus className="w-4 h-4 mr-1" /> Criar Automacao
@@ -362,123 +399,183 @@ export default function AdminAutomations() {
           </div>
         </div>
 
-        {/* Search & Filters */}
+        {/* Category Pill Tabs */}
+        <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+          <button
+            type="button"
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              categoryFilter === 'all'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            onClick={() => setCategoryFilter('all')}
+          >
+            Todos ({automations.length})
+          </button>
+          {availableCategories.map(cat => {
+            const count = automations.filter(a => (a.category || 'general') === cat).length;
+            return (
+              <button
+                key={cat}
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  categoryFilter === cat
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                onClick={() => setCategoryFilter(cat)}
+              >
+                {CATEGORY_LABELS[cat] || cat} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search + Status Filter + Refresh */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por nome, evento, categoria..."
+              placeholder="Buscar automacoes..."
               className="pl-8 h-9 text-sm"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] h-9 text-sm">
-              <SelectValue placeholder="Filtrar status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativas</SelectItem>
-              <SelectItem value="inactive">Inativas</SelectItem>
-              <SelectItem value="success">Ultimo: success</SelectItem>
-              <SelectItem value="error">Ultimo: error</SelectItem>
-              <SelectItem value="timeout">Ultimo: timeout</SelectItem>
-              <SelectItem value="skipped">Ultimo: skipped</SelectItem>
-            </SelectContent>
-          </Select>
-          {(searchQuery || statusFilter !== 'all') && (
-            <span className="text-xs text-gray-500">
-              {filteredAutomations.length} de {automations.length}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {['all', 'active', 'inactive', 'error'].map(val => {
+              const labels: Record<string, string> = { all: 'Todos', active: 'Ativas', inactive: 'Inativas', error: 'Com erro' };
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    statusFilter === val
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setStatusFilter(val)}
+                >
+                  {labels[val]}
+                </button>
+              );
+            })}
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 px-2 ml-auto" onClick={() => refetch()}>
+            <RefreshCw className="w-3.5 h-3.5" />
+          </Button>
         </div>
 
-        {/* Automation Cards */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredAutomations.map((auto) => (
-            <Card key={auto.id} className={`relative transition-all ${auto.enabled ? 'ring-1 ring-blue-200' : 'opacity-75'}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <CardTitle className="text-base leading-tight">{auto.display_name}</CardTitle>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge variant="outline" className={CATEGORY_COLORS[auto.category] || CATEGORY_COLORS.general}>
-                        {CATEGORY_LABELS[auto.category] || auto.category}
-                      </Badge>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {auto.trigger_event}
-                      </Badge>
-                      {auto.cron_job_name && <CronBadge jobName={auto.cron_job_name} />}
-                    </div>
-                  </div>
-                  <Switch
-                    checked={auto.enabled}
-                    onCheckedChange={(checked) => toggleAutomation.mutate({ id: auto.id, enabled: checked })}
-                    disabled={toggleAutomation.isPending}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-gray-500 line-clamp-2">{auto.description}</p>
-
-                {/* Webhook URL preview */}
-                <div className="flex items-center gap-1.5">
-                  <ExternalLink className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span className="text-xs text-gray-500 truncate font-mono">
-                    {auto.webhook_url || 'URL nao configurada'}
-                  </span>
-                </div>
-
-                {/* Last triggered */}
-                <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>Ultimo disparo: {formatRelativeTime(auto.last_triggered_at)}</span>
-                  {auto.last_status && (
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_CONFIG[auto.last_status]?.color || ''}`}>
-                      {auto.last_status}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-1.5 pt-1">
-                  <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={() => handleEdit(auto)}>
-                    <Settings2 className="w-3.5 h-3.5 mr-1" /> Configurar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => testAutomation.mutate(auto)}
-                    disabled={!auto.webhook_url || !auto.enabled || testAutomation.isPending}
-                  >
-                    <Play className="w-3.5 h-3.5 mr-1" /> Testar
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setLogsAutomation(auto)}>
-                    <ScrollText className="w-3.5 h-3.5 mr-1" /> Logs
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-7 text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => setDeletingAutomation(auto)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredAutomations.length === 0 && automations.length > 0 && (
+        {/* Table */}
+        {displayedAutomations.length > 0 ? (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/60 hover:bg-gray-50/60">
+                    <TableHead className="w-[48px] px-3"></TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Automacao</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500 hidden sm:table-cell">Evento</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500 hidden md:table-cell w-[100px]">Categoria</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500 hidden lg:table-cell w-[90px]">Cron</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500 hidden lg:table-cell w-[110px]">Ultimo disparo</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500 w-[80px]">Status</TableHead>
+                    <TableHead className="w-[44px] px-2"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayedAutomations.map((auto) => (
+                    <TableRow key={auto.id} className={`group ${auto.enabled ? '' : 'opacity-50'}`}>
+                      {/* Toggle */}
+                      <TableCell className="px-3">
+                        <Switch
+                          checked={auto.enabled}
+                          onCheckedChange={(checked) => toggleAutomation.mutate({ id: auto.id, enabled: checked })}
+                          disabled={toggleAutomation.isPending}
+                          className="scale-[0.7]"
+                        />
+                      </TableCell>
+                      {/* Name + description */}
+                      <TableCell>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium leading-tight block truncate">{auto.display_name}</span>
+                          {auto.description && (
+                            <span className="text-xs text-gray-400 block truncate max-w-[300px]">{auto.description}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      {/* Event */}
+                      <TableCell className="hidden sm:table-cell">
+                        <code className="text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded font-mono">{auto.trigger_event}</code>
+                      </TableCell>
+                      {/* Category */}
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline" className={`${CATEGORY_COLORS[auto.category] || CATEGORY_COLORS.general} text-[10px]`}>
+                          {CATEGORY_LABELS[auto.category] || auto.category}
+                        </Badge>
+                      </TableCell>
+                      {/* Cron */}
+                      <TableCell className="hidden lg:table-cell">
+                        {auto.cron_job_name ? <CronBadge jobName={auto.cron_job_name} /> : <span className="text-xs text-gray-300">—</span>}
+                      </TableCell>
+                      {/* Last triggered */}
+                      <TableCell className="hidden lg:table-cell">
+                        <span className="text-xs text-gray-400">{formatRelativeTime(auto.last_triggered_at)}</span>
+                      </TableCell>
+                      {/* Status */}
+                      <TableCell>
+                        {auto.last_status ? (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STATUS_CONFIG[auto.last_status]?.color || ''}`}>
+                            {auto.last_status}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </TableCell>
+                      {/* Actions dropdown */}
+                      <TableCell className="px-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                              <MoreVertical className="w-4 h-4 text-gray-500" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => handleEdit(auto)}>
+                              <Settings2 className="w-3.5 h-3.5 mr-2" /> Configurar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => testAutomation.mutate(auto)}
+                              disabled={!auto.webhook_url || !auto.enabled || testAutomation.isPending}
+                            >
+                              <Play className="w-3.5 h-3.5 mr-2" /> Testar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setLogsAutomation(auto)}>
+                              <ScrollText className="w-3.5 h-3.5 mr-2" /> Logs
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                              onClick={() => setDeletingAutomation(auto)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        ) : automations.length > 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-gray-500">
               Nenhuma automacao encontrada para os filtros selecionados.
             </CardContent>
           </Card>
-        )}
-        {automations.length === 0 && (
+        ) : (
           <Card>
             <CardContent className="py-12 text-center text-gray-500">
               Nenhuma automacao configurada. Execute a migration para criar as automacoes seed.
@@ -500,6 +597,55 @@ export default function AdminAutomations() {
             )}
 
             <div>
+              <Label>Nome de exibicao</Label>
+              <Input
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+                placeholder="ex: Notificar Novo Agendamento"
+              />
+            </div>
+            <div>
+              <Label>Nome interno (slug)</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="ex: notify_new_booking"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div>
+              <Label>Evento trigger</Label>
+              <Input
+                value={editTriggerEvent}
+                onChange={(e) => setEditTriggerEvent(e.target.value)}
+                placeholder="ex: booking.created ou booking.*"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">Use * para wildcard (ex: booking.* captura todos os eventos de booking)</p>
+            </div>
+            <div>
+              <Label>Categoria</Label>
+              <Select value={editCategory} onValueChange={setEditCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descricao</Label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Descreva o que esta automacao faz..."
+                className="h-16"
+              />
+            </div>
+            <div>
               <Label>Webhook URL (N8N)</Label>
               <Input
                 value={editUrl}
@@ -508,14 +654,27 @@ export default function AdminAutomations() {
                 className="font-mono text-sm"
               />
             </div>
-            <div>
-              <Label>Timeout (ms)</Label>
-              <Input
-                type="number"
-                value={editTimeout}
-                onChange={(e) => setEditTimeout(e.target.value)}
-                placeholder="10000"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Timeout (ms)</Label>
+                <Input
+                  type="number"
+                  value={editTimeout}
+                  onChange={(e) => setEditTimeout(e.target.value)}
+                  placeholder="10000"
+                />
+              </div>
+              <div>
+                <Label>Max retries</Label>
+                <Input
+                  type="number"
+                  value={editMaxRetries}
+                  onChange={(e) => setEditMaxRetries(e.target.value)}
+                  placeholder="3"
+                  min="0"
+                  max="10"
+                />
+              </div>
             </div>
             <div>
               <Label>Headers extras (JSON)</Label>
@@ -537,7 +696,7 @@ export default function AdminAutomations() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingAutomation(null)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={updateAutomation.isPending}>
+            <Button onClick={handleSave} disabled={updateAutomation.isPending || !editDisplayName.trim() || !editName.trim() || !editTriggerEvent.trim()}>
               {updateAutomation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               Salvar
             </Button>

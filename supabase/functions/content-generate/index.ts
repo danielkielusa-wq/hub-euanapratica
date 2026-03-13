@@ -2,7 +2,7 @@
  * content-generate — Edge Function
  *
  * Unified content generation: takes any input (trending topic, manual text, reference URL)
- * and generates a complete content piece (hooks, script, social posts, SEO metadata).
+ * and generates a complete content piece (hooks, script, short cuts, SEO metadata).
  *
  * Auth:   requireAdmin
  * Input:  {
@@ -10,10 +10,15 @@
  *   input_type?: string,          // 'trending' | 'manual' | 'reference' | 'platform_data'
  *   input_reference?: string,     // URL if reference-based
  *   trending_topic_id?: string,   // if generated from trending radar
- *   format?: string,              // 'short' | 'long_video' | 'carousel' | 'stories'
+ *   format?: string,              // 'short' | 'medium_video' | 'long_video' | 'carousel' | 'stories'
  *   tone?: string,                // 'polemic' | 'educational' | 'storytelling' | 'roast' | 'data_story' | 'myth_busting'
+ *   growth_function?: string,     // 'discovery' | 'conversion' | 'retention'
+ *   audience_stage?: string,      // 'cold' | 'warm' | 'hot'
+ *   product_showcase_key?: string, // product to showcase (from content_product_showcases)
  *   use_platform_data?: boolean,  // enrich with platform data
  *   custom_instructions?: string, // extra user instructions
+ *   trending_angle?: string,      // angle from trending radar
+ *   trending_short_cuts?: any[],  // short_cuts from trending radar
  * }
  * Output: { piece: ContentPiece }
  */
@@ -27,18 +32,27 @@ import { parseJsonObject } from "../_shared/jsonParser.ts";
 
 const FORMAT_GUIDELINES: Record<string, string> = {
   short: `FORMATO: Video Vertical Curto (Reels/TikTok/Shorts)
-- Duracao: 30-60 segundos
-- Hook nos primeiros 3 segundos (CRITICO — se nao prender, swipe)
-- Maximo 3 pontos principais
-- CTA no final (seguir, comentar, salvar)
-- Camera: Close-up, cortes rapidos, texto na tela`,
+- Duracao: 15-60 segundos
+- Hook nos primeiros 2 segundos (CRITICO)
+- Maximo 3 secoes: HOOK, PUNCH, PAYOFF
+- Camera: Close-up, cortes rapidos, texto na tela
+- short_cuts: array vazio (o proprio video ja e o Short)`,
 
-  long_video: `FORMATO: Video Longo YouTube
-- Duracao: 8-15 minutos
+  medium_video: `FORMATO: Video Medio YouTube (8-15min)
 - Hook de 15-30s que gera curiosidade
-- 4-6 secoes com transicoes claras
+- 5-7 secoes substantivas com transicoes claras
+- Re-hook no meio do video (frase que re-engaja atencao)
 - Data callouts para grafismos/B-roll
-- Thumbnail suggestion incluida
+- Timestamps obrigatorios em cada secao
+- short_cuts: OBRIGATORIO minimo 2 cortes que funcionam como Shorts independentes
+- CTA: like, subscribe, comentario provocativo`,
+
+  long_video: `FORMATO: Video Longo YouTube (20-40min)
+- Hook de ate 1 minuto
+- 6-8 secoes com re-hooks a cada 5-7 minutos
+- Secao TWIST: momento de virada narrativa
+- Timestamps obrigatorios em cada secao
+- short_cuts: OBRIGATORIO minimo 3 cortes que funcionam como Shorts independentes
 - CTA: like, subscribe, comentario provocativo`,
 
   carousel: `FORMATO: Carrossel Instagram
@@ -58,92 +72,126 @@ const FORMAT_GUIDELINES: Record<string, string> = {
 const TONE_GUIDELINES: Record<string, string> = {
   polemic: "Tom POLEMICO: Opiniao forte, confronto direto, 'Us vs Them'. Provoque debate nos comentarios. Fale como quem nao tem medo de ser cancelado.",
   educational: "Tom EDUCATIVO: Dados claros, passo-a-passo, valor tangivel. Seja o professor que voce queria ter tido. Simplifique sem ser simplista.",
-  storytelling: "Tom STORYTELLING: Comece com uma historia real (ou verossimil). Arco narrativo: situacao → conflito → resolucao. Emocao primeiro, dados depois.",
-  roast: "Tom ROAST: Critica direta a mitos, coaches fake, ou mentalidade errada. Estilo Alex Hormozi: confronto com dados e humor acido. Sem ofensa gratuita — cada roast tem um ensinamento.",
+  storytelling: "Tom STORYTELLING: Comece com uma historia real (ou verossimil). Arco narrativo: situacao, conflito, resolucao. Emocao primeiro, dados depois.",
+  roast: "Tom ROAST: Critica direta a mitos, coaches fake, ou mentalidade errada. Confronto com dados e humor acido. Sem ofensa gratuita, cada roast tem um ensinamento.",
   data_story: "Tom DATA STORY: Lidere com um numero surpreendente. Conte a historia por tras do dado. 'Voce sabia que X?' seguido de analise que muda perspectiva.",
-  myth_busting: "Tom MYTH BUSTING: Comece com a crenca popular, depois destrua com evidencia. Estrutura: Mito → Realidade → Prova → Acao.",
+  myth_busting: "Tom MYTH BUSTING: Comece com a crenca popular, depois destrua com evidencia. Estrutura: Mito, Realidade, Prova, Acao.",
 };
 
-const DEFAULT_GENERATE_PROMPT = `Voce e o roteirista de conteudo viral do Daniel Kielusa (@eua_na_pratica).
+const GROWTH_FUNCTION_CONTEXT: Record<string, string> = {
+  discovery: `FUNCAO DE CRESCIMENTO: DISCOVERY (trazer gente nova)
+- Tom impactante e rapido. Uma ideia so, sem profundidade excessiva.
+- Otimize para compartilhamento e primeiros 3 segundos.
+- Audiencia nunca viu o Daniel. Precisa de dado chocante ou polemica.`,
+  conversion: `FUNCAO DE CRESCIMENTO: CONVERSION (transformar viewer em inscrito)
+- Tom de autoridade + valor tangivel. Framework acionavel.
+- Mostre profundidade suficiente pra audiencia querer mais.
+- Audiencia ja viu 1-2 videos. Precisa de case, framework, "como fazer".`,
+  retention: `FUNCAO DE CRESCIMENTO: RETENTION (fidelizar inscrito)
+- Tom profundo e pessoal. Nuance e bastidores.
+- Pode incluir tangentes pessoais e opiniao detalhada.
+- Audiencia ja e inscrita. Quer deep dive, bastidor, opiniao.`,
+};
 
-== PERSONA DO DANIEL ==
-Daniel e direto, sem filtro, storyteller com dados.
-Bordao: "A porta ta aberta — mas nao pra quem fica parado."
-Estilo Alex Hormozi adaptado ao nicho de imigracao qualificada.
+const AUDIENCE_STAGE_CONTEXT: Record<string, string> = {
+  cold: "AUDIENCIA: COLD (nunca viu o Daniel). Precisa de dado chocante, polemica, ou provocacao direta. Zero contexto previo.",
+  warm: "AUDIENCIA: WARM (ja viu 1-2 videos). Conhece o estilo. Precisa de case, framework, demonstracao de valor. Pode referenciar conteudos anteriores.",
+  hot: "AUDIENCIA: HOT (inscrito engajado). Quer profundidade, bastidores, opiniao detalhada. Pode ser mais longo e mais pessoal.",
+};
 
-Crencas centrais:
-- "E mentira quem disse que aqui precisa trabalhar subemprego."
-- "Nao e dificil como imaginam, desde que venham com estrategia."
-- "As portas da imigracao fechando pra alguns, abrem para os qualificados e energizados."
+// Default prompt — used when no custom prompt is configured in app_configs
+const DEFAULT_GENERATE_PROMPT = `Voce e o roteirista de conteudo do Daniel Kielusa (@eua_na_pratica).
+Seu trabalho: transformar um tema + briefing em roteiro gravavel que maximiza retencao e gera debate.
 
-Inimigos narrativos:
-- Vendedores de sonho (prometem vida facil nos EUA)
-- Mentalidade CLT (zona de conforto, medo de risco)
-- Coaches que nunca moraram fora
+Daniel e estrategista de carreira internacional. Mora nos EUA, contratou e foi contratado no mercado americano. Fala de dentro, nao de fora.
 
-== TECNICAS DE VIRALIDADE ==
-1. Pattern Interrupt: Primeira frase quebra expectativa
-2. Enemy Framing: Identifique o vilao da narrativa
-3. Data Bomb: Numero surpreendente que forca o pause
-4. Hot Take: Opiniao forte que divide a audiencia
-5. Us vs Them: Crie tribos (qualificados vs acomodados)
-6. Cliffhanger: Prometa a resposta, entregue no final
-7. Social Proof Shock: Caso real que surpreende
-8. Myth Destruction: Destrua crenca popular com evidencia
+Voz: Direta, sem filtro. Frases curtas. Como papo com amigo que manja do assunto. Sempre "voce" (informal). Dados sustentam toda opiniao.
 
-== TAREFA ==
-Gere um conteudo COMPLETO baseado no tema fornecido.
+Posicionamento: NAO e recrutador. NAO e coach de imigracao. NAO e motivacional. E o cara que entende como o mercado de trabalho internacional funciona e traduz isso em estrategia acionavel.
+
+Crencas (use como combustivel narrativo):
+- "Seu curriculo brasileiro nao compete. Seu curriculo adaptado, sim."
+- "Visto e ferramenta, nao destino. O destino e a carreira que voce quer."
+- "O mercado global paga mais pelo MESMO talento. A diferenca e posicionamento."
+- "Voce nao precisa ser 10x melhor. Precisa ser estrategico."
+
+Viloes narrativos:
+- Profissionais que acham que traduzir o CV = estar pronto pro mercado global
+- A industria de "vagas nos EUA" que vende processo burocratico, nao estrategia
+- A mentalidade de que precisa ser genio ou ter sorte pra trabalhar la fora
+- Coaches de carreira que nunca passaram por um behavioral interview americano
+- Comodismo qualificado: tem skill, tem ingles, mas nao executa por medo
+
+Tecnicas de viralidade (use pelo menos 3):
+1. Pattern Interrupt  2. Enemy Framing  3. Data Bomb  4. Hot Take
+5. Us vs Them  6. Cliffhanger  7. Social Proof Stack  8. Myth Destruction
+
+Regras de escrita:
+- Escreva como se fala. Frases curtas. Paragrafos de 1-2 frases.
+- Dados SEMPRE com contexto emocional ("Isso significa que...")
+- NUNCA use: "neste video", "vou compartilhar", "espero que tenha gostado"
+- USE: "olha so", "presta atencao", "a verdade e que", "ninguem te conta isso"
+- Nunca use travessao longo. Use virgula, ponto, ou "..." quando precisar de pausa.
+
+Vocabulario de camera_note (use apenas estes termos):
+ENQUADRAMENTO: CLOSE | MEDIUM | WIDE
+ACAO: DIRETO PRA CAMERA | WALKING | CUTAWAY | ZOOM IN
+RITMO: BEAT (pausa 1s) | RAPIDO | TRANSICAO (corte seco)
+GRAFISMO: TEXTO NA TELA: [texto] | GRAFICO: [descricao] | LEGENDA DESTAQUE: [frase]
 
 == OUTPUT FORMAT (JSON) ==
 {
   "title": "Titulo do conteudo (curto, impactante)",
   "hook_variations": [
-    {"text": "Hook variacao 1", "style": "question", "score": 85},
-    {"text": "Hook variacao 2", "style": "claim", "score": 78},
-    {"text": "Hook variacao 3", "style": "data", "score": 92},
-    {"text": "Hook variacao 4", "style": "provocation", "score": 88}
+    {"text": "Variacao pergunta", "style": "question", "retention_prediction": "alta"},
+    {"text": "Variacao afirmacao", "style": "claim", "retention_prediction": "media"},
+    {"text": "Variacao dado", "style": "data", "retention_prediction": "alta"},
+    {"text": "Variacao provocacao", "style": "provocation", "retention_prediction": "alta"}
   ],
   "script_sections": [
     {
-      "heading": "Hook / Abertura",
-      "content": "Texto completo da secao com falas naturais do Daniel...",
-      "camera_note": "Close-up, olhar direto pra camera",
-      "data_callout": "Grafismo: numero X na tela"
+      "heading": "Nome da secao",
+      "content": "Texto COMPLETO da secao, palavra por palavra, como fala natural.",
+      "camera_note": "CLOSE. DIRETO PRA CAMERA. TEXTO NA TELA: dado principal.",
+      "data_callout": "Texto exato para grafismo na tela (se aplicavel)",
+      "timestamp": "0:00-0:30",
+      "is_short_cut_candidate": false
     }
   ],
-  "cta": "Call to action final",
-  "duration_estimate_seconds": 45,
+  "short_cuts": [
+    {
+      "source_section": "Nome da secao de onde vem o corte",
+      "timestamp_range": "2:15-2:45",
+      "hook": "Frase de abertura do Short (primeiros 2s)",
+      "script": "Roteiro completo do Short, palavra por palavra",
+      "angle": "dado_solto | hot_take | antes_depois | mito_destruido | pergunta_retorica",
+      "camera_note": "Instrucao de edicao para o corte",
+      "estimated_duration": "15-30s"
+    }
+  ],
+  "cta": "Call to action final. Provocativo, nao generico.",
+  "virality_techniques_used": ["technique1", "technique2", "technique3"],
+  "duration_estimate": "MM:SS",
   "virality_score": 85,
-  "social_posts": [
-    {
-      "platform": "linkedin",
-      "content": "Post completo para LinkedIn (800-2500 chars), storytelling profissional...",
-      "hashtags": ["#imigracao", "#carreira"],
-      "char_count": 1200
-    },
-    {
-      "platform": "x",
-      "content": "Tweet impactante (max 280 chars)...",
-      "hashtags": ["#imigracao"],
-      "char_count": 250
-    },
-    {
-      "platform": "instagram",
-      "content": "Caption para Instagram com emojis e CTA...",
-      "hashtags": ["#imigracao", "#euanapratica"],
-      "char_count": 800
-    }
-  ],
   "seo_metadata": {
-    "youtube_title": "Titulo otimizado para YouTube (max 60 chars)",
-    "youtube_description": "Descricao completa com timestamps e links...",
-    "tags": ["tag1", "tag2", "tag3"],
-    "thumbnail_ideas": [
-      "Descricao do thumbnail 1: rosto chocado + texto 'ACABOU?' em vermelho",
-      "Descricao do thumbnail 2: comparacao visual BR vs EUA"
+    "youtube_title": "Titulo otimizado (max 60 chars, keyword no inicio)",
+    "youtube_description": "Resumo 2 linhas + timestamps das secoes + hashtags",
+    "tags": ["carreira internacional", "trabalhar nos eua"],
+    "thumbnail_concepts": [
+      {"visual": "Descricao da imagem", "text_overlay": "Max 4 palavras", "emotion": "choque"},
+      {"visual": "Alternativa", "text_overlay": "Texto alternativo", "emotion": "curiosidade"}
     ]
   }
-}`;
+}
+
+REGRAS:
+- script_sections: roteiro COMPLETO, palavra por palavra.
+- short_cuts: obrigatorio para medium_video (min 2) e long_video (min 3). Vazio para short.
+- hook_variations: sempre 4, estilos diferentes.
+- camera_note: use APENAS o vocabulario padronizado.
+- Nao inclua social_posts no output. Posts sao gerados por prompt dedicado.
+- timestamp: obrigatorio em todas as secoes.
+- Retorne APENAS o JSON.`;
 
 Deno.serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
@@ -171,8 +219,13 @@ Deno.serve(async (req: Request) => {
     const inputType = body.input_type || "manual";
     const format = body.format || "short";
     const tone = body.tone || "polemic";
+    const growthFunction = body.growth_function || null;
+    const audienceStage = body.audience_stage || null;
+    const productShowcaseKey = body.product_showcase_key || null;
     const usePlatformData = body.use_platform_data ?? false;
     const customInstructions = body.custom_instructions || "";
+    const trendingAngle = body.trending_angle || "";
+    const trendingShortCuts = body.trending_short_cuts || [];
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -200,6 +253,48 @@ Deno.serve(async (req: Request) => {
     userMessage += `${FORMAT_GUIDELINES[format] || FORMAT_GUIDELINES.short}\n\n`;
     userMessage += `${TONE_GUIDELINES[tone] || TONE_GUIDELINES.polemic}\n\n`;
 
+    // Growth function context
+    if (growthFunction && GROWTH_FUNCTION_CONTEXT[growthFunction]) {
+      userMessage += `${GROWTH_FUNCTION_CONTEXT[growthFunction]}\n\n`;
+    }
+
+    // Audience stage context
+    if (audienceStage && AUDIENCE_STAGE_CONTEXT[audienceStage]) {
+      userMessage += `${AUDIENCE_STAGE_CONTEXT[audienceStage]}\n\n`;
+    }
+
+    // Trending angle from radar
+    if (trendingAngle) {
+      userMessage += `== ANGULO VIRAL SUGERIDO (do trending radar) ==\n${trendingAngle}\n\n`;
+    }
+
+    // Short cuts from trending (as reference for the script)
+    if (trendingShortCuts.length > 0) {
+      userMessage += `== SHORT CUTS SUGERIDOS (do trending radar, use como referencia) ==\n${JSON.stringify(trendingShortCuts, null, 2)}\n\n`;
+    }
+
+    // Product showcase
+    if (productShowcaseKey) {
+      const productData = await loadProductShowcase(adminSupabase, productShowcaseKey);
+      if (productData) {
+        userMessage += `== SHOWCASE DE PRODUTO (integre ORGANICAMENTE no roteiro) ==
+O produto aparece como PROVA do argumento, nao como propaganda.
+Maximo 1 secao dedicada ao produto (30-60s em video medio, 10-15s em Short).
+Use os talking_points como base, mas adapte ao contexto do tema.
+camera_note deve incluir instrucoes de screencast/demo.
+O CTA final pode (mas nao precisa) referenciar o produto.
+Marque a secao de demo com "is_product_showcase": true no script_sections.
+
+DADOS DO PRODUTO:
+Nome: ${productData.display_name}
+Descricao: ${productData.description}
+Features: ${JSON.stringify(productData.key_features)}
+Talking Points: ${JSON.stringify(productData.talking_points)}
+Instrucoes de Demo: ${productData.demo_instructions || "Sem instrucoes especificas"}
+CTA Sugerido: ${productData.cta_suggestion || "Sem CTA especifico"}\n\n`;
+      }
+    }
+
     if (customInstructions) {
       userMessage += `== INSTRUCOES ADICIONAIS ==\n${customInstructions}\n\n`;
     }
@@ -221,16 +316,43 @@ Deno.serve(async (req: Request) => {
       apiKey,
       systemPrompt,
       userMessage,
-      maxTokens: 6000,
+      maxTokens: 8000,
       jsonMode: true,
       userId,
       edgeFunction: "content-generate",
-      metadata: { input_type: inputType, format, tone },
-      timeoutMs: 90000,
+      metadata: { input_type: inputType, format, tone, growth_function: growthFunction, product_showcase_key: productShowcaseKey },
+      timeoutMs: 120000,
     });
 
     const durationMs = Date.now() - startTime;
     const output = parseJsonObject(llmResult.content);
+
+    // Parse duration_estimate (can be "MM:SS" string or number of seconds)
+    let durationSeconds: number | null = null;
+    if (typeof output.duration_estimate === "string" && output.duration_estimate.includes(":")) {
+      const parts = output.duration_estimate.split(":");
+      durationSeconds = (parseInt(parts[0] || "0") * 60) + parseInt(parts[1] || "0");
+    } else if (typeof output.duration_estimate_seconds === "number") {
+      durationSeconds = output.duration_estimate_seconds;
+    } else if (typeof output.duration_estimate === "number") {
+      durationSeconds = output.duration_estimate;
+    }
+
+    // Normalize hook_variations: support both score (legacy) and retention_prediction (new)
+    const hookVariations = (output.hook_variations || []).map((h: any) => ({
+      text: h.text,
+      style: h.style,
+      score: h.score ?? (h.retention_prediction === "alta" ? 90 : h.retention_prediction === "media" ? 70 : 50),
+      retention_prediction: h.retention_prediction || (h.score >= 85 ? "alta" : h.score >= 65 ? "media" : "baixa"),
+    }));
+
+    // Normalize seo_metadata: support both thumbnail_ideas (legacy) and thumbnail_concepts (new)
+    const seoMetadata = output.seo_metadata || {};
+    if (seoMetadata.thumbnail_concepts && !seoMetadata.thumbnail_ideas) {
+      seoMetadata.thumbnail_ideas = seoMetadata.thumbnail_concepts.map((tc: any) =>
+        typeof tc === "string" ? tc : `${tc.visual} | ${tc.text_overlay} | ${tc.emotion}`
+      );
+    }
 
     // Save to DB
     const piece = {
@@ -240,15 +362,20 @@ Deno.serve(async (req: Request) => {
       trending_topic_id: body.trending_topic_id || null,
       format,
       tone,
+      growth_function: growthFunction,
+      audience_stage: audienceStage,
+      product_showcase_key: productShowcaseKey,
       use_platform_data: usePlatformData,
       title: output.title || inputText.slice(0, 100),
-      hook_variations: output.hook_variations || [],
+      hook_variations: hookVariations,
       script_sections: output.script_sections || [],
+      short_cuts: output.short_cuts || [],
       cta: output.cta || null,
-      duration_estimate_seconds: output.duration_estimate_seconds || null,
+      duration_estimate_seconds: durationSeconds,
       social_posts: output.social_posts || [],
-      seo_metadata: output.seo_metadata || {},
+      seo_metadata: seoMetadata,
       virality_score: Math.min(100, Math.max(0, output.virality_score || 0)),
+      virality_techniques_used: Array.isArray(output.virality_techniques_used) ? output.virality_techniques_used : [],
       model_used: llmResult.model,
       tokens_used: (llmResult.inputTokens || 0) + (llmResult.outputTokens || 0),
       generation_duration_ms: durationMs,
@@ -263,7 +390,6 @@ Deno.serve(async (req: Request) => {
 
     if (saveErr) {
       console.error("Save content piece error:", saveErr);
-      // Return the generated content even if save fails
       return new Response(
         JSON.stringify({ piece: { ...piece, id: null }, save_error: saveErr.message }),
         { headers: { ...cors, "Content-Type": "application/json" } }
@@ -282,6 +408,24 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// ── Load product showcase ─────────────────────────────────────────────────
+
+async function loadProductShowcase(supabase: any, productKey: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from("content_product_showcases")
+      .select("display_name, description, key_features, talking_points, demo_instructions, cta_suggestion")
+      .eq("product_key", productKey)
+      .eq("enabled", true)
+      .single();
+
+    if (error || !data) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
 
 // ── Platform data aggregation ──────────────────────────────────────────────
 

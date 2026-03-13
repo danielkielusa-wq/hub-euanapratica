@@ -178,12 +178,16 @@ export function useUpdateAutomation() {
   return useMutation({
     mutationFn: async (input: {
       id: string;
+      display_name?: string;
+      name?: string;
+      trigger_event?: string;
+      description?: string | null;
+      category?: string;
       webhook_url?: string | null;
       headers?: Record<string, string>;
       timeout_ms?: number;
       max_retries?: number;
       metadata?: Record<string, unknown>;
-      description?: string;
     }) => {
       const { id, ...updates } = input;
       const { error } = await (supabase as any)

@@ -1,15 +1,18 @@
 /**
- * Generate Daily Priorities - Edge Function
+ * Generate Daily Priorities - Edge Function (v3)
  *
- * Analisa os leads (career_evaluations), interacoes recentes e tarefas pendentes,
- * e usa LLM (Anthropic ou OpenAI) para gerar um briefing diario com acoes prioritarias.
+ * Pre-segments leads into actionable buckets BEFORE sending to LLM.
+ * The LLM generates insights + messages, NOT filtering/sorting.
  *
- * Configuravel via app_configs:
- *   - daily_priorities_api_config  → qual API usar (default: anthropic_api)
- *   - daily_priorities_prompt      → system prompt (default: hardcoded)
+ * Segments (queried separately, guaranteed to reach LLM):
+ *   1. new_leads      — created in last 48h
+ *   2. hot_activity    — recent WhatsApp replies, report views 3+, session completed, no-shows
+ *   3. follow_ups_due  — follow-up dates <= today or overdue
+ *   4. high_value      — budget=true, LTV>=5000, temp quente/muito-quente
+ *   5. all_leads       — remaining leads for group/revenue analysis (compact, top N by score)
  *
- * Auth: requireAdmin (somente admins)
- * CORS: getCorsHeaders(req) dinamico
+ * Auth: requireAdmin / requireAssistant
+ * CORS: getCorsHeaders(req) dynamic
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -17,75 +20,108 @@ import { getApiConfig } from "../_shared/apiConfigService.ts";
 import { logApiCost, extractTokenUsage, detectProviderFromUrl } from "../_shared/apiCostService.ts";
 import { getCorsHeaders, requireAdminOrAssistant } from "../_shared/authGuard.ts";
 
-// ── Default system prompt ────────────────────────────────────────────────
+// ── Columns selected from career_evaluations ────────────────────────
+const CE_COLUMNS = `
+  id, user_id, name, email, phone, area,
+  readiness_score, lead_temperature, lead_priority_score,
+  phase_name, rota_letter, urgency_level,
+  has_budget, estimated_ltv,
+  recommended_product_name, recommended_product_tier,
+  preferred_communication, best_contact_time,
+  created_at, first_accessed_at, access_count,
+  scheduled_follow_up_1, scheduled_follow_up_2, scheduled_follow_up_3,
+  recheck_recommended_at, next_milestone_action,
+  has_english_barrier, has_experience_barrier, has_financial_barrier,
+  has_family_barrier, has_visa_barrier, has_time_barrier, has_clarity_barrier,
+  critical_blockers
+`;
 
-const DEFAULT_SYSTEM_PROMPT = `Voce e o assistente de CRM da EUA na Pratica, uma plataforma de mentoria para brasileiros que querem fazer carreira internacional nos EUA seguindo o Metodo ROTA.
+// ── Default system prompt ────────────────────────────────────────────
 
-Hoje e {{today}}. Voce recebera dados de leads (career evaluations) ja processados por IA, incluindo scores de prontidao, temperatura, barreiras, produto recomendado, interacoes recentes e tarefas pendentes.
+const DEFAULT_SYSTEM_PROMPT = `Voce e o assistente de CRM da EUA na Pratica, plataforma de mentoria para brasileiros que querem carreira nos EUA (Metodo ROTA).
 
-Sua missao: gerar as PRIORIDADES DO DIA para o admin/mentor, organizadas em categorias de acao.
+Hoje: {{today}} (agora: {{now}}).
 
-REGRAS CRITICAS:
-1. Retorne APENAS JSON valido. Sem texto fora do JSON, sem markdown code fences.
-2. Use os dados EXATOS recebidos: id como lead_id, name como lead_name, email como lead_email, phone como lead_phone. Nao invente dados.
-3. Foque em leads ACIONAVEIS - ignore leads com last_contact nos ultimos 3 dias EXCETO se tem follow-up vencendo hoje.
-4. Mensagens em portugues brasileiro, tom profissional e acolhedor, personalizadas.
-5. Maximo 5 items por categoria. Priorize por prio (priority_score) e urgency.
-6. Categorias sem items relevantes: inclua com items: [].
-7. Nao repita o mesmo lead em multiplas categorias (exceto ready_messages).
-8. Campos nos dados: id, name, email, phone, score, temp (temperatura), prio (priority_score), phase, rota, urgency, budget, ltv, product, channel, best_time, created, follow_ups, recheck, barriers (array de nomes), blockers, interactions (count), last_contact, pending_tasks.
-9. Seja CONCISO: mensagens curtas (max 2 frases), razoes curtas (1 frase), summary max 3 frases. Evite repeticao. O JSON DEVE ser completo - nao truncado.
+Voce recebera leads JA PRE-SEGMENTADOS em categorias pelo sistema. Sua missao: para cada segmento, gerar insights acionaveis, razoes claras e mensagens personalizadas.
 
-CATEGORIAS (7):
+REGRAS:
+1. Retorne APENAS JSON valido. Sem texto fora, sem markdown code fences.
+2. Use dados EXATOS: id→lead_id, name→lead_name, email→lead_email, phone→lead_phone. NAO invente.
+3. Mensagens em PT-BR, tom profissional e acolhedor. WhatsApp=curta (2 frases max), email=mais elaborada.
+4. Maximo 5 items por categoria. Se o segmento tem mais, escolha os mais urgentes.
+5. Categorias vazias no input: retorne com items: [].
+6. NAO repita o mesmo lead em multiplas categorias (exceto ready_messages).
+7. Seja CONCISO. O JSON DEVE ser completo, nao truncado.
 
-1. "immediate_action" (Acao Imediata) - icon: "flame"
-   Leads com temp muito-quente ou quente, sem contato (interactions ausente ou 0, last_contact ausente) E score >= 60.
+CAMPOS DOS LEADS:
+- Basicos: id, name, email, phone, score, temp, prio, phase, rota, area
+- Contexto: urgency, budget, ltv, product, channel, best_time, created
+- Follow-ups: follow_ups (datas), recheck (data), next_action, pending_tasks
+- Barreiras: barriers (array), blockers
+- Historico: interactions (count), last_contact, recent_events [{type,date,content}]
+- Engajamento: report_views, first_viewed
+- Bookings: upcoming_bookings, completed_sessions, no_shows
+- WhatsApp: whatsapp {status, replied, last_reply, last_activity}
 
-2. "follow_ups_due" (Follow-ups Vencendo) - icon: "clock"
-   Leads com follow_ups vencidos (data <= hoje) OU recheck <= hoje.
+CATEGORIAS DO OUTPUT (7):
 
-3. "mentoring_groups" (Agrupamento Mentoria) - icon: "users"
-   1-3 grupos de 2-5 leads com mesmo rota. Formato DIFERENTE: { group_theme, rota_phase, leads: [{lead_id, lead_name, score, phase}], suggested_session_topic }
+1. "hot_signals" (Sinais Quentes) - icon: "flame"
+   Input: segmento "hot_activity". Leads com sinais de engajamento recente.
+   Para cada: identifique QUAL sinal (whatsapp_reply, report_multi_view, session_completed_upsell, no_show, subscription_cancelled) e sugira acao + mensagem.
+
+2. "new_leads" (Leads Novos - 48h) - icon: "bell"
+   Input: segmento "new_leads". Leads criados nas ultimas 48h.
+   Para cada: primeira impressao do perfil, qual produto oferecer, mensagem de primeiro contato.
+
+3. "follow_ups_due" (Follow-ups Pendentes) - icon: "clock"
+   Input: segmento "follow_ups_due". Follow-ups vencidos ou vencendo hoje.
+   Para cada: qual follow-up (#1/#2/#3/recheck), abordagem sugerida.
 
 4. "revenue_opportunities" (Oportunidades Receita) - icon: "dollar-sign"
-   Leads com ltv >= 5000, budget = true, temp quente/muito-quente, nao convertidos. Foque no product.
+   Input: segmento "high_value". Leads com alto LTV e budget.
+   Para cada: estrategia de venda focada no produto recomendado.
 
-5. "new_arrivals" (Resumo de Ontem) - icon: "bell"
-   Leads com created nas ultimas 48h. Resumo breve.
+5. "mentoring_groups" (Agrupamento Mentoria) - icon: "users"
+   Input: segmento "all_leads". Identifique 1-3 grupos de 2-5 leads com mesmo rota.
+   Formato DIFERENTE: { group_theme, rota_phase, leads: [{lead_id, lead_name, score, phase}], suggested_session_topic }
+   Priorize leads que ja completaram sessao individual.
 
 6. "ready_messages" (Mensagens Prontas) - icon: "message-square"
-   Top 3-5 leads mais prioritarios: mensagens PRONTAS para copiar. Respeite channel (whatsapp=curta, email=elaborada).
+   Dos leads MAIS prioritarios de qualquer segmento, gere 3-5 mensagens PRONTAS para copiar.
+   Personalize com contexto do sinal/situacao.
 
 7. "call_preparation" (Preparacao Calls) - icon: "phone"
-   Leads com follow_ups proximos (7 dias) ou que precisam de call: briefing resumido, 3 pontos.
+   Leads com upcoming_bookings ou follow_ups nos proximos 7 dias.
+   Briefing: perfil, fase ROTA, barreiras, produto, 3 pontos para abordar.
 
-SCHEMA DO JSON DE RESPOSTA:
+SCHEMA:
 {
-  "generated_at": "{{today}}T08:00:00Z",
-  "summary": "Resumo executivo de 2-3 frases sobre as prioridades do dia",
+  "generated_at": "{{now}}",
+  "summary": "2-3 frases: quantos leads novos, sinais quentes, follow-ups pendentes",
   "total_actionable_leads": <numero>,
   "categories": [
     {
       "id": "<category_id>",
-      "title": "<titulo em PT-BR>",
+      "title": "<titulo PT-BR>",
       "icon": "<icon_name>",
-      "description": "Breve descricao da categoria (1 frase)",
+      "description": "1 frase",
       "items": [
         {
-          "lead_id": "<uuid exato do lead>",
-          "lead_name": "<nome exato>",
-          "lead_email": "<email exato>",
-          "lead_phone": "<telefone exato ou null>",
+          "lead_id": "<uuid>",
+          "lead_name": "<nome>",
+          "lead_email": "<email>",
+          "lead_phone": "<phone ou null>",
           "temperature": "<muito-quente|quente|morno|frio>",
           "score": <numero>,
           "priority_score": <numero>,
-          "phase": "<nome da fase>",
-          "reason": "Por que este lead precisa de atencao agora (1-2 frases)",
-          "suggested_action": "O que fazer (1 frase imperativa)",
-          "suggested_message": "Mensagem completa pronta para enviar, personalizada",
+          "phase": "<fase>",
+          "signal": "<whatsapp_reply|report_multi_view|session_completed_upsell|no_show|subscription_cancelled|new_high_score|follow_up_due|high_value>",
+          "reason": "1-2 frases com o SINAL detectado",
+          "suggested_action": "1 frase imperativa",
+          "suggested_message": "Mensagem pronta personalizada",
           "channel": "<whatsapp|email|call>",
           "priority": "<urgent|high|medium|low>",
-          "product_to_offer": "<nome do produto ou null>",
+          "product_to_offer": "<produto ou null>",
           "estimated_ltv": <numero ou null>
         }
       ]
@@ -93,17 +129,70 @@ SCHEMA DO JSON DE RESPOSTA:
   ]
 }
 
-EXCECAO - Para "mentoring_groups", items tem formato:
-{
-  "group_theme": "Tema sugerido para o grupo",
-  "rota_phase": "R|O|T|A",
-  "leads": [
-    { "lead_id": "uuid", "lead_name": "nome", "score": <numero>, "phase": "fase" }
-  ],
-  "suggested_session_topic": "Topico concreto para a sessao de grupo"
-}
+EXCECAO mentoring_groups items:
+{ "group_theme": "...", "rota_phase": "R|O|T|A", "leads": [{ "lead_id": "uuid", "lead_name": "nome", "score": N, "phase": "fase" }], "suggested_session_topic": "..." }
 
-Retorne SOMENTE o JSON. Nada mais.`;
+Retorne SOMENTE o JSON.`;
+
+// ── Compact lead builder ─────────────────────────────────────────────
+
+function buildCompactLead(l: any, extras: {
+  interactionsByLead: Record<string, any>;
+  tasksByLead: Record<string, number>;
+  bookingsByLead: Record<string, any>;
+  whatsappByLead: Record<string, any>;
+}): Record<string, any> {
+  const barriers: string[] = [];
+  if (l.has_english_barrier) barriers.push("english");
+  if (l.has_experience_barrier) barriers.push("experience");
+  if (l.has_financial_barrier) barriers.push("financial");
+  if (l.has_family_barrier) barriers.push("family");
+  if (l.has_visa_barrier) barriers.push("visa");
+  if (l.has_time_barrier) barriers.push("time");
+  if (l.has_clarity_barrier) barriers.push("clarity");
+
+  const follow_ups = [l.scheduled_follow_up_1, l.scheduled_follow_up_2, l.scheduled_follow_up_3].filter(Boolean);
+  const intData = extras.interactionsByLead[l.id];
+
+  const entry: Record<string, any> = {
+    id: l.id, name: l.name, email: l.email,
+    score: l.readiness_score, temp: l.lead_temperature,
+    prio: l.lead_priority_score, phase: l.phase_name, rota: l.rota_letter,
+  };
+
+  if (l.phone) entry.phone = l.phone;
+  if (l.area) entry.area = l.area;
+  if (l.urgency_level) entry.urgency = l.urgency_level;
+  if (l.has_budget) entry.budget = true;
+  if (l.estimated_ltv) entry.ltv = l.estimated_ltv;
+  if (l.recommended_product_name) entry.product = l.recommended_product_name;
+  if (l.preferred_communication) entry.channel = l.preferred_communication;
+  if (l.best_contact_time) entry.best_time = l.best_contact_time;
+  if (l.created_at) entry.created = l.created_at.split("T")[0];
+  if (follow_ups.length) entry.follow_ups = follow_ups.map((f: string) => f.split("T")[0]);
+  if (l.recheck_recommended_at) entry.recheck = l.recheck_recommended_at.split("T")[0];
+  if (l.next_milestone_action) entry.next_action = l.next_milestone_action;
+  if (barriers.length) entry.barriers = barriers;
+  if (l.critical_blockers) entry.blockers = l.critical_blockers;
+  if (intData?.count) entry.interactions = intData.count;
+  if (intData?.last_contact) entry.last_contact = intData.last_contact.split("T")[0];
+  if (intData?.recent_events?.length) entry.recent_events = intData.recent_events;
+  if (extras.tasksByLead[l.id]) entry.pending_tasks = extras.tasksByLead[l.id];
+  if (l.access_count > 0) entry.report_views = l.access_count;
+  if (l.first_accessed_at) entry.first_viewed = (l.first_accessed_at as string).split("T")[0];
+
+  const bk = extras.bookingsByLead[l.id];
+  if (bk) {
+    if (bk.upcoming.length) entry.upcoming_bookings = bk.upcoming;
+    if (bk.recent_completed.length) entry.completed_sessions = bk.recent_completed;
+    if (bk.recent_no_show.length) entry.no_shows = bk.recent_no_show;
+  }
+
+  const wa = extras.whatsappByLead[l.id];
+  if (wa) entry.whatsapp = wa;
+
+  return entry;
+}
 
 // ── Main handler ───────────────────────────────────────────────────────
 
@@ -114,7 +203,6 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Auth: admin or assistant
   const authError = await requireAdminOrAssistant(req);
   if (authError) return authError;
 
@@ -123,7 +211,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extract userId and role from JWT for rate limiting + cost tracking
+    // Extract userId and role from JWT
     let userId: string | null = null;
     let userRole: string | null = null;
     try {
@@ -133,185 +221,272 @@ Deno.serve(async (req) => {
       userId = payload.sub || null;
       if (userId) {
         const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .single();
+          .from("user_roles").select("role").eq("user_id", userId).single();
         userRole = roleData?.role || null;
       }
-    } catch { /* internal call or malformed — skip limit */ }
+    } catch { /* skip */ }
 
-    // ── Rate limit for assistant role ────────────────────────────
+    // Rate limit for assistant
     if (userRole === "assistant" && userId) {
       const { data: limitRows, error: limitErr } = await supabase
         .rpc("check_daily_priorities_limit", { p_user_id: userId });
-
       const limitData = limitRows?.[0] || limitRows;
-      if (limitErr) {
-      } else if (limitData && !limitData.allowed) {
+      if (!limitErr && limitData && !limitData.allowed) {
         return new Response(
           JSON.stringify({
             error: "Limite diário atingido",
-            message: `Você já gerou prioridades ${limitData.used}x hoje. O limite é ${limitData.max_limit} por dia.`,
-            used: limitData.used,
-            max: limitData.max_limit,
-            remaining_uses: 0,
+            message: `Você já gerou prioridades ${limitData.used}x hoje. Limite: ${limitData.max_limit}/dia.`,
+            used: limitData.used, max: limitData.max_limit, remaining_uses: 0,
           }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // ── 0. Load config from app_configs ─────────────────────────────
+    // ── 0. Load config ──────────────────────────────────────────────
 
-    const { data: apiConfigRow, error: apiConfigErr } = await supabase
-      .from("app_configs")
-      .select("value")
-      .eq("key", "daily_priorities_api_config")
-      .maybeSingle();
-
+    const { data: apiConfigRow } = await supabase
+      .from("app_configs").select("value").eq("key", "daily_priorities_api_config").maybeSingle();
     const { data: promptConfigRow } = await supabase
-      .from("app_configs")
-      .select("value")
-      .eq("key", "daily_priorities_prompt")
-      .maybeSingle();
-
-    const { data: leadLimitRow } = await supabase
-      .from("app_configs")
-      .select("value")
-      .eq("key", "daily_priorities_lead_limit")
-      .maybeSingle();
+      .from("app_configs").select("value").eq("key", "daily_priorities_prompt").maybeSingle();
 
     const selectedApiKey = apiConfigRow?.value || "anthropic_api";
-    const rawLimitValue = leadLimitRow?.value;
-    const leadLimit = Math.min(500, Math.max(5, parseInt(rawLimitValue || "80", 10) || 80));
 
-    // ── 1. Query completed career_evaluations ───────────────────────
+    // ── 1. Time boundaries ──────────────────────────────────────────
 
-    const { data: leads, error: leadsError } = await supabase
-      .from("career_evaluations")
-      .select(`
-        id, name, email, phone, area,
-        readiness_score, lead_temperature, lead_priority_score,
-        phase_name, rota_letter, urgency_level,
-        has_budget, estimated_ltv,
-        recommended_product_name, recommended_product_tier,
-        preferred_communication, best_contact_time,
-        created_at, first_accessed_at, access_count,
-        scheduled_follow_up_1, scheduled_follow_up_2, scheduled_follow_up_3,
-        recheck_recommended_at, next_milestone_action,
-        has_english_barrier, has_experience_barrier, has_financial_barrier,
-        has_family_barrier, has_visa_barrier, has_time_barrier, has_clarity_barrier,
-        critical_blockers
-      `)
+    const now = new Date();
+    const todayISO = now.toISOString().split("T")[0];
+    const nowISO = now.toISOString();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // ── 2. Parallel queries ─────────────────────────────────────────
+
+    // 2a. NEW leads (last 48h) — guaranteed to appear
+    const newLeadsPromise = supabase
+      .from("career_evaluations").select(CE_COLUMNS)
+      .eq("processing_status", "completed")
+      .gte("created_at", fortyEightHoursAgo.toISOString())
+      .order("lead_priority_score", { ascending: false, nullsFirst: false })
+      .limit(10);
+
+    // 2b. Leads with follow-ups due today or overdue
+    const followUpLeadsPromise = supabase
+      .from("career_evaluations").select(CE_COLUMNS)
+      .eq("processing_status", "completed")
+      .or(`scheduled_follow_up_1.lte.${todayISO},scheduled_follow_up_2.lte.${todayISO},scheduled_follow_up_3.lte.${todayISO},recheck_recommended_at.lte.${todayISO}`)
+      .order("lead_priority_score", { ascending: false, nullsFirst: false })
+      .limit(10);
+
+    // 2c. High-value leads (budget + high temp)
+    const highValuePromise = supabase
+      .from("career_evaluations").select(CE_COLUMNS)
+      .eq("processing_status", "completed")
+      .eq("has_budget", true)
+      .gte("estimated_ltv", 5000)
+      .in("lead_temperature", ["quente", "muito-quente"])
+      .order("estimated_ltv", { ascending: false })
+      .limit(10);
+
+    // 2d. All leads by priority score (for groups + fallback)
+    const allLeadsPromise = supabase
+      .from("career_evaluations").select(CE_COLUMNS)
       .eq("processing_status", "completed")
       .order("lead_priority_score", { ascending: false, nullsFirst: false })
-      .limit(leadLimit);
+      .limit(40);
 
-    if (leadsError) {
-      throw new Error(`Leads query failed: ${leadsError.message}`);
+    // 2e. Recent interactions (30 days)
+    const interactionsPromise = supabase
+      .from("lead_interactions")
+      .select("lead_id, type, channel, content, created_at")
+      .gte("created_at", thirtyDaysAgo.toISOString())
+      .order("created_at", { ascending: false });
+
+    // 2f. Pending tasks
+    const tasksPromise = supabase
+      .from("lead_tasks")
+      .select("lead_id, title, type, priority, due_date, status")
+      .eq("status", "pending");
+
+    // 2g. Recent bookings
+    const bookingsPromise = supabase
+      .from("bookings")
+      .select("id, student_id, service_id, scheduled_start, status, completed_at, mentor_notes, created_at")
+      .or(`scheduled_start.gte.${sevenDaysAgo.toISOString()},created_at.gte.${sevenDaysAgo.toISOString()}`)
+      .lte("scheduled_start", sevenDaysFromNow.toISOString());
+
+    // 2h. WhatsApp sessions
+    const whatsappPromise = supabase
+      .from("whatsapp_flow_sessions")
+      .select("lead_id, phone, status, last_reply_text, messages_sent, messages_received, last_activity_at")
+      .gte("last_activity_at", sevenDaysAgo.toISOString())
+      .in("status", ["active", "waiting_reply", "completed"]);
+
+    // Execute all in parallel
+    const [
+      { data: newLeadsRaw, error: newErr },
+      { data: followUpLeadsRaw },
+      { data: highValueRaw },
+      { data: allLeadsRaw, error: allErr },
+      { data: interactions },
+      { data: pendingTasks },
+      { data: recentBookings },
+      { data: whatsappSessions },
+    ] = await Promise.all([
+      newLeadsPromise, followUpLeadsPromise, highValuePromise, allLeadsPromise,
+      interactionsPromise, tasksPromise, bookingsPromise, whatsappPromise,
+    ]);
+
+    if (newErr || allErr) {
+      throw new Error(`Query failed: ${newErr?.message || allErr?.message}`);
     }
 
-    if (!leads?.length) {
+    // Merge all lead IDs into a dedup map
+    const allLeadsMap = new Map<string, any>();
+    for (const l of [...(allLeadsRaw || []), ...(newLeadsRaw || []), ...(followUpLeadsRaw || []), ...(highValueRaw || [])]) {
+      if (!allLeadsMap.has(l.id)) allLeadsMap.set(l.id, l);
+    }
+
+    if (allLeadsMap.size === 0) {
       return new Response(
         JSON.stringify({
-          generated_at: new Date().toISOString(),
-          summary: "Nenhum lead processado encontrado. Importe leads para comecar.",
-          total_actionable_leads: 0,
-          categories: [],
+          generated_at: nowISO,
+          summary: "Nenhum lead processado encontrado.",
+          total_actionable_leads: 0, categories: [],
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── 2. Query recent interactions (last 30 days) ─────────────────
+    // ── 3. Build enrichment indexes ─────────────────────────────────
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: interactions } = await supabase
-      .from("lead_interactions")
-      .select("lead_id, type, channel, created_at")
-      .gte("created_at", thirtyDaysAgo.toISOString())
-      .order("created_at", { ascending: false });
-
-    // ── 3. Query pending tasks ──────────────────────────────────────
-
-    const { data: pendingTasks } = await supabase
-      .from("lead_tasks")
-      .select("lead_id, title, type, priority, due_date, status")
-      .eq("status", "pending");
-
-    // ── 4. Build context per lead ───────────────────────────────────
-
-    const interactionsByLead: Record<string, { count: number; last_contact: string | null }> = {};
+    // 3a. Interactions by lead
+    const interactionsByLead: Record<string, { count: number; last_contact: string | null; recent_events: any[] }> = {};
     for (const i of interactions || []) {
       const lid = i.lead_id as string;
       if (!interactionsByLead[lid]) {
-        interactionsByLead[lid] = { count: 0, last_contact: null };
+        interactionsByLead[lid] = { count: 0, last_contact: null, recent_events: [] };
       }
       interactionsByLead[lid].count++;
-      if (!interactionsByLead[lid].last_contact) {
-        interactionsByLead[lid].last_contact = i.created_at;
+      if (!interactionsByLead[lid].last_contact) interactionsByLead[lid].last_contact = i.created_at;
+      if (interactionsByLead[lid].recent_events.length < 5) {
+        const evt: any = { type: i.type, date: (i.created_at as string).split("T")[0] };
+        if (i.content && ["booking_created", "booking_completed", "booking_no_show", "subscription_activated", "subscription_cancelled"].includes(i.type)) {
+          evt.content = (i.content as string).slice(0, 80);
+        }
+        interactionsByLead[lid].recent_events.push(evt);
       }
     }
 
+    // 3b. Tasks
     const tasksByLead: Record<string, number> = {};
     for (const t of pendingTasks || []) {
       const lid = t.lead_id as string;
       tasksByLead[lid] = (tasksByLead[lid] || 0) + 1;
     }
 
-    const todayISO = new Date().toISOString().split("T")[0];
+    // 3c. Bookings — map student_id → lead_id
+    const leadByUserId: Record<string, string> = {};
+    for (const l of allLeadsMap.values()) {
+      if (l.user_id) leadByUserId[l.user_id] = l.id;
+    }
 
-    // Compact lead context — strip nulls/falsy to reduce token count
-    const leadsContext = leads.map((l: any) => {
-      // Only include true barriers as array of names (saves ~70% vs object with 7 booleans)
-      const barriers: string[] = [];
-      if (l.has_english_barrier) barriers.push("english");
-      if (l.has_experience_barrier) barriers.push("experience");
-      if (l.has_financial_barrier) barriers.push("financial");
-      if (l.has_family_barrier) barriers.push("family");
-      if (l.has_visa_barrier) barriers.push("visa");
-      if (l.has_time_barrier) barriers.push("time");
-      if (l.has_clarity_barrier) barriers.push("clarity");
+    const bookingsByLead: Record<string, { upcoming: any[]; recent_completed: any[]; recent_no_show: any[] }> = {};
+    for (const b of recentBookings || []) {
+      const leadId = leadByUserId[b.student_id];
+      if (!leadId) continue;
+      if (!bookingsByLead[leadId]) bookingsByLead[leadId] = { upcoming: [], recent_completed: [], recent_no_show: [] };
+      const dateStr = (b.scheduled_start as string).split("T")[0];
+      if (b.status === "confirmed" && new Date(b.scheduled_start) > now) {
+        bookingsByLead[leadId].upcoming.push({ date: dateStr });
+      } else if (b.status === "completed") {
+        bookingsByLead[leadId].recent_completed.push({ date: dateStr });
+      } else if (b.status === "no_show") {
+        bookingsByLead[leadId].recent_no_show.push({ date: dateStr });
+      }
+    }
 
-      const follow_ups = [l.scheduled_follow_up_1, l.scheduled_follow_up_2, l.scheduled_follow_up_3].filter(Boolean);
-      const interactionData = interactionsByLead[l.id];
+    // 3d. WhatsApp
+    const whatsappByLead: Record<string, any> = {};
+    for (const ws of whatsappSessions || []) {
+      const lid = ws.lead_id as string;
+      if (!lid) continue;
+      if (!whatsappByLead[lid] || new Date(ws.last_activity_at) > new Date(whatsappByLead[lid].last_activity)) {
+        whatsappByLead[lid] = {
+          status: ws.status,
+          replied: (ws.messages_received || 0) > 0,
+          last_activity: (ws.last_activity_at as string).split("T")[0],
+        };
+        if (ws.last_reply_text) whatsappByLead[lid].last_reply = (ws.last_reply_text as string).slice(0, 60);
+      }
+    }
 
-      // Build compact object — omit null/undefined/empty fields
-      const entry: Record<string, any> = {
-        id: l.id,
-        name: l.name,
-        email: l.email,
-        score: l.readiness_score,
-        temp: l.lead_temperature,
-        prio: l.lead_priority_score,
-        phase: l.phase_name,
-        rota: l.rota_letter,
-      };
+    const enrichExtras = { interactionsByLead, tasksByLead, bookingsByLead, whatsappByLead };
 
-      // Only include if present (saves tokens for sparse data)
-      if (l.phone) entry.phone = l.phone;
-      if (l.area) entry.area = l.area;
-      if (l.urgency_level) entry.urgency = l.urgency_level;
-      if (l.has_budget) entry.budget = true;
-      if (l.estimated_ltv) entry.ltv = l.estimated_ltv;
-      if (l.recommended_product_name) entry.product = l.recommended_product_name;
-      if (l.preferred_communication) entry.channel = l.preferred_communication;
-      if (l.best_contact_time) entry.best_time = l.best_contact_time;
-      if (l.created_at) entry.created = l.created_at.split("T")[0]; // date only
-      if (follow_ups.length) entry.follow_ups = follow_ups.map((f: string) => f.split("T")[0]);
-      if (l.recheck_recommended_at) entry.recheck = l.recheck_recommended_at.split("T")[0];
-      if (l.next_milestone_action) entry.next_action = l.next_milestone_action;
-      if (barriers.length) entry.barriers = barriers;
-      if (l.critical_blockers) entry.blockers = l.critical_blockers;
-      if (interactionData?.count) entry.interactions = interactionData.count;
-      if (interactionData?.last_contact) entry.last_contact = interactionData.last_contact.split("T")[0];
-      if (tasksByLead[l.id]) entry.pending_tasks = tasksByLead[l.id];
+    // ── 4. Build pre-segmented data for LLM ─────────────────────────
 
-      return entry;
-    });
+    const newLeadIds = new Set((newLeadsRaw || []).map((l: any) => l.id));
+
+    // Detect "hot activity" leads from interactions/bookings/whatsapp in last 48h
+    const hotActivityIds = new Set<string>();
+    const fortyEightHoursAgoStr = fortyEightHoursAgo.toISOString();
+    for (const i of interactions || []) {
+      if (i.created_at >= fortyEightHoursAgoStr) {
+        const strategicTypes = ["whatsapp_received", "booking_completed", "booking_no_show", "subscription_cancelled", "subscription_activated"];
+        if (strategicTypes.includes(i.type)) {
+          hotActivityIds.add(i.lead_id as string);
+        }
+      }
+    }
+    // Also: leads with 3+ report views
+    for (const l of allLeadsMap.values()) {
+      if (l.access_count >= 3) hotActivityIds.add(l.id);
+    }
+    // WhatsApp replies in last 7 days
+    for (const [lid, wa] of Object.entries(whatsappByLead)) {
+      if ((wa as any).replied) hotActivityIds.add(lid);
+    }
+
+    // Build compact arrays per segment (deduped: a lead appears in its MOST important segment)
+    const usedIds = new Set<string>();
+
+    const hotLeads = [...hotActivityIds]
+      .filter(id => allLeadsMap.has(id) && !newLeadIds.has(id))
+      .map(id => buildCompactLead(allLeadsMap.get(id), enrichExtras))
+      .slice(0, 5);
+    hotLeads.forEach(l => usedIds.add(l.id));
+
+    const newLeads = (newLeadsRaw || [])
+      .map((l: any) => buildCompactLead(l, enrichExtras))
+      .slice(0, 5);
+    newLeads.forEach((l: any) => usedIds.add(l.id));
+
+    const followUpLeads = (followUpLeadsRaw || [])
+      .filter((l: any) => !usedIds.has(l.id))
+      .map((l: any) => buildCompactLead(l, enrichExtras))
+      .slice(0, 5);
+    followUpLeads.forEach((l: any) => usedIds.add(l.id));
+
+    const highValueLeads = (highValueRaw || [])
+      .filter((l: any) => !usedIds.has(l.id))
+      .map((l: any) => buildCompactLead(l, enrichExtras))
+      .slice(0, 5);
+
+    // For mentoring groups: minimal version of all leads
+    const allLeadsCompact = (allLeadsRaw || []).map((l: any) => ({
+      id: l.id, name: l.name, score: l.readiness_score,
+      phase: l.phase_name, rota: l.rota_letter,
+      ...(bookingsByLead[l.id]?.recent_completed?.length ? { had_session: true } : {}),
+    })).slice(0, 20);
+
+    const totalActionable = new Set([
+      ...hotLeads.map(l => l.id),
+      ...newLeads.map(l => l.id),
+      ...followUpLeads.map(l => l.id),
+      ...highValueLeads.map(l => l.id),
+    ]).size;
 
     // ── 5. Get API credentials ──────────────────────────────────────
 
@@ -321,15 +496,13 @@ Deno.serve(async (req) => {
     } catch (configErr) {
       return new Response(
         JSON.stringify({
-          error: `Erro de configuracao: API "${selectedApiKey}" nao encontrada. Verifique em /admin/configuracoes-apis.`,
+          error: `API "${selectedApiKey}" nao encontrada. Verifique /admin/configuracoes-apis.`,
           details: configErr instanceof Error ? configErr.message : String(configErr),
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Detect API type from base_url only (not from key name)
-    // OpenRouter, Together, etc. are OpenAI-compatible — only direct anthropic.com uses Anthropic SDK format
     const detectedProvider = detectProviderFromUrl(apiConfigData.base_url || "");
     const isAnthropic = detectedProvider === "anthropic";
     const selectedModel = apiConfigData.parameters?.model ||
@@ -338,27 +511,42 @@ Deno.serve(async (req) => {
     // ── 6. Build prompt ─────────────────────────────────────────────
 
     const rawPrompt = promptConfigRow?.value || DEFAULT_SYSTEM_PROMPT;
-    const systemPrompt = rawPrompt.replace(/\{\{today\}\}/g, todayISO);
+    const systemPrompt = rawPrompt
+      .replace(/\{\{today\}\}/g, todayISO)
+      .replace(/\{\{now\}\}/g, nowISO);
 
-    const userMessage = JSON.stringify({ leads: leadsContext, today: todayISO });
+    const userMessage = JSON.stringify({
+      today: todayISO,
+      segments: {
+        hot_activity: hotLeads,
+        new_leads: newLeads,
+        follow_ups_due: followUpLeads,
+        high_value: highValueLeads,
+        all_leads: allLeadsCompact,
+      },
+      stats: {
+        total_leads: allLeadsMap.size,
+        new_48h: newLeads.length,
+        hot_signals: hotLeads.length,
+        follow_ups_due: followUpLeads.length,
+        high_value: highValueLeads.length,
+      },
+    });
 
     // ── 7. Call LLM ─────────────────────────────────────────────────
 
-    // Scale max_tokens based on lead count to avoid truncation
-    // ~500 tokens base (summary + structure) + ~300 tokens per lead (across 7 categories)
-    const dynamicMaxTokens = Math.min(8000, Math.max(3000, 500 + leadsContext.length * 300));
+    const dynamicMaxTokens = Math.min(6000, Math.max(2500, 600 + totalActionable * 350));
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
     const llmStartTime = Date.now();
 
     try {
       let responseText: string;
 
       if (isAnthropic) {
-        // ── Anthropic API ──────────────────────────────────────────
         const apiKey = apiConfigData.credentials?.api_key;
-        if (!apiKey) throw new Error("Anthropic API key not configured. Verifique /admin/configuracoes-apis.");
+        if (!apiKey) throw new Error("Anthropic API key not configured.");
 
         const baseUrl = apiConfigData.base_url || "https://api.anthropic.com/v1";
         const aiResponse = await fetch(`${baseUrl}/messages`, {
@@ -379,21 +567,19 @@ Deno.serve(async (req) => {
 
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
-          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic API error ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
+          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `Anthropic ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
           throw new Error(`Anthropic API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
         }
 
         const aiData = await aiResponse.json();
         const { inputTokens, outputTokens } = extractTokenUsage(aiData, 'anthropic');
-        const stopReason = aiData.stop_reason || "unknown";
-        if (stopReason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
+        if (aiData.stop_reason === "max_tokens") console.warn("[generate-daily-priorities] WARNING: truncated");
         logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens, outputTokens, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.content?.[0]?.text || "";
 
       } else {
-        // ── OpenAI-compatible API ──────────────────────────────────
         const apiKey = apiConfigData.credentials?.api_key;
-        if (!apiKey) throw new Error("OpenAI API key not configured. Verifique /admin/configuracoes-apis.");
+        if (!apiKey) throw new Error("API key not configured.");
 
         const baseUrl = apiConfigData.base_url || "https://api.openai.com/v1";
         const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
@@ -415,57 +601,41 @@ Deno.serve(async (req) => {
 
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
-          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `OpenAI API error ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
-          throw new Error(`OpenAI API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
+          logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, status: 'error', durationMs: Date.now() - llmStartTime, errorMessage: `API ${aiResponse.status}`, metadata: { http_status: aiResponse.status } });
+          throw new Error(`API error ${aiResponse.status}: ${errorText.slice(0, 200)}`);
         }
 
         const aiData = await aiResponse.json();
         const { inputTokens: oaiIn, outputTokens: oaiOut } = extractTokenUsage(aiData, 'openai');
-        const finishReason = aiData.choices?.[0]?.finish_reason || "unknown";
-        if (finishReason === "length") console.warn("[generate-daily-priorities] WARNING: Response was truncated (max_tokens reached)");
+        if (aiData.choices?.[0]?.finish_reason === "length") console.warn("[generate-daily-priorities] WARNING: truncated");
         logApiCost({ userId, edgeFunction: 'generate-daily-priorities', provider: detectedProvider, model: selectedModel, inputTokens: oaiIn, outputTokens: oaiOut, durationMs: Date.now() - llmStartTime, metadata: {} });
         responseText = aiData.choices?.[0]?.message?.content || "";
       }
 
       clearTimeout(timeout);
 
-      if (!responseText) {
-        throw new Error("Empty AI response");
-      }
+      if (!responseText) throw new Error("Empty AI response");
 
-      // ── 8. Extract JSON from response ─────────────────────────────
+      // ── 8. Parse JSON ───────────────────────────────────────────────
 
       let jsonText = responseText.trim();
-
-      // Handle markdown code fences
       const jsonBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonBlockMatch) {
-        jsonText = jsonBlockMatch[1].trim();
-      }
+      if (jsonBlockMatch) jsonText = jsonBlockMatch[1].trim();
 
-      // Find the JSON object
       const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No valid JSON in AI response");
-      }
+      if (!jsonMatch) throw new Error("No valid JSON in AI response");
 
-      // Try parsing, with repair for truncated responses
       let priorities: any;
       try {
         priorities = JSON.parse(jsonMatch[0]);
-      } catch (parseErr) {
-        // Attempt to repair truncated JSON by closing unclosed brackets/braces
+      } catch {
+        // Repair truncated JSON
         let repaired = jsonMatch[0];
-        // Remove trailing incomplete string values (e.g. `"some text` without closing quote)
         repaired = repaired.replace(/,\s*"[^"]*$/, "");
-        // Remove trailing incomplete key-value (e.g. `"key": ` without value)
         repaired = repaired.replace(/,\s*"[^"]*":\s*$/, "");
-        // Count unclosed brackets
-        const opens = { "{": 0, "[": 0 };
         const closes: Record<string, string> = { "{": "}", "[": "]" };
         const stack: string[] = [];
-        let inString = false;
-        let escape = false;
+        let inString = false, escape = false;
         for (const ch of repaired) {
           if (escape) { escape = false; continue; }
           if (ch === "\\") { escape = true; continue; }
@@ -474,30 +644,24 @@ Deno.serve(async (req) => {
           if (ch === "{" || ch === "[") stack.push(ch);
           else if (ch === "}" || ch === "]") stack.pop();
         }
-        // Close in reverse order
-        while (stack.length) {
-          const open = stack.pop()!;
-          repaired += closes[open];
-        }
-        try {
-          priorities = JSON.parse(repaired);
-        } catch (repairErr) {
-          throw new Error("Failed to parse AI response JSON (truncated output)");
-        }
+        while (stack.length) { repaired += closes[stack.pop()!]; }
+        try { priorities = JSON.parse(repaired); }
+        catch { throw new Error("Failed to parse AI JSON (truncated)"); }
       }
 
-      // Validate basic structure
       if (!priorities.categories || !Array.isArray(priorities.categories)) {
-        throw new Error("Invalid response: missing categories array");
+        throw new Error("Invalid response: missing categories");
       }
 
-      // Calculate remaining uses for assistant (after this successful call)
+      // Inject accurate generated_at (don't trust LLM)
+      priorities.generated_at = nowISO;
+
+      // Remaining uses for assistant
       let remainingUses: number | null = null;
       if (userRole === "assistant" && userId) {
         const { data: postRows } = await supabase
           .rpc("check_daily_priorities_limit", { p_user_id: userId });
         const postData = postRows?.[0] || postRows;
-        // used won't include THIS call yet (logApiCost is fire-and-forget), so +1
         remainingUses = postData ? Math.max(0, postData.max_limit - postData.used - 1) : null;
       }
 
@@ -506,22 +670,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(responseBody), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     } catch (fetchError) {
       clearTimeout(timeout);
       if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
-        throw new Error("AI API timeout (55s exceeded). Tente novamente.");
+        throw new Error("AI API timeout (90s). Tente novamente.");
       }
       throw fetchError;
     }
   } catch (error) {
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Erro interno ao gerar prioridades",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

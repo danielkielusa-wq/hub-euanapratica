@@ -395,6 +395,71 @@ Deno.serve(async (req) => {
         service_name: "Mentoria Individual 1:1",
         refund_event: "refund",
       });
+    } else if (auto.trigger_event === "content.production_reminder") {
+      Object.assign(testPayload, {
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        title: "Por que seu cargo em portugues te elimina antes da entrevista",
+        format: "long_video",
+        tone: "polemic",
+        production_date: new Date().toISOString().slice(0, 10),
+        scheduled_for: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        virality_score: 85,
+        growth_function: "discovery",
+        hooks: "[question] Por que HR americana ignora seu curriculo no primeiro segundo?\n[provocation] Se seu cargo nao existe em ingles, voce ja perdeu a vaga.",
+        full_script: "## HOOK - O Detalhe que Elimina Antes da Entrevista\nO, vem comigo que eu tenho uma historia que vai mudar como voce se ve no mercado gringo. Eu conheci um cara, desenvolvedor senior no Brasil, ganhando bem, respeitado. Mandou curriculo pra 47 vagas nos EUA. Nem uma resposta. Nada. Zero retorno. Ai ele fez uma coisa simples — mudou um nome no curriculo. So isso.\n📹 Camera frontal, close no rosto do Daniel. Expressao seria e engajada.\n\n## O Problema Real - Por Que Isso Acontece\nEntao entende o seguinte. Nos EUA, o sistema de recrutamento funciona assim: a HR coloca uma vaga, e ela nao procura por pessoas. Ela coloca um filtro. Um filtro de palavras-chave.\n📹 Camera em enquadramento medio. Daniel explicando com as maos.\n\n## Como Funciona o Title Translator - Ferramenta Pratica\nAgora vem a parte que vai resolver isso pra voce. Existe uma ferramenta — se voce nao conhece, prepare-se — chamada Title Translator. E uma plataforma que mapeia o que voce e aqui no Brasil pro exatamente o que voce e la nos EUA.\n📹 Camera mais proxima, mostrando entusiasmo. Corta para screen share.",
+        cta: "Link na bio para o Title Translator — traduz seu cargo em 30 segundos",
+        link: "https://hub.euanapratica.com/admin/content-pipeline?piece=00000000-0000-0000-0000-000000000000",
+      });
+      // Remove generic lead fields
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
+    } else if (auto.trigger_event === "content.publish_reminder") {
+      Object.assign(testPayload, {
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        title: "Por que seu cargo em portugues te elimina antes da entrevista",
+        format: "long_video",
+        status: "recorded",
+        scheduled_for: new Date().toISOString(),
+        cta: "Link na bio para o Title Translator — traduz seu cargo em 30 segundos",
+        link: "https://hub.euanapratica.com/admin/content-pipeline?piece=00000000-0000-0000-0000-000000000000",
+      });
+      // Remove generic lead fields
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
+    } else if (auto.trigger_event === "content.production_scheduled") {
+      Object.assign(testPayload, {
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        title: "Por que seu cargo em portugues te elimina antes da entrevista",
+        format: "long_video",
+        status: "approved",
+        production_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        old_production_date: null,
+        action: "created",
+        link: "https://hub.euanapratica.com/admin/content-pipeline?piece=00000000-0000-0000-0000-000000000000",
+      });
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
+    } else if (auto.trigger_event === "content.publish_scheduled") {
+      Object.assign(testPayload, {
+        piece_id: "00000000-0000-0000-0000-000000000000",
+        title: "Por que seu cargo em portugues te elimina antes da entrevista",
+        format: "long_video",
+        status: "recorded",
+        scheduled_for: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        old_scheduled_for: null,
+        action: "created",
+        link: "https://hub.euanapratica.com/admin/content-pipeline?piece=00000000-0000-0000-0000-000000000000",
+      });
+      delete testPayload.lead_id;
+      delete testPayload.lead_name;
+      delete testPayload.lead_email;
+      delete testPayload.lead_phone;
     } else if (auto.trigger_event === "content.published" || auto.trigger_event === "content.*") {
       Object.assign(testPayload, {
         platform: "x",

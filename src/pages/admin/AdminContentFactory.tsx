@@ -7,15 +7,20 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
   Flame, Sparkles, Database, Loader2, Copy, Check,
   Trash2, ChevronDown, ChevronRight, Video, FileText,
-  Image, MessageSquare, TrendingUp, Zap, RefreshCw,
+  Image, MessageSquare, TrendingUp, TrendingDown, Zap, RefreshCw,
   Linkedin, Twitter, Youtube, Eye, Settings2, Save, Pencil, X, HelpCircle,
-  Send, Link2, RotateCcw, Clock,
+  Send, Link2, RotateCcw, Clock, Calendar, ChevronLeft,
+  Search, Filter, ArrowUpDown, ExternalLink, CheckCircle2, MoreVertical, PlaySquare,
+  Wand2, Target, Users2, ShoppingBag, LayoutTemplate, History,
 } from 'lucide-react';
 import {
   useTrendingTopics,
@@ -29,16 +34,24 @@ import {
   useAvailableApis,
   useContentFactoryConfig,
   useSaveContentFactoryConfig,
+  useEnabledProductShowcases,
+  useProductShowcases,
+  useSaveProductShowcase,
+  useDeleteProductShowcase,
   type ContentPiece,
+  type ProductShowcase,
   type TrendingTopic,
   type ContentFormat,
   type ContentTone,
+  type GrowthFunction,
+  type AudienceStage,
 } from '@/hooks/useAdminContentFactory';
 import { useContentAssets } from '@/hooks/useContentAssets';
 import { AssetGeneratorSheet } from '@/components/content/AssetGeneratorSheet';
 import { PublicationsTab } from '@/components/content/PublicationsTab';
 import { SocialAccountsSettings } from '@/components/content/SocialAccountsSettings';
 import { useToast } from '@/hooks/use-toast';
+import { PieceEditModal } from '@/components/content/PieceEditModal';
 import {
   useGenerateSocialPost,
   useSocialAccounts,
@@ -52,7 +65,8 @@ import {
 
 const FORMAT_OPTIONS: { value: ContentFormat; label: string; icon: typeof Video }[] = [
   { value: 'short', label: 'Short (Reels/TikTok)', icon: Video },
-  { value: 'long_video', label: 'YouTube Longo', icon: Youtube },
+  { value: 'medium_video', label: 'YouTube Medio (8-15min)', icon: Youtube },
+  { value: 'long_video', label: 'YouTube Longo (20-40min)', icon: Youtube },
   { value: 'carousel', label: 'Carrossel', icon: Image },
   { value: 'stories', label: 'Stories', icon: MessageSquare },
 ];
@@ -64,6 +78,20 @@ const TONE_OPTIONS: { value: ContentTone; label: string }[] = [
   { value: 'roast', label: 'Roast' },
   { value: 'data_story', label: 'Data Story' },
   { value: 'myth_busting', label: 'Myth Busting' },
+];
+
+const GROWTH_FUNCTION_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: '', label: 'Auto', description: 'Deixar o modelo decidir' },
+  { value: 'discovery', label: 'Discovery', description: 'Trazer gente nova (Shorts, dados chocantes)' },
+  { value: 'conversion', label: 'Conversion', description: 'Transformar viewer em inscrito (frameworks)' },
+  { value: 'retention', label: 'Retention', description: 'Fidelizar inscritos (deep dives)' },
+];
+
+const AUDIENCE_STAGE_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: '', label: 'Auto', description: 'Deixar o modelo decidir' },
+  { value: 'cold', label: 'Cold', description: 'Nunca viu o Daniel' },
+  { value: 'warm', label: 'Warm', description: 'Ja viu 1-2 videos' },
+  { value: 'hot', label: 'Hot', description: 'Inscrito engajado' },
 ];
 
 const DEFAULT_SOCIAL_PROMPT = `Você é o estrategista de redes sociais do Daniel Kielusa (@eua_na_pratica).
@@ -143,7 +171,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const FORMAT_LABELS: Record<string, string> = {
-  short: 'Short', long_video: 'YouTube', carousel: 'Carrossel', stories: 'Stories',
+  short: 'Short', medium_video: 'YT Medio', long_video: 'YouTube', carousel: 'Carrossel', stories: 'Stories',
 };
 
 const TONE_LABELS: Record<string, string> = {
@@ -154,59 +182,53 @@ const TONE_LABELS: Record<string, string> = {
 // ── Main Component ───────────────────────────────────────────────────────
 
 export default function AdminContentFactory() {
-  const [activeMode, setActiveMode] = useState<'trending' | 'create' | 'history' | 'publications'>('create');
+  const [activeMode, setActiveMode] = useState<'trending' | 'create' | 'history' | 'calendar'>('create');
   const [showConfig, setShowConfig] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [showProducts, setShowProducts] = useState(false);
+  const [createPrompt, setCreatePrompt] = useState('');
+
+  const handleCreateFromTrending = (title: string, context: string) => {
+    setCreatePrompt(`Crie um roteiro sobre: ${title}\n\nContexto: ${context}`);
+    setActiveMode('create');
+  };
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="p-2 sm:p-2.5 bg-gradient-to-br from-orange-100 to-red-100 rounded-xl shrink-0">
-              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
+      <div className="-m-4 lg:-m-6 min-h-screen bg-muted/40">
+        {/* Header — white bar with border */}
+        <header className="bg-white dark:bg-card border-b border-border px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-orange-100 text-orange-500 rounded-xl flex items-center justify-center">
+              <Flame className="w-6 h-6" fill="currentColor" />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">Content Factory</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                Trending topics, ideias e roteiros completos com IA.
-              </p>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Content Factory</h1>
+              <p className="text-sm text-muted-foreground">Trending topics, ideias e roteiros completos com IA.</p>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShowAccounts(true)}
-            >
-              <Link2 className="w-4 h-4" />
-              Contas
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShowDocs(true)}
-            >
+          <nav className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+            <button onClick={() => setShowProducts(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
+              <FileText className="w-4 h-4" /> Produtos
+            </button>
+            <button onClick={() => setShowAccounts(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
+              <Link2 className="w-4 h-4" /> Contas
+            </button>
+            <button onClick={() => setShowDocs(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
               <HelpCircle className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`gap-1.5 ${showConfig ? 'bg-muted' : ''}`}
-              onClick={() => setShowConfig((v) => !v)}
-            >
-              <Settings2 className="w-4 h-4" />
-              LLMs
-            </Button>
-          </div>
-        </div>
+            </button>
+            <button onClick={() => setShowConfig(v => !v)} className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground transition-colors ${showConfig ? 'bg-muted text-foreground' : 'hover:bg-muted'}`}>
+              <Settings2 className="w-4 h-4" /> LLMs
+            </button>
+          </nav>
+        </header>
 
         {/* Docs Sheet */}
         {showDocs && <DocsSheet onClose={() => setShowDocs(false)} />}
+
+        {/* Product Showcases Management */}
+        {showProducts && <ProductShowcasesSheet onClose={() => setShowProducts(false)} />}
 
         {/* Social Accounts Settings */}
         {showAccounts && <SocialAccountsSettings open={showAccounts} onClose={() => setShowAccounts(false)} />}
@@ -214,36 +236,39 @@ export default function AdminContentFactory() {
         {/* LLM Config Panel */}
         {showConfig && <LLMConfigPanel />}
 
-        {/* Mode Tabs */}
-        <div className="flex bg-muted rounded-lg p-1 gap-0.5 sm:gap-1 overflow-x-auto">
-          {[
-            { id: 'trending' as const, label: 'Trending', icon: Flame },
-            { id: 'create' as const, label: 'Criar', icon: Sparkles },
-            { id: 'history' as const, label: 'Historico', icon: FileText },
-            { id: 'publications' as const, label: 'Publicacoes', icon: Send },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveMode(tab.id)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeMode === tab.id
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <div className="px-8 py-8">
+          {/* Mode Tabs — pill style */}
+          <div className="flex items-center gap-2 bg-white dark:bg-card p-1.5 rounded-xl border border-border mb-8 inline-flex shadow-sm">
+            {[
+              { id: 'trending' as const, label: 'Trending', icon: Flame },
+              { id: 'create' as const, label: 'Criar', icon: Sparkles },
+              { id: 'history' as const, label: 'Historico', icon: Clock },
+              { id: 'calendar' as const, label: 'Calendario', icon: Calendar },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeMode === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveMode(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                    isActive
+                      ? 'bg-slate-100 dark:bg-muted text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-slate-50 dark:hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${tab.id === 'trending' && isActive ? 'text-orange-500' : tab.id === 'create' && isActive ? 'text-blue-500' : ''}`} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-        {activeMode === 'trending' && <TrendingTab />}
-        {activeMode === 'create' && <CreateTab />}
-        {activeMode === 'history' && <HistoryTab />}
-        {activeMode === 'publications' && <PublicationsTab />}
+          {activeMode === 'trending' && <TrendingTab onCreateFromTrending={handleCreateFromTrending} />}
+          {activeMode === 'create' && <CreateTab promptText={createPrompt} setPromptText={setCreatePrompt} />}
+          {activeMode === 'history' && <HistoryTab />}
+          {activeMode === 'calendar' && <CalendarTab />}
+        </div>
       </div>
     </DashboardLayout>
   );
@@ -262,6 +287,7 @@ function LLMConfigPanel() {
   const [trendingPrompt, setTrendingPrompt] = useState('');
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [socialPrompt, setSocialPrompt] = useState('');
+  const [calendarRecipients, setCalendarRecipients] = useState('');
   const [showPrompt, setShowPrompt] = useState<'trending' | 'generate' | 'social' | null>(null);
 
   useEffect(() => {
@@ -272,6 +298,11 @@ function LLMConfigPanel() {
       setTrendingPrompt(config.trending_prompt);
       setGeneratePrompt(config.generate_prompt);
       setSocialPrompt(config.social_prompt);
+      // Parse JSON array to comma-separated for display
+      try {
+        const arr = JSON.parse(config.calendar_recipients || '[]');
+        setCalendarRecipients(Array.isArray(arr) ? arr.join(', ') : '');
+      } catch { setCalendarRecipients(config.calendar_recipients || ''); }
     }
   }, [config]);
 
@@ -281,6 +312,10 @@ function LLMConfigPanel() {
   const effectiveSocial = socialApi || config?.social_api_key || '';
 
   const handleSave = () => {
+    // Convert comma-separated emails to JSON array
+    const recipientsJson = JSON.stringify(
+      calendarRecipients.split(',').map(e => e.trim()).filter(Boolean)
+    );
     saveConfig.mutate({
       trending_api_key: effectiveTrending,
       generate_api_key: effectiveGenerate,
@@ -288,6 +323,7 @@ function LLMConfigPanel() {
       trending_prompt: trendingPrompt,
       generate_prompt: generatePrompt,
       social_prompt: socialPrompt,
+      calendar_recipients: recipientsJson,
     });
   };
 
@@ -395,6 +431,19 @@ function LLMConfigPanel() {
           </Button>
         </div>
 
+        {/* Calendar recipients */}
+        <div className="flex items-center gap-2 border-t pt-3">
+          <Calendar className="w-3.5 h-3.5 text-green-500 shrink-0" />
+          <span className="text-xs font-medium whitespace-nowrap">Convites Calendario</span>
+          <Input
+            value={calendarRecipients}
+            onChange={(e) => setCalendarRecipients(e.target.value)}
+            placeholder="email1@exemplo.com, email2@exemplo.com"
+            className="flex-1 h-8 text-xs"
+          />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">Separar com virgula</span>
+        </div>
+
         {/* Prompt editors */}
         {showPrompt === 'trending' && (
           <div className="space-y-1.5 border-t pt-3">
@@ -462,82 +511,318 @@ function LLMConfigPanel() {
 
 // ── Trending Tab ──────────────────────────────────────────────────────────
 
-function TrendingTab() {
+function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: string, context: string) => void }) {
   const { data: topics = [], isLoading } = useTrendingTopics();
   const fetchTrending = useFetchTrending();
   const clearCache = useClearTrendingCache();
+  const generateContent = useGenerateContent();
   const [selectedTopic, setSelectedTopic] = useState<TrendingTopic | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [timeFilter, setTimeFilter] = useState<'all' | '24h' | '7d'>('all');
+
+  const timeFiltered = timeFilter === 'all'
+    ? topics
+    : topics.filter(t => {
+        const created = new Date(t.created_at).getTime();
+        const now = Date.now();
+        return timeFilter === '24h' ? now - created < 86400000 : now - created < 604800000;
+      });
+
+  const searchFiltered = searchQuery
+    ? timeFiltered.filter(t =>
+        t.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.keywords?.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : timeFiltered;
+
+  const filteredTopics = [...searchFiltered].sort((a, b) =>
+    sortDirection === 'desc'
+      ? b.virality_potential - a.virality_potential
+      : a.virality_potential - b.virality_potential
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredTopics.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredTopics.map(t => t.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  // Check which topics already have a generated piece
+  const { data: pieces = [] } = useContentPieces();
+  const generatedTopicIds = new Set(pieces.filter(p => p.trending_topic_id).map(p => p.trending_topic_id));
+
+  const handleBulkGenerate = () => {
+    for (const id of selectedIds) {
+      const topic = topics.find(t => t.id === id);
+      if (!topic) continue;
+      generateContent.mutate({
+        input_text: `${topic.topic}\n\nContexto: ${topic.summary}\n\nAngulo sugerido: ${topic.angle}`,
+        input_type: 'trending',
+        trending_topic_id: topic.id,
+        format: (topic.format_suggestion as ContentFormat) || 'short',
+        tone: 'polemic' as ContentTone,
+        growth_function: (topic.growth_function || undefined) as GrowthFunction | undefined,
+        audience_stage: (topic.audience_stage || undefined) as AudienceStage | undefined,
+        trending_angle: topic.angle || undefined,
+        trending_short_cuts: topic.short_cuts?.length ? topic.short_cuts : undefined,
+      });
+    }
+    setSelectedIds(new Set());
+  };
 
   return (
     <div className="space-y-4">
+      {/* Action Bar */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {topics.length > 0
-            ? `${topics.length} trending topics no cache`
-            : 'Nenhum trending topic. Clique para buscar.'}
-        </p>
-        <div className="flex items-center gap-2">
-          {topics.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => clearCache.mutate()}
-              disabled={clearCache.isPending || fetchTrending.isPending}
-              className="gap-1.5 text-muted-foreground"
-            >
-              {clearCache.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Limpar
-            </Button>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar topicos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 shadow-sm transition-shadow hover:shadow"
+            />
+          </div>
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5 border border-border">
+            {([['all', 'Todos'], ['24h', 'Últimas 24h'], ['7d', '7 dias']] as const).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setTimeFilter(val)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  timeFilter === val
+                    ? 'bg-card text-foreground shadow-sm border border-border'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {selectedIds.size > 0 && (
+            <span className="text-sm font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-md">
+              {selectedIds.size} selecionados
+            </span>
           )}
-          <Button
-            onClick={() => fetchTrending.mutate({ force_refresh: true })}
-            disabled={fetchTrending.isPending}
-            className="gap-2"
-          >
-            {fetchTrending.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {fetchTrending.isPending ? 'Pesquisando...' : 'Buscar Trending'}
-          </Button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {selectedIds.size > 0 ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  for (const id of selectedIds) clearCache.mutate();
+                  setSelectedIds(new Set());
+                }}
+                disabled={clearCache.isPending}
+                className="gap-2 shadow-sm"
+              >
+                <Trash2 className="w-4 h-4 text-muted-foreground" /> Excluir Selecao
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkGenerate}
+                disabled={generateContent.isPending}
+                className="gap-2 shadow-sm"
+              >
+                <Sparkles className="w-4 h-4" /> Gerar Roteiros ({selectedIds.size})
+              </Button>
+            </>
+          ) : (
+            <>
+              {topics.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => clearCache.mutate()}
+                  disabled={clearCache.isPending || fetchTrending.isPending}
+                  className="gap-2 shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4 text-muted-foreground" /> Limpar Cache
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => fetchTrending.mutate({ force_refresh: true })}
+                disabled={fetchTrending.isPending}
+                className="gap-2 shadow-sm"
+              >
+                {fetchTrending.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {fetchTrending.isPending ? 'Pesquisando...' : 'Buscar Trending'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
+      {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      <div className="grid gap-3">
-        {topics.map((topic) => (
-          <Card
-            key={topic.id}
-            className="cursor-pointer hover:border-orange-300 transition-colors"
-            onClick={() => setSelectedTopic(topic)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Flame className="w-4 h-4 text-orange-500 shrink-0" />
-                    <h3 className="font-semibold text-sm truncate">{topic.topic}</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{topic.summary}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    {topic.keywords?.slice(0, 3).map((kw) => (
-                      <Badge key={kw} variant="secondary" className="text-[10px]">{kw}</Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge className={topic.virality_potential >= 80 ? 'bg-red-100 text-red-700' : topic.virality_potential >= 60 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}>
-                    {topic.virality_potential}% viral
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">{topic.source}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Table */}
+      {!isLoading && (
+        <div className="bg-white dark:bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 w-10">
+                    <Checkbox
+                      checked={filteredTopics.length > 0 && selectedIds.size === filteredTopics.length}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-2/5">Topico</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tags</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fonte</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <button
+                      onClick={() => setSortDirection(d => d === 'desc' ? 'asc' : 'desc')}
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      Potencial <ArrowUpDown className="w-3.5 h-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {filteredTopics.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                      {topics.length === 0
+                        ? 'Nenhum trending topic. Clique "Buscar Trending" para pesquisar.'
+                        : 'Nenhum resultado para a busca.'}
+                    </td>
+                  </tr>
+                )}
+                {filteredTopics.map((topic) => {
+                  const isSelected = selectedIds.has(topic.id);
+                  const hasScript = generatedTopicIds.has(topic.id);
+                  return (
+                    <tr
+                      key={topic.id}
+                      className={`transition-colors group ${isSelected ? 'bg-blue-50/50 dark:bg-primary/5' : 'bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted/30'}`}
+                    >
+                      <td className="px-4 py-3 align-top">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(topic.id)}
+                        />
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-start gap-3">
+                          <Flame className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-medium text-sm text-foreground leading-tight">{topic.topic}</p>
+                              {hasScript && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 shrink-0">
+                                  <CheckCircle2 className="w-3 h-3" /> Roteiro
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-1 leading-relaxed pr-4" title={topic.summary}>{topic.summary}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-wrap gap-1.5">
+                          {topic.keywords?.slice(0, 3).map((kw) => (
+                            <span key={kw} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground border border-border">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {topic.source_url ? (
+                          <a
+                            href={topic.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-2 text-xs text-muted-foreground max-w-[240px] hover:text-foreground transition-colors group/link"
+                          >
+                            <PlaySquare className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span className="line-clamp-2 leading-snug">{topic.source}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0 mt-0.5 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                          </a>
+                        ) : (
+                          <div className="flex items-start gap-2 text-xs text-muted-foreground max-w-[240px]">
+                            <PlaySquare className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span className="line-clamp-2 leading-snug">{topic.source}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${
+                            topic.virality_potential >= 95 ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800' :
+                            topic.virality_potential >= 80 ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800' :
+                            'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
+                          }`}>
+                            {topic.virality_potential}% viral
+                          </span>
+                          {topic.virality_potential >= 80 ? (
+                            <TrendingUp className="w-4 h-4 text-emerald-500" />
+                          ) : (
+                            <TrendingDown className="w-4 h-4 text-red-400" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-top text-right">
+                        <button
+                          onClick={() => {
+                            if (onCreateFromTrending) {
+                              onCreateFromTrending(topic.topic, topic.summary);
+                            } else {
+                              setSelectedTopic(topic);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-xs font-medium border border-blue-100"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> Criar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          {filteredTopics.length > 0 && (
+            <div className="px-6 py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Mostrando <span className="font-medium text-foreground">{filteredTopics.length}</span> de <span className="font-medium text-foreground">{topics.length}</span> topicos{timeFilter !== 'all' && ` (filtro: ${timeFilter === '24h' ? 'últimas 24h' : '7 dias'})`}
+              </span>
+              {topics.length > 0 && (
+                <span className="text-[10px] text-muted-foreground">
+                  Cache expira em {new Date(topics[0]?.expires_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Topic detail → generate */}
       {selectedTopic && (
@@ -551,11 +836,15 @@ function TrendingTab() {
 }
 
 function TrendingToCreateSheet({ topic, onClose }: { topic: TrendingTopic; onClose: () => void }) {
-  const [format, setFormat] = useState<ContentFormat>('short');
+  const [format, setFormat] = useState<ContentFormat>((topic.format_suggestion as ContentFormat) || 'short');
   const [tone, setTone] = useState<ContentTone>('polemic');
+  const [growthFunction, setGrowthFunction] = useState<string>(topic.growth_function || '');
+  const [audienceStage, setAudienceStage] = useState<string>(topic.audience_stage || '');
+  const [productShowcaseKey, setProductShowcaseKey] = useState<string>('');
   const [usePlatformData, setUsePlatformData] = useState(false);
   const [customInstructions, setCustomInstructions] = useState('');
   const generateContent = useGenerateContent();
+  const { data: products } = useEnabledProductShowcases();
 
   const handleGenerate = () => {
     generateContent.mutate({
@@ -564,8 +853,13 @@ function TrendingToCreateSheet({ topic, onClose }: { topic: TrendingTopic; onClo
       trending_topic_id: topic.id,
       format,
       tone,
+      growth_function: (growthFunction || undefined) as GrowthFunction | undefined,
+      audience_stage: (audienceStage || undefined) as AudienceStage | undefined,
+      product_showcase_key: productShowcaseKey || undefined,
       use_platform_data: usePlatformData,
       custom_instructions: customInstructions || undefined,
+      trending_angle: topic.angle || undefined,
+      trending_short_cuts: topic.short_cuts?.length ? topic.short_cuts : undefined,
     }, { onSuccess: () => onClose() });
   };
 
@@ -584,6 +878,30 @@ function TrendingToCreateSheet({ topic, onClose }: { topic: TrendingTopic; onClo
             <p className="font-medium text-sm">{topic.topic}</p>
             <p className="text-xs text-muted-foreground mt-1">{topic.summary}</p>
             <p className="text-xs text-orange-700 mt-2">Angulo: {topic.angle}</p>
+            {topic.pillar && (
+              <Badge variant="outline" className="mt-2 text-[10px]">{topic.pillar}</Badge>
+            )}
+            {topic.growth_function && (
+              <Badge variant="secondary" className="mt-2 ml-1 text-[10px]">{topic.growth_function}</Badge>
+            )}
+            {topic.title_options?.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] font-medium text-orange-600">Titulos sugeridos:</p>
+                {topic.title_options.map((t, i) => (
+                  <p key={i} className="text-[10px] text-muted-foreground">{i + 1}. {t}</p>
+                ))}
+              </div>
+            )}
+            {topic.short_cuts?.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-[10px] font-medium text-orange-600">Short cuts sugeridos:</p>
+                {topic.short_cuts.map((sc, i) => (
+                  <p key={i} className="text-[10px] text-muted-foreground">
+                    {sc.hook} ({sc.estimated_duration})
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -609,6 +927,50 @@ function TrendingToCreateSheet({ topic, onClose }: { topic: TrendingTopic; onClo
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Funcao de crescimento</label>
+              <Select value={growthFunction} onValueChange={setGrowthFunction}>
+                <SelectTrigger><SelectValue placeholder="Auto" /></SelectTrigger>
+                <SelectContent>
+                  {GROWTH_FUNCTION_OPTIONS.map((g) => (
+                    <SelectItem key={g.value || '_auto'} value={g.value || '_auto'}>
+                      <span>{g.label}</span>
+                      <span className="text-[10px] text-muted-foreground ml-1">- {g.description}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Audiencia</label>
+              <Select value={audienceStage} onValueChange={setAudienceStage}>
+                <SelectTrigger><SelectValue placeholder="Auto" /></SelectTrigger>
+                <SelectContent>
+                  {AUDIENCE_STAGE_OPTIONS.map((a) => (
+                    <SelectItem key={a.value || '_auto'} value={a.value || '_auto'}>
+                      <span>{a.label}</span>
+                      <span className="text-[10px] text-muted-foreground ml-1">- {a.description}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">Showcase de produto (opcional)</label>
+            <Select value={productShowcaseKey || '_none'} onValueChange={(v) => setProductShowcaseKey(v === '_none' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Nenhum produto" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Nenhum produto</SelectItem>
+                {products?.map((p) => (
+                  <SelectItem key={p.product_key} value={p.product_key}>{p.display_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">
@@ -650,15 +1012,33 @@ function TrendingToCreateSheet({ topic, onClose }: { topic: TrendingTopic; onClo
 
 // ── Create Tab ────────────────────────────────────────────────────────────
 
-function CreateTab() {
-  const [inputText, setInputText] = useState('');
+const QUICK_SUGGESTIONS = [
+  "Analisar mercado de TI nos EUA",
+  "Explicar o visto EB-2 NIW",
+  "5 erros na entrevista em ingles",
+];
+
+function CreateTab({ promptText, setPromptText }: { promptText: string; setPromptText: (v: string) => void }) {
+  const [inputText, setInputText] = useState(promptText || '');
   const [format, setFormat] = useState<ContentFormat>('short');
   const [tone, setTone] = useState<ContentTone>('polemic');
+  const [growthFunction, setGrowthFunction] = useState<string>('');
+  const [audienceStage, setAudienceStage] = useState<string>('');
+  const [productShowcaseKey, setProductShowcaseKey] = useState<string>('');
   const [usePlatformData, setUsePlatformData] = useState(false);
   const [customInstructions, setCustomInstructions] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const generateContent = useGenerateContent();
   const { data: recentPieces = [] } = useContentPieces();
+  const { data: products } = useEnabledProductShowcases();
+
+  // Sync when promptText changes from parent (Trending → Criar flow)
+  useEffect(() => {
+    if (promptText) {
+      setInputText(promptText);
+      setPromptText('');
+    }
+  }, [promptText, setPromptText]);
 
   const handleGenerate = () => {
     if (!inputText.trim()) return;
@@ -667,159 +1047,733 @@ function CreateTab() {
       input_type: 'manual',
       format,
       tone,
+      growth_function: (growthFunction || undefined) as GrowthFunction | undefined,
+      audience_stage: (audienceStage || undefined) as AudienceStage | undefined,
+      product_showcase_key: productShowcaseKey || undefined,
       use_platform_data: usePlatformData,
       custom_instructions: customInstructions || undefined,
     });
   };
 
+  // Keyboard shortcut: Cmd/Ctrl+Enter
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleGenerate();
+    }
+  };
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Generator Card */}
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Sobre o que voce quer criar?</label>
-            <Textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder='Ex: "Novas medidas de Trump na imigracao", "5 erros fatais ao imigrar para os EUA", ou cole um link de artigo...'
-              rows={3}
-              className="resize-none"
-            />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+      {/* Left Column: Form (2/3) */}
+      <div className="lg:col-span-2">
+        <div className="bg-white dark:bg-card border border-border rounded-2xl shadow-sm p-6 lg:p-8 relative overflow-hidden h-full">
+          {/* Decorative blur accent */}
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-blue-100/60 dark:bg-blue-900/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-3 mb-6 relative z-10">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-800">
+              <Wand2 className="w-[18px] h-[18px]" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">Novo Roteiro</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Formato</label>
-              <Select value={format} onValueChange={(v) => setFormat(v as ContentFormat)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+          <div className="space-y-6 relative z-10" onKeyDown={handleKeyDown}>
+            {/* Prompt Input */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Sobre o que voce quer criar?
+              </label>
+              <div className="relative group">
+                <textarea
+                  rows={4}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none placeholder:text-muted-foreground shadow-inner"
+                  placeholder='Ex: "Novas medidas de Trump na imigracao", "5 erros fatais ao imigrar para os EUA", ou cole um link de artigo...'
+                />
+                <div className="absolute bottom-3 right-3 flex gap-2 opacity-50 group-focus-within:opacity-100 transition-opacity">
+                  <button className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-md transition-colors" title="Anexar Link">
+                    <Link2 className="w-4 h-4" />
+                  </button>
+                  <button className="p-1.5 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-md transition-colors" title="Usar Template">
+                    <FileText className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Suggestion Chips */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 py-1">
+                  <Zap className="w-3 h-3" /> Sugestoes:
+                </span>
+                {QUICK_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setInputText(s)}
+                    className="text-xs bg-card border border-border hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-muted-foreground hover:text-blue-700 dark:hover:text-blue-400 px-2.5 py-1 rounded-full transition-all"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2x2 Grid for Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <LayoutTemplate className="w-4 h-4 text-muted-foreground" /> Formato
+                </label>
+                <Select value={format} onValueChange={(v) => setFormat(v as ContentFormat)}>
+                  <SelectTrigger className="bg-muted/30 border-border hover:border-muted-foreground/30"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FORMAT_OPTIONS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" /> Tom da Comunicacao
+                </label>
+                <Select value={tone} onValueChange={(v) => setTone(v as ContentTone)}>
+                  <SelectTrigger className="bg-muted/30 border-border hover:border-muted-foreground/30"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TONE_OPTIONS.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Target className="w-4 h-4 text-muted-foreground" /> Objetivo (Crescimento)
+                </label>
+                <Select value={growthFunction || '_auto'} onValueChange={(v) => setGrowthFunction(v === '_auto' ? '' : v)}>
+                  <SelectTrigger className="bg-muted/30 border-border hover:border-muted-foreground/30"><SelectValue placeholder="Automatico (IA decide)" /></SelectTrigger>
+                  <SelectContent>
+                    {GROWTH_FUNCTION_OPTIONS.map((g) => (
+                      <SelectItem key={g.value || '_auto'} value={g.value || '_auto'}>{g.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Users2 className="w-4 h-4 text-muted-foreground" /> Audiencia Alvo
+                </label>
+                <Select value={audienceStage || '_auto'} onValueChange={(v) => setAudienceStage(v === '_auto' ? '' : v)}>
+                  <SelectTrigger className="bg-muted/30 border-border hover:border-muted-foreground/30"><SelectValue placeholder="Automatico (IA decide)" /></SelectTrigger>
+                  <SelectContent>
+                    {AUDIENCE_STAGE_OPTIONS.map((a) => (
+                      <SelectItem key={a.value || '_auto'} value={a.value || '_auto'}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Product Showcase */}
+            <div className="space-y-2 pt-2">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-muted-foreground" /> Showcase de Produto <span className="text-muted-foreground font-normal">(Opcional)</span>
+              </label>
+              <Select value={productShowcaseKey || '_none'} onValueChange={(v) => setProductShowcaseKey(v === '_none' ? '' : v)}>
+                <SelectTrigger className="bg-muted/30 border-border hover:border-muted-foreground/30"><SelectValue placeholder="Nenhum produto (Conteudo puro)" /></SelectTrigger>
                 <SelectContent>
-                  {FORMAT_OPTIONS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  <SelectItem value="_none">Nenhum produto (Conteudo puro)</SelectItem>
+                  {products?.map((p) => (
+                    <SelectItem key={p.product_key} value={p.product_key}>{p.display_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Tom</label>
-              <Select value={tone} onValueChange={(v) => setTone(v as ContentTone)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TONE_OPTIONS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            <div className="h-px bg-border my-2" />
+
+            {/* Toggle + Advanced */}
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Switch
+                  checked={usePlatformData}
+                  onCheckedChange={setUsePlatformData}
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Database className={`w-4 h-4 ${usePlatformData ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                    Enriquecer com dados da plataforma
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">A IA buscara dados recentes na web para embasar o roteiro.</p>
+                </div>
+              </label>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+                  Instrucoes adicionais (Prompt avancado)
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-3 pl-6 pb-2">
+                    <textarea
+                      rows={3}
+                      value={customInstructions}
+                      onChange={(e) => setCustomInstructions(e.target.value)}
+                      className="w-full bg-muted/30 border border-border rounded-lg px-4 py-3 text-sm text-foreground focus:bg-card focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none placeholder:text-muted-foreground shadow-inner"
+                      placeholder="Ex: Nao use a palavra 'garantido'. Foque em profissionais de TI. Adicione um CTA forte no final."
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                onClick={handleGenerate}
+                disabled={generateContent.isPending || !inputText.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 disabled:cursor-not-allowed text-white font-medium py-3.5 px-4 rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 relative overflow-hidden group"
+              >
+                {/* Shine effect */}
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+
+                {generateContent.isPending ? (
+                  <>
+                    <Loader2 className="w-[18px] h-[18px] animate-spin relative z-10" />
+                    <span className="relative z-10">Gerando roteiro completo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-[18px] h-[18px] relative z-10" />
+                    <span className="relative z-10">Gerar Roteiro com IA</span>
+                  </>
+                )}
+
+                {/* Keyboard Shortcut Hint */}
+                {!generateContent.isPending && (
+                  <div className="absolute right-4 flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <kbd className="font-sans text-[10px] px-1.5 py-0.5 rounded bg-black/20 text-white border border-white/10">Ctrl</kbd>
+                    <kbd className="font-sans text-[10px] px-1.5 py-0.5 rounded bg-black/20 text-white border border-white/10">Enter</kbd>
+                  </div>
+                )}
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="platform-data-create"
-              checked={usePlatformData}
-              onCheckedChange={(v) => setUsePlatformData(!!v)}
-            />
-            <label htmlFor="platform-data-create" className="text-sm flex items-center gap-1.5 cursor-pointer">
-              <Database className="w-3.5 h-3.5 text-blue-500" />
-              Enriquecer com dados da plataforma
-            </label>
-          </div>
-
-          {/* Advanced toggle */}
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            Instrucoes adicionais
-          </button>
-
-          {showAdvanced && (
-            <Textarea
-              value={customInstructions}
-              onChange={(e) => setCustomInstructions(e.target.value)}
-              placeholder="Instrucoes extras para a IA..."
-              rows={2}
-              className="resize-none"
-            />
-          )}
-
-          <Button
-            onClick={handleGenerate}
-            disabled={generateContent.isPending || !inputText.trim()}
-            className="w-full gap-2"
-            size="lg"
-          >
-            {generateContent.isPending
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando roteiro completo...</>
-              : <><Zap className="w-4 h-4" /> Gerar Roteiro</>}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Recent pieces */}
-      {recentPieces.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">Ultimas criacoes</h2>
-          {recentPieces.slice(0, 5).map((piece) => (
-            <PieceCard key={piece.id} piece={piece} compact />
-          ))}
         </div>
-      )}
+      </div>
+
+      {/* Right Column: Recent Creations (1/3) */}
+      <div className="lg:col-span-1 flex flex-col">
+        <div className="bg-white dark:bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-slate-50/50 dark:bg-muted/30 shrink-0">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <History className="w-4 h-4 text-muted-foreground" />
+              Ultimas criacoes
+            </h3>
+            <span className="text-xs font-medium text-muted-foreground">{recentPieces.length} itens</span>
+          </div>
+
+          <div className="divide-y divide-border/50 overflow-y-auto flex-1">
+            {recentPieces.slice(0, 8).map((piece) => {
+              const statusCfg = STATUS_CONFIG[piece.status] || STATUS_CONFIG.draft;
+              const formatLabel = FORMAT_LABELS[piece.format] || piece.format;
+              const toneLabel = TONE_LABELS[piece.tone] || piece.tone;
+              return (
+                <div key={piece.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-muted/30 transition-colors cursor-pointer group">
+                  <h4 className="text-sm font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug">
+                    {piece.title}
+                  </h4>
+                  <div className="flex items-center flex-wrap gap-1.5 mb-1.5">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50">
+                      {formatLabel}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">
+                      {toneLabel}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border border-transparent ${statusCfg.color}`}>
+                      {statusCfg.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {timeAgo(piece.created_at)}</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-500" />
+                  </div>
+                </div>
+              );
+            })}
+            {recentPieces.length === 0 && (
+              <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+                Nenhum conteudo gerado ainda.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── History Tab ───────────────────────────────────────────────────────────
 
+const HISTORY_PAGE_SIZE = 10;
+
 function HistoryTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formatFilter, setFormatFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
+  const updateStatus = useUpdatePieceStatus();
   const { data: pieces = [], isLoading } = useContentPieces({
     status: statusFilter !== 'all' ? statusFilter : undefined,
     format: formatFilter !== 'all' ? formatFilter : undefined,
   });
+  const deletePiece = useDeletePiece();
+
+  // Filter by search
+  const filtered = searchQuery
+    ? pieces.filter(p =>
+        (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.input_text || '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : pieces;
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / HISTORY_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * HISTORY_PAGE_SIZE, safePage * HISTORY_PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [statusFilter, formatFilter, searchQuery]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={formatFilter} onValueChange={setFormatFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Formato" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {FORMAT_OPTIONS.map((f) => (
-              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground ml-auto">{pieces.length} itens</span>
+      {/* Action Bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+            <input
+              type="text"
+              placeholder="Buscar roteiros..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 shadow-sm transition-shadow hover:shadow"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Status</SelectItem>
+              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={formatFilter} onValueChange={setFormatFilter}>
+            <SelectTrigger className="w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Formato" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Formatos</SelectItem>
+              {FORMAT_OPTIONS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <span className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{filtered.length}</span> roteiros
+        </span>
       </div>
 
+      {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      <div className="space-y-3">
-        {pieces.map((piece) => (
-          <PieceCard key={piece.id} piece={piece} />
-        ))}
+      {/* Table */}
+      {!isLoading && (
+        <div className="bg-white dark:bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-slate-50/80 dark:bg-muted/50">
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-2/5">Titulo</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Formato</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tom</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Score</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Criado</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {paged.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                      {pieces.length === 0
+                        ? 'Nenhum conteudo gerado ainda. Use a aba "Criar" ou "Trending" para comecar.'
+                        : 'Nenhum resultado para os filtros aplicados.'}
+                    </td>
+                  </tr>
+                )}
+                {paged.map((piece) => {
+                  const statusCfg = STATUS_CONFIG[piece.status] || STATUS_CONFIG.draft;
+                  const formatLabel = FORMAT_LABELS[piece.format] || piece.format;
+                  const toneLabel = TONE_LABELS[piece.tone] || piece.tone;
+                  return (
+                    <tr
+                      key={piece.id}
+                      className="bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted/30 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedPieceId(piece.id)}
+                    >
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-start gap-3">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-foreground leading-tight line-clamp-1">{piece.title || 'Sem titulo'}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" title={piece.input_text || ''}>
+                              {piece.input_text || '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50">
+                          {formatLabel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground border border-border">
+                          {toneLabel}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border border-transparent ${statusCfg.color}`}>
+                          {statusCfg.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        {piece.virality_score > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${
+                              piece.virality_score >= 80 ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800' :
+                              piece.virality_score >= 60 ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800' :
+                              'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
+                            }`}>
+                              {piece.virality_score}%
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {getTimeAgo(new Date(piece.created_at))}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-top text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 rounded-md text-xs font-medium border border-blue-100 dark:border-blue-800"
+                            onClick={() => setSelectedPieceId(piece.id)}
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Ver
+                          </button>
+                          <button
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                            onClick={() => deletePiece.mutate(piece.id)}
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Footer */}
+          {filtered.length > 0 && (
+            <div className="px-6 py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                Mostrando <span className="font-medium text-foreground">{(safePage - 1) * HISTORY_PAGE_SIZE + 1}</span> a <span className="font-medium text-foreground">{Math.min(safePage * HISTORY_PAGE_SIZE, filtered.length)}</span> de <span className="font-medium text-foreground">{filtered.length}</span> roteiros
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="px-3 py-1.5 text-sm font-medium text-muted-foreground bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  Anterior
+                </button>
+                {totalPages <= 7 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors shadow-sm ${
+                        p === safePage
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'text-muted-foreground bg-white dark:bg-card border-border hover:bg-slate-50 dark:hover:bg-muted'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))
+                ) : (
+                  <>
+                    {[1, 2].map(p => (
+                      <button key={p} onClick={() => setPage(p)} className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors shadow-sm ${p === safePage ? 'bg-blue-600 text-white border-blue-600' : 'text-muted-foreground bg-white dark:bg-card border-border hover:bg-slate-50'}`}>{p}</button>
+                    ))}
+                    {safePage > 3 && <span className="px-1 text-muted-foreground">...</span>}
+                    {safePage > 2 && safePage < totalPages - 1 && (
+                      <button onClick={() => {}} className="px-3 py-1.5 text-sm font-medium rounded-md border bg-blue-600 text-white border-blue-600 shadow-sm">{safePage}</button>
+                    )}
+                    {safePage < totalPages - 2 && <span className="px-1 text-muted-foreground">...</span>}
+                    {[totalPages - 1, totalPages].filter(p => p > 2).map(p => (
+                      <button key={p} onClick={() => setPage(p)} className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors shadow-sm ${p === safePage ? 'bg-blue-600 text-white border-blue-600' : 'text-muted-foreground bg-white dark:bg-card border-border hover:bg-slate-50'}`}>{p}</button>
+                    ))}
+                  </>
+                )}
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="px-3 py-1.5 text-sm font-medium text-muted-foreground bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  Proxima
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit Modal — same as Content Pipeline */}
+      <Dialog open={!!selectedPieceId} onOpenChange={(open) => { if (!open) setSelectedPieceId(null); }}>
+        <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
+          {(() => {
+            const piece = pieces.find(p => p.id === selectedPieceId);
+            if (!piece) return null;
+            return (
+              <PieceEditModal
+                piece={piece}
+                onClose={() => setSelectedPieceId(null)}
+                onStatusChange={(status) => updateStatus.mutate({ id: piece.id, status })}
+                onDelete={(id) => deletePiece.mutate(id)}
+              />
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Calendar Tab ─────────────────────────────────────────────────────────
+
+function CalendarTab() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const { data: pieces = [], isLoading } = useContentPieces();
+  const updatePiece = useUpdatePiece();
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const monthName = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+
+  interface CalEntry { piece: ContentPiece; type: 'production' | 'publication'; }
+  const entriesByDate: Record<string, CalEntry[]> = {};
+  const addEntry = (dateStr: string, entry: CalEntry) => {
+    if (!entriesByDate[dateStr]) entriesByDate[dateStr] = [];
+    entriesByDate[dateStr].push(entry);
+  };
+  for (const p of pieces) {
+    if (p.production_date) addEntry(p.production_date.slice(0, 10), { piece: p, type: 'production' });
+    if (p.scheduled_for) addEntry(p.scheduled_for.slice(0, 10), { piece: p, type: 'publication' });
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const goToday = () => setCurrentDate(new Date());
+
+  const productionCount = pieces.filter(p => p.production_date).length;
+  const publicationCount = pieces.filter(p => p.scheduled_for).length;
+
+  const endBlanks = (7 - ((daysInMonth + startDayOfWeek) % 7)) % 7;
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, pieceId: string, entryType: 'production' | 'publication') => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ pieceId, entryType }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, dateStr: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dropTarget !== dateStr) setDropTarget(dateStr);
+  };
+
+  const handleDragLeave = () => {
+    setDropTarget(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetDate: string) => {
+    e.preventDefault();
+    setDropTarget(null);
+    try {
+      const { pieceId, entryType } = JSON.parse(e.dataTransfer.getData('text/plain'));
+      const field = entryType === 'production' ? 'production_date' : 'scheduled_for';
+      updatePiece.mutate({ id: pieceId, [field]: targetDate });
+    } catch { /* ignore bad data */ }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevMonth}
+              className="p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
+            >
+              <ChevronLeft className="w-[18px] h-[18px]" />
+            </button>
+            <button
+              onClick={nextMonth}
+              className="p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
+            >
+              <ChevronRight className="w-[18px] h-[18px]" />
+            </button>
+          </div>
+          <h2 className="text-lg font-bold text-foreground capitalize">{monthName}</h2>
+        </div>
+        <div className="flex items-center gap-6 text-sm font-medium">
+          <button onClick={goToday} className="text-muted-foreground hover:text-foreground transition-colors">
+            Hoje
+          </button>
+          <div className="hidden sm:flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-muted-foreground text-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              Gravacao ({productionCount})
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground text-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+              Publicacao ({publicationCount})
+            </span>
+          </div>
+        </div>
       </div>
 
-      {!isLoading && pieces.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground py-12">
-          Nenhum conteudo gerado ainda. Use a aba "Criar" ou "Trending" para comecar.
-        </p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          {/* Days of week header */}
+          <div className="grid grid-cols-7 border-b border-border bg-slate-50/80 dark:bg-muted/50">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map((d) => (
+              <div key={d} className="py-3 text-center text-xs font-medium text-muted-foreground">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 auto-rows-[120px]">
+            {/* Leading blanks */}
+            {Array.from({ length: startDayOfWeek }).map((_, i) => (
+              <div key={`blank-${i}`} className="border-b border-r border-border/50 bg-slate-50/30 dark:bg-muted/10 p-2" />
+            ))}
+
+            {/* Day cells */}
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const dayEntries = entriesByDate[dateStr] || [];
+              const isToday = dateStr === today;
+              const isDragOver = dropTarget === dateStr;
+
+              return (
+                <div
+                  key={dateStr}
+                  onDragOver={(e) => handleDragOver(e, dateStr)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, dateStr)}
+                  className={`border-b border-r border-border/50 p-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-muted/30 ${
+                    isDragOver ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-400 ring-inset' : ''
+                  }`}
+                >
+                  <span className={`text-sm font-medium ${
+                    isToday ? 'text-blue-600 font-bold' : 'text-muted-foreground'
+                  }`}>
+                    {day}
+                  </span>
+
+                  <div className="mt-1 flex flex-col gap-1">
+                    {dayEntries.slice(0, 3).map((entry, ei) => {
+                      const isProd = entry.type === 'production';
+                      return (
+                        <div
+                          key={`${entry.piece.id}-${entry.type}-${ei}`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, entry.piece.id, entry.type)}
+                          className={`text-[11px] font-medium px-2 py-1 rounded truncate flex items-center gap-1.5 cursor-grab active:cursor-grabbing transition-colors select-none ${
+                            isProd
+                              ? 'bg-amber-100/60 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50'
+                              : 'bg-sky-100/60 text-sky-800 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50'
+                          }`}
+                          title={`${isProd ? 'Gravacao' : 'Publicacao'}: ${entry.piece.title || 'Sem titulo'} — arraste para mover`}
+                        >
+                          <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isProd ? 'bg-amber-400' : 'bg-sky-500'}`} />
+                          <span className="truncate">
+                            {FORMAT_LABELS[entry.piece.format] || entry.piece.format}: {entry.piece.title || 'Sem titulo'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {dayEntries.length > 3 && (
+                      <span className="text-[10px] text-muted-foreground pl-1 font-medium">+{dayEntries.length - 3} mais</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Trailing blanks */}
+            {Array.from({ length: endBlanks }).map((_, i) => (
+              <div key={`end-blank-${i}`} className="border-b border-r border-border/50 bg-slate-50/30 dark:bg-muted/10 p-2" />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1482,7 +2436,18 @@ function PieceCard({ piece, compact }: { piece: ContentPiece; compact?: boolean 
             {/* Script sections */}
             {(editing ? editSections : piece.script_sections)?.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Roteiro</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase">Roteiro</h4>
+                  {!editing && (
+                    <button
+                      onClick={copyFullScript}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
+                    >
+                      {copiedField === 'full' ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                      {copiedField === 'full' ? 'Copiado!' : 'Copiar tudo'}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {(editing ? editSections : piece.script_sections).map((section, i) => (
                     <div key={i} className="p-3 bg-muted/30 rounded-lg border">
@@ -1967,4 +2932,237 @@ function getTimeAgo(date: Date): string {
   const diffD = Math.floor(diffH / 24);
   if (diffD < 7) return `${diffD}d`;
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+// ── Product Showcases Management Sheet ───────────────────────────────────
+
+function ProductShowcasesSheet({ onClose }: { onClose: () => void }) {
+  const { data: products = [], isLoading } = useProductShowcases();
+  const saveProduct = useSaveProductShowcase();
+  const deleteProduct = useDeleteProductShowcase();
+  const [editing, setEditing] = useState<ProductShowcase | null>(null);
+  const [isNew, setIsNew] = useState(false);
+
+  const handleNew = () => {
+    setIsNew(true);
+    setEditing({
+      id: '',
+      product_key: '',
+      display_name: '',
+      description: '',
+      key_features: [],
+      talking_points: [],
+      demo_instructions: '',
+      cta_suggestion: '',
+      enabled: true,
+      sort_order: products.length,
+    });
+  };
+
+  const handleSave = () => {
+    if (!editing?.product_key?.trim() || !editing?.display_name?.trim()) return;
+    saveProduct.mutate({
+      product_key: editing.product_key,
+      display_name: editing.display_name,
+      description: editing.description,
+      key_features: editing.key_features,
+      talking_points: editing.talking_points,
+      demo_instructions: editing.demo_instructions,
+      cta_suggestion: editing.cta_suggestion,
+      enabled: editing.enabled,
+      sort_order: editing.sort_order,
+    }, {
+      onSuccess: () => {
+        setEditing(null);
+        setIsNew(false);
+      },
+    });
+  };
+
+  return (
+    <Sheet open onOpenChange={() => onClose()}>
+      <SheetContent className="w-full sm:w-[600px] md:w-[700px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2 text-base">
+            <FileText className="w-4 h-4" />
+            Produtos para Showcase
+          </SheetTitle>
+        </SheetHeader>
+
+        <div className="mt-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Configure os produtos da plataforma que podem ser integrados nos roteiros de conteudo.
+            Cada produto tem talking points, instrucoes de demo e CTA que a IA usa para gerar o roteiro.
+          </p>
+
+          <Button size="sm" onClick={handleNew} className="gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Novo Produto
+          </Button>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {products.map((p) => (
+                <Card key={p.id} className={`${!p.enabled ? 'opacity-50' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{p.display_name}</span>
+                          <Badge variant="secondary" className="text-[10px] font-mono">{p.product_key}</Badge>
+                          {!p.enabled && <Badge variant="outline" className="text-[10px]">desativado</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</p>
+                        <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                          <span>{(p.key_features as any)?.length || 0} features</span>
+                          <span>{(p.talking_points as any)?.length || 0} talking points</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setIsNew(false); }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm(`Remover "${p.display_name}"?`)) {
+                              deleteProduct.mutate(p.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Edit/Create Dialog */}
+        {editing && (
+          <Dialog open onOpenChange={() => { setEditing(null); setIsNew(false); }}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <h3 className="font-semibold text-base mb-4">
+                {isNew ? 'Novo Produto' : `Editar: ${editing.display_name}`}
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Chave (unica)</Label>
+                    <Input
+                      value={editing.product_key}
+                      onChange={(e) => setEditing({ ...editing, product_key: e.target.value })}
+                      placeholder="resume_pass"
+                      disabled={!isNew}
+                      className="text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome de exibicao</Label>
+                    <Input
+                      value={editing.display_name}
+                      onChange={(e) => setEditing({ ...editing, display_name: e.target.value })}
+                      placeholder="ResumePass AI"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Descricao</Label>
+                  <Textarea
+                    value={editing.description || ''}
+                    onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                    placeholder="O que o produto faz, em 1-2 frases..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Key Features (uma por linha)</Label>
+                  <Textarea
+                    value={Array.isArray(editing.key_features) ? editing.key_features.join('\n') : ''}
+                    onChange={(e) => setEditing({ ...editing, key_features: e.target.value.split('\n').filter(Boolean) })}
+                    placeholder="Formato ATS-friendly&#10;Traducao contextual&#10;PDF pronto em minutos"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Talking Points (um por linha) — frases prontas pra IA usar no roteiro</Label>
+                  <Textarea
+                    value={Array.isArray(editing.talking_points) ? editing.talking_points.join('\n') : ''}
+                    onChange={(e) => setEditing({ ...editing, talking_points: e.target.value.split('\n').filter(Boolean) })}
+                    placeholder="Seu curriculo brasileiro? Lixo nos EUA...&#10;O ATS rejeita 75% dos curriculos..."
+                    rows={5}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Instrucoes de demo (camera notes pro editor)</Label>
+                  <Textarea
+                    value={editing.demo_instructions || ''}
+                    onChange={(e) => setEditing({ ...editing, demo_instructions: e.target.value })}
+                    placeholder="CUTAWAY: tela do produto. Mostrar upload → resultado..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CTA sugerido</Label>
+                  <Input
+                    value={editing.cta_suggestion || ''}
+                    onChange={(e) => setEditing({ ...editing, cta_suggestion: e.target.value })}
+                    placeholder="Link do produto na descricao."
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Ordem</Label>
+                    <Input
+                      type="number"
+                      value={editing.sort_order}
+                      onChange={(e) => setEditing({ ...editing, sort_order: parseInt(e.target.value) || 0 })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-5">
+                    <Switch
+                      checked={editing.enabled}
+                      onCheckedChange={(v) => setEditing({ ...editing, enabled: v })}
+                    />
+                    <Label className="text-xs">{editing.enabled ? 'Ativo' : 'Desativado'}</Label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => { setEditing(null); setIsNew(false); }}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={saveProduct.isPending || !editing.product_key?.trim() || !editing.display_name?.trim()}
+                    className="gap-1.5"
+                  >
+                    {saveProduct.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
 }
