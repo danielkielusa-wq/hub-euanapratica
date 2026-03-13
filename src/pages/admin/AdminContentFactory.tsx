@@ -2842,25 +2842,89 @@ function DocsSheet({ onClose }: { onClose: () => void }) {
             </p>
           </section>
 
+          {/* Content Pipeline */}
+          <section>
+            <h3 className="font-semibold text-base mb-2">Content Pipeline (Kanban)</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Board visual estilo Kanban para gerenciar o ciclo de vida dos conteudos. Acessivel em <strong>/admin/content-pipeline</strong>.
+            </p>
+            <div className="space-y-1.5 text-xs text-muted-foreground">
+              <p><strong className="text-foreground">Colunas:</strong> Rascunho → Roteiro OK → Producao → Pronto → Publicado (+ Descartado)</p>
+              <p><strong className="text-foreground">Drag & Drop:</strong> Arraste cards entre colunas para mudar status, ou reordene dentro da mesma coluna.</p>
+              <p><strong className="text-foreground">Datas:</strong> Cada piece tem <span className="font-mono bg-muted px-1 rounded">production_date</span> (gravacao) e <span className="font-mono bg-muted px-1 rounded">scheduled_for</span> (publicacao).</p>
+              <p><strong className="text-foreground">Deep Link:</strong> URLs com <span className="font-mono bg-muted px-1 rounded">?piece=ID</span> abrem automaticamente o modal de edicao (usado nos links do email de convite).</p>
+            </div>
+          </section>
+
+          {/* Calendar Invites */}
+          <section>
+            <h3 className="font-semibold text-base mb-2">Convites de Calendario (.ics)</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Quando uma data de gravacao ou publicacao e definida/alterada, o sistema envia automaticamente:
+            </p>
+            <div className="space-y-2">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Gravacao (production_date)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Convite de 12:00-15:00 EST no dia selecionado. Titulo: "Gravacao: [titulo] ([formato])".</p>
+              </div>
+              <div className="p-2.5 bg-cyan-50 dark:bg-cyan-950/20 rounded-lg">
+                <p className="text-xs font-medium text-cyan-700 dark:text-cyan-300">Publicacao (scheduled_for)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Convite de 30min no horario exato agendado. Titulo: "Publicar: [titulo] ([formato])".</p>
+              </div>
+            </div>
+            <div className="mt-3 p-3 bg-muted/50 rounded-lg space-y-1.5">
+              <p className="font-medium text-xs uppercase text-muted-foreground">Como funciona</p>
+              <ol className="space-y-1 text-[10px] text-muted-foreground list-decimal list-inside">
+                <li>PG trigger <span className="font-mono bg-muted px-1 rounded">trg_content_date_changed</span> detecta mudanca em production_date ou scheduled_for</li>
+                <li>Chama Edge Function <span className="font-mono bg-muted px-1 rounded">sync-content-calendar</span></li>
+                <li>Edge Function gera arquivo .ics e envia email via Resend usando template <span className="font-mono bg-muted px-1 rounded">content_calendar_invite</span></li>
+                <li>Simultaneamente dispara webhook N8N (content.production_scheduled / content.publish_scheduled)</li>
+              </ol>
+            </div>
+            <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-1.5">
+              <p className="font-medium text-xs uppercase text-muted-foreground">Configuracao</p>
+              <ul className="space-y-1 text-[10px] text-muted-foreground">
+                <li><span className="font-mono bg-muted px-1 rounded">content_calendar_recipients</span> — JSON array de emails (configuravel na aba LLMs)</li>
+                <li><span className="font-mono bg-muted px-1 rounded">content_calendar_timezone</span> — Fuso IANA (padrao: America/New_York = EST)</li>
+                <li><span className="font-mono bg-muted px-1 rounded">content_calendar_invite</span> — Template HTML do email (editavel em /admin/email-templates)</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Email & N8N Flows */}
+          <section>
+            <h3 className="font-semibold text-base mb-2">Emails e Automacoes</h3>
+            <div className="space-y-2 text-xs">
+              <div className="p-2 bg-muted/30 rounded-lg">
+                <p className="font-medium">Email Templates (Resend)</p>
+                <p className="text-muted-foreground">Todos os emails usam templates HTML armazenados na tabela <span className="font-mono bg-muted px-1 rounded">email_templates</span>. Variaveis <span className="font-mono bg-muted px-1 rounded">{'{{variavel}}'}</span> sao substituidas em runtime. Editaveis em /admin/email-templates.</p>
+              </div>
+              <div className="p-2 bg-muted/30 rounded-lg">
+                <p className="font-medium">Webhooks N8N</p>
+                <p className="text-muted-foreground">Eventos de calendario disparam webhooks para automacoes externas no N8N. Configuravel em /admin/automacoes. Eventos: content.production_scheduled, content.publish_scheduled.</p>
+              </div>
+              <div className="p-2 bg-muted/30 rounded-lg">
+                <p className="font-medium">Lembretes (Cron)</p>
+                <p className="text-muted-foreground">Edge Function <span className="font-mono bg-muted px-1 rounded">content-reminders</span> roda via pg_cron e envia lembretes 24h/1h antes de gravacoes ou publicacoes agendadas.</p>
+              </div>
+            </div>
+          </section>
+
           {/* Integrations */}
           <section>
-            <h3 className="font-semibold text-base mb-2">Integracoes</h3>
+            <h3 className="font-semibold text-base mb-2">Integracoes LLM</h3>
             <div className="space-y-2 text-xs">
               <div className="p-2 bg-muted/30 rounded-lg">
                 <p className="font-medium">Perplexity AI (via OpenRouter)</p>
-                <p className="text-muted-foreground">Pesquisa web em tempo real para trending topics. Configurado em api_configs como "perplexity_api".</p>
+                <p className="text-muted-foreground">Pesquisa web em tempo real para trending topics.</p>
               </div>
               <div className="p-2 bg-muted/30 rounded-lg">
                 <p className="font-medium">OpenAI / Anthropic / OpenRouter</p>
-                <p className="text-muted-foreground">Geracao de conteudo. callLLM() com fallback automatico — se a API primaria falhar (429, 500), tenta a API de fallback configurada.</p>
-              </div>
-              <div className="p-2 bg-muted/30 rounded-lg">
-                <p className="font-medium">Dados da Plataforma (opcional)</p>
-                <p className="text-muted-foreground">Quando "Enriquecer com dados da plataforma" esta ativo, o sistema consulta career_evaluations (barreiras dos leads nos ultimos 30 dias) e usage_logs do job board (areas mais buscadas nos ultimos 14 dias) para dar contexto real ao conteudo gerado.</p>
+                <p className="text-muted-foreground">Geracao de conteudo. callLLM() com fallback automatico — se a API primaria falhar (429, 500), tenta a fallback.</p>
               </div>
               <div className="p-2 bg-muted/30 rounded-lg">
                 <p className="font-medium">API Cost Tracking</p>
-                <p className="text-muted-foreground">Cada chamada LLM e logada automaticamente em api_cost_logs (tokens, custo, modelo, duracao). Visivel em /admin/custos-api.</p>
+                <p className="text-muted-foreground">Cada chamada LLM logada em api_cost_logs. Visivel em /admin/custos-api.</p>
               </div>
             </div>
           </section>
@@ -2874,7 +2938,7 @@ function DocsSheet({ onClose }: { onClose: () => void }) {
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">
-              Draft → Aprovado → Agendado → Publicado. Ou Rejeitado se o conteudo nao for utilizado.
+              Rascunho → Roteiro OK → Producao → Pronto → Publicado. Ou Descartado.
             </p>
           </section>
 
@@ -2886,7 +2950,8 @@ function DocsSheet({ onClose }: { onClose: () => void }) {
                 <p className="text-xs font-medium mb-1">Formatos</p>
                 <ul className="space-y-0.5 text-[10px] text-muted-foreground">
                   <li>Short — Reels/TikTok/Shorts (30-60s)</li>
-                  <li>Video Longo — YouTube (8-15min)</li>
+                  <li>YT Medio — YouTube (8-15min)</li>
+                  <li>YouTube — Video longo (20-40min)</li>
                   <li>Carrossel — Instagram (7-10 slides)</li>
                   <li>Stories — Instagram (5-7 stories)</li>
                 </ul>
@@ -2908,9 +2973,9 @@ function DocsSheet({ onClose }: { onClose: () => void }) {
           {/* Deploy info */}
           <section className="border-t pt-4">
             <p className="text-[10px] text-muted-foreground">
-              <span className="font-medium">Deploy:</span> npx supabase functions deploy content-trending content-generate<br />
-              <span className="font-medium">Migration:</span> 20260323100000_content_factory.sql + 20260323500000_content_factory_prompts.sql<br />
-              <span className="font-medium">Auth:</span> Admin-only (requireAdmin). verify_jwt = false no config.toml.
+              <span className="font-medium">Deploy Edge Functions:</span><br />
+              npx supabase functions deploy content-trending content-generate sync-content-calendar content-reminders<br /><br />
+              <span className="font-medium">Auth:</span> Admin-only (requireAdmin / requireAuthOrInternal). verify_jwt = false no config.toml.
             </p>
           </section>
         </div>
