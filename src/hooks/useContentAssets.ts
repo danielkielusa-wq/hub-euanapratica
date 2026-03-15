@@ -215,14 +215,29 @@ export function useGenerateAssets() {
 
 // ── Generate Carousel Content (LLM) ──────────────────────────────────────
 
+export interface CarouselGenerateOptions {
+  pieceId: string;
+  numSlides?: number;
+  style?: string;
+  ctaType?: string;
+  aspectRatio?: string;
+}
+
 export function useGenerateCarousel() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (pieceId: string) => {
+    mutationFn: async (input: string | CarouselGenerateOptions) => {
+      const opts = typeof input === 'string' ? { pieceId: input } : input;
       const { data, error } = await supabase.functions.invoke('content-carousel-generate', {
-        body: { piece_id: pieceId },
+        body: {
+          piece_id: opts.pieceId,
+          num_slides: opts.numSlides,
+          style: opts.style,
+          cta_type: opts.ctaType,
+          aspect_ratio: opts.aspectRatio,
+        },
       });
       if (error) {
         let detail = error.message;
@@ -243,7 +258,7 @@ export function useGenerateCarousel() {
       if (data?.error) throw new Error(data.error);
       return data as { carousel_slides: CarouselSlide[]; count: number };
     },
-    onSuccess: (_, pieceId) => {
+    onSuccess: (_, input) => {
       queryClient.invalidateQueries({ queryKey: ['content-pieces'] });
       toast({ title: 'Conteudo de carrossel gerado' });
     },

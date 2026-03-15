@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, Menu, Image, Upload, Loader2, X, BarChart2, Video } from 'lucide-react';
+import { Save, Settings, FileCheck, Users, Hash, Zap, Trash2, Plus, FileText, Link2, Globe, Sparkles, ShoppingBag, Brain, ListTodo, Menu, Image, Upload, Loader2, X, BarChart2, Video, Send, ChevronDown, ChevronUp, Play, History} from 'lucide-react';
 import { PageHeader } from '@/components/admin/shared/PageHeader';
 import { useAppConfigs } from '@/hooks/useAppConfigs';
 import { useCommunityCategories } from '@/hooks/useCommunityCategories';
@@ -65,6 +61,8 @@ export default function AdminSettings() {
   const { apis, isLoading: apisLoading } = useAdminApis();
   const { isLoading: menuLoading, isItemVisible, updateVisibility } = useMenuVisibility();
 
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
   const [resumePrompt, setResumePrompt] = useState('');
   const [resumeApiConfig, setResumeApiConfig] = useState('openai_api');
   const [hasResumeChanges, setHasResumeChanges] = useState(false);
@@ -92,7 +90,6 @@ export default function AdminSettings() {
   // Daily Priorities config
   const [dpPrompt, setDpPrompt] = useState('');
   const [dpApiConfig, setDpApiConfig] = useState('anthropic_api');
-  const [dpLeadLimit, setDpLeadLimit] = useState('80');
   const [hasDpChanges, setHasDpChanges] = useState(false);
 
   // Suggest Tasks config
@@ -124,6 +121,12 @@ export default function AdminSettings() {
   const [mentorSuggestionPrompt, setMentorSuggestionPrompt] = useState('');
   const [mentorApiConfig, setMentorApiConfig] = useState('openai_api');
   const [hasMentorChanges, setHasMentorChanges] = useState(false);
+
+  // Telegram config
+  const [tgBotToken, setTgBotToken] = useState('');
+  const [tgChatId, setTgChatId] = useState('');
+  const [tgEnabled, setTgEnabled] = useState(true);
+  const [hasTgChanges, setHasTgChanges] = useState(false);
 
   useEffect(() => {
     const resumeValue = getConfigValue('resume_analyzer_prompt');
@@ -160,9 +163,6 @@ export default function AdminSettings() {
     if (dpPromptValue) setDpPrompt(dpPromptValue);
     const dpApiValue = getConfigValue('daily_priorities_api_config');
     if (dpApiValue) setDpApiConfig(dpApiValue);
-    const dpLimitValue = getConfigValue('daily_priorities_lead_limit');
-    if (dpLimitValue) setDpLeadLimit(dpLimitValue);
-
     // Load suggest tasks configs
     const stApiValue = getConfigValue('suggest_tasks_api_config');
     if (stApiValue) setStApiConfig(stApiValue);
@@ -206,6 +206,14 @@ export default function AdminSettings() {
     if (mentorSuggestionValue) setMentorSuggestionPrompt(mentorSuggestionValue);
     const mentorApiValue = getConfigValue('ai_mentor_api_config_key');
     if (mentorApiValue) setMentorApiConfig(mentorApiValue);
+
+    // Load Telegram configs
+    const tgTokenValue = getConfigValue('telegram_bot_token');
+    if (tgTokenValue) setTgBotToken(tgTokenValue);
+    const tgChatIdValue = getConfigValue('telegram_chat_id');
+    if (tgChatIdValue) setTgChatId(tgChatIdValue);
+    const tgEnabledValue = getConfigValue('telegram_notifications_enabled');
+    setTgEnabled(tgEnabledValue !== 'false');
   }, [configs]);
 
   useEffect(() => {
@@ -260,13 +268,11 @@ export default function AdminSettings() {
   useEffect(() => {
     const originalPrompt = getConfigValue('daily_priorities_prompt');
     const originalApi = getConfigValue('daily_priorities_api_config');
-    const originalLimit = getConfigValue('daily_priorities_lead_limit');
     setHasDpChanges(
       dpPrompt !== originalPrompt ||
-      dpApiConfig !== (originalApi || 'anthropic_api') ||
-      dpLeadLimit !== (originalLimit || '80')
+      dpApiConfig !== (originalApi || 'anthropic_api')
     );
-  }, [dpPrompt, dpApiConfig, dpLeadLimit, configs]);
+  }, [dpPrompt, dpApiConfig, configs]);
 
   useEffect(() => {
     const originalApi = getConfigValue('suggest_tasks_api_config');
@@ -323,6 +329,26 @@ export default function AdminSettings() {
       mentorApiConfig !== origApi
     );
   }, [mentorSummaryPrompt, mentorPrepPrompt, mentorSuggestionPrompt, mentorApiConfig, configs]);
+
+  useEffect(() => {
+    const origToken = getConfigValue('telegram_bot_token');
+    const origChat = getConfigValue('telegram_chat_id');
+    const origEnabled = getConfigValue('telegram_notifications_enabled') !== 'false';
+    setHasTgChanges(
+      tgBotToken !== origToken ||
+      tgChatId !== origChat ||
+      tgEnabled !== origEnabled
+    );
+  }, [tgBotToken, tgChatId, tgEnabled, configs]);
+
+  const handleSaveTelegram = async () => {
+    await Promise.all([
+      updateConfig('telegram_bot_token', tgBotToken),
+      updateConfig('telegram_chat_id', tgChatId),
+      updateConfig('telegram_notifications_enabled', tgEnabled ? 'true' : 'false'),
+    ]);
+    setHasTgChanges(false);
+  };
 
   const handleSaveDailyAnalytics = async () => {
     await Promise.all([
@@ -389,7 +415,6 @@ export default function AdminSettings() {
     await Promise.all([
       updateConfig('daily_priorities_prompt', dpPrompt),
       updateConfig('daily_priorities_api_config', dpApiConfig),
-      updateConfig('daily_priorities_lead_limit', dpLeadLimit),
     ]);
     setHasDpChanges(false);
   };
@@ -436,690 +461,564 @@ export default function AdminSettings() {
     setNewCategoryName('');
   };
 
+  // Helper to find API display name by api_key
+  const getApiName = (apiKey: string) => {
+    const api = apis.find(a => a.api_key === apiKey);
+    return api ? api.name : apiKey;
+  };
+
+  // Shared API Provider Select renderer
+  const renderApiSelect = (value: string, onChange: (v: string) => void) => (
+    <>
+      {apisLoading ? (
+        <Skeleton className="h-10 w-full rounded-xl" />
+      ) : (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="rounded-lg bg-slate-50 border-slate-200">
+            <SelectValue placeholder="Selecione uma API..." />
+          </SelectTrigger>
+          <SelectContent>
+            {apis.filter(api => api.is_active).length === 0 ? (
+              <div className="p-2 text-sm text-slate-500">
+                Nenhuma API ativa configurada
+              </div>
+            ) : (
+              apis
+                .filter(api => api.is_active)
+                .map(api => (
+                  <SelectItem key={api.api_key} value={api.api_key}>
+                    <div className="flex flex-col gap-0.5">
+                      <span>{api.name}</span>
+                      {api.parameters?.model && (
+                        <span className="text-xs text-slate-500">{api.parameters.model}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+      <p className="text-xs text-slate-500 mt-1.5">
+        A API selecionada e seu modelo serão configurados em <Link to="/admin/configuracoes-apis" className="text-blue-600 hover:underline">Configurações de APIs</Link>
+      </p>
+    </>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader title="Configurações da Plataforma" subtitle="Gerencie as configurações globais do sistema" icon={Settings} />
 
-        <Tabs defaultValue="prompts" className="space-y-6">
-          <TabsList className="rounded-xl">
-            <TabsTrigger value="prompts" className="gap-2 rounded-lg"><FileCheck className="h-4 w-4" />Prompts IA</TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2 rounded-lg"><FileText className="h-4 w-4" />Relatórios de Carreira</TabsTrigger>
-            <TabsTrigger value="community" className="gap-2 rounded-lg"><Users className="h-4 w-4" />Comunidade</TabsTrigger>
-            <TabsTrigger value="title-translator" className="gap-2 rounded-lg"><Globe className="h-4 w-4" />Title Translator</TabsTrigger>
-            <TabsTrigger value="daily-priorities" className="gap-2 rounded-lg"><Brain className="h-4 w-4" />Prioridades do Dia</TabsTrigger>
-            <TabsTrigger value="upsell" className="gap-2 rounded-lg"><Sparkles className="h-4 w-4" />Upsell Contextual</TabsTrigger>
-            <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg"><ListTodo className="h-4 w-4" />Sugestão de Tarefas</TabsTrigger>
-            <TabsTrigger value="daily-analytics" className="gap-2 rounded-lg"><BarChart2 className="h-4 w-4" />Analytics Diario</TabsTrigger>
-            <TabsTrigger value="mentor-ai" className="gap-2 rounded-lg"><Video className="h-4 w-4" />Mentor IA</TabsTrigger>
-            <TabsTrigger value="menu-config" className="gap-2 rounded-lg"><Menu className="h-4 w-4" />Menu do App</TabsTrigger>
-            <TabsTrigger value="branding" className="gap-2 rounded-lg"><Image className="h-4 w-4" />Identidade Visual</TabsTrigger>
+        <Tabs defaultValue="prompts" className="flex flex-col lg:flex-row gap-6" orientation="vertical">
+          <TabsList className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-1 p-1.5 rounded-xl lg:w-56 lg:min-w-[14rem] shrink-0 h-auto items-stretch bg-slate-50 lg:sticky lg:top-0 lg:self-start">
+            <p className="hidden lg:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 pt-1 pb-1.5">IA &amp; Prompts</p>
+            <TabsTrigger value="prompts" className="gap-2 rounded-lg justify-start text-left"><FileCheck className="h-4 w-4 shrink-0" /><span className="truncate">Prompts IA</span></TabsTrigger>
+            <TabsTrigger value="suggest-tasks" className="gap-2 rounded-lg justify-start text-left"><ListTodo className="h-4 w-4 shrink-0" /><span className="truncate">Sugestão Tarefas</span></TabsTrigger>
+            <TabsTrigger value="upsell" className="gap-2 rounded-lg justify-start text-left"><Sparkles className="h-4 w-4 shrink-0" /><span className="truncate">Upsell</span></TabsTrigger>
+            <TabsTrigger value="mentor-ai" className="gap-2 rounded-lg justify-start text-left"><Video className="h-4 w-4 shrink-0" /><span className="truncate">Mentor IA</span></TabsTrigger>
+
+            <p className="hidden lg:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 pt-3 pb-1.5">Integrações</p>
+            <TabsTrigger value="reports" className="gap-2 rounded-lg justify-start text-left"><FileText className="h-4 w-4 shrink-0" /><span className="truncate">Relatórios</span></TabsTrigger>
+            <TabsTrigger value="telegram" className="gap-2 rounded-lg justify-start text-left"><Send className="h-4 w-4 shrink-0" /><span className="truncate">Telegram</span></TabsTrigger>
+
+            <p className="hidden lg:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 pt-3 pb-1.5">Aparência</p>
+            <TabsTrigger value="community" className="gap-2 rounded-lg justify-start text-left"><Users className="h-4 w-4 shrink-0" /><span className="truncate">Comunidade</span></TabsTrigger>
+            <TabsTrigger value="menu-config" className="gap-2 rounded-lg justify-start text-left"><Menu className="h-4 w-4 shrink-0" /><span className="truncate">Menu do App</span></TabsTrigger>
+            <TabsTrigger value="branding" className="gap-2 rounded-lg justify-start text-left"><Image className="h-4 w-4 shrink-0" /><span className="truncate">Identidade Visual</span></TabsTrigger>
           </TabsList>
 
-          <TabsContent value="prompts" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><FileCheck className="w-5 h-5 text-primary" /><CardTitle>Analisador de Currículos</CardTitle></div>
-                <CardDescription>Prompt usado pela IA para analisar currículos.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={resumeApiConfig} onValueChange={setResumeApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Prompt da IA</Label>
-                      <Textarea value={resumePrompt} onChange={(e) => setResumePrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
-                    </div>
-                    {resumeConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(resumeConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
-                    <div className="flex justify-end"><Button onClick={handleSaveResume} disabled={!hasResumeChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><Users className="w-5 h-5 text-primary" /><CardTitle>Formatador de Relatórios de Leads</CardTitle></div>
-                <CardDescription>Prompt para formatar relatórios de diagnóstico.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={leadApiConfig} onValueChange={setLeadApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Prompt da IA</Label>
-                      <Textarea value={leadPrompt} onChange={(e) => setLeadPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
-                    </div>
-                    {leadConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(leadConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
-                    <div className="flex justify-end"><Button onClick={handleSaveLead} disabled={!hasLeadChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-primary" /><CardTitle>Recomendador de Produtos</CardTitle></div>
-                <CardDescription>Prompt usado pela IA para recomendar produtos/serviços aos leads com base no tier e perfil.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={recApiConfig} onValueChange={setRecApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Prompt da IA</Label>
-                      <Textarea value={recPrompt} onChange={(e) => setRecPrompt(e.target.value)} className="min-h-[300px] font-mono text-sm rounded-xl" />
-                      <p className="text-xs text-muted-foreground">
-                        Use {'{{lead_data}}'}, {'{{tier}}'} e {'{{services}}'} como placeholders
-                      </p>
-                    </div>
-                    {recConfig?.updated_at && <p className="text-xs text-muted-foreground">Última atualização: {format(new Date(recConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>}
-                    <div className="flex justify-end"><Button onClick={handleSaveRecPrompt} disabled={!hasRecChanges || isSaving} className="rounded-[12px] gap-2"><Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}</Button></div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <div className="flex-1 min-w-0">
 
-          <TabsContent value="reports" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Link2 className="w-5 h-5 text-primary" />
-                  <CardTitle>Webhook de Novos Leads</CardTitle>
-                </div>
-                <CardDescription>
-                  Configure o webhook automático que dispara quando um novo lead é inserido na tabela career_evaluations.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  <Skeleton className="h-48 w-full rounded-xl" />
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Link2 className="w-4 h-4" />
-                        URL do Webhook
-                      </label>
-                      <Input
-                        value={webhookUrl}
-                        onChange={(e) => setWebhookUrl(e.target.value)}
-                        placeholder="https://n8n.sapunplugged.com/webhook/..."
-                        className="rounded-xl font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        URL do endpoint n8n que receberá os dados dos novos leads
-                      </p>
-                      {webhookUrlConfig?.updated_at && (
-                        <p className="text-xs text-muted-foreground">
-                          Última atualização: {format(new Date(webhookUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        URL Base dos Relatórios
-                      </label>
-                      <Input
-                        value={reportBaseUrl}
-                        onChange={(e) => setReportBaseUrl(e.target.value)}
-                        placeholder="https://hub.euanapratica.com"
-                        className="rounded-xl font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        URL base usada para gerar os links de relatórios (será concatenada com /report/:token)
-                      </p>
-                      {reportBaseUrlConfig?.updated_at && (
-                        <p className="text-xs text-muted-foreground">
-                          Última atualização: {format(new Date(reportBaseUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium flex items-center gap-2">
-                        <Link2 className="w-4 h-4" />
-                        URL de Agendamento da Sessão de Diagnóstico
-                      </label>
-                      <Input
-                        value={consultoriaBookingUrl}
-                        onChange={(e) => setConsultoriaBookingUrl(e.target.value)}
-                        placeholder="https://calendly.com/euanapratica/sessao-diagnostico"
-                        className="rounded-xl font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Link exibido no CTA "Agendar sessão" do relatório de lead (modo acesso limitado)
-                      </p>
-                      {consultoriaUrlConfig?.updated_at && (
-                        <p className="text-xs text-muted-foreground">
-                          Última atualização: {format(new Date(consultoriaUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Webhook Ativo</p>
-                        <p className="text-xs text-muted-foreground">
-                          {webhookEnabled ? 'Webhooks serão enviados automaticamente' : 'Webhooks estão desativados'}
+          {/* ═══════════════ PROMPTS IA TAB (6 accordion cards) ═══════════════ */}
+          <TabsContent value="prompts" className="space-y-4">
+            {isLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              </div>
+            ) : (
+              <>
+                {/* 1. Analisador de Currículos */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'resume' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'resume' ? null : 'resume')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <FileCheck className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Analisador de Currículos</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'resume' ? 'Prompt usado pela IA para analisar currículos.' : getApiName(resumeApiConfig)}
                         </p>
                       </div>
-                      <Switch
-                        checked={webhookEnabled}
-                        onCheckedChange={setWebhookEnabled}
-                      />
                     </div>
-
-                    {webhookEnabledConfig?.updated_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Status alterado em: {format(new Date(webhookEnabledConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-
-                    <div className="border-t pt-4">
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={handleSaveWebhook}
-                          disabled={!hasWebhookChanges || isSaving}
-                          className="rounded-[12px] gap-2"
-                        >
-                          <Save className="w-4 h-4" />
-                          {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-                        </Button>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'resume' && resumeConfig?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(resumeConfig.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'resume' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'resume' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                       </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[24px] border-blue-500/20 bg-blue-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                  <CardTitle className="text-blue-500">Documentação</CardTitle>
-                </div>
-                <CardDescription>
-                  Informações sobre o funcionamento do webhook de leads
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Como funciona</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Sempre que um novo lead é inserido na tabela <code className="px-1.5 py-0.5 bg-muted rounded text-xs">career_evaluations</code>,
-                    um trigger PostgreSQL dispara automaticamente e envia todos os dados do lead via POST para o webhook configurado.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Payload enviado</h4>
-                  <p className="text-sm text-muted-foreground">
-                    O webhook recebe um JSON com todos os campos do lead + o campo <code className="px-1.5 py-0.5 bg-muted rounded text-xs">report_link</code> contendo
-                    o link completo para acessar o relatório.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Funciona para</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Leads importados via planilha CSV</li>
-                    <li>Leads inseridos manualmente no Supabase</li>
-                    <li>Leads inseridos via API</li>
-                  </ul>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Documentação completa</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Consulte <code className="px-1.5 py-0.5 bg-muted rounded text-xs">docs/LEAD_WEBHOOK.md</code> para detalhes técnicos,
-                    troubleshooting e exemplos de uso.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="community" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><Hash className="w-5 h-5 text-primary" /><CardTitle>Categorias da Comunidade</CardTitle></div>
-                <CardDescription>Adicione, remova ou ative/desative categorias.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Nova categoria..." className="rounded-xl" />
-                  <Button onClick={handleAddCategory} className="rounded-xl gap-2"><Plus className="h-4 w-4" />Adicionar</Button>
-                </div>
-                {categoriesLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
-                  <div className="space-y-2">
-                    {categories.map(cat => (
-                      <div key={cat.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                        <div className="flex items-center gap-3"><Hash className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{cat.name}</span></div>
-                        <div className="flex items-center gap-2">
-                          <Switch checked={cat.is_active} onCheckedChange={(checked) => updateCategory(cat.id, { is_active: checked })} />
-                          <Button variant="ghost" size="icon" onClick={() => deleteCategory(cat.id)} className="text-destructive h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                  {expandedCard === 'resume' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(resumeApiConfig, setResumeApiConfig)}
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">Prompt da IA</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea value={resumePrompt} onChange={(e) => setResumePrompt(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y" />
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {resumeConfig?.updated_at ? `Última atualização: ${format(new Date(resumeConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}` : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveResume} disabled={!hasResumeChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Formatador de Relatórios de Leads */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'leads' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'leads' ? null : 'leads')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <Users className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Formatador de Relatórios de Leads</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'leads' ? 'Prompt para formatar relatórios de diagnóstico.' : getApiName(leadApiConfig)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'leads' && leadConfig?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(leadConfig.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'leads' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'leads' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><Zap className="w-5 h-5 text-primary" /><CardTitle>Regras de Gamificação</CardTitle></div>
-                <CardDescription>Configure pontos por ação.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {rulesLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
-                  <div className="space-y-3">
-                    {rules.map(rule => (
-                      <div key={rule.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                        <div><p className="font-medium">{rule.description || rule.action_type}</p><p className="text-xs text-muted-foreground">{rule.action_type}</p></div>
-                        <div className="flex items-center gap-2">
-                          <Input type="number" value={rule.points} onChange={(e) => updateRule(rule.id, parseInt(e.target.value) || 0)} className="w-20 rounded-xl text-center" />
-                          <span className="text-sm text-muted-foreground">pts</span>
+                  {expandedCard === 'leads' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(leadApiConfig, setLeadApiConfig)}
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">Prompt da IA</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea value={leadPrompt} onChange={(e) => setLeadPrompt(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y" />
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {leadConfig?.updated_at ? `Última atualização: ${format(new Date(leadConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}` : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveLead} disabled={!hasLeadChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Recomendador de Produtos */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'products' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'products' ? null : 'products')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <ShoppingBag className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Recomendador de Produtos</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'products' ? 'Prompt usado pela IA para recomendar produtos/serviços aos leads com base no tier e perfil.' : getApiName(recApiConfig)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'products' && recConfig?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(recConfig.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'products' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'products' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  {expandedCard === 'products' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(recApiConfig, setRecApiConfig)}
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">Prompt da IA</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea value={recPrompt} onChange={(e) => setRecPrompt(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y" />
+                        <p className="text-xs text-slate-500 mt-2">
+                          Use {'{{lead_data}}'}, {'{{tier}}'} e {'{{services}}'} como placeholders
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {recConfig?.updated_at ? `Última atualização: ${format(new Date(recConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}` : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveRecPrompt} disabled={!hasRecChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-          <TabsContent value="title-translator" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><Globe className="w-5 h-5 text-primary" /><CardTitle>Title Translator - Configuracao da IA</CardTitle></div>
-                <CardDescription>Configure a API, modelo e prompt usados pela ferramenta de traducao de titulos.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={ttApiConfig} onValueChange={setTtApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                {/* 4. Title Translator */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'title-translator' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'title-translator' ? null : 'title-translator')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <Globe className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Title Translator</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'title-translator' ? 'Configure a API, modelo e prompt usados pela ferramenta de traducao de titulos.' : getApiName(ttApiConfig)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'title-translator' && configs.find(c => c.key === 'title_translator_prompt')?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(configs.find(c => c.key === 'title_translator_prompt')!.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serão configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">/admin/configuracoes-apis</Link>
-                      </p>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'title-translator' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'title-translator' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Prompt da IA</Label>
-                      <Textarea
-                        value={ttPrompt}
-                        onChange={(e) => setTtPrompt(e.target.value)}
-                        className="min-h-[300px] font-mono text-sm rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Use {'{title_br}'}, {'{area}'}, {'{responsibilities}'} e {'{years_experience}'} como placeholders
-                      </p>
+                  </div>
+                  {expandedCard === 'title-translator' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(ttApiConfig, setTtApiConfig)}
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">Prompt da IA</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea value={ttPrompt} onChange={(e) => setTtPrompt(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y" />
+                        <p className="text-xs text-slate-500 mt-2">
+                          Use {'{title_br}'}, {'{area}'}, {'{responsibilities}'} e {'{years_experience}'} como placeholders
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {configs.find(c => c.key === 'title_translator_prompt')?.updated_at
+                            ? `Última atualização: ${format(new Date(configs.find(c => c.key === 'title_translator_prompt')!.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                            : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveTitleTranslator} disabled={!hasTtChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button
-                        onClick={handleSaveTitleTranslator}
-                        disabled={!hasTtChanges || isSaving}
-                        className="rounded-[12px] gap-2"
-                      >
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
-                      </Button>
+                {/* 5. Prioridades do Dia */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'priorities' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'priorities' ? null : 'priorities')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <Brain className="w-5 h-5 text-indigo-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Prioridades do Dia</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'priorities' ? 'Configure a API e o prompt usados para gerar prioridades diarias de leads no dashboard.' : getApiName(dpApiConfig)}
+                        </p>
+                      </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="daily-priorities" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><Brain className="w-5 h-5 text-indigo-600" /><CardTitle>Prioridades do Dia - IA</CardTitle></div>
-                <CardDescription>Configure a API e o prompt usados para gerar prioridades diarias de leads no dashboard.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={dpApiConfig} onValueChange={setDpApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'priorities' && configs.find(c => c.key === 'daily_priorities_prompt')?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(configs.find(c => c.key === 'daily_priorities_prompt')!.updated_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
-                      </p>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'priorities' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'priorities' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Limite de Leads</Label>
-                      <Input
-                        type="number"
-                        min="5"
-                        max="500"
-                        value={dpLeadLimit}
-                        onChange={(e) => setDpLeadLimit(e.target.value)}
-                        className="w-32 rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Quantidade maxima de leads enviados para a IA analisar (ordenados por priority score). Min: 5, Max: 500. Valores maiores geram analises mais completas mas custam mais tokens e demoram mais.
-                      </p>
+                  </div>
+                  {expandedCard === 'priorities' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(dpApiConfig, setDpApiConfig)}
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">System Prompt</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea
+                          value={dpPrompt}
+                          onChange={(e) => setDpPrompt(e.target.value)}
+                          placeholder="Deixe vazio para usar o prompt padrao embutido na Edge Function..."
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">
+                          Use {'{{today}}'} como placeholder para a data atual. Deixe vazio para usar o prompt padrao.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {configs.find(c => c.key === 'daily_priorities_prompt')?.updated_at
+                            ? `Última atualização: ${format(new Date(configs.find(c => c.key === 'daily_priorities_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}`
+                            : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveDailyPriorities} disabled={!hasDpChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
+                  )}
+                </div>
 
-                    <div className="space-y-2">
-                      <Label>System Prompt</Label>
-                      <Textarea
-                        value={dpPrompt}
-                        onChange={(e) => setDpPrompt(e.target.value)}
-                        placeholder="Deixe vazio para usar o prompt padrao embutido na Edge Function..."
-                        className="min-h-[300px] font-mono text-sm rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Use {'{{today}}'} como placeholder para a data atual. Deixe vazio para usar o prompt padrao.
-                      </p>
+                {/* 6. Analytics Diário */}
+                <div className={`bg-white rounded-xl border transition-all duration-200 ${expandedCard === 'analytics' ? 'border-blue-200 shadow-md' : 'border-slate-200 shadow-sm hover:border-slate-300'}`}>
+                  <div className="p-5 flex items-center justify-between cursor-pointer select-none" onClick={() => setExpandedCard(expandedCard === 'analytics' ? null : 'analytics')}>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <BarChart2 className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Analytics Diário</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">
+                          {expandedCard === 'analytics' ? 'Configure a API, modelo e prompt usados para gerar o resumo diario de analytics.' : getApiName(daApiConfig)}
+                        </p>
+                      </div>
                     </div>
-
-                    {configs.find(c => c.key === 'daily_priorities_prompt')?.updated_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Ultima atualizacao: {format(new Date(configs.find(c => c.key === 'daily_priorities_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button onClick={handleSaveDailyPriorities} disabled={!hasDpChanges || isSaving} className="rounded-[12px] gap-2">
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
-                      </Button>
+                    <div className="flex items-center gap-4">
+                      {expandedCard !== 'analytics' && configs.find(c => c.key === 'daily_analytics_prompt')?.updated_at && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          Atualizado {format(new Date(configs.find(c => c.key === 'daily_analytics_prompt')!.updated_at), "dd/MM/yyyy")}
+                        </span>
+                      )}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${expandedCard === 'analytics' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
+                        {expandedCard === 'analytics' ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  </div>
+                  {expandedCard === 'analytics' && (
+                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                        {renderApiSelect(daApiConfig, setDaApiConfig)}
+                      </div>
+                      <div className="mb-5">
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Modelo (override)</label>
+                        <input
+                          type="text"
+                          value={daModel}
+                          onChange={(e) => setDaModel(e.target.value)}
+                          placeholder="ex: google/gemini-2.0-flash (vazio = usa modelo padrao da API)"
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        />
+                        <p className="text-xs text-slate-500 mt-1.5">
+                          Se preenchido, sobrescreve o modelo configurado na API. Use nomes do OpenRouter (ex: google/gemini-2.0-flash, openai/gpt-4.1-mini). Deixe vazio para usar o modelo padrao.
+                        </p>
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-sm font-medium text-slate-700">Prompt do Analista</label>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                            <History size={14} />
+                            Ver histórico
+                          </button>
+                        </div>
+                        <textarea
+                          value={daPrompt}
+                          onChange={(e) => setDaPrompt(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] max-h-[400px] resize-y"
+                          placeholder="Prompt do sistema para gerar o resumo diario..."
+                        />
+                        <p className="text-xs text-slate-500 mt-2">
+                          O LLM recebe este prompt como instrucao do sistema + os dados do dia em JSON como mensagem do usuario. Escreva em portugues, tom analitico. Max 250 palavras de saida.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-6">
+                        <span className="text-xs text-slate-500">
+                          {configs.find(c => c.key === 'daily_analytics_prompt')?.updated_at
+                            ? `Última atualização: ${format(new Date(configs.find(c => c.key === 'daily_analytics_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm")}`
+                            : ''}
+                        </span>
+                        <div className="flex gap-3">
+                          <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-2 shadow-sm">
+                            <Play size={16} />
+                            Testar Prompt
+                          </button>
+                          <Button onClick={handleSaveDailyAnalytics} disabled={!hasDaChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors gap-2 shadow-sm">
+                            <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </TabsContent>
 
+          {/* ═══════════════ SUGGEST TASKS TAB ═══════════════ */}
           <TabsContent value="suggest-tasks" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <ListTodo className="w-5 h-5 text-violet-600" />
-                  <CardTitle>Sugestão de Tarefas — IA</CardTitle>
-                </div>
-                <CardDescription>
-                  Configure a API e o prompt usados quando o admin clica em "Sugerir Tarefas" no detalhe de um lead (aba Tarefas).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 space-y-6">
                 {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
                   <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={stApiConfig} onValueChange={setStApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada e seu modelo serão configurados em{' '}
-                        <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configurações de APIs</Link>.
-                        O fallback automático entre APIs também é respeitado.
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                      {renderApiSelect(stApiConfig, setStApiConfig)}
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        A API selecionada e seu modelo serão configurados em <Link to="/admin/configuracoes-apis" className="text-blue-600 hover:underline">Configurações de APIs</Link>. O fallback automático entre APIs também é respeitado.
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Max Tokens (resposta da IA)</Label>
-                      <Input
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Max Tokens (resposta da IA)</label>
+                      <input
                         type="number"
                         min={500}
                         max={8000}
                         step={500}
                         value={stMaxTokens}
                         onChange={(e) => setStMaxTokens(e.target.value)}
-                        className="rounded-xl w-40"
+                        className="w-48 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                       />
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-slate-500 mt-1.5">
                         Tokens máximos na resposta. Recomendado: 3000 com mensagens WhatsApp, 1500 sem. JSON truncado causa erro 500.
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>System Prompt</Label>
-                      <Textarea
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">System Prompt</label>
+                      <textarea
                         value={stPrompt}
                         onChange={(e) => setStPrompt(e.target.value)}
                         placeholder="Deixe vazio para usar o prompt padrão embutido na Edge Function..."
-                        className="min-h-[320px] font-mono text-sm rounded-xl"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[300px] resize-y"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Deixe vazio para usar o prompt padrão. O contexto enviado à IA inclui: perfil do lead, scores, barreiras, últimas interações (incluindo WhatsApp) e tarefas já existentes. A resposta deve ser um JSON com o campo <code className="px-1 py-0.5 bg-muted rounded">suggestions[]</code>.
+                      <p className="text-xs text-slate-500 mt-2">
+                        Deixe vazio para usar o prompt padrão. O contexto enviado à IA inclui: perfil do lead, scores, barreiras, últimas interações (incluindo WhatsApp) e tarefas já existentes. A resposta deve ser um JSON com o campo <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">suggestions[]</code>.
                       </p>
-                    </div>
-
-                    {configs.find(c => c.key === 'suggest_tasks_prompt')?.updated_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Última atualização: {format(new Date(configs.find(c => c.key === 'suggest_tasks_prompt')!.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button
-                        onClick={handleSaveSuggestTasks}
-                        disabled={!hasStChanges || isSaving}
-                        className="rounded-[12px] gap-2"
-                      >
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-                      </Button>
                     </div>
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-xl flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  {configs.find(c => c.key === 'suggest_tasks_prompt')?.updated_at
+                    ? `Última atualização: ${format(new Date(configs.find(c => c.key === 'suggest_tasks_prompt')!.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                    : ''}
+                </span>
+                <button
+                  onClick={handleSaveSuggestTasks}
+                  disabled={!hasStChanges || isSaving}
+                  className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save size={16} />
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
+              </div>
+            </div>
 
-            <Card className="rounded-[24px] border-violet-500/20 bg-violet-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-violet-500" />
-                  <CardTitle className="text-violet-600">Como Funciona</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Fluxo</h4>
-                  <ol className="list-decimal list-inside space-y-1">
+            {/* How it Works Card */}
+            <div className="bg-purple-50/30 rounded-xl border border-purple-100 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <FileText size={24} className="text-purple-600" />
+                <h3 className="text-lg font-semibold text-purple-900">Como Funciona</h3>
+              </div>
+              <div className="space-y-8">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-3">Fluxo</h4>
+                  <ol className="list-decimal list-inside space-y-2.5 text-sm text-slate-600">
                     <li>Admin abre o detalhe de um lead (aba Tarefas ou WhatsApp)</li>
                     <li>Clica em "Sugerir com IA"</li>
-                    <li>A Edge Function <code className="px-1 py-0.5 bg-muted rounded text-xs">suggest-lead-tasks</code> busca perfil, interações e tarefas existentes</li>
-                    <li>A IA analisa tudo e retorna 2–5 sugestões com título, tipo, prioridade e prazo</li>
+                    <li>A Edge Function <code className="bg-white border border-purple-100 px-1.5 py-0.5 rounded text-purple-700 text-xs font-mono">suggest-lead-tasks</code> busca perfil, interações e tarefas existentes</li>
+                    <li>A IA analisa tudo e retorna 2-5 sugestões com título, tipo, prioridade e prazo</li>
                     <li>Admin seleciona quais criar (todas marcadas por padrão) e clica em "Criar X tarefas"</li>
-                    <li>Tarefas criadas ficam marcadas com fonte <code className="px-1 py-0.5 bg-muted rounded text-xs">ai_suggestion</code> na aba Tarefas</li>
+                    <li>Tarefas criadas ficam marcadas com fonte <code className="bg-white border border-purple-100 px-1.5 py-0.5 rounded text-purple-700 text-xs font-mono">ai_suggestion</code> na aba Tarefas</li>
                   </ol>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Contexto enviado à IA</h4>
-                  <ul className="list-disc list-inside space-y-1">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-3">Contexto enviado à IA</h4>
+                  <ul className="list-disc list-inside space-y-2.5 text-sm text-slate-600">
                     <li>Perfil completo: área, nível, inglês, situação de visto, família, objetivo</li>
                     <li>Scores: prontidão, temperatura, prioridade, LTV estimado, fase ROTA</li>
                     <li>Barreiras identificadas (7 dimensões)</li>
@@ -1128,29 +1027,19 @@ export default function AdminSettings() {
                     <li>Títulos das tarefas pendentes (para evitar duplicatas)</li>
                   </ul>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
+          {/* ═══════════════ UPSELL TAB ═══════════════ */}
           <TabsContent value="upsell" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <CardTitle>Sistema de Upsell Contextual</CardTitle>
-                </div>
-                <CardDescription>
-                  Configure como a IA analisa posts e sugere serviços relevantes na comunidade
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 space-y-6">
                 {/* Toggle global */}
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Sistema Ativo</p>
-                    <p className="text-xs text-muted-foreground">
-                      Liga/desliga o upsell contextual globalmente
-                    </p>
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-800">Sistema Ativo</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Liga/desliga o upsell contextual globalmente</p>
                   </div>
                   <Switch
                     checked={upsellEnabled}
@@ -1159,193 +1048,588 @@ export default function AdminSettings() {
                 </div>
 
                 {/* API Provider */}
-                <div className="space-y-2">
-                  <Label>API Provider</Label>
-                  {apisLoading ? (
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                  ) : (
-                    <Select value={upsellApiConfig} onValueChange={setUpsellApiConfig}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="Selecione uma API..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {apis.filter(api => api.is_active).length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground">
-                            Nenhuma API ativa configurada
-                          </div>
-                        ) : (
-                          apis
-                            .filter(api => api.is_active)
-                            .map(api => (
-                              <SelectItem key={api.api_key} value={api.api_key}>
-                                <div className="flex flex-col gap-0.5">
-                                  <span>{api.name}</span>
-                                  {api.parameters?.model && (
-                                    <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    A API selecionada e seu modelo serao configurados em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider</label>
+                  {renderApiSelect(upsellApiConfig, setUpsellApiConfig)}
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    A API selecionada e seu modelo serão configurados em <Link to="/admin/configuracoes-apis" className="text-blue-600 hover:underline">Configurações de APIs</Link>
                   </p>
                 </div>
 
                 {/* Prompt Template */}
-                <div className="space-y-2">
-                  <Label>Prompt Template</Label>
-                  <Textarea
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Prompt Template</label>
+                  <textarea
                     value={upsellPrompt}
                     onChange={(e) => setUpsellPrompt(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm rounded-xl"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[300px] resize-y"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use {'{post_content}'} e {'{services_json}'} como placeholders
+                  <p className="text-xs text-slate-500 mt-2">
+                    Use <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">{'{post_content}'} e {'{services_json}'}</code> como placeholders
                   </p>
                 </div>
 
-                {/* Configurações do modelo */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Modelo (override)</Label>
-                    <Input
+                {/* 3 Column Grid for Model Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Modelo (override)</label>
+                    <input
+                      type="text"
                       value={upsellModel}
                       onChange={(e) => setUpsellModel(e.target.value)}
-                      placeholder="Ex: claude-haiku-4-5-20251001 ou gpt-4o-mini"
-                      className="rounded-xl font-mono text-sm"
+                      placeholder="Ex: claude-haiku-4-5-20251001"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Sobrescreve o modelo da API. Deixe vazio para usar o modelo padrao da API selecionada.
+                    <p className="text-xs text-slate-500 mt-1.5">
+                      Sobrescreve o modelo da API. Deixe vazio para usar o modelo padrão da API selecionada.
                     </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Max Tokens</Label>
-                    <Input
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Max Tokens</label>
+                    <input
                       type="number"
                       value={upsellMaxTokens}
                       onChange={(e) => setUpsellMaxTokens(e.target.value)}
-                      className="rounded-xl"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Temperature</Label>
-                    <Input
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Temperature</label>
+                    <input
                       type="number"
                       step="0.1"
                       min="0"
-                      max="1"
+                      max="2"
                       value={upsellTemperature}
                       onChange={(e) => setUpsellTemperature(e.target.value)}
-                      className="rounded-xl"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                   </div>
                 </div>
 
-                {/* Rate limiting */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Intervalo entre Cards (dias)</Label>
-                    <Input
+                {/* 2 Column Grid for Limits */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Intervalo entre Cards (dias)</label>
+                    <input
                       type="number"
                       value={upsellRateLimitDays}
                       onChange={(e) => setUpsellRateLimitDays(e.target.value)}
-                      className="rounded-xl"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500 mt-1.5">
                       Tempo mínimo entre cards para o mesmo usuário
                     </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Blacklist Duration (dias)</Label>
-                    <Input
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Blacklist Duration (dias)</label>
+                    <input
                       type="number"
                       value={upsellBlacklistDays}
                       onChange={(e) => setUpsellBlacklistDays(e.target.value)}
-                      className="rounded-xl"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500 mt-1.5">
                       Tempo de blacklist após 2 dismissals
                     </p>
                   </div>
                 </div>
+              </div>
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-xl flex items-center justify-end">
+                <button
+                  onClick={handleSaveUpsellConfigs}
+                  disabled={!hasUpsellChanges || isSaving}
+                  className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save size={16} />
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
+              </div>
+            </div>
 
-                {/* Botão salvar */}
-                <div className="flex justify-end pt-4 border-t">
-                  <Button
-                    onClick={handleSaveUpsellConfigs}
-                    disabled={!hasUpsellChanges || isSaving}
-                    className="rounded-[12px] gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Card de documentação */}
-            <Card className="rounded-[24px] border-blue-500/20 bg-blue-500/5">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                  <CardTitle className="text-blue-500">Como Funciona</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Fluxo do Sistema</h4>
-                  <ol className="list-decimal list-inside space-y-1">
+            {/* How it Works Card */}
+            <div className="bg-blue-50/30 rounded-xl border border-blue-100 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <FileText size={24} className="text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">Como Funciona</h3>
+              </div>
+              <div className="space-y-8">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-3">Fluxo do Sistema</h4>
+                  <ol className="list-decimal list-inside space-y-2.5 text-sm text-slate-600">
                     <li>Usuário cria um post na comunidade</li>
                     <li>Sistema verifica rate limit e blacklist</li>
-                    <li>Pre-filtro compara keywords dos serviços com o texto do post</li>
+                    <li>Pré-filtro compara keywords dos serviços com o texto do post</li>
                     <li>Se houver match, Claude API analisa o post e sugere serviço</li>
                     <li>Se confidence {'>='} 0.7, card de upsell é exibido no post</li>
                     <li>Após 2 dismissals, serviço entra em blacklist por 30 dias</li>
                   </ol>
                 </div>
-
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Otimizações de Custo</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Pre-filtro de keywords economiza ~90% de chamadas à API</li>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-3">Otimizações de Custo</h4>
+                  <ul className="list-disc list-inside space-y-2.5 text-sm text-slate-600">
+                    <li>Pré-filtro de keywords economiza ~90% de chamadas à API</li>
                     <li>Rate limiting previne spam de cards para o mesmo usuário</li>
                     <li>Haiku 4.5 é 20x mais barato que Sonnet</li>
                     <li>Max 1 card por post (constraint no banco)</li>
                   </ul>
                 </div>
-
-                <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Métricas Disponíveis</h4>
-                  <p>
-                    Todas as interações são rastreadas em <code className="px-1 py-0.5 bg-muted rounded text-xs">upsell_impressions</code>:
-                    impressões, clicks, dismissals e conversões.
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-3">Métricas Disponíveis</h4>
+                  <p className="text-sm text-slate-600">
+                    Todas as interações são rastreadas em <code className="bg-white border border-blue-100 px-1.5 py-0.5 rounded text-blue-700 text-xs font-mono">upsell_impressions</code>: impressões, clicks, dismissals e conversões.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </TabsContent>
 
+          {/* ═══════════════ MENTOR AI TAB ═══════════════ */}
+          <TabsContent value="mentor-ai" className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 space-y-8">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">API Provider Global (Mentor IA)</label>
+                  <Select value={mentorApiConfig} onValueChange={(v) => setMentorApiConfig(v)}>
+                    <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {apis?.map((api) => (
+                        <SelectItem key={api.api_key} value={api.api_key}>{api.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1.5">Este provedor será usado para todas as funções do Mentor IA abaixo.</p>
+                </div>
+
+                {/* Section 1: Resumo Pós-Sessão */}
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} className="text-blue-500" />
+                      <h3 className="text-md font-semibold text-slate-800">Resumo Pós-Sessão</h3>
+                    </div>
+                    <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                      <History size={14} />
+                      Ver histórico
+                    </button>
+                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Prompt Template (<code className="text-xs text-blue-600">ai_session_summary_prompt</code>)</label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] resize-y"
+                    value={mentorSummaryPrompt}
+                    onChange={(e) => setMentorSummaryPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para gerar resumos de sessão..."
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-slate-500">
+                      Use <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">{'{transcription}'}, {'{student_name}'} e {'{session_date}'}</code> como placeholders.
+                    </p>
+                    <button className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-1.5 shadow-sm">
+                      <Play size={14} />
+                      Testar Prompt
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 2: Briefing Pré-Sessão */}
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Brain size={18} className="text-purple-500" />
+                      <h3 className="text-md font-semibold text-slate-800">Briefing Pré-Sessão</h3>
+                    </div>
+                    <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                      <History size={14} />
+                      Ver histórico
+                    </button>
+                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Prompt Template (<code className="text-xs text-purple-600">ai_session_prep_prompt</code>)</label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] resize-y"
+                    value={mentorPrepPrompt}
+                    onChange={(e) => setMentorPrepPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para gerar briefing pré-sessão..."
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-slate-500">
+                      Use <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">{'{student_profile}'}, {'{past_sessions}'} e {'{current_goals}'}</code> como placeholders.
+                    </p>
+                    <button className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-1.5 shadow-sm">
+                      <Play size={14} />
+                      Testar Prompt
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 3: Sugestões por Aluno */}
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-emerald-500" />
+                      <h3 className="text-md font-semibold text-slate-800">Sugestões por Aluno</h3>
+                    </div>
+                    <button className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
+                      <History size={14} />
+                      Ver histórico
+                    </button>
+                  </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Prompt Template (<code className="text-xs text-emerald-600">ai_student_suggestion_prompt</code>)</label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-mono rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all min-h-[200px] resize-y"
+                    value={mentorSuggestionPrompt}
+                    onChange={(e) => setMentorSuggestionPrompt(e.target.value)}
+                    placeholder="Prompt do sistema para sugestões de engajamento por aluno..."
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-slate-500">
+                      Use <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">{'{student_data}'}, {'{performance_metrics}'} e {'{available_resources}'}</code> como placeholders.
+                    </p>
+                    <button className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center gap-1.5 shadow-sm">
+                      <Play size={14} />
+                      Testar Prompt
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-xl flex items-center justify-between">
+                <span className="text-xs text-slate-500">&nbsp;</span>
+                <button onClick={handleSaveMentorAI} disabled={!hasMentorChanges || isSaving} className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Save size={16} />{isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════ REPORTS TAB ═══════════════ */}
+          <TabsContent value="reports" className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 space-y-6">
+                {isLoading ? (
+                  <Skeleton className="h-48 w-full rounded-xl" />
+                ) : (
+                  <>
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+                        <Link2 size={16} />
+                        URL do Webhook
+                      </label>
+                      <input
+                        type="text"
+                        value={webhookUrl}
+                        onChange={(e) => setWebhookUrl(e.target.value)}
+                        placeholder="https://n8n.sapunplugged.com/webhook/..."
+                        className="w-full bg-white border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        URL do endpoint n8n que receberá os dados dos novos leads
+                      </p>
+                      {webhookUrlConfig?.updated_at && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          Última atualização: {format(new Date(webhookUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+                        <Globe size={16} />
+                        URL Base dos Relatórios
+                      </label>
+                      <input
+                        type="text"
+                        value={reportBaseUrl}
+                        onChange={(e) => setReportBaseUrl(e.target.value)}
+                        placeholder="https://hub.euanapratica.com"
+                        className="w-full bg-white border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        URL base usada para gerar os links de relatórios (será concatenada com /report/:token)
+                      </p>
+                      {reportBaseUrlConfig?.updated_at && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          Última atualização: {format(new Date(reportBaseUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+                        <Link2 size={16} />
+                        URL de Agendamento da Sessão de Diagnóstico
+                      </label>
+                      <input
+                        type="text"
+                        value={consultoriaBookingUrl}
+                        onChange={(e) => setConsultoriaBookingUrl(e.target.value)}
+                        placeholder="https://hub.euanapratica.com/servicos/rota60min"
+                        className="w-full bg-white border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        Link exibido no CTA "Agendar sessão" do relatório de lead (modo acesso limitado)
+                      </p>
+                      {consultoriaUrlConfig?.updated_at && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          Última atualização: {format(new Date(consultoriaUrlConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <div>
+                        <h3 className="text-sm font-medium text-slate-800">Webhook Ativo</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {webhookEnabled ? 'Webhooks serão enviados automaticamente' : 'Webhooks estão desativados'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={webhookEnabled}
+                        onCheckedChange={setWebhookEnabled}
+                      />
+                    </div>
+                    {webhookEnabledConfig?.updated_at && (
+                      <p className="text-xs text-slate-400">
+                        Status alterado em: {format(new Date(webhookEnabledConfig.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-xl flex items-center justify-end">
+                <button
+                  onClick={handleSaveWebhook}
+                  disabled={!hasWebhookChanges || isSaving}
+                  className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save size={16} />
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
+              </div>
+            </div>
+
+            {/* Documentation Card */}
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <FileText size={24} className="text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">Documentação</h3>
+              </div>
+              <p className="text-sm text-slate-500 mb-6">Informações sobre o funcionamento do webhook de leads</p>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Como funciona</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Sempre que um novo lead é inserido na tabela <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700 text-xs font-mono">career_evaluations</code>, um trigger PostgreSQL dispara automaticamente e envia todos os dados do lead via POST para o webhook configurado.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Payload enviado</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    O webhook recebe um JSON com todos os campos do lead + o campo <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700 text-xs font-mono">report_link</code> contendo o link completo para acessar o relatório.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Funciona para</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-600">
+                    <li>Leads importados via planilha CSV</li>
+                    <li>Leads inseridos manualmente no Supabase</li>
+                    <li>Leads inseridos via API</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Documentação completa</h4>
+                  <p className="text-sm text-slate-600">
+                    Consulte <code className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700 text-xs font-mono">docs/LEAD_WEBHOOK.md</code> para detalhes técnicos, troubleshooting e exemplos de uso.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════ TELEGRAM TAB ═══════════════ */}
+          <TabsContent value="telegram" className="space-y-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 space-y-6">
+                {isLoading ? (
+                  <Skeleton className="h-48 w-full rounded-xl" />
+                ) : (
+                  <>
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+                        <span className="text-slate-400">#</span>
+                        Bot Token
+                      </label>
+                      <input
+                        type="password"
+                        value={tgBotToken}
+                        onChange={(e) => setTgBotToken(e.target.value)}
+                        placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                        className="w-full bg-white border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        Obtido via <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">@BotFather</code> no Telegram. Crie um bot → copie o token aqui.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+                        <Users size={16} className="text-slate-400" />
+                        Chat ID
+                      </label>
+                      <input
+                        type="text"
+                        value={tgChatId}
+                        onChange={(e) => setTgChatId(e.target.value)}
+                        placeholder="-1001234567890"
+                        className="w-full bg-white border border-slate-200 text-slate-800 text-sm font-mono rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        Seu chat ID pessoal ou de grupo. Envie <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">/start</code> para <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">@userinfobot</code> para descobrir.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <div>
+                        <h3 className="text-sm font-medium text-slate-800">Notificações Ativas</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {tgEnabled ? 'Alertas serão enviados via Telegram' : 'Notificações do Telegram estão desativadas'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={tgEnabled}
+                        onCheckedChange={setTgEnabled}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 rounded-b-xl flex items-center justify-end">
+                <button
+                  onClick={handleSaveTelegram}
+                  disabled={!hasTgChanges || isSaving}
+                  className="px-6 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save size={16} />
+                  {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+                </button>
+              </div>
+            </div>
+
+            {/* Documentation Card */}
+            <div className="bg-blue-50/30 rounded-xl border border-blue-100 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <FileText size={24} className="text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900">O que você recebe</h3>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Publicação de Conteúdo</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-600">
+                    <li>Alerta de falha com tipo do erro e ação sugerida</li>
+                    <li>Detecção de post fantasma (API aceitou mas post não existe)</li>
+                    <li>Conta desconectada — avisa para reconectar</li>
+                    <li>Auto-fix de publicações travadas</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Agenda Diária</h4>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm text-slate-600">
+                    <li>Resumo do dia com agendamentos e tarefas</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-2">Retries automáticos</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Erros temporários (rate limit, servidor) são retentados automaticamente com backoff: 5min → 15min → 45min → 2h → 4h. Você só precisa agir se receber "Sem mais retries".
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════ COMMUNITY TAB ═══════════════ */}
+          <TabsContent value="community" className="space-y-8">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Hash size={20} className="text-blue-600" />
+                <h3 className="text-sm font-semibold text-slate-800">Categorias da Comunidade</h3>
+              </div>
+              <div className="flex gap-3 mb-6">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Nova categoria..."
+                  className="flex-1 bg-white border border-slate-200 text-slate-800 text-sm rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+                <button onClick={handleAddCategory} className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                  <Plus size={16} />
+                  Adicionar
+                </button>
+              </div>
+              {categoriesLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
+                <div className="space-y-3">
+                  {categories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <Hash size={16} className="text-slate-400" />
+                        <span className="text-sm font-medium text-slate-700">{cat.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Switch checked={cat.is_active} onCheckedChange={(checked) => updateCategory(cat.id, { is_active: checked })} />
+                        <button onClick={() => deleteCategory(cat.id)} className="text-red-400 hover:text-red-600 transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={20} className="text-blue-600" />
+                <h3 className="text-sm font-semibold text-slate-800">Regras de Gamificação</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">Configure pontos por ação.</p>
+              {rulesLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : (
+                <div className="space-y-3">
+                  {rules.map(rule => (
+                    <div key={rule.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-800">{rule.description || rule.action_type}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">{rule.action_type}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          value={rule.points}
+                          onChange={(e) => updateRule(rule.id, parseInt(e.target.value) || 0)}
+                          className="w-20 bg-white border border-slate-200 text-slate-800 text-sm text-center rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        />
+                        <span className="text-sm text-slate-500 font-medium w-6">pts</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════ MENU CONFIG TAB ═══════════════ */}
           <TabsContent value="menu-config" className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Student Menu */}
-              <Card className="rounded-[24px]">
-                <CardHeader>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div className="p-6 border-b border-slate-100">
                   <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <CardTitle>Menu dos Alunos</CardTitle>
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-slate-800">Menu dos Alunos</h3>
                   </div>
-                  <CardDescription>
+                  <p className="text-sm text-slate-500 mt-1">
                     Itens visíveis no menu lateral para usuários com perfil de aluno. Mudanças aplicadas imediatamente.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+                  </p>
+                </div>
+                <div className="p-6 space-y-6">
                   {menuLoading ? (
                     <div className="space-y-3">
                       {Array.from({ length: 5 }).map((_, i) => (
@@ -1355,15 +1639,15 @@ export default function AdminSettings() {
                   ) : (
                     Object.entries(groupMenuItems(STUDENT_MENU_ITEMS)).map(([groupLabel, items]) => (
                       <div key={groupLabel} className="space-y-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">
                           {groupLabel}
                         </p>
                         <div className="space-y-1">
                           {items.map(item => {
                             const visible = isItemVisible('student' as MenuRole, item.key);
                             return (
-                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40">
-                                <span className={`text-sm font-medium ${visible ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-lg bg-slate-50 border border-slate-100">
+                                <span className={`text-sm font-medium ${visible ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                                   {item.label}
                                 </span>
                                 <Switch
@@ -1377,21 +1661,21 @@ export default function AdminSettings() {
                       </div>
                     ))
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Mentor Menu */}
-              <Card className="rounded-[24px]">
-                <CardHeader>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div className="p-6 border-b border-slate-100">
                   <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <CardTitle>Menu dos Mentores</CardTitle>
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-slate-800">Menu dos Mentores</h3>
                   </div>
-                  <CardDescription>
+                  <p className="text-sm text-slate-500 mt-1">
                     Itens visíveis no menu lateral para usuários com perfil de mentor. Mudanças aplicadas imediatamente.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+                  </p>
+                </div>
+                <div className="p-6 space-y-6">
                   {menuLoading ? (
                     <div className="space-y-3">
                       {Array.from({ length: 5 }).map((_, i) => (
@@ -1401,15 +1685,15 @@ export default function AdminSettings() {
                   ) : (
                     Object.entries(groupMenuItems(MENTOR_MENU_ITEMS)).map(([groupLabel, items]) => (
                       <div key={groupLabel} className="space-y-2">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1">
                           {groupLabel}
                         </p>
                         <div className="space-y-1">
                           {items.map(item => {
                             const visible = isItemVisible('mentor' as MenuRole, item.key);
                             return (
-                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40">
-                                <span className={`text-sm font-medium ${visible ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                              <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-lg bg-slate-50 border border-slate-100">
+                                <span className={`text-sm font-medium ${visible ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
                                   {item.label}
                                 </span>
                                 <Switch
@@ -1423,162 +1707,12 @@ export default function AdminSettings() {
                       </div>
                     ))
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="daily-analytics" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <div className="flex items-center gap-2"><BarChart2 className="w-5 h-5 text-indigo-600" /><CardTitle>Analytics Diario - IA</CardTitle></div>
-                <CardDescription>Configure a API, modelo e prompt usados para gerar o resumo diario de analytics. O resumo e enviado via webhook (N8N) no horario agendado em /admin/automacoes.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoading ? <Skeleton className="h-64 w-full rounded-xl" /> : (
-                  <>
-                    <div className="space-y-2">
-                      <Label>API Provider</Label>
-                      {apisLoading ? (
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                      ) : (
-                        <Select value={daApiConfig} onValueChange={setDaApiConfig}>
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Selecione uma API..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apis.filter(api => api.is_active).length === 0 ? (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                Nenhuma API ativa configurada
-                              </div>
-                            ) : (
-                              apis
-                                .filter(api => api.is_active)
-                                .map(api => (
-                                  <SelectItem key={api.api_key} value={api.api_key}>
-                                    <div className="flex flex-col gap-0.5">
-                                      <span>{api.name}</span>
-                                      {api.parameters?.model && (
-                                        <span className="text-xs text-muted-foreground">{api.parameters.model}</span>
-                                      )}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        A API selecionada sera usada para chamar o LLM. Configure credenciais e URL em <Link to="/admin/configuracoes-apis" className="text-primary hover:underline">Configuracoes de APIs</Link>.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Modelo (override)</Label>
-                      <Input
-                        value={daModel}
-                        onChange={(e) => setDaModel(e.target.value)}
-                        placeholder="ex: google/gemini-2.0-flash (vazio = usa modelo padrao da API)"
-                        className="font-mono text-sm rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Se preenchido, sobrescreve o modelo configurado na API. Use nomes do OpenRouter (ex: google/gemini-2.0-flash, openai/gpt-4.1-mini). Deixe vazio para usar o modelo padrao.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Prompt do Analista</Label>
-                      <Textarea
-                        value={daPrompt}
-                        onChange={(e) => setDaPrompt(e.target.value)}
-                        className="min-h-[200px] font-mono text-sm rounded-xl"
-                        placeholder="Prompt do sistema para gerar o resumo diario..."
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        O LLM recebe este prompt como instrucao do sistema + os dados do dia em JSON como mensagem do usuario. Escreva em portugues, tom analitico. Max 250 palavras de saida.
-                      </p>
-                    </div>
-
-                    {configs.find(c => c.key === 'daily_analytics_prompt')?.updated_at && (
-                      <p className="text-xs text-muted-foreground">
-                        Ultima atualizacao: {format(new Date(configs.find(c => c.key === 'daily_analytics_prompt')!.updated_at), "dd/MM/yyyy 'as' HH:mm")}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button onClick={handleSaveDailyAnalytics} disabled={!hasDaChanges || isSaving} className="rounded-[12px] gap-2">
-                        <Save className="w-4 h-4" />
-                        {isSaving ? 'Salvando...' : 'Salvar Configuracoes'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="mentor-ai" className="space-y-6">
-            <Card className="rounded-[24px]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Video className="h-5 w-5" />Mentor IA — Prompts de Sessão</CardTitle>
-                <CardDescription>Configure os prompts usados pelo assistente de IA do mentor para gerar resumos de sessão, briefings pré-sessão e sugestões de engajamento.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Provedor de IA (API)</Label>
-                  <Select value={mentorApiConfig} onValueChange={(v) => setMentorApiConfig(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {apis?.map((api) => (
-                        <SelectItem key={api.api_key} value={api.api_key}>{api.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Usado para todas as funcionalidades de IA do mentor (resumo, prep, sugestões)</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Prompt — Resumo Pós-Sessão</Label>
-                  <Textarea
-                    className="min-h-[160px] font-mono text-sm"
-                    value={mentorSummaryPrompt}
-                    onChange={(e) => setMentorSummaryPrompt(e.target.value)}
-                    placeholder="Prompt do sistema para gerar resumos de sessão..."
-                  />
-                  <p className="text-xs text-muted-foreground">Chave: ai_session_summary_prompt — Usado quando o mentor gera um resumo após a sessão (com transcript opcional)</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Prompt — Briefing Pré-Sessão</Label>
-                  <Textarea
-                    className="min-h-[160px] font-mono text-sm"
-                    value={mentorPrepPrompt}
-                    onChange={(e) => setMentorPrepPrompt(e.target.value)}
-                    placeholder="Prompt do sistema para gerar briefing pré-sessão..."
-                  />
-                  <p className="text-xs text-muted-foreground">Chave: ai_session_prep_prompt — Usado para gerar briefing com dados de presença e progresso da turma</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Prompt — Sugestões por Aluno</Label>
-                  <Textarea
-                    className="min-h-[160px] font-mono text-sm"
-                    value={mentorSuggestionPrompt}
-                    onChange={(e) => setMentorSuggestionPrompt(e.target.value)}
-                    placeholder="Prompt do sistema para sugestões de engajamento por aluno..."
-                  />
-                  <p className="text-xs text-muted-foreground">Chave: ai_student_suggestion_prompt — Sugere ações personalizadas para melhorar o engajamento de cada aluno</p>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveMentorAI} disabled={!hasMentorChanges || isSaving} className="rounded-[12px] gap-2">
-                    <Save className="w-4 h-4" />{isSaving ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
+          {/* ═══════════════ BRANDING TAB ═══════════════ */}
           <TabsContent value="branding" className="space-y-6">
             <BrandingTab
               getConfigValue={getConfigValue}
@@ -1587,6 +1721,8 @@ export default function AdminSettings() {
               isLoading={isLoading}
             />
           </TabsContent>
+
+          </div>
         </Tabs>
       </div>
     </DashboardLayout>
@@ -1644,121 +1780,109 @@ function BrandingTab({ getConfigValue, updateConfig, isSaving, isLoading }: Bran
 
   if (isLoading) {
     return (
-      <Card className="rounded-[24px]">
-        <CardContent className="p-8">
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+        <Skeleton className="h-40 w-full rounded-xl" />
+      </div>
     );
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Horizontal Logo */}
-      <Card className="rounded-[24px]">
-        <CardHeader>
-          <CardTitle className="text-lg">Logo Horizontal</CardTitle>
-          <CardDescription>
-            Usado no sidebar, header e paginas publicas. Recomendado: 400×100px, PNG ou SVG com fundo transparente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex items-center justify-center min-h-[120px] bg-gray-50">
-            {logoH ? (
-              <img src={logoH} alt="Logo horizontal" className="max-h-16 max-w-full object-contain" />
-            ) : (
-              <div className="text-center text-gray-400">
-                <Image className="w-8 h-8 mx-auto mb-2" />
-                <p className="text-sm">Nenhum logo enviado (usando padrao)</p>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <label className="flex-1">
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUpload(file, 'horizontal');
-                  e.target.value = '';
-                }}
-              />
-              <Button variant="outline" className="w-full rounded-xl" asChild disabled={uploadingH || isSaving}>
-                <span>
-                  {uploadingH ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                  {uploadingH ? 'Enviando...' : 'Enviar Logo'}
-                </span>
-              </Button>
-            </label>
-            {logoH && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => handleRemove('horizontal')}
-                disabled={isSaving}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Image size={20} className="text-blue-600" />
+          <h3 className="text-sm font-semibold text-slate-800">Logo Horizontal</h3>
+        </div>
+        <p className="text-xs text-slate-500 mb-6">
+          Usado no sidebar, header e paginas publicas. Recomendado: 400x100px, PNG ou SVG com fundo transparente.
+        </p>
+        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 mb-6 flex-1 min-h-[140px]">
+          {logoH ? (
+            <img src={logoH} alt="Logo horizontal" className="max-h-16 max-w-full object-contain" />
+          ) : (
+            <>
+              <Image size={24} className="text-slate-400 mb-2" />
+              <p className="text-xs text-slate-500">Nenhum logo enviado (usando padrao)</p>
+            </>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <label className="flex-1">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUpload(file, 'horizontal');
+                e.target.value = '';
+              }}
+            />
+            <button className="w-full flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" disabled={uploadingH || isSaving}>
+              {uploadingH ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload size={16} />}
+              {uploadingH ? 'Enviando...' : 'Enviar Logo'}
+            </button>
+          </label>
+          {logoH && (
+            <button
+              className="p-2.5 border border-slate-200 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              onClick={() => handleRemove('horizontal')}
+              disabled={isSaving}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Square Logo */}
-      <Card className="rounded-[24px]">
-        <CardHeader>
-          <CardTitle className="text-lg">Logo Quadrado</CardTitle>
-          <CardDescription>
-            Usado como icone e em espacos compactos. Recomendado: 200×200px, PNG ou SVG com fundo transparente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex items-center justify-center min-h-[120px] bg-gray-50">
-            {logoS ? (
-              <img src={logoS} alt="Logo quadrado" className="max-h-16 max-w-16 object-contain" />
-            ) : (
-              <div className="text-center text-gray-400">
-                <Image className="w-8 h-8 mx-auto mb-2" />
-                <p className="text-sm">Nenhum logo quadrado enviado</p>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <label className="flex-1">
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUpload(file, 'square');
-                  e.target.value = '';
-                }}
-              />
-              <Button variant="outline" className="w-full rounded-xl" asChild disabled={uploadingS || isSaving}>
-                <span>
-                  {uploadingS ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                  {uploadingS ? 'Enviando...' : 'Enviar Logo'}
-                </span>
-              </Button>
-            </label>
-            {logoS && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => handleRemove('square')}
-                disabled={isSaving}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Image size={20} className="text-blue-600" />
+          <h3 className="text-sm font-semibold text-slate-800">Logo Quadrado</h3>
+        </div>
+        <p className="text-xs text-slate-500 mb-6">
+          Usado como icone e em espacos compactos. Recomendado: 200x200px, PNG ou SVG com fundo transparente.
+        </p>
+        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 mb-6 flex-1 min-h-[140px]">
+          {logoS ? (
+            <img src={logoS} alt="Logo quadrado" className="max-h-16 max-w-16 object-contain" />
+          ) : (
+            <>
+              <Image size={24} className="text-slate-400 mb-2" />
+              <p className="text-xs text-slate-500">Nenhum logo quadrado enviado</p>
+            </>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <label className="flex-1">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUpload(file, 'square');
+                e.target.value = '';
+              }}
+            />
+            <button className="w-full flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" disabled={uploadingS || isSaving}>
+              {uploadingS ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload size={16} />}
+              {uploadingS ? 'Enviando...' : 'Enviar Logo'}
+            </button>
+          </label>
+          {logoS && (
+            <button
+              className="p-2.5 border border-slate-200 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              onClick={() => handleRemove('square')}
+              disabled={isSaving}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

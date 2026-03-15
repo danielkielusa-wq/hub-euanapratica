@@ -2,13 +2,18 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sparkles, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownContent } from './MarkdownContent';
-import type { ChatMessage } from '@/hooks/useAdminAssistant';
+import { ToolCallBlock } from './ToolCallBlock';
+import { ActionConfirmCard } from './ActionConfirmCard';
+import type { ChatMessage, PendingAction } from '@/hooks/useAdminAssistant';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  isStreaming?: boolean;
+  onConfirmAction?: (action: PendingAction) => void;
+  onCancelAction?: (action: PendingAction) => void;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreaming, onConfirmAction, onCancelAction }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   return (
@@ -30,7 +35,22 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <MarkdownContent content={message.content} />
+          <>
+            {message.toolCalls?.map((tc) => (
+              <ToolCallBlock key={tc.id} toolCall={tc} />
+            ))}
+            {message.content && <MarkdownContent content={message.content} />}
+            {message.pendingAction && onConfirmAction && onCancelAction && (
+              <ActionConfirmCard
+                action={message.pendingAction}
+                onConfirm={onConfirmAction}
+                onCancel={onCancelAction}
+              />
+            )}
+            {isStreaming && (
+              <span className="inline-block w-1.5 h-4 bg-amber-500 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+            )}
+          </>
         )}
       </div>
     </div>

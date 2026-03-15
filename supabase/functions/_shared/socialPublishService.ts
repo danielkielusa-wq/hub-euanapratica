@@ -64,6 +64,14 @@ export async function refreshTokenIfNeeded(
 
   if (expiresAt.getTime() - now.getTime() > fiveMinutes) return account;
 
+  return forceRefreshToken(account);
+}
+
+export async function forceRefreshToken(
+  account: SocialAccount,
+): Promise<SocialAccount> {
+  if (!account.refresh_token) throw new Error(`No refresh token for ${account.platform} — reconnect the account`);
+
   console.log(`[socialPublish] Refreshing ${account.platform} token...`);
 
   if (account.platform === "linkedin") {
@@ -252,6 +260,7 @@ export async function publishToLinkedIn(
   account: SocialAccount,
   text: string,
   imageUrls: string[],
+  _retried = false,
 ): Promise<PublishResult> {
   const refreshedAccount = await refreshTokenIfNeeded(account);
 
@@ -309,6 +318,11 @@ export async function publishToLinkedIn(
 
   if (!resp.ok) {
     const err = await resp.text();
+    if ((resp.status === 401 || resp.status === 403) && !_retried && account.refresh_token) {
+      console.warn(`[publishToLinkedIn] Got ${resp.status}, forcing token refresh and retrying...`);
+      const freshAccount = await forceRefreshToken(account);
+      return publishToLinkedIn(freshAccount, text, imageUrls, true);
+    }
     throw new Error(`LinkedIn post failed (${resp.status}): ${err}`);
   }
 
@@ -356,6 +370,7 @@ export async function publishToX(
   account: SocialAccount,
   text: string,
   imageUrls: string[],
+  _retried = false,
 ): Promise<PublishResult> {
   const refreshedAccount = await refreshTokenIfNeeded(account);
 
@@ -386,6 +401,12 @@ export async function publishToX(
 
   if (!resp.ok) {
     const err = await resp.text();
+    // Auto-retry once on 401 with forced token refresh
+    if ((resp.status === 401 || resp.status === 403) && !_retried && account.refresh_token) {
+      console.warn(`[publishToX] Got ${resp.status}, forcing token refresh and retrying...`);
+      const freshAccount = await forceRefreshToken(account);
+      return publishToX(freshAccount, text, imageUrls, true);
+    }
     throw new Error(`X tweet failed (${resp.status}): ${err}`);
   }
 
@@ -394,6 +415,116 @@ export async function publishToX(
 
   const postUrl = `https://x.com/${refreshedAccount.account_name || "i"}/status/${tweetId}`;
   return { postId: tweetId, postUrl };
+}
+
+// ── Post-Publish Verification ──────────────────────────────────────────
+
+/**
+ * Verifies that a published post actually exists on the platform.
+ * Returns true if verified, false if the post doesn't exist or can't be confirmed.
+ */
+export async function verifyPostExists(
+  account: SocialAccount,
+  platform: string,
+  postId: string,
+): Promise<{ verified: boolean; error?: string }> {
+  try {
+    if (platform === "x") {
+      return await verifyXPost(account, postId);
+    } else if (platform === "linkedin") {
+      return await verifyLinkedInPost(account, postId);
+    } else if (platform === "threads") {
+      return await verifyThreadsPost(account, postId);
+    }
+    // Unknown platform — skip verification
+    return { verified: true };
+  } catch (err) {
+    return { verified: false, error: (err as Error).message };
+  }
+}
+
+async function verifyXPost(
+  account: SocialAccount,
+  tweetId: string,
+): Promise<{ verified: boolean; error?: string }> {
+  const refreshedAccount = await refreshTokenIfNeeded(account);
+
+  // Wait briefly for X to index the tweet
+  await new Promise((r) => setTimeout(r, 3000));
+
+  const resp = await fetch(`https://api.twitter.com/2/tweets/${tweetId}`, {
+    headers: {
+      Authorization: `Bearer ${refreshedAccount.access_token}`,
+    },
+  });
+
+  if (resp.ok) {
+    const data = await resp.json();
+    if (data.data?.id === tweetId) {
+      return { verified: true };
+    }
+    return { verified: false, error: `Tweet ${tweetId} not found in response` };
+  }
+
+  if (resp.status === 404) {
+    return { verified: false, error: `Tweet ${tweetId} does not exist (404)` };
+  }
+
+  // Rate limit or transient error — give benefit of the doubt
+  if (resp.status === 429) {
+    console.warn("[verifyXPost] Rate limited, skipping verification");
+    return { verified: true };
+  }
+
+  const body = await resp.text();
+  return { verified: false, error: `X verify failed (${resp.status}): ${body}` };
+}
+
+async function verifyLinkedInPost(
+  account: SocialAccount,
+  postId: string,
+): Promise<{ verified: boolean; error?: string }> {
+  const refreshedAccount = await refreshTokenIfNeeded(account);
+
+  await new Promise((r) => setTimeout(r, 2000));
+
+  const resp = await fetch(`https://api.linkedin.com/rest/posts/${postId}`, {
+    headers: {
+      Authorization: `Bearer ${refreshedAccount.access_token}`,
+      "LinkedIn-Version": "202601",
+      "X-Restli-Protocol-Version": "2.0.0",
+    },
+  });
+
+  if (resp.ok) return { verified: true };
+  if (resp.status === 404) return { verified: false, error: `LinkedIn post ${postId} not found (404)` };
+  if (resp.status === 429) return { verified: true }; // rate limited, skip
+
+  const body = await resp.text();
+  return { verified: false, error: `LinkedIn verify failed (${resp.status}): ${body}` };
+}
+
+async function verifyThreadsPost(
+  account: SocialAccount,
+  postId: string,
+): Promise<{ verified: boolean; error?: string }> {
+  const refreshedAccount = await refreshTokenIfNeeded(account);
+
+  // Threads already has retry logic for permalink — just check the post exists
+  const resp = await fetch(
+    `https://graph.threads.net/v1.0/${postId}?fields=id&access_token=${refreshedAccount.access_token}`,
+  );
+
+  if (resp.ok) {
+    const data = await resp.json();
+    if (data.id) return { verified: true };
+    return { verified: false, error: `Threads post ${postId} not in response` };
+  }
+  if (resp.status === 404) return { verified: false, error: `Threads post ${postId} not found (404)` };
+  if (resp.status === 429) return { verified: true };
+
+  const body = await resp.text();
+  return { verified: false, error: `Threads verify failed (${resp.status}): ${body}` };
 }
 
 // ── Threads Publishing ─────────────────────────────────────────────────
@@ -465,6 +596,25 @@ async function waitForThreadsContainer(
 }
 
 export async function publishToThreads(
+  account: SocialAccount,
+  text: string,
+  imageUrls: string[],
+  _retried = false,
+): Promise<PublishResult> {
+  try {
+    return await _publishToThreadsInner(account, text, imageUrls);
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (/\(401\)|\(403\)/i.test(msg) && !_retried && account.refresh_token) {
+      console.warn(`[publishToThreads] Auth error, forcing token refresh and retrying...`);
+      const freshAccount = await forceRefreshToken(account);
+      return _publishToThreadsInner(freshAccount, text, imageUrls);
+    }
+    throw err;
+  }
+}
+
+async function _publishToThreadsInner(
   account: SocialAccount,
   text: string,
   imageUrls: string[],

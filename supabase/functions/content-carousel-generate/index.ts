@@ -23,7 +23,7 @@ Sua funcao e transformar um roteiro de video em slides otimizados para carrossel
 
 REGRAS OBRIGATORIAS:
 1. PRIMEIRO SLIDE (cover): headline poderosa que gera curiosidade. Sem body longo. Tipo de slide: "cover"
-2. 5-8 SLIDES DE CONTEUDO: cada um com headline curta (max 8 palavras) + body curto (max 3 linhas). Tipo: "content"
+2. SLIDES DE CONTEUDO: cada um com headline curta (max 8 palavras) + body curto (max 3 linhas). Tipo: "content"
 3. Se houver dados/estatisticas no roteiro, crie 1 SLIDE DE DADOS com o numero em destaque. Tipo: "data"
 4. ULTIMO SLIDE (CTA): chamada para acao clara (seguir, comentar, salvar, link). Tipo: "cta"
 5. MAXIMO 40 PALAVRAS POR SLIDE (headline + body + accent juntos)
@@ -53,13 +53,16 @@ serve(async (req) => {
     const auth = await validateUserAuth(req);
     const userId = auth.userId || null;
 
-    const { piece_id } = await req.json();
+    const { piece_id, num_slides, style, cta_type, aspect_ratio } = await req.json();
     if (!piece_id) {
       return new Response(JSON.stringify({ error: "piece_id is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Clamp slide count between 4 and 15
+    const targetSlides = Math.max(4, Math.min(15, num_slides || 8));
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -102,7 +105,14 @@ ${sections || "Sem secoes"}
 
 CTA: ${piece.cta || "Nenhum CTA"}
 
-Transforme este roteiro em slides de carrossel otimizados. Lembre: max 40 palavras por slide, headlines curtas, storytelling sequencial.`;
+Transforme este roteiro em EXATAMENTE ${targetSlides} slides de carrossel otimizados.${
+      style ? `\nESTILO VISUAL: ${style}` : ""
+    }${
+      cta_type ? `\nTIPO DE CTA NO ULTIMO SLIDE: ${cta_type}` : ""
+    }${
+      aspect_ratio ? `\nFORMATO: ${aspect_ratio} (adapte o tamanho do texto ao formato)` : ""
+    }
+Lembre: max 40 palavras por slide, headlines curtas, storytelling sequencial.`;
 
     // Load API config key
     const { data: configRow } = await supabase

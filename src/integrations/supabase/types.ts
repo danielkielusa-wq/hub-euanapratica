@@ -287,6 +287,72 @@ export type Database = {
           },
         ]
       }
+      assistant_alerts: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      assistant_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          messages: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          messages?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action: string
@@ -747,6 +813,8 @@ export type Database = {
           secondary_fit_score: number | null
           secondary_product_name: string | null
           secondary_product_tier: string | null
+          source: string | null
+          source_metadata: Json | null
           timeline: string | null
           trabalha_internacional: boolean | null
           updated_at: string | null
@@ -853,6 +921,8 @@ export type Database = {
           secondary_fit_score?: number | null
           secondary_product_name?: string | null
           secondary_product_tier?: string | null
+          source?: string | null
+          source_metadata?: Json | null
           timeline?: string | null
           trabalha_internacional?: boolean | null
           updated_at?: string | null
@@ -959,6 +1029,8 @@ export type Database = {
           secondary_fit_score?: number | null
           secondary_product_name?: string | null
           secondary_product_tier?: string | null
+          source?: string | null
+          source_metadata?: Json | null
           timeline?: string | null
           trabalha_internacional?: boolean | null
           updated_at?: string | null
@@ -1396,6 +1468,7 @@ export type Database = {
       }
       content_pieces: {
         Row: {
+          audience_stage: string | null
           carousel_slides: Json | null
           created_at: string
           created_by: string | null
@@ -1403,6 +1476,7 @@ export type Database = {
           duration_estimate_seconds: number | null
           format: string
           generation_duration_ms: number | null
+          growth_function: string | null
           hook_variations: Json | null
           id: string
           input_reference: string | null
@@ -1410,10 +1484,16 @@ export type Database = {
           input_type: string
           model_used: string | null
           platform_context: Json | null
+          product_showcase_key: string | null
+          production_date: string | null
+          production_reminder_sent: boolean
+          publish_reminder_sent: boolean
           scheduled_for: string | null
           script_sections: Json | null
           seo_metadata: Json | null
+          short_cuts: Json | null
           social_posts: Json | null
+          sort_order: number
           status: string
           title: string | null
           tokens_used: number | null
@@ -1422,8 +1502,10 @@ export type Database = {
           updated_at: string
           use_platform_data: boolean
           virality_score: number | null
+          virality_techniques_used: string[] | null
         }
         Insert: {
+          audience_stage?: string | null
           carousel_slides?: Json | null
           created_at?: string
           created_by?: string | null
@@ -1431,6 +1513,7 @@ export type Database = {
           duration_estimate_seconds?: number | null
           format?: string
           generation_duration_ms?: number | null
+          growth_function?: string | null
           hook_variations?: Json | null
           id?: string
           input_reference?: string | null
@@ -1438,10 +1521,16 @@ export type Database = {
           input_type?: string
           model_used?: string | null
           platform_context?: Json | null
+          product_showcase_key?: string | null
+          production_date?: string | null
+          production_reminder_sent?: boolean
+          publish_reminder_sent?: boolean
           scheduled_for?: string | null
           script_sections?: Json | null
           seo_metadata?: Json | null
+          short_cuts?: Json | null
           social_posts?: Json | null
+          sort_order?: number
           status?: string
           title?: string | null
           tokens_used?: number | null
@@ -1450,8 +1539,10 @@ export type Database = {
           updated_at?: string
           use_platform_data?: boolean
           virality_score?: number | null
+          virality_techniques_used?: string[] | null
         }
         Update: {
+          audience_stage?: string | null
           carousel_slides?: Json | null
           created_at?: string
           created_by?: string | null
@@ -1459,6 +1550,7 @@ export type Database = {
           duration_estimate_seconds?: number | null
           format?: string
           generation_duration_ms?: number | null
+          growth_function?: string | null
           hook_variations?: Json | null
           id?: string
           input_reference?: string | null
@@ -1466,10 +1558,16 @@ export type Database = {
           input_type?: string
           model_used?: string | null
           platform_context?: Json | null
+          product_showcase_key?: string | null
+          production_date?: string | null
+          production_reminder_sent?: boolean
+          publish_reminder_sent?: boolean
           scheduled_for?: string | null
           script_sections?: Json | null
           seo_metadata?: Json | null
+          short_cuts?: Json | null
           social_posts?: Json | null
+          sort_order?: number
           status?: string
           title?: string | null
           tokens_used?: number | null
@@ -1478,6 +1576,60 @@ export type Database = {
           updated_at?: string
           use_platform_data?: boolean
           virality_score?: number | null
+          virality_techniques_used?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_pieces_product_showcase_fk"
+            columns: ["product_showcase_key"]
+            isOneToOne: false
+            referencedRelation: "content_product_showcases"
+            referencedColumns: ["product_key"]
+          },
+        ]
+      }
+      content_product_showcases: {
+        Row: {
+          created_at: string
+          cta_suggestion: string | null
+          demo_instructions: string | null
+          description: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          key_features: Json | null
+          product_key: string
+          sort_order: number
+          talking_points: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cta_suggestion?: string | null
+          demo_instructions?: string | null
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          id?: string
+          key_features?: Json | null
+          product_key: string
+          sort_order?: number
+          talking_points?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cta_suggestion?: string | null
+          demo_instructions?: string | null
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          key_features?: Json | null
+          product_key?: string
+          sort_order?: number
+          talking_points?: Json | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1674,40 +1826,64 @@ export type Database = {
       content_trending_cache: {
         Row: {
           angle: string | null
+          audience_stage: string | null
+          authority_building: boolean | null
           created_at: string
           expires_at: string
+          format_suggestion: string | null
+          growth_function: string | null
           id: string
           keywords: string[] | null
+          pillar: string | null
           raw_data: Json | null
           relevance_score: number | null
+          short_cuts: Json | null
           source: string | null
           summary: string | null
+          thumbnail_concept: string | null
+          title_options: string[] | null
           topic: string
           virality_potential: number | null
         }
         Insert: {
           angle?: string | null
+          audience_stage?: string | null
+          authority_building?: boolean | null
           created_at?: string
           expires_at?: string
+          format_suggestion?: string | null
+          growth_function?: string | null
           id?: string
           keywords?: string[] | null
+          pillar?: string | null
           raw_data?: Json | null
           relevance_score?: number | null
+          short_cuts?: Json | null
           source?: string | null
           summary?: string | null
+          thumbnail_concept?: string | null
+          title_options?: string[] | null
           topic: string
           virality_potential?: number | null
         }
         Update: {
           angle?: string | null
+          audience_stage?: string | null
+          authority_building?: boolean | null
           created_at?: string
           expires_at?: string
+          format_suggestion?: string | null
+          growth_function?: string | null
           id?: string
           keywords?: string[] | null
+          pillar?: string | null
           raw_data?: Json | null
           relevance_score?: number | null
+          short_cuts?: Json | null
           source?: string | null
           summary?: string | null
+          thumbnail_concept?: string | null
+          title_options?: string[] | null
           topic?: string
           virality_potential?: number | null
         }
@@ -1763,6 +1939,128 @@ export type Database = {
           variables?: Json | null
         }
         Relationships: []
+      }
+      cost_of_living_cities: {
+        Row: {
+          base_food: number
+          base_other: number
+          base_rent: number
+          base_transport: number
+          cheaper_alternative: string | null
+          cheaper_alternative_pct: number | null
+          city_name: string
+          created_at: string | null
+          enabled: boolean
+          id: string
+          latitude: number
+          longitude: number
+          ranking: number | null
+          salaries_by_field: Json
+          slug: string
+          state_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_food: number
+          base_other: number
+          base_rent: number
+          base_transport: number
+          cheaper_alternative?: string | null
+          cheaper_alternative_pct?: number | null
+          city_name: string
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          latitude: number
+          longitude: number
+          ranking?: number | null
+          salaries_by_field?: Json
+          slug: string
+          state_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_food?: number
+          base_other?: number
+          base_rent?: number
+          base_transport?: number
+          cheaper_alternative?: string | null
+          cheaper_alternative_pct?: number | null
+          city_name?: string
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          latitude?: number
+          longitude?: number
+          ranking?: number | null
+          salaries_by_field?: Json
+          slug?: string
+          state_code?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cost_of_living_leads: {
+        Row: {
+          children: number | null
+          city_slug: string | null
+          created_at: string | null
+          email: string
+          family_size: string | null
+          field: string | null
+          id: string
+          lifestyle: string | null
+          name: string | null
+          result_coverage: number | null
+          result_leftover: number | null
+          salary: number | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          children?: number | null
+          city_slug?: string | null
+          created_at?: string | null
+          email: string
+          family_size?: string | null
+          field?: string | null
+          id?: string
+          lifestyle?: string | null
+          name?: string | null
+          result_coverage?: number | null
+          result_leftover?: number | null
+          salary?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          children?: number | null
+          city_slug?: string | null
+          created_at?: string | null
+          email?: string
+          family_size?: string | null
+          field?: string | null
+          id?: string
+          lifestyle?: string | null
+          name?: string | null
+          result_coverage?: number | null
+          result_leftover?: number | null
+          salary?: number | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_of_living_leads_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cost_of_living_cities"
+            referencedColumns: ["slug"]
+          },
+        ]
       }
       course_lesson_attachments: {
         Row: {
@@ -3043,6 +3341,51 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           points?: number
+        }
+        Relationships: []
+      }
+      group_content_suggestions: {
+        Row: {
+          api_config_key: string | null
+          contents: Json
+          cost_usd: number | null
+          created_at: string
+          error_message: string | null
+          generated_date: string
+          id: string
+          model: string | null
+          status: string
+          tokens_used: number | null
+          updated_at: string
+          webhook_dispatched: boolean
+        }
+        Insert: {
+          api_config_key?: string | null
+          contents?: Json
+          cost_usd?: number | null
+          created_at?: string
+          error_message?: string | null
+          generated_date?: string
+          id?: string
+          model?: string | null
+          status?: string
+          tokens_used?: number | null
+          updated_at?: string
+          webhook_dispatched?: boolean
+        }
+        Update: {
+          api_config_key?: string | null
+          contents?: Json
+          cost_usd?: number | null
+          created_at?: string
+          error_message?: string | null
+          generated_date?: string
+          id?: string
+          model?: string | null
+          status?: string
+          tokens_used?: number | null
+          updated_at?: string
+          webhook_dispatched?: boolean
         }
         Relationships: []
       }
@@ -6951,6 +7294,7 @@ export type Database = {
       }
     }
     Functions: {
+      _get_encryption_key: { Args: never; Returns: string }
       accept_subscription_terms: {
         Args: {
           p_billing_cycle: string
@@ -7056,6 +7400,12 @@ export type Database = {
         Returns: boolean
       }
       check_upsell_rate_limit: { Args: { p_user_id: string }; Returns: boolean }
+      claim_scheduled_publications: {
+        Args: { p_limit?: number; p_now: string }
+        Returns: {
+          id: string
+        }[]
+      }
       cleanup_old_jobs: { Args: never; Returns: Json }
       complete_booking: {
         Args: {
@@ -7194,6 +7544,22 @@ export type Database = {
           special_badge: string
           total_points: number
           user_id: string
+        }[]
+      }
+      get_decrypted_social_account: {
+        Args: { p_platform: string }
+        Returns: {
+          access_token: string
+          account_id: string
+          account_name: string
+          connected_by: string
+          id: string
+          is_active: boolean
+          metadata: Json
+          platform: string
+          refresh_token: string
+          scopes: string[]
+          token_expires_at: string
         }[]
       }
       get_email_template_by_name: {
@@ -7605,6 +7971,15 @@ export type Database = {
       update_content_studio_cron: {
         Args: { p_cron_expression: string }
         Returns: Json
+      }
+      update_social_account_tokens: {
+        Args: {
+          p_access_token: string
+          p_account_id: string
+          p_refresh_token?: string
+          p_token_expires_at?: string
+        }
+        Returns: undefined
       }
       user_has_plan_feature: {
         Args: { p_feature: string; p_user_id: string }

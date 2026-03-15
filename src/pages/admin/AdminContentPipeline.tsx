@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,8 +27,10 @@ import {
   Megaphone,
   Save,
   Loader2,
-  CalendarDays,
   Send,
+  Linkedin,
+  Twitter,
+  MessageSquare,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -68,11 +70,11 @@ const TONE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 
 // ── Platform badge ───────────────────────────────────────────────────
 
-const PLATFORM_ICONS: Record<string, { label: string; color: string }> = {
-  linkedin: { label: 'Li', color: '#0A66C2' },
-  x: { label: 'X', color: '#000000' },
-  threads: { label: 'Th', color: '#000000' },
-  instagram: { label: 'Ig', color: '#E4405F' },
+const PLATFORM_ICONS: Record<string, { label: string; color: string; icon: typeof Linkedin }> = {
+  linkedin: { label: 'LinkedIn', color: '#0A66C2', icon: Linkedin },
+  x: { label: 'X', color: '#000000', icon: Twitter },
+  threads: { label: 'Threads', color: '#000000', icon: MessageSquare },
+  instagram: { label: 'Instagram', color: '#E4405F', icon: Linkedin },
 };
 
 // ── Publication status per piece ─────────────────────────────────────
@@ -484,6 +486,7 @@ export default function AdminContentPipeline() {
           )}
         </DialogContent>
       </Dialog>
+
       </div>
     </DashboardLayout>
   );
@@ -583,25 +586,32 @@ function PipelineCard({ piece, publications, assetCount, colColor, onDragStart, 
         return (
         <div className="flex gap-1 mb-2">
           {Array.from(byPlatform.values()).map(pub => {
-            const pl = PLATFORM_ICONS[pub.platform] || { label: pub.platform[0].toUpperCase(), color: '#6B7280' };
+            const pl = PLATFORM_ICONS[pub.platform];
+            if (!pl) return null;
+            const PlatIcon = pl.icon;
             const isPublished = pub.status === 'published';
+            const isScheduled = pub.status === 'scheduled';
             const isFailed = pub.status === 'failed';
             return (
               <Tooltip key={pub.platform}>
                 <TooltipTrigger asChild>
                   <span
-                    className="inline-flex items-center justify-center w-6 h-5 rounded text-[9px] font-bold"
+                    className="inline-flex items-center justify-center w-6 h-5 rounded"
                     style={{
                       background: isPublished ? pl.color + '18' : isFailed ? '#FEE2E2' : '#F3F4F6',
-                      color: isPublished ? pl.color : isFailed ? '#DC2626' : '#9CA3AF',
                       border: `1px solid ${isPublished ? pl.color + '40' : isFailed ? '#FECACA' : '#E5E7EB'}`,
                     }}
                   >
-                    {pl.label}
+                    <PlatIcon
+                      className="w-3 h-3"
+                      style={{
+                        color: isPublished ? pl.color : isFailed ? '#DC2626' : '#D1D5DB',
+                      }}
+                    />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent className="text-xs">
-                  {pub.platform}: {pub.status}
+                  {pl.label}: {isPublished ? 'publicado' : isScheduled ? 'agendado' : pub.status}
                   {pub.platform_post_url && ' (link disponível)'}
                 </TooltipContent>
               </Tooltip>

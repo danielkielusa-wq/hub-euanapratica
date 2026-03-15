@@ -8,9 +8,14 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
   Copy, Video, Save, Loader2, Send, ExternalLink,
-  Lightbulb, FileText, CheckCircle2, Rocket, Archive, Trash2,
+  Lightbulb, FileText, CheckCircle2, Rocket, Archive, Trash2, Check,
+  Linkedin, Twitter, MessageSquare,
 } from 'lucide-react';
 import { useUpdatePiece, useUpdatePieceStatus, type ContentPiece } from '@/hooks/useAdminContentFactory';
+import { PublishPopover } from '@/components/content/PublishPopover';
+import { AssetGeneratorSheet } from '@/components/content/AssetGeneratorSheet';
+import { useContentAssets } from '@/hooks/useContentAssets';
+import { Image } from 'lucide-react';
 
 // ── Shared constants ────────────────────────────────────────────────
 
@@ -40,11 +45,11 @@ export const PIECE_TONE_CONFIG: Record<string, { label: string; color: string; b
   myth_busting: { label: 'Mitos', color: '#4F46E5', bg: '#E0E7FF' },
 };
 
-const PLATFORM_ICONS: Record<string, { label: string; color: string }> = {
-  linkedin: { label: 'Li', color: '#0A66C2' },
-  x: { label: 'X', color: '#000000' },
-  threads: { label: 'Th', color: '#000000' },
-  instagram: { label: 'Ig', color: '#E4405F' },
+const PLATFORM_ICONS: Record<string, { label: string; color: string; icon: typeof Linkedin }> = {
+  linkedin: { label: 'LinkedIn', color: '#0A66C2', icon: Linkedin },
+  x: { label: 'X', color: '#000000', icon: Twitter },
+  threads: { label: 'Threads', color: '#000000', icon: MessageSquare },
+  instagram: { label: 'Instagram', color: '#E4405F', icon: Linkedin },
 };
 
 export function viralityColor(score: number): string {
@@ -86,6 +91,9 @@ export function PieceEditModal({ piece, publications, onClose, onStatusChange, o
   const [scheduledFor, setScheduledFor] = useState(piece.scheduled_for?.slice(0, 10) || '');
   const [scriptSections, setScriptSections] = useState(piece.script_sections || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAssetSheet, setShowAssetSheet] = useState(false);
+  const { data: assets = [] } = useContentAssets(piece.id);
+  const slideCount = assets.filter(a => a.type === 'slide').length;
 
   const isDirty = title !== (piece.title || '')
     || pieceFormat !== piece.format
@@ -283,20 +291,52 @@ export function PieceEditModal({ piece, publications, onClose, onStatusChange, o
             </div>
           </div>
 
+          {/* Visuais + Social Publishing */}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Visuais & Redes</label>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 gap-1 text-xs ${slideCount > 0 ? 'border-green-300 text-green-700 bg-green-50/50' : ''}`}
+                onClick={() => setShowAssetSheet(true)}
+              >
+                {slideCount > 0 ? (
+                  <Check className="w-3 h-3 text-green-600" />
+                ) : (
+                  <Image className="w-3 h-3" />
+                )}
+                {slideCount > 0 ? `Visuais (${slideCount})` : 'Visuais'}
+              </Button>
+              <PublishPopover piece={piece} platform="linkedin" />
+              <PublishPopover piece={piece} platform="x" />
+              <PublishPopover piece={piece} platform="threads" />
+            </div>
+          </div>
+
           {/* Publications */}
           {dedupedPubs.length > 0 && (
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Publicações</label>
               <div className="space-y-1.5">
                 {dedupedPubs.map(pub => {
-                  const pl = PLATFORM_ICONS[pub.platform] || { label: pub.platform, color: '#6B7280' };
+                  const pl = PLATFORM_ICONS[pub.platform];
+                  if (!pl) return null;
+                  const PlatIcon = pl.icon;
                   const isPublished = pub.status === 'published';
+                  const isScheduled = pub.status === 'scheduled';
                   return (
                     <div key={pub.platform} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs" style={{ color: pl.color }}>{pl.label}</span>
-                        <span className={`text-xs ${isPublished ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                          {pub.status}
+                        <PlatIcon
+                          className="w-4 h-4"
+                          style={{ color: isPublished ? pl.color : '#D1D5DB' }}
+                        />
+                        <span className="font-medium text-xs" style={{ color: isPublished ? pl.color : undefined }}>
+                          {pl.label}
+                        </span>
+                        <span className={`text-xs ${isPublished ? 'text-emerald-600' : isScheduled ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                          {isPublished ? 'publicado' : isScheduled ? 'agendado' : pub.status}
                         </span>
                       </div>
                       {pub.platform_post_url && (
@@ -451,6 +491,13 @@ export function PieceEditModal({ piece, publications, onClose, onStatusChange, o
           Salvar alterações
         </Button>
       </div>
+
+      {/* Asset Generator Sheet */}
+      <AssetGeneratorSheet
+        open={showAssetSheet}
+        onClose={() => setShowAssetSheet(false)}
+        piece={piece}
+      />
     </div>
   );
 }

@@ -3,11 +3,30 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { AdminAssistantChat } from './AdminAssistantChat';
 
 export function AdminAssistantButton() {
   const { user } = useAuth();
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Poll unacknowledged alerts every 60s
+  const alertCountQuery = useQuery({
+    queryKey: ['assistant-alerts-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('assistant_alerts')
+        .select('id', { count: 'exact', head: true })
+        .eq('acknowledged', false);
+      if (error) return 0;
+      return count || 0;
+    },
+    refetchInterval: 60000,
+    enabled: !!user && user.role === 'admin',
+  });
+
+  const alertCount = alertCountQuery.data || 0;
 
   if (!user || user.role !== 'admin') return null;
 
@@ -22,10 +41,15 @@ export function AdminAssistantButton() {
             aria-label="Aurora — Assistente IA"
           >
             <Sparkles className="h-5 w-5" />
+            {alertCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-md animate-in zoom-in">
+                {alertCount > 9 ? '9+' : alertCount}
+              </span>
+            )}
           </Button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p>Aurora — Assistente IA</p>
+          <p>Aurora — Assistente IA{alertCount > 0 ? ` (${alertCount} alertas)` : ''}</p>
         </TooltipContent>
       </Tooltip>
 

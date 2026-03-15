@@ -725,7 +725,32 @@ export default function LeadFormPage() {
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref') || '';
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<LeadFormData>(INITIAL_FORM_DATA);
+  // Pre-fill from cost-of-living calculator query params
+  const initialFormData = useMemo(() => {
+    if (searchParams.get('source') !== 'custo-de-vida') return INITIAL_FORM_DATA;
+
+    const fieldMap: Record<string, string> = {
+      'Tech': 'Tecnologia', 'Engineering': 'Engenharia', 'Finance': 'Negócios / Administração',
+      'Marketing': 'Marketing / Comunicação', 'Healthcare': 'Saúde', 'Education': 'Outro',
+      'Sales': 'Negócios / Administração', 'Hospitality': 'Outro',
+    };
+
+    const salaryUsd = parseInt(searchParams.get('salario') || '0');
+    // Rough USD→BRL monthly conversion for faixa_renda mapping
+    const monthlyBrl = Math.round((salaryUsd / 12) * 5.5);
+    const faixa = monthlyBrl <= 5000 ? 'Até R$ 5 mil'
+      : monthlyBrl <= 10000 ? 'De R$ 5 mil a R$ 10 mil'
+      : monthlyBrl <= 20000 ? 'De R$ 10 mil a R$ 20 mil'
+      : 'Acima de R$ 20 mil';
+
+    return {
+      ...INITIAL_FORM_DATA,
+      area_profissional: fieldMap[searchParams.get('cargo') || ''] || '',
+      faixa_renda: salaryUsd ? faixa : '',
+    };
+  }, [searchParams]);
+
+  const [formData, setFormData] = useState<LeadFormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [motivationalMsg, setMotivationalMsg] = useState('');
@@ -790,6 +815,10 @@ export default function LeadFormPage() {
         utm_campaign: searchParams.get('utm_campaign') || (refCode ? 'report_share' : ''),
         utm_content: searchParams.get('utm_content') || '',
         utm_term: searchParams.get('utm_term') || '',
+        source: searchParams.get('source') || 'direct',
+        source_metadata: searchParams.get('source') === 'custo-de-vida'
+          ? JSON.stringify({ city: searchParams.get('cidade'), field: searchParams.get('cargo'), salary: searchParams.get('salario') })
+          : '',
       };
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(payload)) {

@@ -255,3 +255,9 @@ verify_jwt = false
 
 [functions.sync-content-calendar]
 verify_jwt = false
+
+[functions.aurora-monitor]
+verify_jwt = false
+
+[functions.aurora-digest]
+verify_jwt = false

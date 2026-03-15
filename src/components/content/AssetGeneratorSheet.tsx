@@ -5,6 +5,23 @@
  */
 
 import { useState, useEffect } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,8 +29,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Loader2, Download, Trash2, Image, RefreshCw, Sparkles, Pencil, Check, X, ZoomIn,
+  Loader2, Download, Trash2, Image, RefreshCw, Sparkles, Pencil, Check, X, ZoomIn, Settings2, GripVertical,
 } from 'lucide-react';
 import { SlidePreviewFrame, type TemplateConfig } from './SlideRenderer';
 import {
@@ -25,6 +44,118 @@ import {
   type VisualTemplate,
 } from '@/hooks/useContentAssets';
 import type { ContentPiece, CarouselSlide } from '@/hooks/useAdminContentFactory';
+
+// ── Sortable slide item ──────────────────────────────────────────────────
+
+interface SortableSlideProps {
+  id: string;
+  cs: CarouselSlide;
+  index: number;
+  isEditing: boolean;
+  onEdit: () => void;
+  onStopEdit: () => void;
+  onUpdate: (updates: Partial<CarouselSlide>) => void;
+}
+
+function SortableSlideItem({ id, cs, index, isEditing, onEdit, onStopEdit, onUpdate }: SortableSlideProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-3 rounded-lg border transition-colors ${
+        isDragging ? 'shadow-lg ring-2 ring-orange-300 z-50 bg-white' :
+        isEditing ? 'border-orange-300 bg-orange-50/30' : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-muted shrink-0 mt-0.5"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+        <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">
+          {cs.slide_number}. {cs.slide_type}
+        </Badge>
+        {isEditing ? (
+          <div className="flex-1 space-y-2">
+            <Input
+              value={cs.headline}
+              onChange={(e) => onUpdate({ headline: e.target.value })}
+              className="h-7 text-xs font-semibold"
+              placeholder="Headline..."
+            />
+            <Textarea
+              value={cs.body}
+              onChange={(e) => onUpdate({ body: e.target.value })}
+              rows={2}
+              className="text-xs resize-y"
+              placeholder="Body..."
+            />
+            {(cs.slide_type === 'data' || cs.accent_text) && (
+              <Input
+                value={cs.accent_text}
+                onChange={(e) => onUpdate({ accent_text: e.target.value })}
+                className="h-7 text-xs"
+                placeholder="Dado/destaque..."
+              />
+            )}
+            <div className="flex gap-1 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2"
+                onClick={onStopEdit}
+              >
+                <Check className="w-3 h-3 text-green-600" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex-1 cursor-pointer min-w-0"
+            onClick={onEdit}
+          >
+            <p className="text-xs font-semibold truncate">{cs.headline}</p>
+            {cs.body && (
+              <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{cs.body}</p>
+            )}
+            {cs.accent_text && (
+              <span className="text-[10px] text-orange-600 font-medium">{cs.accent_text}</span>
+            )}
+          </div>
+        )}
+        {!isEditing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 shrink-0"
+            onClick={onEdit}
+          >
+            <Pencil className="w-3 h-3 text-muted-foreground" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────
 
 interface Props {
   open: boolean;
@@ -45,6 +176,31 @@ export function AssetGeneratorSheet({ open, onClose, piece }: Props) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [zoomSlide, setZoomSlide] = useState<number | null>(null);
 
+  // Customization options
+  const [numSlides, setNumSlides] = useState(8);
+  const [style, setStyle] = useState('');
+  const [ctaType, setCtaType] = useState('');
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [showConfig, setShowConfig] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setEditingSlides((prev) => {
+      const oldIndex = prev.findIndex((_, i) => `slide-${i}` === active.id);
+      const newIndex = prev.findIndex((_, i) => `slide-${i}` === over.id);
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      // Renumber slide_number after reorder
+      return reordered.map((s, i) => ({ ...s, slide_number: i + 1 }));
+    });
+  };
+
   // Sync carousel_slides from piece into local editing state
   useEffect(() => {
     if (piece.carousel_slides?.length) {
@@ -63,9 +219,16 @@ export function AssetGeneratorSheet({ open, onClose, piece }: Props) {
   const hasCarouselContent = editingSlides.length > 0;
 
   const handleGenerateCarousel = () => {
-    generateCarousel.mutate(piece.id, {
+    generateCarousel.mutate({
+      pieceId: piece.id,
+      numSlides,
+      style: style || undefined,
+      ctaType: ctaType || undefined,
+      aspectRatio: aspectRatio || undefined,
+    }, {
       onSuccess: (data) => {
         setEditingSlides(data.carousel_slides);
+        setShowConfig(false);
       },
     });
   };
@@ -121,36 +284,124 @@ export function AssetGeneratorSheet({ open, onClose, piece }: Props) {
         </SheetHeader>
 
         <div className="mt-4 space-y-5">
-          {/* Step 1: Generate carousel content */}
-          {!hasCarouselContent && !hasAssets && (
-            <div className="text-center py-8 space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-orange-500" />
-              </div>
-              <div>
+          {/* Step 1: Configure + Generate carousel content */}
+          {((!hasCarouselContent && !hasAssets) || showConfig) && (
+            <div className="space-y-5">
+              <div className="text-center">
+                <div className="mx-auto w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mb-3">
+                  <Sparkles className="w-7 h-7 text-orange-500" />
+                </div>
                 <h3 className="text-sm font-semibold">Gerar Conteudo de Carrossel</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                  A IA vai transformar o roteiro em slides otimizados para carrossel:
-                  headlines curtas, bullets, storytelling sequencial.
+                <p className="text-xs text-muted-foreground mt-1">
+                  Configure e a IA transforma o roteiro em slides otimizados.
                 </p>
               </div>
-              <Button
-                className="gap-1.5"
-                onClick={handleGenerateCarousel}
-                disabled={generateCarousel.isPending}
-              >
-                {generateCarousel.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
+
+              {/* Slide count slider */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-muted-foreground">Quantidade de slides</label>
+                  <span className="text-sm font-bold text-orange-600">{numSlides}</span>
+                </div>
+                <Slider
+                  value={[numSlides]}
+                  onValueChange={([v]) => setNumSlides(v)}
+                  min={4}
+                  max={15}
+                  step={1}
+                  className="w-full"
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-[10px] text-muted-foreground">4 (rapido)</span>
+                  <span className="text-[10px] text-muted-foreground">15 (detalhado)</span>
+                </div>
+              </div>
+
+              {/* Style + CTA + Aspect ratio */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Estilo visual</label>
+                  <Select value={style || '_auto'} onValueChange={(v) => setStyle(v === '_auto' ? '' : v)}>
+                    <SelectTrigger className="text-xs h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_auto" className="text-xs">Auto (IA decide)</SelectItem>
+                      <SelectItem value="profissional" className="text-xs">Profissional</SelectItem>
+                      <SelectItem value="provocativo" className="text-xs">Provocativo</SelectItem>
+                      <SelectItem value="minimalista" className="text-xs">Minimalista</SelectItem>
+                      <SelectItem value="dados_e_stats" className="text-xs">Dados & Stats</SelectItem>
+                      <SelectItem value="storytelling" className="text-xs">Storytelling</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">CTA final</label>
+                  <Select value={ctaType || '_auto'} onValueChange={(v) => setCtaType(v === '_auto' ? '' : v)}>
+                    <SelectTrigger className="text-xs h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_auto" className="text-xs">Auto (do roteiro)</SelectItem>
+                      <SelectItem value="seguir perfil" className="text-xs">Seguir perfil</SelectItem>
+                      <SelectItem value="comentar opiniao" className="text-xs">Comentar opiniao</SelectItem>
+                      <SelectItem value="salvar para depois" className="text-xs">Salvar para depois</SelectItem>
+                      <SelectItem value="compartilhar com alguem" className="text-xs">Compartilhar</SelectItem>
+                      <SelectItem value="link na bio" className="text-xs">Link na bio</SelectItem>
+                      <SelectItem value="enviar DM" className="text-xs">Enviar DM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Formato</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: '1:1', label: '1:1', desc: 'Instagram' },
+                    { value: '4:5', label: '4:5', desc: 'LinkedIn' },
+                    { value: '9:16', label: '9:16', desc: 'Stories' },
+                  ] as const).map(ar => (
+                    <button
+                      key={ar.value}
+                      onClick={() => setAspectRatio(ar.value)}
+                      className={`flex-1 py-2 rounded-lg border text-center transition-colors ${
+                        aspectRatio === ar.value
+                          ? 'border-orange-400 bg-orange-50 text-orange-700'
+                          : 'border-gray-200 hover:border-gray-300 text-muted-foreground'
+                      }`}
+                    >
+                      <span className="text-sm font-bold block">{ar.label}</span>
+                      <span className="text-[10px]">{ar.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {showConfig && hasCarouselContent && (
+                  <Button
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => setShowConfig(false)}
+                  >
+                    Voltar
+                  </Button>
                 )}
-                {generateCarousel.isPending ? 'Gerando conteudo...' : 'Gerar Conteudo'}
-              </Button>
+                <Button
+                  className="flex-1 gap-1.5"
+                  onClick={handleGenerateCarousel}
+                  disabled={generateCarousel.isPending}
+                >
+                  {generateCarousel.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {generateCarousel.isPending ? 'Gerando conteudo...' : hasCarouselContent ? `Regenerar ${numSlides} Slides` : `Gerar ${numSlides} Slides`}
+                </Button>
+              </div>
             </div>
           )}
 
           {/* Step 2: Edit slides + choose template + generate PNGs */}
-          {hasCarouselContent && (
+          {hasCarouselContent && !showConfig && (
             <>
               {/* Editable slides */}
               <div>
@@ -158,91 +409,46 @@ export function AssetGeneratorSheet({ open, onClose, piece }: Props) {
                   <label className="text-xs font-semibold text-muted-foreground uppercase">
                     Slides ({editingSlides.length})
                   </label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[10px] gap-1 text-orange-600"
-                    onClick={handleGenerateCarousel}
-                    disabled={generateCarousel.isPending}
-                  >
-                    {generateCarousel.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                    Regenerar conteudo
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {editingSlides.map((cs, i) => (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg border transition-colors ${
-                        editingIndex === i ? 'border-orange-300 bg-orange-50/30' : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1"
+                      onClick={() => setShowConfig(true)}
                     >
-                      <div className="flex items-start gap-2">
-                        <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">
-                          {cs.slide_number}. {cs.slide_type}
-                        </Badge>
-                        {editingIndex === i ? (
-                          <div className="flex-1 space-y-2">
-                            <Input
-                              value={cs.headline}
-                              onChange={(e) => updateSlide(i, { headline: e.target.value })}
-                              className="h-7 text-xs font-semibold"
-                              placeholder="Headline..."
-                            />
-                            <Textarea
-                              value={cs.body}
-                              onChange={(e) => updateSlide(i, { body: e.target.value })}
-                              rows={2}
-                              className="text-xs resize-y"
-                              placeholder="Body..."
-                            />
-                            {(cs.slide_type === 'data' || cs.accent_text) && (
-                              <Input
-                                value={cs.accent_text}
-                                onChange={(e) => updateSlide(i, { accent_text: e.target.value })}
-                                className="h-7 text-xs"
-                                placeholder="Dado/destaque..."
-                              />
-                            )}
-                            <div className="flex gap-1 justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2"
-                                onClick={() => setEditingIndex(null)}
-                              >
-                                <Check className="w-3 h-3 text-green-600" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            className="flex-1 cursor-pointer min-w-0"
-                            onClick={() => setEditingIndex(i)}
-                          >
-                            <p className="text-xs font-semibold truncate">{cs.headline}</p>
-                            {cs.body && (
-                              <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{cs.body}</p>
-                            )}
-                            {cs.accent_text && (
-                              <span className="text-[10px] text-orange-600 font-medium">{cs.accent_text}</span>
-                            )}
-                          </div>
-                        )}
-                        {editingIndex !== i && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 shrink-0"
-                            onClick={() => setEditingIndex(i)}
-                          >
-                            <Pencil className="w-3 h-3 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                      <Settings2 className="w-3 h-3" />
+                      Configuracoes
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 text-orange-600"
+                      onClick={handleGenerateCarousel}
+                      disabled={generateCarousel.isPending}
+                    >
+                      {generateCarousel.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      Regenerar conteudo
+                    </Button>
+                  </div>
                 </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={editingSlides.map((_, i) => `slide-${i}`)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {editingSlides.map((cs, i) => (
+                        <SortableSlideItem
+                          key={`slide-${i}`}
+                          id={`slide-${i}`}
+                          cs={cs}
+                          index={i}
+                          isEditing={editingIndex === i}
+                          onEdit={() => setEditingIndex(i)}
+                          onStopEdit={() => setEditingIndex(null)}
+                          onUpdate={(updates) => updateSlide(i, updates)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </div>
 
               {/* Template selector */}

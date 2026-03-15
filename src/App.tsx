@@ -113,8 +113,11 @@ const AdminHubConfig = lazy(() => import("./pages/admin/AdminHubConfig"));
 const AdminContentStudio = lazy(() => import("./pages/admin/AdminContentStudio"));
 const AdminContentFactory = lazy(() => import("./pages/admin/AdminContentFactory"));
 const AdminContentPipeline = lazy(() => import("./pages/admin/AdminContentPipeline"));
+const AdminContentCalendar = lazy(() => import("./pages/admin/AdminContentCalendar"));
 const AdminSDR = lazy(() => import("./pages/admin/AdminSDR"));
 const AdminConteudoGrupo = lazy(() => import("./pages/admin/AdminConteudoGrupo"));
+const AdminCostOfLiving = lazy(() => import("./pages/admin/AdminCostOfLiving"));
+const CostOfLivingPage = lazy(() => import("./pages/cost-of-living/CostOfLivingPage"));
 const MentorDisponibilidade = lazy(() => import("./pages/mentor/MentorDisponibilidade"));
 const MentorLives = lazy(() => import("./pages/mentor/MentorLives"));
 const MentorCreateLive = lazy(() => import("./pages/mentor/MentorCreateLive"));
@@ -551,6 +554,11 @@ function AppRoutes() {
           <AdminSubscriptions />
         </ProtectedRoute>
       } />
+      <Route path="/admin/custo-de-vida" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminCostOfLiving />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/planos" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminPlans />
@@ -666,6 +674,11 @@ function AppRoutes() {
           <AdminContentPipeline />
         </ProtectedRoute>
       } />
+      <Route path="/admin/content-calendar" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminContentCalendar />
+        </ProtectedRoute>
+      } />
       <Route path="/admin/sdr" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminSDR />
@@ -697,6 +710,9 @@ function AppRoutes() {
 
       {/* Email unsubscribe confirmation (public, redirected from Edge Function) */}
       <Route path="/email/unsubscribed" element={<EmailUnsubscribed />} />
+
+      {/* Cost of Living Calculator (public, no auth required) */}
+      <Route path="/custo-de-vida" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}><CostOfLivingPage /></Suspense>} />
 
       {/* Lead Form (public, no auth - served on report.euanapratica.com) */}
       <Route path="/avaliar" element={<LeadFormPage />} />

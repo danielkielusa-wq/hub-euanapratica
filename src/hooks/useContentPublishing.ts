@@ -153,6 +153,21 @@ export function useCreatePublication() {
     mutationFn: async (input: CreatePublicationInput) => {
       const { publish_now, ...fields } = input;
 
+      // Prevent duplicate: check if there's already an active publication for this piece+platform
+      const { data: existing } = await (supabase as any)
+        .from('content_publications')
+        .select('id, status')
+        .eq('piece_id', input.piece_id)
+        .eq('platform', input.platform)
+        .in('status', ['scheduled', 'publishing', 'published'])
+        .limit(1);
+
+      if (existing?.length) {
+        const s = existing[0].status;
+        const label = s === 'published' ? 'já publicado' : s === 'publishing' ? 'sendo publicado agora' : 'já agendado';
+        throw new Error(`Este conteúdo já está ${label} no ${input.platform === 'linkedin' ? 'LinkedIn' : input.platform === 'threads' ? 'Threads' : 'X'}`);
+      }
+
       // Get active account for this platform
       const { data: accounts } = await (supabase as any)
         .from('social_accounts')

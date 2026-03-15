@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const features = [
   {
     icon: (
@@ -59,6 +61,18 @@ const features = [
     title: 'Relatórios Inteligentes',
     description: 'Diagnóstico completo de carreira com IA que identifica pontos fortes, lacunas e um plano de ação personalizado.',
   },
+  {
+    icon: (
+      <svg width="64" height="65" viewBox="0 0 64 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path opacity="0.2" d="M32 8.46631C18.7452 8.46631 8 19.2115 8 32.4663C8 45.7211 18.7452 56.4663 32 56.4663C45.2548 56.4663 56 45.7211 56 32.4663C56 19.2115 45.2548 8.46631 32 8.46631Z" fill="currentColor" />
+        <path d="M32 8.46631C18.7452 8.46631 8 19.2115 8 32.4663C8 45.7211 18.7452 56.4663 32 56.4663C45.2548 56.4663 56 45.7211 56 32.4663C56 19.2115 45.2548 8.46631 32 8.46631Z" stroke="currentColor" strokeWidth="2" />
+        <path d="M22 42.4663V30.4663M32 42.4663V22.4663M42 42.4663V26.4663" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    title: 'Calculadora de Custo de Vida',
+    description: 'Simule seu custo de vida em 35+ cidades dos EUA com impostos, saúde e salário líquido. Grátis e sem cadastro.',
+    link: '/custo-de-vida',
+  },
 ];
 
 export default function FeaturesSection() {
@@ -86,17 +100,38 @@ export default function FeaturesSection() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-0 gap-y-10 sm:gap-12">
-          {features.map((feature, i) => (
-            <div key={i} className="text-center px-4">
-              <div className="mb-4 text-landing-primary flex justify-center">
-                {feature.icon}
+          {features.map((feature, i) => {
+            const content = (
+              <>
+                <div className="mb-4 text-landing-primary flex justify-center">
+                  {feature.icon}
+                </div>
+                <h5 className="text-lg font-semibold mb-2">{feature.title}</h5>
+                <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">
+                  {feature.description}
+                </p>
+                {'link' in feature && (
+                  <span className="inline-block mt-3 text-sm font-medium text-landing-primary hover:underline">
+                    Experimentar grátis →
+                  </span>
+                )}
+              </>
+            );
+
+            if ('link' in feature && feature.link) {
+              return (
+                <Link key={i} to={feature.link} className="text-center px-4 group hover:scale-[1.02] transition-transform">
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <div key={i} className="text-center px-4">
+                {content}
               </div>
-              <h5 className="text-lg font-semibold mb-2">{feature.title}</h5>
-              <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

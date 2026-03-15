@@ -48,6 +48,7 @@ import {
   Timer,
   Sparkles,
   Kanban,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useServiceAccess } from '@/hooks/useServiceAccess';
@@ -137,6 +138,14 @@ const studentNavGroups: NavGroup[] = [
         menuKey: 'prime_jobs',
         badge: { text: 'NOVO', variant: 'new' }
       },
+      {
+        label: 'Custo de Vida EUA',
+        href: '/custo-de-vida',
+        icon: DollarSign,
+        menuKey: 'custo_de_vida',
+        badge: { text: 'NOVO', variant: 'new' },
+        isSpecial: true,
+      },
     ],
   },
   {
@@ -208,6 +217,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { label: 'Content Factory', href: '/admin/content-factory', icon: Zap, badge: { text: 'AI', variant: 'ai' as const } },
       { label: 'Content Pipeline', href: '/admin/content-pipeline', icon: Kanban },
+      { label: 'Calendario', href: '/admin/content-calendar', icon: Calendar },
       { label: 'Conteúdo Grupo', href: '/admin/conteudo-grupo', icon: Sparkles, badge: { text: 'IA', variant: 'ai' as const } },
     ],
   },
@@ -215,6 +225,7 @@ const adminNavGroups: NavGroup[] = [
     label: 'FERRAMENTAS AI',
     items: [
       { label: 'AI SDR', href: '/admin/sdr', icon: Target, badge: { text: 'AI', variant: 'ai' as const } },
+      { label: 'Custo de Vida', href: '/admin/custo-de-vida', icon: MapPin },
       { label: 'Idea Kanban', href: '/admin/idea-kanban', icon: Lightbulb },
     ],
   },

@@ -50,7 +50,15 @@ ESTRUTURA:
 4. CTA (último parágrafo): UMA ação clara. Pergunta provocativa > "Curta e compartilhe".
 5. HASHTAGS: 3-5, mix pt-BR + inglês.
 
-FORMATAÇÃO: 1200-2000 chars (sweet spot). Cada frase em linha separada. Emojis: máx 3-4 no post inteiro.
+FORMATAÇÃO: 1200-2000 chars (sweet spot). Cada frase em linha separada.
+
+EMOJIS (LinkedIn): Use 4-6 emojis estratégicos no post. Exemplos de uso:
+• 🔥 ou 🚨 no hook para chamar atenção
+• 📊 ou 💰 antes de dados/números
+• ❌ para desmistificar e ✅ para afirmar
+• 👇 ou 💬 no CTA
+• 🎯 para takeaway
+NÃO coloque emojis em toda frase — use como pontuação visual nos pontos-chave.
 
 ═══ X (TWITTER) — REGRAS ═══
 
@@ -58,7 +66,7 @@ INEGOCIÁVEL: MÁXIMO 280 CARACTERES incluindo hashtags. CONTE ANTES de finaliza
 
 ESTILOS: Hot Take, Dado Solto, Pergunta Retórica, Provocação Pura, Case Relâmpago.
 
-FORMATAÇÃO: Sem emojis excessivos (máx 1-2). Hashtags: 0-2 só se couberem. Tweet é UMA UNIDADE de impacto.
+FORMATAÇÃO: Use 1-2 emojis estratégicos (🔥 no hook, 📊 antes de dado, 👇 no CTA). Hashtags: 0-2 só se couberem. Tweet é UMA UNIDADE de impacto.
 
 ═══ THREADS — REGRAS ═══
 
@@ -71,7 +79,7 @@ ESTRUTURA:
 2. DESENVOLVIMENTO (2-4 parágrafos): Mais informal que LinkedIn, mais elaborado que X. Parágrafos curtos.
 3. CTA: Pergunta aberta que convida resposta (Threads = conversa).
 
-FORMATAÇÃO: 300-500 chars ideal. Sem hashtags (Threads não indexa por hashtag). Emojis: máx 2-3. Quebras de linha entre parágrafos.
+FORMATAÇÃO: 300-500 chars ideal. Sem hashtags (Threads não indexa por hashtag). Emojis: 2-4 estratégicos (💡 para insight, 🤔 para provocação, 👇 para CTA). Quebras de linha entre parágrafos.
 
 ═══ TÉCNICAS DE VIRALIDADE (aplique pelo menos 2) ═══
 

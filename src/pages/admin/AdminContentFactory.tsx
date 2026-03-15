@@ -52,6 +52,7 @@ import { PublicationsTab } from '@/components/content/PublicationsTab';
 import { SocialAccountsSettings } from '@/components/content/SocialAccountsSettings';
 import { useToast } from '@/hooks/use-toast';
 import { PieceEditModal } from '@/components/content/PieceEditModal';
+import { PublishPopover } from '@/components/content/PublishPopover';
 import {
   useGenerateSocialPost,
   useSocialAccounts,
@@ -182,7 +183,7 @@ const TONE_LABELS: Record<string, string> = {
 // ── Main Component ───────────────────────────────────────────────────────
 
 export default function AdminContentFactory() {
-  const [activeMode, setActiveMode] = useState<'trending' | 'create' | 'history' | 'calendar'>('create');
+  const [activeMode, setActiveMode] = useState<'trending' | 'create' | 'history'>('create');
   const [showConfig, setShowConfig] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
@@ -198,28 +199,28 @@ export default function AdminContentFactory() {
     <DashboardLayout>
       <div className="-m-4 lg:-m-6 min-h-screen bg-muted/40">
         {/* Header — white bar with border */}
-        <header className="bg-white dark:bg-card border-b border-border px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-orange-100 text-orange-500 rounded-xl flex items-center justify-center">
-              <Flame className="w-6 h-6" fill="currentColor" />
+        <header className="bg-white dark:bg-card border-b border-border px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Content Factory</h1>
-              <p className="text-sm text-muted-foreground">Trending topics, ideias e roteiros completos com IA.</p>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-foreground truncate">Content Factory</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Trending topics, ideias e roteiros completos com IA.</p>
             </div>
           </div>
-          <nav className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
-            <button onClick={() => setShowProducts(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
-              <FileText className="w-4 h-4" /> Produtos
+          <nav className="flex items-center gap-0.5 sm:gap-1 text-sm font-medium text-muted-foreground shrink-0">
+            <button onClick={() => setShowProducts(true)} className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
+              <FileText className="w-4 h-4" /> <span className="hidden sm:inline">Produtos</span>
             </button>
-            <button onClick={() => setShowAccounts(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
-              <Link2 className="w-4 h-4" /> Contas
+            <button onClick={() => setShowAccounts(true)} className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
+              <Link2 className="w-4 h-4" /> <span className="hidden sm:inline">Contas</span>
             </button>
-            <button onClick={() => setShowDocs(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
+            <button onClick={() => setShowDocs(true)} className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg hover:text-foreground hover:bg-muted transition-colors">
               <HelpCircle className="w-4 h-4" />
             </button>
-            <button onClick={() => setShowConfig(v => !v)} className={`flex items-center gap-2 px-3 py-2 rounded-lg hover:text-foreground transition-colors ${showConfig ? 'bg-muted text-foreground' : 'hover:bg-muted'}`}>
-              <Settings2 className="w-4 h-4" /> LLMs
+            <button onClick={() => setShowConfig(v => !v)} className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 rounded-lg hover:text-foreground transition-colors ${showConfig ? 'bg-muted text-foreground' : 'hover:bg-muted'}`}>
+              <Settings2 className="w-4 h-4" /> <span className="hidden sm:inline">LLMs</span>
             </button>
           </nav>
         </header>
@@ -236,14 +237,13 @@ export default function AdminContentFactory() {
         {/* LLM Config Panel */}
         {showConfig && <LLMConfigPanel />}
 
-        <div className="px-8 py-8">
+        <div className="px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {/* Mode Tabs — pill style */}
-          <div className="flex items-center gap-2 bg-white dark:bg-card p-1.5 rounded-xl border border-border mb-8 inline-flex shadow-sm">
+          <div className="flex items-center gap-1 sm:gap-2 bg-white dark:bg-card p-1 sm:p-1.5 rounded-xl border border-border mb-4 sm:mb-8 w-full sm:w-auto sm:inline-flex shadow-sm overflow-x-auto">
             {[
               { id: 'trending' as const, label: 'Trending', icon: Flame },
               { id: 'create' as const, label: 'Criar', icon: Sparkles },
               { id: 'history' as const, label: 'Historico', icon: Clock },
-              { id: 'calendar' as const, label: 'Calendario', icon: Calendar },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeMode === tab.id;
@@ -251,7 +251,7 @@ export default function AdminContentFactory() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveMode(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-1 sm:flex-none justify-center sm:justify-start ${
                     isActive
                       ? 'bg-slate-100 dark:bg-muted text-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-slate-50 dark:hover:bg-muted hover:text-foreground'
@@ -267,7 +267,6 @@ export default function AdminContentFactory() {
           {activeMode === 'trending' && <TrendingTab onCreateFromTrending={handleCreateFromTrending} />}
           {activeMode === 'create' && <CreateTab promptText={createPrompt} setPromptText={setCreatePrompt} />}
           {activeMode === 'history' && <HistoryTab />}
-          {activeMode === 'calendar' && <CalendarTab />}
         </div>
       </div>
     </DashboardLayout>
@@ -341,7 +340,7 @@ function LLMConfigPanel() {
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
                 <Select value={effectiveTrending} onValueChange={setTrendingApi}>
-                  <SelectTrigger className="w-48 h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -369,7 +368,7 @@ function LLMConfigPanel() {
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
                 <Select value={effectiveGenerate} onValueChange={setGenerateApi}>
-                  <SelectTrigger className="w-48 h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -397,7 +396,7 @@ function LLMConfigPanel() {
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
                 <Select value={effectiveSocial} onValueChange={setSocialApi}>
-                  <SelectTrigger className="w-48 h-8 text-xs">
+                  <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -432,7 +431,7 @@ function LLMConfigPanel() {
         </div>
 
         {/* Calendar recipients */}
-        <div className="flex items-center gap-2 border-t pt-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 border-t pt-3">
           <Calendar className="w-3.5 h-3.5 text-green-500 shrink-0" />
           <span className="text-xs font-medium whitespace-nowrap">Convites Calendario</span>
           <Input
@@ -584,8 +583,8 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
   return (
     <div className="space-y-4">
       {/* Action Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <input
@@ -593,7 +592,7 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
               placeholder="Buscar topicos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 shadow-sm transition-shadow hover:shadow"
+              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64 shadow-sm transition-shadow hover:shadow"
             />
           </div>
           <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5 border border-border">
@@ -618,7 +617,7 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
           {selectedIds.size > 0 ? (
             <>
               <Button
@@ -629,17 +628,17 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
                   setSelectedIds(new Set());
                 }}
                 disabled={clearCache.isPending}
-                className="gap-2 shadow-sm"
+                className="gap-2 shadow-sm text-xs sm:text-sm"
               >
-                <Trash2 className="w-4 h-4 text-muted-foreground" /> Excluir Selecao
+                <Trash2 className="w-4 h-4 text-muted-foreground" /> <span className="hidden sm:inline">Excluir</span> Selecao
               </Button>
               <Button
                 size="sm"
                 onClick={handleBulkGenerate}
                 disabled={generateContent.isPending}
-                className="gap-2 shadow-sm"
+                className="gap-2 shadow-sm text-xs sm:text-sm"
               >
-                <Sparkles className="w-4 h-4" /> Gerar Roteiros ({selectedIds.size})
+                <Sparkles className="w-4 h-4" /> Gerar ({selectedIds.size})
               </Button>
             </>
           ) : (
@@ -650,16 +649,16 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
                   size="sm"
                   onClick={() => clearCache.mutate()}
                   disabled={clearCache.isPending || fetchTrending.isPending}
-                  className="gap-2 shadow-sm"
+                  className="gap-2 shadow-sm text-xs sm:text-sm"
                 >
-                  <Trash2 className="w-4 h-4 text-muted-foreground" /> Limpar Cache
+                  <Trash2 className="w-4 h-4 text-muted-foreground" /> <span className="hidden sm:inline">Limpar</span> Cache
                 </Button>
               )}
               <Button
                 size="sm"
                 onClick={() => fetchTrending.mutate({ force_refresh: true })}
                 disabled={fetchTrending.isPending}
-                className="gap-2 shadow-sm"
+                className="gap-2 shadow-sm text-xs sm:text-sm"
               >
                 {fetchTrending.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 {fetchTrending.isPending ? 'Pesquisando...' : 'Buscar Trending'}
@@ -796,7 +795,7 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
                               setSelectedTopic(topic);
                             }
                           }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-xs font-medium border border-blue-100"
+                          className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md text-xs font-medium border border-blue-100"
                         >
                           <Sparkles className="w-3.5 h-3.5" /> Criar
                         </button>
@@ -810,7 +809,7 @@ function TrendingTab({ onCreateFromTrending }: { onCreateFromTrending?: (title: 
 
           {/* Footer */}
           {filteredTopics.length > 0 && (
-            <div className="px-6 py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex items-center justify-between">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
               <span className="text-xs text-muted-foreground">
                 Mostrando <span className="font-medium text-foreground">{filteredTopics.length}</span> de <span className="font-medium text-foreground">{topics.length}</span> topicos{timeFilter !== 'all' && ` (filtro: ${timeFilter === '24h' ? 'últimas 24h' : '7 dias'})`}
               </span>
@@ -1073,10 +1072,10 @@ function CreateTab({ promptText, setPromptText }: { promptText: string; setPromp
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8 items-stretch">
       {/* Left Column: Form (2/3) */}
       <div className="lg:col-span-2">
-        <div className="bg-white dark:bg-card border border-border rounded-2xl shadow-sm p-6 lg:p-8 relative overflow-hidden h-full">
+        <div className="bg-white dark:bg-card border border-border rounded-2xl shadow-sm p-4 sm:p-6 lg:p-8 relative overflow-hidden h-full">
           {/* Decorative blur accent */}
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-blue-100/60 dark:bg-blue-900/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -1363,8 +1362,8 @@ function HistoryTab() {
   return (
     <div className="space-y-4">
       {/* Action Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <input
@@ -1372,27 +1371,29 @@ function HistoryTab() {
               placeholder="Buscar roteiros..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 shadow-sm transition-shadow hover:shadow"
+              className="pl-9 pr-4 py-2 bg-white dark:bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64 shadow-sm transition-shadow hover:shadow"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Status</SelectItem>
-              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={formatFilter} onValueChange={setFormatFilter}>
-            <SelectTrigger className="w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Formato" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Formatos</SelectItem>
-              {FORMAT_OPTIONS.map((f) => (
-                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Status</SelectItem>
+                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={formatFilter} onValueChange={setFormatFilter}>
+              <SelectTrigger className="w-full sm:w-36 bg-white dark:bg-card shadow-sm"><SelectValue placeholder="Formato" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Formatos</SelectItem>
+                {FORMAT_OPTIONS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <span className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{filtered.length}</span> roteiros
@@ -1492,13 +1493,13 @@ function HistoryTab() {
                       <td className="px-6 py-4 align-top text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 rounded-md text-xs font-medium border border-blue-100 dark:border-blue-800"
+                            className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50 rounded-md text-xs font-medium border border-blue-100 dark:border-blue-800"
                             onClick={() => setSelectedPieceId(piece.id)}
                           >
                             <Eye className="w-3.5 h-3.5" /> Ver
                           </button>
                           <button
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                            className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
                             onClick={() => deletePiece.mutate(piece.id)}
                             title="Excluir"
                           >
@@ -1515,11 +1516,11 @@ function HistoryTab() {
 
           {/* Pagination Footer */}
           {filtered.length > 0 && (
-            <div className="px-6 py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Mostrando <span className="font-medium text-foreground">{(safePage - 1) * HISTORY_PAGE_SIZE + 1}</span> a <span className="font-medium text-foreground">{Math.min(safePage * HISTORY_PAGE_SIZE, filtered.length)}</span> de <span className="font-medium text-foreground">{filtered.length}</span> roteiros
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-slate-50 dark:bg-muted/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <span className="text-xs sm:text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{(safePage - 1) * HISTORY_PAGE_SIZE + 1}</span>-<span className="font-medium text-foreground">{Math.min(safePage * HISTORY_PAGE_SIZE, filtered.length)}</span> de <span className="font-medium text-foreground">{filtered.length}</span>
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={safePage <= 1}
@@ -1590,7 +1591,7 @@ function HistoryTab() {
   );
 }
 
-// ── Calendar Tab ─────────────────────────────────────────────────────────
+// ── Calendar Tab (moved to AdminContentCalendar.tsx) ─────────────────────
 
 function CalendarTab() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1658,25 +1659,25 @@ function CalendarTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={prevMonth}
-              className="p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
+              className="p-1 sm:p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
             >
-              <ChevronLeft className="w-[18px] h-[18px]" />
+              <ChevronLeft className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
             </button>
             <button
               onClick={nextMonth}
-              className="p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
+              className="p-1 sm:p-1.5 bg-white dark:bg-card border border-border rounded-md hover:bg-slate-50 dark:hover:bg-muted text-muted-foreground transition-colors shadow-sm"
             >
-              <ChevronRight className="w-[18px] h-[18px]" />
+              <ChevronRight className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
-          <h2 className="text-lg font-bold text-foreground capitalize">{monthName}</h2>
+          <h2 className="text-sm sm:text-lg font-bold text-foreground capitalize">{monthName}</h2>
         </div>
-        <div className="flex items-center gap-6 text-sm font-medium">
+        <div className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium">
           <button onClick={goToday} className="text-muted-foreground hover:text-foreground transition-colors">
             Hoje
           </button>
@@ -1702,14 +1703,14 @@ function CalendarTab() {
           {/* Days of week header */}
           <div className="grid grid-cols-7 border-b border-border bg-slate-50/80 dark:bg-muted/50">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map((d) => (
-              <div key={d} className="py-3 text-center text-xs font-medium text-muted-foreground">
-                {d}
+              <div key={d} className="py-2 sm:py-3 text-center text-[10px] sm:text-xs font-medium text-muted-foreground">
+                {d.charAt(0)}<span className="hidden sm:inline">{d.slice(1)}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 auto-rows-[120px]">
+          <div className="grid grid-cols-7 auto-rows-[80px] sm:auto-rows-[120px]">
             {/* Leading blanks */}
             {Array.from({ length: startDayOfWeek }).map((_, i) => (
               <div key={`blank-${i}`} className="border-b border-r border-border/50 bg-slate-50/30 dark:bg-muted/10 p-2" />
@@ -1728,17 +1729,17 @@ function CalendarTab() {
                   onDragOver={(e) => handleDragOver(e, dateStr)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, dateStr)}
-                  className={`border-b border-r border-border/50 p-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-muted/30 ${
+                  className={`border-b border-r border-border/50 p-1 sm:p-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-muted/30 overflow-hidden ${
                     isDragOver ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-400 ring-inset' : ''
                   }`}
                 >
-                  <span className={`text-sm font-medium ${
+                  <span className={`text-xs sm:text-sm font-medium ${
                     isToday ? 'text-blue-600 font-bold' : 'text-muted-foreground'
                   }`}>
                     {day}
                   </span>
 
-                  <div className="mt-1 flex flex-col gap-1">
+                  <div className="mt-0.5 sm:mt-1 flex flex-col gap-0.5 sm:gap-1">
                     {dayEntries.slice(0, 3).map((entry, ei) => {
                       const isProd = entry.type === 'production';
                       return (
@@ -1746,7 +1747,7 @@ function CalendarTab() {
                           key={`${entry.piece.id}-${entry.type}-${ei}`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, entry.piece.id, entry.type)}
-                          className={`text-[11px] font-medium px-2 py-1 rounded truncate flex items-center gap-1.5 cursor-grab active:cursor-grabbing transition-colors select-none ${
+                          className={`text-[9px] sm:text-[11px] font-medium px-1 sm:px-2 py-0.5 sm:py-1 rounded truncate flex items-center gap-1 sm:gap-1.5 cursor-grab active:cursor-grabbing transition-colors select-none ${
                             isProd
                               ? 'bg-amber-100/60 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50'
                               : 'bg-sky-100/60 text-sky-800 hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50'
@@ -1779,441 +1780,7 @@ function CalendarTab() {
   );
 }
 
-// ── Publish Popover ──────────────────────────────────────────────────────
-
-function PublishPopover({ piece, platform, mediaAssets, sharedTexts, onTextGenerated }: {
-  piece: ContentPiece;
-  platform: 'linkedin' | 'x' | 'threads';
-  mediaAssets: { id: string; public_url: string | null; position: number }[];
-  sharedTexts?: Record<string, string>;
-  onTextGenerated?: (platform: string, text: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [postText, setPostText] = useState('');
-  const [generated, setGenerated] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule'>('now');
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [suggestedTime, setSuggestedTime] = useState('');
-  const [selectedVisualIds, setSelectedVisualIds] = useState<Set<string>>(new Set());
-  const queryClient = useQueryClient();
-  const generatePost = useGenerateSocialPost();
-  const createPub = useCreatePublication();
-  const cancelPub = useCancelPublication();
-  const { data: accounts = [] } = useSocialAccounts();
-  const { data: publications = [], refetch: refetchPubs } = useContentPublications(piece.id);
-  const isPublished = publications.some(p => p.platform === platform && p.status === 'published');
-  const scheduledPub = publications.find(p => p.platform === platform && p.status === 'scheduled');
-  const isScheduled = !!scheduledPub;
-
-  // Fetch own assets (always when dialog open)
-  const { data: ownAssets = [] } = useContentAssets(open ? piece.id : undefined);
-  const ownSlides = ownAssets.filter(a => a.type === 'slide');
-  const visuals = mediaAssets.length > 0 ? mediaAssets : ownSlides.map(a => ({ id: a.id, public_url: a.public_url, position: a.position }));
-
-  // Initialize selection when visuals load
-  useEffect(() => {
-    if (open && visuals.length > 0 && selectedVisualIds.size === 0) {
-      setSelectedVisualIds(new Set(visuals.map(v => v.id)));
-    }
-  }, [open, visuals.length]);
-
-  // Pre-fill scheduledAt when switching to schedule mode with a suggested time
-  useEffect(() => {
-    if (scheduleMode === 'schedule' && suggestedTime && !scheduledAt) {
-      setScheduledAt(suggestedTime);
-    }
-  }, [scheduleMode, suggestedTime]);
-
-  const toggleVisual = (id: string) => {
-    setSelectedVisualIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectedVisuals = visuals.filter(v => selectedVisualIds.has(v.id));
-  const selectedIds = selectedVisuals.map(v => v.id);
-
-  // Compute next optimal posting time for this platform
-  const formatDatetimeLocal = (d: Date): string => {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
-  const getNextOptimalSlot = (_llmSuggestion?: string | null): string => {
-    const peakHours: Record<string, number[]> = {
-      linkedin: [8, 9, 10],
-      x: [12, 13],
-      threads: [12, 13, 19, 20],
-    };
-    const hours = peakHours[platform] || [9, 10];
-    const now = new Date();
-    for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-      for (const hour of hours) {
-        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset, hour, 0, 0);
-        if (target.getTime() > now.getTime()) {
-          return formatDatetimeLocal(target);
-        }
-      }
-    }
-    const fallback = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hours[0], 0, 0);
-    return formatDatetimeLocal(fallback);
-  };
-
-  const applySuggestedTime = (post: { best_posting_time?: string | null }) => {
-    const slot = getNextOptimalSlot(post.best_posting_time);
-    setSuggestedTime(slot);
-    if (!scheduledAt) setScheduledAt(slot);
-  };
-
-  const account = accounts.find(a => a.platform === platform);
-  const isLinkedin = platform === 'linkedin';
-  const isThreads = platform === 'threads';
-  const PlatformIcon = isLinkedin ? Linkedin : isThreads ? MessageSquare : Twitter;
-  const platformLabel = isLinkedin ? 'LinkedIn' : isThreads ? 'Threads' : 'X';
-  const maxChars = isLinkedin ? 3000 : isThreads ? 500 : 280;
-  const handleOpen = () => {
-    setOpen(true);
-    if (!generated) {
-      // If there's an existing scheduled/draft publication, load its text
-      const existingPub = publications.find(p => p.platform === platform && (p.status === 'scheduled' || p.status === 'draft'));
-      if (existingPub) {
-        setPostText(existingPub.post_text || '');
-        setGenerated(true);
-        if (existingPub.scheduled_at) {
-          setScheduleMode('schedule');
-          // Format to datetime-local
-          const d = new Date(existingPub.scheduled_at);
-          const pad = (n: number) => String(n).padStart(2, '0');
-          setScheduledAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-        }
-        return;
-      }
-      // Threads can reuse X text as starting point
-      const crossPostSource = platform === 'threads' ? sharedTexts?.['x'] : undefined;
-      if (crossPostSource) {
-        setPostText(crossPostSource);
-        setGenerated(true);
-        const slot = getNextOptimalSlot();
-        setSuggestedTime(slot);
-        setScheduleMode('schedule');
-        setScheduledAt(slot);
-        return;
-      }
-      generatePost.mutate(
-        { pieceId: piece.id, platform },
-        {
-          onSuccess: (post) => {
-            const fullText = post.hashtags?.length
-              ? `${post.content}\n\n${post.hashtags.join(' ')}`
-              : post.content;
-            setPostText(fullText);
-            setGenerated(true);
-            onTextGenerated?.(platform, fullText);
-            applySuggestedTime(post);
-          },
-        },
-      );
-    }
-  };
-
-  const handleRegenerate = () => {
-    setGenerated(false);
-    generatePost.mutate(
-      { pieceId: piece.id, platform },
-      {
-        onSuccess: (post) => {
-          const fullText = post.hashtags?.length
-            ? `${post.content}\n\n${post.hashtags.join(' ')}`
-            : post.content;
-          setPostText(fullText);
-          setGenerated(true);
-          onTextGenerated?.(platform, fullText);
-          applySuggestedTime(post);
-        },
-      },
-    );
-  };
-
-  const handlePublish = () => {
-    if (!postText.trim()) return;
-    createPub.mutate(
-      {
-        piece_id: piece.id,
-        platform,
-        post_text: postText,
-        media_asset_ids: (isLinkedin || isThreads) ? selectedIds : selectedIds.slice(0, 1),
-        publish_now: scheduleMode === 'now',
-        scheduled_at: scheduleMode === 'schedule' ? scheduledAt || null : null,
-      },
-      {
-        onSuccess: (data: any) => {
-          // Auto-schedule Threads when scheduling X (same text, Threads optimal time)
-          if (platform === 'x' && scheduleMode === 'schedule') {
-            const threadsHours = [12, 13, 19, 20];
-            const now = new Date();
-            let threadsSlot: Date | null = null;
-            for (let dayOff = 0; dayOff <= 1 && !threadsSlot; dayOff++) {
-              for (const h of threadsHours) {
-                const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOff, h, 0, 0);
-                if (t.getTime() > now.getTime()) { threadsSlot = t; break; }
-              }
-            }
-            if (!threadsSlot) threadsSlot = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 12, 0, 0);
-            createPub.mutate({
-              piece_id: piece.id,
-              platform: 'threads',
-              post_text: postText,
-              media_asset_ids: selectedIds,
-              scheduled_at: threadsSlot.toISOString(),
-            });
-          }
-
-          setOpen(false);
-          setGenerated(false);
-          setPostText('');
-          setScheduleMode('now');
-          setScheduledAt('');
-          setSuggestedTime('');
-          setSelectedVisualIds(new Set());
-          const postUrl = data?.postUrl;
-          if (postUrl) {
-            navigator.clipboard.writeText(postUrl).catch(() => {});
-          }
-        },
-      },
-    );
-  };
-
-  return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        className={`h-8 gap-1 text-xs ${
-          isPublished
-            ? 'border-green-300 text-green-700 bg-green-50/50'
-            : isScheduled
-            ? 'border-orange-300 text-orange-700 bg-orange-50/50'
-            : isLinkedin ? 'hover:border-blue-300 hover:text-blue-700'
-            : isThreads ? 'hover:border-purple-300 hover:text-purple-700'
-            : 'hover:border-gray-400'
-        }`}
-        onClick={handleOpen}
-      >
-        {isPublished ? (
-          <Check className="w-3 h-3 text-green-600" />
-        ) : isScheduled ? (
-          <Clock className="w-3 h-3 text-orange-500" />
-        ) : (
-          <PlatformIcon className={`w-3 h-3 ${isLinkedin ? 'text-blue-600' : isThreads ? 'text-purple-600' : ''}`} />
-        )}
-        {platformLabel}
-        {isScheduled && scheduledPub?.scheduled_at && (
-          <>
-            <span className="text-[10px] text-orange-600 font-normal">
-              {new Date(scheduledPub.scheduled_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-            </span>
-            <span
-              role="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                cancelPub.mutate(scheduledPub.id, {
-                  onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['content-publications', piece.id] });
-                    refetchPubs();
-                  },
-                });
-              }}
-              className="ml-0.5 rounded-full hover:bg-red-100 p-0.5 transition-colors"
-            >
-              <X className="w-3 h-3 text-red-500" />
-            </span>
-          </>
-        )}
-      </Button>
-
-      {open && (
-        <Dialog open onOpenChange={(v) => { if (!v) setOpen(false); }}>
-          <DialogContent className="max-w-3xl w-[95vw] sm:w-full p-0 gap-0 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b">
-              <div className="flex items-center gap-2">
-                <PlatformIcon className={`w-5 h-5 ${isLinkedin ? 'text-blue-600' : isThreads ? 'text-purple-600' : ''}`} />
-                <span className="text-base font-semibold">Publicar no {platformLabel}</span>
-                {!account && (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">Nao conectado</Badge>
-                )}
-              </div>
-              {generated && (
-                <button
-                  onClick={handleRegenerate}
-                  disabled={generatePost.isPending}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {generatePost.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                  {platform === 'threads' && sharedTexts?.['x'] && !generatePost.data ? 'Gerar versao Threads' : 'Regenerar texto'}
-                </button>
-              )}
-            </div>
-
-            {/* Loading */}
-            {generatePost.isPending && !generated && (
-              <div className="flex items-center justify-center py-16 gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-                <span className="text-sm text-muted-foreground">Gerando post otimizado para {platformLabel}...</span>
-              </div>
-            )}
-
-            {/* Error */}
-            {generatePost.isError && !generated && !generatePost.isPending && (
-              <div className="text-center py-12 space-y-3">
-                <p className="text-sm text-red-600">Erro ao gerar post</p>
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={handleRegenerate}>
-                  <RotateCcw className="w-3.5 h-3.5" /> Tentar novamente
-                </Button>
-              </div>
-            )}
-
-            {/* Content: text + visuals side by side */}
-            {(generated || postText) && (
-              <div className="flex flex-col sm:flex-row">
-                {/* Left: text editor */}
-                <div className="flex-1 p-3 sm:p-5 space-y-3 min-w-0">
-                  <Textarea
-                    value={postText}
-                    onChange={(e) => setPostText(e.target.value)}
-                    rows={isLinkedin ? 12 : isThreads ? 8 : 5}
-                    className="text-sm resize-y"
-                    placeholder={`Texto do post para ${platformLabel}...`}
-                  />
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${postText.length > maxChars ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                      {postText.length}/{maxChars} chars
-                    </span>
-                  </div>
-
-                  {/* Schedule */}
-                  <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
-                    <button
-                      onClick={() => setScheduleMode('now')}
-                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
-                        scheduleMode === 'now' ? 'bg-orange-100 text-orange-700 font-medium' : 'text-muted-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <Send className="w-3.5 h-3.5" /> Agora
-                    </button>
-                    <button
-                      onClick={() => setScheduleMode('schedule')}
-                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
-                        scheduleMode === 'schedule' ? 'bg-blue-100 text-blue-700 font-medium' : 'text-muted-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <Clock className="w-3.5 h-3.5" /> Agendar
-                    </button>
-                    {scheduleMode === 'schedule' && (
-                      <input
-                        type="datetime-local"
-                        value={scheduledAt}
-                        onChange={(e) => setScheduledAt(e.target.value)}
-                        className="text-xs border rounded px-2 py-1.5 h-8 w-full sm:w-auto sm:flex-1"
-                      />
-                    )}
-                  </div>
-                  {suggestedTime && scheduleMode === 'now' && (
-                    <button
-                      onClick={() => { setScheduleMode('schedule'); setScheduledAt(suggestedTime); }}
-                      className="flex items-center gap-1.5 text-[11px] text-orange-600 hover:text-orange-700 transition-colors"
-                    >
-                      <Clock className="w-3 h-3" />
-                      Agendar no horario ideal: {new Date(suggestedTime).toLocaleString('pt-BR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </button>
-                  )}
-
-                  {/* Publish button */}
-                  <Button
-                    className="w-full gap-2"
-                    onClick={handlePublish}
-                    disabled={createPub.isPending || !postText.trim() || !account || (scheduleMode === 'schedule' && !scheduledAt)}
-                  >
-                    {createPub.isPending
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : scheduleMode === 'now' ? <Send className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                    {scheduleMode === 'now' ? 'Publicar agora' : 'Agendar publicacao'}
-                  </Button>
-                </div>
-
-                {/* Right: visual selection */}
-                {visuals.length > 0 && (
-                  <div className="w-full sm:w-64 border-t sm:border-t-0 sm:border-l p-3 sm:p-4 bg-muted/20 space-y-3 shrink-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Image className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {selectedVisualIds.size}/{visuals.length} visuais
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (selectedVisualIds.size === visuals.length) setSelectedVisualIds(new Set());
-                          else setSelectedVisualIds(new Set(visuals.map(v => v.id)));
-                        }}
-                        className="text-[10px] text-muted-foreground hover:text-foreground"
-                      >
-                        {selectedVisualIds.size === visuals.length ? 'Nenhum' : 'Todos'}
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {visuals.map((asset) => {
-                        const isSelected = selectedVisualIds.has(asset.id);
-                        return (
-                          <button
-                            key={asset.id}
-                            type="button"
-                            onClick={() => toggleVisual(asset.id)}
-                            className="relative group"
-                          >
-                            <img
-                              src={asset.public_url || ''}
-                              alt={`Slide ${asset.position}`}
-                              className={`w-full aspect-square rounded-lg border-2 object-cover transition-all ${
-                                isSelected ? 'border-orange-400 opacity-100' : 'border-transparent opacity-40 grayscale'
-                              }`}
-                            />
-                            <div className={`absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-bold ${
-                              isSelected ? 'bg-orange-500' : 'bg-gray-400'
-                            }`}>
-                              {isSelected ? asset.position : ''}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {platform === 'x' && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Apenas 1 imagem sera enviada no X (capa)
-                      </p>
-                    )}
-                    {isThreads && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Threads suporta carousel (2-20 imagens)
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
-  );
-}
-
-// ── Piece Card ────────────────────────────────────────────────────────────
+// ── Piece Card (dead code — kept for reference) ──────────────────────────
 
 function PieceCard({ piece, compact }: { piece: ContentPiece; compact?: boolean }) {
   const [expanded, setExpanded] = useState(false);

@@ -6,9 +6,8 @@
  *
  * Auth: internal secret only (x-internal-secret header)
  *
+ * Telegram config read from app_configs table (fallback to env vars).
  * Required Supabase secrets:
- *   TELEGRAM_BOT_TOKEN  — from @BotFather
- *   TELEGRAM_CHAT_ID    — your personal chat ID (get via @userinfobot)
  *   ADMIN_NOTIFICATION_EMAIL — your email address
  */
 
@@ -192,11 +191,28 @@ Deno.serve(async (req: Request) => {
     const todayTasks = TASKS.filter((t) => t.day === dayIndex);
     const results: Record<string, string> = {};
 
-    // ── Telegram ──────────────────────────────────────────────────────────────
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    // ── Telegram (read config from app_configs, fallback to env vars) ────────
+    let botToken = "";
+    let chatId = "";
+    let tgEnabled = true;
+    try {
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: tgRows } = await sb
+        .from("app_configs")
+        .select("key, value")
+        .in("key", ["telegram_bot_token", "telegram_chat_id", "telegram_notifications_enabled"]);
+      const tgMap: Record<string, string> = {};
+      for (const r of tgRows || []) tgMap[r.key] = r.value;
+      botToken = tgMap["telegram_bot_token"] || Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+      chatId = tgMap["telegram_chat_id"] || Deno.env.get("TELEGRAM_CHAT_ID") || "";
+      tgEnabled = (tgMap["telegram_notifications_enabled"] ?? "true") !== "false";
+    } catch {
+      botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+      chatId = Deno.env.get("TELEGRAM_CHAT_ID") || "";
+    }
 
-    if (botToken && chatId) {
+    if (tgEnabled && botToken && chatId) {
       try {
         const telegramBody = formatTelegram(dayIndex, nowBRT, todayTasks);
         const tgRes = await fetch(
@@ -220,7 +236,7 @@ Deno.serve(async (req: Request) => {
         results.telegram = `error: ${err}`;
       }
     } else {
-      results.telegram = "skipped — TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set";
+      results.telegram = tgEnabled ? "skipped — telegram_bot_token or telegram_chat_id not configured" : "skipped — telegram disabled";
     }
 
     // ── Email via Resend ──────────────────────────────────────────────────────

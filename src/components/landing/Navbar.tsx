@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,9 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logoHorizontal } = usePlatformLogo();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isLandingPage = location.pathname === '/' || location.pathname === '';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -31,8 +34,12 @@ export default function Navbar() {
 
   const handleNavClick = (href: string) => {
     setMobileOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    if (isLandingPage) {
+      const el = document.querySelector(href);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      navigate('/' + href);
+    }
   };
 
   return (
@@ -59,7 +66,7 @@ export default function Navbar() {
                 <Menu className="h-6 w-6 text-landing-text" />
               )}
             </button>
-            <a href="#landingHero" className="flex items-center gap-2" onClick={() => handleNavClick('#landingHero')}>
+            <a href={isLandingPage ? '#landingHero' : '/'} className="flex items-center gap-2" onClick={(e) => { e.preventDefault(); handleNavClick('#landingHero'); }}>
               <img
                 src={logoHorizontal}
                 alt="EUA na Prática"

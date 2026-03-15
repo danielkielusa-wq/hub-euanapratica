@@ -211,6 +211,8 @@ export async function* streamLLMWithTools(
       }
 
       // Execute tool calls
+      const anthropicToolResults: Array<{ type: string; tool_use_id: string; content: string }> = [];
+
       for (const tc of toolCalls) {
         let parsedArgs: Record<string, unknown> = {};
         try { parsedArgs = JSON.parse(tc.arguments); } catch { /* keep empty */ }
@@ -228,12 +230,9 @@ export async function* streamLLMWithTools(
 
         yield { type: "tool_result", id: tc.id, name: tc.name, result };
 
-        // Add tool result to messages
+        // Collect tool results per provider format
         if (provider === "anthropic") {
-          messages.push({
-            role: "user",
-            content: JSON.stringify([{ type: "tool_result", tool_use_id: tc.id, content: result }]),
-          } as ChatMessage);
+          anthropicToolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
         } else {
           messages.push({
             role: "tool",
@@ -242,6 +241,14 @@ export async function* streamLLMWithTools(
             name: tc.name,
           });
         }
+      }
+
+      // Anthropic: ALL tool results must be in a SINGLE user message
+      if (provider === "anthropic" && anthropicToolResults.length > 0) {
+        messages.push({
+          role: "user",
+          content: JSON.stringify(anthropicToolResults),
+        } as ChatMessage);
       }
 
       // Continue loop — next LLM call with tool results
@@ -331,6 +338,8 @@ async function* streamOpenAI(
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    // Track tool call IDs by index — id only appears in the first chunk
+    const indexToId: Record<number, string> = {};
 
     while (true) {
       const { done, value } = await reader.read();
@@ -369,9 +378,11 @@ async function* streamOpenAI(
           // Tool calls (streamed incrementally)
           if (delta.tool_calls) {
             for (const tc of delta.tool_calls) {
+              // Remember the real id when it appears (first chunk only)
+              if (tc.id) indexToId[tc.index] = tc.id;
               yield {
                 type: "tool_call",
-                id: tc.id || `call_${tc.index}`,
+                id: indexToId[tc.index] || `call_${tc.index}`,
                 name: tc.function?.name,
                 argumentsDelta: tc.function?.arguments,
               };

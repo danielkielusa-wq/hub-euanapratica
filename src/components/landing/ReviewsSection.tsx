@@ -3,24 +3,72 @@ import { ChevronLeft, ChevronRight, Star, PlayCircle } from 'lucide-react';
 
 const videoTestimonials = [
   {
-    youtubeId: '', // TODO: substituir pelo ID do YouTube (ex: 'dQw4w9WgXcQ')
-    name: 'Ana Lima',
-    role: 'Mentoria Individual — Conseguiu emprego na Adobe',
+    youtubeId: 'VpRI118OIi8',
+    name: 'Alexandre',
+    role: 'Como a Mentoria Individual Mudou Tudo',
     horizontal: true,
   },
   {
-    youtubeId: '', // TODO: substituir pelo ID do YouTube
-    name: 'Carlos Mendes',
-    role: 'Mentoria Individual — Transição para Big Tech',
+    youtubeId: 'GTL22AoUOs0',
+    name: 'Lucas',
+    role: 'Perdido até Entender o Mercado dos EUA',
     horizontal: true,
   },
   {
-    youtubeId: '', // TODO: substituir pelo ID do YouTube
-    name: 'Fernanda Rocha',
-    role: 'Mentoria Individual — De CLT para os EUA',
+    youtubeId: 'j3iio5S4amw',
+    name: 'Glauco',
+    role: 'Resultado na Primeira Semana',
     horizontal: false,
+    thumbnail: '/images/landing/thumbnails/glauco horizontal.png',
   },
 ];
+
+function VideoEmbed({ video }: { video: typeof videoTestimonials[number] }) {
+  const [playing, setPlaying] = useState(false);
+
+  if (!video.youtubeId) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+        <PlayCircle className="h-12 w-12 text-gray-300" />
+        <span className="text-xs text-gray-400">Vídeo em breve</span>
+      </div>
+    );
+  }
+
+  if (playing) {
+    return (
+      <iframe
+        src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`}
+        title={video.name}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="absolute inset-0 w-full h-full"
+      />
+    );
+  }
+
+  const thumbUrl = video.thumbnail || `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`;
+
+  return (
+    <button
+      onClick={() => setPlaying(true)}
+      className="absolute inset-0 w-full h-full group cursor-pointer border-0 p-0 bg-black"
+    >
+      <img
+        src={thumbUrl}
+        alt={video.name}
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+        <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+          <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7 ml-1">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      </div>
+    </button>
+  );
+}
 
 const reviews = [
   {
@@ -126,78 +174,18 @@ export default function ReviewsSection() {
             <p className="text-gray-500 text-sm mt-2">Veja o depoimento de quem passou pela mentoria.</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-2 gap-4">
-            {/* Horizontal 1 — col-span-2, row 1 */}
-            <div className="lg:col-span-2 lg:row-span-1 rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
-              <div className="relative bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                {videoTestimonials[0].youtubeId ? (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoTestimonials[0].youtubeId}`}
-                    title={videoTestimonials[0].name}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                    <PlayCircle className="h-12 w-12 text-gray-300" />
-                    <span className="text-xs text-gray-400">Vídeo em breve</span>
-                  </div>
-                )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-5xl mx-auto">
+            {videoTestimonials.map((video, i) => (
+              <div key={i} className="rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
+                <div className="relative bg-gray-100" style={{ aspectRatio: '16/9' }}>
+                  <VideoEmbed video={video} />
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-sm font-semibold">{video.name}</p>
+                  <p className="text-xs text-gray-500">{video.role}</p>
+                </div>
               </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-semibold">{videoTestimonials[0].name}</p>
-                <p className="text-xs text-gray-500">{videoTestimonials[0].role}</p>
-              </div>
-            </div>
-
-            {/* Vertical — col-span-1, row-span-2 */}
-            <div className="lg:col-span-1 lg:row-span-2 lg:col-start-3 lg:row-start-1 rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white flex flex-col">
-              <div className="relative bg-gray-100 flex-1" style={{ minHeight: '280px' }}>
-                {videoTestimonials[2].youtubeId ? (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoTestimonials[2].youtubeId}`}
-                    title={videoTestimonials[2].name}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                    <PlayCircle className="h-12 w-12 text-gray-300" />
-                    <span className="text-xs text-gray-400">Vídeo em breve</span>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-3 border-t border-gray-100">
-                <p className="text-sm font-semibold">{videoTestimonials[2].name}</p>
-                <p className="text-xs text-gray-500">{videoTestimonials[2].role}</p>
-              </div>
-            </div>
-
-            {/* Horizontal 2 — col-span-2, row 2 */}
-            <div className="lg:col-span-2 lg:row-span-1 lg:col-start-1 lg:row-start-2 rounded-lg overflow-hidden border border-gray-100 shadow-sm bg-white">
-              <div className="relative bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                {videoTestimonials[1].youtubeId ? (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoTestimonials[1].youtubeId}`}
-                    title={videoTestimonials[1].name}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                    <PlayCircle className="h-12 w-12 text-gray-300" />
-                    <span className="text-xs text-gray-400">Vídeo em breve</span>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm font-semibold">{videoTestimonials[1].name}</p>
-                <p className="text-xs text-gray-500">{videoTestimonials[1].role}</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 

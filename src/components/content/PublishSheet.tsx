@@ -49,6 +49,14 @@ export function PublishSheet({ open, onClose, piece }: Props) {
   const linkedinAccount = accounts.find((a) => a.platform === 'linkedin');
   const xAccount = accounts.find((a) => a.platform === 'x');
 
+  // Check if there's already an active publication for each platform
+  const linkedinActive = publications.some(
+    (p) => p.platform === 'linkedin' && ['scheduled', 'publishing', 'published'].includes(p.status),
+  );
+  const xActive = publications.some(
+    (p) => p.platform === 'x' && ['scheduled', 'publishing', 'published'].includes(p.status),
+  );
+
   // Form state
   const [enableLinkedin, setEnableLinkedin] = useState(!!linkedinAccount);
   const [enableX, setEnableX] = useState(!!xAccount);
@@ -219,10 +227,10 @@ export function PublishSheet({ open, onClose, piece }: Props) {
               <Button
                 className="flex-1 gap-1.5"
                 onClick={() => handlePublish('linkedin')}
-                disabled={createPub.isPending || !linkedinText.trim()}
+                disabled={createPub.isPending || !linkedinText.trim() || linkedinActive}
               >
                 {createPub.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Linkedin className="w-4 h-4" />}
-                {scheduleMode === 'now' ? 'Publicar LinkedIn' : 'Agendar LinkedIn'}
+                {linkedinActive ? 'Ja publicado/agendado' : scheduleMode === 'now' ? 'Publicar LinkedIn' : 'Agendar LinkedIn'}
               </Button>
             )}
             {enableX && xAccount && (
@@ -230,10 +238,10 @@ export function PublishSheet({ open, onClose, piece }: Props) {
                 variant="outline"
                 className="flex-1 gap-1.5"
                 onClick={() => handlePublish('x')}
-                disabled={createPub.isPending || !xText.trim()}
+                disabled={createPub.isPending || !xText.trim() || xActive}
               >
                 {createPub.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Twitter className="w-4 h-4" />}
-                {scheduleMode === 'now' ? 'Publicar X' : 'Agendar X'}
+                {xActive ? 'Ja publicado/agendado' : scheduleMode === 'now' ? 'Publicar X' : 'Agendar X'}
               </Button>
             )}
           </div>
